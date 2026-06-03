@@ -12,7 +12,7 @@ export async function listTabs(): Promise<{ tabs: Array<{ id: number; title: str
 export async function selectTab(p: Record<string, unknown>): Promise<{ ok: true }> {
   const id = Number(p.id);
   const tab = await chrome.tabs.get(id);
-  await chrome.windows.update(tab.windowId, { focused: true });
+  if (tab.windowId >= 0) await chrome.windows.update(tab.windowId, { focused: true });
   await chrome.tabs.update(id, { active: true });
   return { ok: true };
 }

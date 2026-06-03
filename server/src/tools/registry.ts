@@ -33,10 +33,15 @@ export function registerTools(server: McpServer, bridge: Bridge): void {
     },
   );
 
-  server.tool("browser_click", "Click the element with the given ref (from a snapshot).", { ref: z.string() }, async ({ ref }) => {
-    await bridge.call("click", { ref });
-    return text(`Clicked ${ref}`);
-  });
+  server.tool(
+    "browser_click",
+    "Click the element with the given ref. Set trusted=true to force real CDP input (shows the debugging banner).",
+    { ref: z.string(), trusted: z.boolean().optional() },
+    async ({ ref, trusted }) => {
+      await bridge.call("click", { ref, trusted: trusted ?? false });
+      return text(`Clicked ${ref}`);
+    },
+  );
 
   server.tool(
     "browser_type",

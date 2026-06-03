@@ -63,7 +63,7 @@ describe("action tools", () => {
     registerTools(server, bridge);
     const tool = (server as any)._registeredTools["browser_click"];
     await tool.handler({ ref: "e5" }, {});
-    expect(calls).toEqual([["click", { ref: "e5" }]]);
+    expect(calls).toEqual([["click", { ref: "e5", trusted: false }]]);
   });
 
   it("browser_list_tabs renders the tab list as text", async () => {

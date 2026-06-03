@@ -1,5 +1,6 @@
 import { activeTab } from "../tabs.js";
 import { ensureContent, callInPage } from "../inject.js";
+import { fullPageScreenshot } from "../debugger.js";
 
 export async function snapshot(): Promise<{ text: string; count: number }> {
   const tab = await activeTab();
@@ -10,7 +11,7 @@ export async function snapshot(): Promise<{ text: string; count: number }> {
 export async function screenshot(params: Record<string, unknown>): Promise<{ dataUrl: string }> {
   const tab = await activeTab();
   if (params.fullPage === true) {
-    throw new Error("Full-page screenshots are not supported yet (coming in Milestone 4).");
+    return { dataUrl: await fullPageScreenshot(tab.id!) };
   }
   const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
   return { dataUrl };

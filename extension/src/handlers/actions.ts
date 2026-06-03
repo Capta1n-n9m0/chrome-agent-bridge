@@ -1,5 +1,6 @@
 import { activeTab } from "../tabs.js";
 import { ensureContent, callInPage } from "../inject.js";
+import { withDebugger, trustedClick } from "../debugger.js";
 
 async function inActiveTab<T>(fn: (...args: unknown[]) => T, args: unknown[]): Promise<T> {
   const tab = await activeTab();
@@ -7,8 +8,26 @@ async function inActiveTab<T>(fn: (...args: unknown[]) => T, args: unknown[]): P
   return callInPage(tab.id!, fn, args);
 }
 
-export const click = (p: Record<string, unknown>) =>
-  inActiveTab((ref) => window.__agentBridge!.click(ref as string), [p.ref]);
+export async function click(p: Record<string, unknown>): Promise<{ ok: true }> {
+  const tab = await activeTab();
+  await ensureContent(tab.id!);
+  const trusted = p.trusted === true;
+  if (!trusted) {
+    try {
+      await callInPage(tab.id!, (ref) => window.__agentBridge!.click(ref as string), [p.ref]);
+      return { ok: true };
+    } catch {
+      // fall through to trusted input
+    }
+  }
+  const { x, y } = await callInPage<{ x: number; y: number }>(
+    tab.id!,
+    (ref) => window.__agentBridge!.centerOf(ref as string),
+    [p.ref],
+  );
+  await withDebugger(tab.id!, () => trustedClick(tab.id!, x, y));
+  return { ok: true };
+}
 
 export const type = (p: Record<string, unknown>) =>
   inActiveTab(
@@ -31,17 +50,9 @@ export const selectOption = (p: Record<string, unknown>) =>
     [p.ref, p.values],
   );
 
-export async function pressKey(p: Record<string, unknown>): Promise<{ ok: true }> {
-  const tab = await activeTab();
-  await ensureContent(tab.id!);
-  await callInPage(
-    tab.id!,
-    (key) => {
-      const el = (document.activeElement ?? document.body) as HTMLElement;
-      for (const t of ["keydown", "keyup"]) el.dispatchEvent(new KeyboardEvent(t, { key: key as string, bubbles: true }));
-      return { ok: true };
-    },
-    [p.key],
-  );
-  return { ok: true };
-}
+export const pressKey = (p: Record<string, unknown>) =>
+  inActiveTab((key) => {
+    const el = (document.activeElement ?? document.body) as HTMLElement;
+    for (const t of ["keydown", "keyup"]) el.dispatchEvent(new KeyboardEvent(t, { key: key as string, bubbles: true }));
+    return { ok: true };
+  }, [p.key]);
