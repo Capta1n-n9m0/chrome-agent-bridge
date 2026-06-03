@@ -1,0 +1,19 @@
+{
+  "name": "chrome-remote-extention",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": ["shared", "server", "extension"],
+  "scripts": {
+    "typecheck": "tsc -p shared/tsconfig.json && tsc -p server/tsconfig.json && tsc -p extension/tsconfig.json",
+    "test": "vitest run",
+    "build": "node server/build.mjs && node extension/build.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "esbuild": "^0.24.0",
+    "jsdom": "^25.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
