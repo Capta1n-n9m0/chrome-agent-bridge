@@ -120,4 +120,14 @@ export function registerTools(server: McpServer, bridge: Bridge): void {
     await bridge.call("closeTab", { id });
     return text(`Closed tab ${id}`);
   });
+
+  server.tool(
+    "browser_wait_for",
+    "Wait until text appears on the active tab, or wait a number of seconds.",
+    { text: z.string().optional(), seconds: z.number().optional() },
+    async ({ text: waitText, seconds }) => {
+      await bridge.call("waitFor", { text: waitText, seconds });
+      return text(waitText ? `Waited for text: ${waitText}` : `Waited ${seconds ?? 0}s`);
+    },
+  );
 }

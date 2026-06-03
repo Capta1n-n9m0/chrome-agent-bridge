@@ -76,3 +76,18 @@ describe("action tools", () => {
     expect(res.content[0].text).toContain("A");
   });
 });
+
+describe("wait tool", () => {
+  it("browser_wait_for forwards text to bridge.waitFor", async () => {
+    const calls: Array<[string, any]> = [];
+    const bridge = fakeBridge(async (m, p) => {
+      calls.push([m, p]);
+      return { ok: true };
+    });
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    const tool = (server as any)._registeredTools["browser_wait_for"];
+    await tool.handler({ text: "Welcome" }, {});
+    expect(calls).toEqual([["waitFor", { text: "Welcome" }]]);
+  });
+});

@@ -13,7 +13,7 @@ export async function ensureContent(tabId: number): Promise<void> {
 
 export async function callInPage<T>(
   tabId: number,
-  fn: (...args: unknown[]) => T,
+  fn: (...args: unknown[]) => T | PromiseLike<T>,
   args: unknown[] = [],
 ): Promise<T> {
   // @types/chrome ^0.1.42 ships its own `chrome.scripting.Awaited<T>` that

@@ -4,6 +4,7 @@ import { snapshot, screenshot } from "./handlers/perceive.js";
 import { click, type as typeText, scroll, hover, selectOption, pressKey } from "./handlers/actions.js";
 import { back, forward } from "./handlers/history.js";
 import { listTabs, selectTab, newTab, closeTab } from "./handlers/tabs.js";
+import { waitFor } from "./handlers/wait.js";
 
 const DEFAULT_PORT = 9234;
 const router = new Router();
@@ -22,6 +23,7 @@ router.on("listTabs", listTabs);
 router.on("selectTab", selectTab);
 router.on("newTab", newTab);
 router.on("closeTab", closeTab);
+router.on("waitFor", waitFor);
 
 let connecting = false;
 
@@ -63,7 +65,7 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === "ws-message") {
     router.handle(msg.data)
       .then((reply) => {
-        if (reply) chrome.runtime.sendMessage({ target: "offscreen", type: "send", data: reply }).catch(() => {});
+        if (reply) chrome.runtime.sendMessage({ target: "offscreen", type: "send", data: reply }).catch((e) => console.warn("[bridge] reply relay failed:", e));
       })
       .catch(() => {});
   } else if (msg.type === "ws-status") {

@@ -73,6 +73,7 @@ With the MCP server running and the extension connected, call the tools from you
 | `browser_hover(ref)` | Hover a ref |
 | `browser_select_option(ref, values)` | Select option(s) in a `<select>` |
 | `browser_back()` / `browser_forward()` | History navigation |
+| `browser_wait_for(text?, seconds?)` | Wait until text appears on the active tab, or for N seconds |
 | `browser_list_tabs()` | List open tabs |
 | `browser_select_tab(id)` | Make a tab active (the new control target) |
 | `browser_new_tab(url?)` / `browser_close_tab(id)` | Open / close tabs |
@@ -104,3 +105,6 @@ and do **not** show the banner.
   that tab. Close DevTools and retry.
 - **Connection drops when idle**: the offscreen document should keep it alive; if it still
   drops, reload the extension from `chrome://extensions`.
+- **Trusted clicks land slightly off-target**: on zoomed or HiDPI/Retina displays the
+  `trusted:true` click path can be a few pixels off. Reset page zoom to 100%, or use the
+  default (non-trusted) click which targets the element directly.
