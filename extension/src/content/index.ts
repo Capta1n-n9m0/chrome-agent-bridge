@@ -1,6 +1,7 @@
 import { buildSnapshot } from "./snapshot.js";
 import { RefMap } from "./refmap.js";
 import { clickRef, typeRef, scrollRef, hoverRef, selectOptionRef } from "./actions.js";
+import { centerOf } from "./geometry.js";
 
 declare global {
   interface Window {
@@ -12,6 +13,7 @@ declare global {
       scroll: (ref: string | undefined, direction: string) => { ok: true };
       hover: (ref: string) => { ok: true };
       selectOption: (ref: string, values: string[]) => { ok: true };
+      centerOf: (ref: string) => { x: number; y: number };
     };
   }
 }
@@ -26,5 +28,10 @@ if (!window.__agentBridge) {
     scroll: (ref, direction) => scrollRef(refs, ref, direction),
     hover: (ref) => hoverRef(refs, ref),
     selectOption: (ref, values) => selectOptionRef(refs, ref, values),
+    centerOf: (ref) => {
+      const el = refs.get(ref);
+      if (!el) throw new Error(`ref ${ref} not found — call browser_snapshot to re-snapshot`);
+      return centerOf(el);
+    },
   };
 }
