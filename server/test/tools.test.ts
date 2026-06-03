@@ -51,3 +51,28 @@ describe("perception tools", () => {
     expect(res.content[0].data.startsWith("iVBOR")).toBe(true);
   });
 });
+
+describe("action tools", () => {
+  it("browser_click forwards the ref to bridge.click", async () => {
+    const calls: Array<[string, any]> = [];
+    const bridge = fakeBridge(async (m, p) => {
+      calls.push([m, p]);
+      return { ok: true };
+    });
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    const tool = (server as any)._registeredTools["browser_click"];
+    await tool.handler({ ref: "e5" }, {});
+    expect(calls).toEqual([["click", { ref: "e5" }]]);
+  });
+
+  it("browser_list_tabs renders the tab list as text", async () => {
+    const bridge = fakeBridge(async () => ({ tabs: [{ id: 1, title: "A", url: "http://a", active: true }] }));
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    const tool = (server as any)._registeredTools["browser_list_tabs"];
+    const res = await tool.handler({}, {});
+    expect(res.content[0].text).toContain("[1]");
+    expect(res.content[0].text).toContain("A");
+  });
+});
