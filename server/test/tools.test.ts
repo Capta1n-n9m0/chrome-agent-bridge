@@ -27,3 +27,27 @@ describe("registerTools", () => {
     expect((res as { content: Array<{ text: string }> }).content[0].text).toContain("https://example.com");
   });
 });
+
+describe("perception tools", () => {
+  it("browser_snapshot returns the snapshot text", async () => {
+    const bridge = fakeBridge(async () => ({ text: 'url: x\n- button "Go" [ref=e1]', count: 1 }));
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    const tool = (server as any)._registeredTools["browser_snapshot"];
+    const res = await tool.handler({}, {});
+    expect(res.content[0].text).toContain("[ref=e1]");
+  });
+
+  it("browser_screenshot returns image content", async () => {
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+    const bridge = fakeBridge(async () => ({ dataUrl: png }));
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    const tool = (server as any)._registeredTools["browser_screenshot"];
+    const res = await tool.handler({}, {});
+    expect(res.content[0].type).toBe("image");
+    expect(res.content[0].mimeType).toBe("image/png");
+    expect(res.content[0].data.startsWith("iVBOR")).toBe(true);
+  });
+});
