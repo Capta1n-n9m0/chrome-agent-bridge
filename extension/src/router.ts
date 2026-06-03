@@ -24,7 +24,10 @@ export class Router {
       const result = await handler(msg.params ?? {});
       return JSON.stringify({ id: msg.id, result: result ?? { ok: true } });
     } catch (err) {
-      return JSON.stringify({ id: msg.id, error: { message: (err as Error).message } });
+      return JSON.stringify({
+        id: msg.id,
+        error: { message: err instanceof Error ? err.message : String(err) },
+      });
     }
   }
 }
