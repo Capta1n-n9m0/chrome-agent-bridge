@@ -1,4 +1,3 @@
-import { ReconnectingClient } from "./client.js";
 import { Router } from "./router.js";
 import { navigate } from "./handlers/navigate.js";
 import { snapshot, screenshot } from "./handlers/perceive.js";
@@ -24,12 +23,20 @@ router.on("selectTab", selectTab);
 router.on("newTab", newTab);
 router.on("closeTab", closeTab);
 
-let client: ReconnectingClient | undefined;
 let connecting = false;
 
 async function getConfig(): Promise<{ port: number; token: string }> {
   const { port, token } = await chrome.storage.local.get(["port", "token"]);
   return { port: Number(port) || DEFAULT_PORT, token: String(token ?? "") };
+}
+
+async function ensureOffscreen(): Promise<void> {
+  if (await chrome.offscreen.hasDocument()) return;
+  await chrome.offscreen.createDocument({
+    url: "offscreen.html",
+    reasons: [chrome.offscreen.Reason.WORKERS],
+    justification: "Maintain a persistent WebSocket to the local MCP bridge server.",
+  });
 }
 
 async function connect(): Promise<void> {
@@ -41,22 +48,26 @@ async function connect(): Promise<void> {
       console.warn("[bridge] no token set — open the extension options page to configure.");
       return;
     }
-    client?.stop();
-    client = new ReconnectingClient({
-      url: `ws://127.0.0.1:${port}`,
-      token,
-      onMessage: async (data) => {
-        const thisClient = client;
-        const reply = await router.handle(data);
-        if (reply) thisClient?.send(reply);
-      },
-      onStatus: (connected) => console.error(`[bridge] connection: ${connected ? "up" : "down"}`),
-    });
-    client.start();
+    await ensureOffscreen();
+    await chrome.runtime.sendMessage({ target: "offscreen", type: "connect", port, token });
+  } catch (err) {
+    console.error("[bridge] connect failed:", err);
   } finally {
     connecting = false;
   }
 }
+
+// Messages relayed from the offscreen document.
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.target !== "sw") return;
+  if (msg.type === "ws-message") {
+    void router.handle(msg.data).then((reply) => {
+      if (reply) chrome.runtime.sendMessage({ target: "offscreen", type: "send", data: reply }).catch(() => {});
+    });
+  } else if (msg.type === "ws-status") {
+    console.error(`[bridge] connection: ${msg.connected ? "up" : "down"}`);
+  }
+});
 
 chrome.runtime.onInstalled.addListener(() => void connect());
 chrome.runtime.onStartup.addListener(() => void connect());
@@ -65,7 +76,9 @@ chrome.alarms.get("keepalive", (existing) => {
   if (!existing) chrome.alarms.create("keepalive", { periodInMinutes: 0.41 }); // ~25s
 });
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === "keepalive" && !client?.isOpen()) void connect();
+  // connect() is idempotent (offscreen ignores a redundant same-endpoint connect),
+  // so this just ensures the offscreen doc + socket are alive without churn.
+  if (alarm.name === "keepalive") void connect();
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {

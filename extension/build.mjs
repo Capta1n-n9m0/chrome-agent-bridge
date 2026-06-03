@@ -5,7 +5,7 @@ const common = { bundle: true, target: "chrome116", outdir: "dist" };
 // Service worker + options page load as ES modules.
 await build({
   ...common,
-  entryPoints: { sw: "src/sw.ts", options: "src/options.ts" },
+  entryPoints: { sw: "src/sw.ts", options: "src/options.ts", offscreen: "src/offscreen.ts" },
   format: "esm",
 });
 
