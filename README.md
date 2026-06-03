@@ -13,8 +13,9 @@ restores agent control of that profile via a Chrome extension + an MCP server, s
 
 All documentation lives in [`docs/`](docs/).
 
+- **Setup & usage:** [`docs/setup.md`](docs/setup.md)
 - **Design spec:** [`docs/specs/2026-06-04-chrome-real-profile-agent-bridge-design.md`](docs/specs/2026-06-04-chrome-real-profile-agent-bridge-design.md)
 
 ## Status
 
-Design approved — implementation not yet started.
+Implemented (Milestones 1–5). Manual in-browser E2E pending — see [`docs/setup.md`](docs/setup.md).
