@@ -1,0 +1,7 @@
+{
+  "name": "@bridge/shared",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/protocol.ts",
+  "exports": { ".": "./src/protocol.ts" }
+}
