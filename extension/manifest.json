@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Chrome Agent Bridge",
+  "version": "0.1.0",
+  "description": "Bridges your real Chrome profile to a local MCP server for AI agent control.",
+  "minimum_chrome_version": "116",
+  "background": { "service_worker": "dist/sw.js", "type": "module" },
+  "permissions": ["debugger", "tabs", "scripting", "activeTab", "alarms", "storage", "offscreen"],
+  "host_permissions": ["<all_urls>"],
+  "options_page": "options.html"
+}
