@@ -61,11 +61,14 @@ async function connect(): Promise<void> {
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.target !== "sw") return;
   if (msg.type === "ws-message") {
-    void router.handle(msg.data).then((reply) => {
-      if (reply) chrome.runtime.sendMessage({ target: "offscreen", type: "send", data: reply }).catch(() => {});
-    });
+    router.handle(msg.data)
+      .then((reply) => {
+        if (reply) chrome.runtime.sendMessage({ target: "offscreen", type: "send", data: reply }).catch(() => {});
+      })
+      .catch(() => {});
   } else if (msg.type === "ws-status") {
-    console.error(`[bridge] connection: ${msg.connected ? "up" : "down"}`);
+    if (msg.connected) console.log("[bridge] connection: up");
+    else console.error("[bridge] connection: down");
   }
 });
 
