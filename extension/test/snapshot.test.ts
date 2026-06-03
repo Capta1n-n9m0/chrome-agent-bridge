@@ -33,4 +33,28 @@ describe("buildSnapshot", () => {
     const { count } = buildSnapshot(document, map);
     expect(count).toBe(2);
   });
+
+  it("names an input via an associated <label for>", () => {
+    document.body.innerHTML = `<label for="email">Email address</label><input id="email" type="text" />`;
+    const { text } = buildSnapshot(document, new RefMap());
+    expect(text).toContain('textbox "Email address" [ref=e1]');
+  });
+
+  it("names an input via aria-labelledby", () => {
+    document.body.innerHTML = `<span id="lbl">Password</span><input aria-labelledby="lbl" type="password" />`;
+    const { text } = buildSnapshot(document, new RefMap());
+    expect(text).toContain('textbox "Password"');
+  });
+
+  it("names an input wrapped in a <label>", () => {
+    document.body.innerHTML = `<label>Username <input type="text" /></label>`;
+    const { text } = buildSnapshot(document, new RefMap());
+    expect(text).toContain('textbox "Username"');
+  });
+
+  it("prefers aria-label over an associated label", () => {
+    document.body.innerHTML = `<label for="x">Wrong</label><input id="x" aria-label="Right" type="text" />`;
+    const { text } = buildSnapshot(document, new RefMap());
+    expect(text).toContain('textbox "Right"');
+  });
 });

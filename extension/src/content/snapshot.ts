@@ -28,9 +28,30 @@ function isVisible(el: Element): boolean {
 function accessibleName(el: Element): string {
   const aria = el.getAttribute("aria-label");
   if (aria) return aria.trim();
+
+  const labelledby = el.getAttribute("aria-labelledby");
+  if (labelledby) {
+    const names = labelledby
+      .split(/\s+/)
+      .map((id) => el.ownerDocument.getElementById(id)?.textContent?.replace(/\s+/g, " ").trim() ?? "")
+      .filter(Boolean);
+    if (names.length) return names.join(" ");
+  }
+
+  if (el.id) {
+    const labels = Array.from(el.ownerDocument.querySelectorAll("label")) as HTMLLabelElement[];
+    const forLabel = labels.find((l) => l.htmlFor === el.id);
+    if (forLabel?.textContent) return forLabel.textContent.replace(/\s+/g, " ").trim();
+  }
+
+  const wrapping = el.closest("label");
+  if (wrapping?.textContent) {
+    const name = wrapping.textContent.replace(/\s+/g, " ").trim();
+    if (name) return name;
+  }
+
   if (el instanceof HTMLInputElement && el.placeholder) return el.placeholder.trim();
-  const text = (el.textContent ?? "").replace(/\s+/g, " ").trim();
-  return text;
+  return (el.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
 export interface Snapshot {

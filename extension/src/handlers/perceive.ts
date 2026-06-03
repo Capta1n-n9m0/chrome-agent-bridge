@@ -9,8 +9,9 @@ export async function snapshot(): Promise<{ text: string; count: number }> {
 
 export async function screenshot(params: Record<string, unknown>): Promise<{ dataUrl: string }> {
   const tab = await activeTab();
-  // Viewport capture — no debugger banner. fullPage is handled in Milestone 4.
+  if (params.fullPage === true) {
+    throw new Error("Full-page screenshots are not supported yet (coming in Milestone 4).");
+  }
   const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
-  void params;
   return { dataUrl };
 }
