@@ -14,6 +14,10 @@ export class Bridge {
     return this.connection !== null;
   }
 
+  currentConnection(): ExtensionConnection | null {
+    return this.connection;
+  }
+
   async call(method: string, params?: Record<string, unknown>): Promise<unknown> {
     if (!this.connection) throw new Error(NOT_CONNECTED);
     return this.connection.call(method, params);

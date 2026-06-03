@@ -4,7 +4,8 @@ export interface Config {
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const port = Number(env.BRIDGE_PORT ?? "9234");
+  const rawPort = env.BRIDGE_PORT ?? "9234";
+  const port = Number(rawPort);
   const token = env.BRIDGE_TOKEN ?? "";
   if (!token) {
     throw new Error(
@@ -12,7 +13,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     );
   }
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-    throw new Error(`BRIDGE_PORT must be a valid port number, got: ${env.BRIDGE_PORT}`);
+    throw new Error(`BRIDGE_PORT must be a valid port number, got: "${rawPort}"`);
   }
   return { port, token };
 }

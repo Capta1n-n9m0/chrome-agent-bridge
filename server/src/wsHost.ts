@@ -34,6 +34,8 @@ export class WsHost {
     let authed = false;
     let connection: ExtensionConnection | undefined;
 
+    ws.on("error", (err) => console.error("[chrome-bridge] socket error:", err));
+
     ws.on("message", (raw) => {
       const data = raw.toString();
       if (!authed) {
@@ -53,7 +55,9 @@ export class WsHost {
     ws.on("close", () => {
       if (connection) {
         connection.rejectAll("extension disconnected");
-        this.bridge.setConnection(null);
+        if (this.bridge.currentConnection() === connection) {
+          this.bridge.setConnection(null);
+        }
       }
     });
   }
