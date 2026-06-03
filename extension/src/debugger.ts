@@ -18,10 +18,13 @@ export async function withDebugger<T>(tabId: number, fn: () => Promise<T>): Prom
 }
 
 export async function trustedClick(tabId: number, x: number, y: number): Promise<void> {
+  // Coords are CSS pixels from getBoundingClientRect — the space CDP Input expects.
+  // devicePixelRatio scaling is not applied; correct on 1x displays (DPR handling is future work).
   await send(tabId, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1, buttons: 1 });
   await send(tabId, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1, buttons: 0 });
 }
 
+// Available for a future trusted-typing escalation path; not yet wired into the type handler.
 export async function trustedType(tabId: number, text: string): Promise<void> {
   for (const ch of text) {
     await send(tabId, "Input.dispatchKeyEvent", { type: "keyDown", text: ch });

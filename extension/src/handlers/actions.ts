@@ -16,7 +16,8 @@ export async function click(p: Record<string, unknown>): Promise<{ ok: true }> {
     try {
       await callInPage(tab.id!, (ref) => window.__agentBridge!.click(ref as string), [p.ref]);
       return { ok: true };
-    } catch {
+    } catch (err) {
+      console.warn("[bridge] content-script click failed; escalating to CDP trusted input:", err);
       // fall through to trusted input
     }
   }
