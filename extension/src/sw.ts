@@ -2,12 +2,27 @@ import { ReconnectingClient } from "./client.js";
 import { Router } from "./router.js";
 import { navigate } from "./handlers/navigate.js";
 import { snapshot, screenshot } from "./handlers/perceive.js";
+import { click, type as typeText, scroll, hover, selectOption, pressKey } from "./handlers/actions.js";
+import { back, forward } from "./handlers/history.js";
+import { listTabs, selectTab, newTab, closeTab } from "./handlers/tabs.js";
 
 const DEFAULT_PORT = 9234;
 const router = new Router();
 router.on("navigate", navigate);
 router.on("snapshot", snapshot);
 router.on("screenshot", screenshot);
+router.on("click", click);
+router.on("type", typeText);
+router.on("scroll", scroll);
+router.on("hover", hover);
+router.on("selectOption", selectOption);
+router.on("pressKey", pressKey);
+router.on("back", back);
+router.on("forward", forward);
+router.on("listTabs", listTabs);
+router.on("selectTab", selectTab);
+router.on("newTab", newTab);
+router.on("closeTab", closeTab);
 
 let client: ReconnectingClient | undefined;
 let connecting = false;
