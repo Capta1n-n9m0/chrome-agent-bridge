@@ -1,10 +1,13 @@
 import { ReconnectingClient } from "./client.js";
 import { Router } from "./router.js";
 import { navigate } from "./handlers/navigate.js";
+import { snapshot, screenshot } from "./handlers/perceive.js";
 
 const DEFAULT_PORT = 9234;
 const router = new Router();
 router.on("navigate", navigate);
+router.on("snapshot", snapshot);
+router.on("screenshot", screenshot);
 
 let client: ReconnectingClient | undefined;
 let connecting = false;
