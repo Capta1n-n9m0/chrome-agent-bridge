@@ -21,6 +21,23 @@ export function toSerializableArgs(args: unknown[]): unknown[] {
   return args.map((a) => (a === undefined ? null : a));
 }
 
+/**
+ * Unwrap a chrome.scripting.executeScript frame result. When an injected
+ * function THROWS (e.g. a stale/unknown ref), Chrome resolves the call with a
+ * frame whose `result` is `null` (not a rejection), which would otherwise be
+ * silently treated as success. None of our page functions return null/undefined
+ * on success, so treat either as a failure and surface an actionable error.
+ */
+export function unwrapResult<T>(injection: { result?: unknown } | undefined): T {
+  if (!injection || injection.result === undefined || injection.result === null) {
+    throw new Error(
+      "The page action returned no result — the element ref may be stale (run browser_snapshot to refresh), " +
+        "or the tab may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store).",
+    );
+  }
+  return injection.result as T;
+}
+
 export async function callInPage<T>(
   tabId: number,
   fn: (...args: unknown[]) => T | PromiseLike<T>,
@@ -41,10 +58,5 @@ export async function callInPage<T>(
       `Could not run script in the active tab — it may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store). (${(err as Error).message})`,
     );
   }
-  if (!injection || injection.result === undefined) {
-    throw new Error(
-      "The active tab returned no result — it may be on a restricted URL (chrome://, New Tab, Web Store) where extensions can't run.",
-    );
-  }
-  return injection.result as T;
+  return unwrapResult<T>(injection);
 }
