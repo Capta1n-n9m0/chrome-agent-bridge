@@ -2,7 +2,20 @@
 
 - **Date:** 2026-06-04
 - **Branch:** `feat/agent-bridge` (not merged to `main`)
-- **Status:** Code complete; automated tests green; **live in-browser E2E not yet run**
+- **Status:** Code complete; **54 unit tests green**; **live in-browser E2E passed (29 cases)** against the real default profile; 3 runtime bugs found & fixed. Ready to merge.
+
+---
+
+## 0. E2E validation (2026-06-04)
+
+Ran the suite in `docs/e2e-test-plan.md` against real Chrome + the live MCP connection. **29 cases passed**, covering connection, navigation (incl. error-page handling), perception (refs + `<label>`/`aria-labelledby` naming + viewport & full-page screenshots), all actions, both `chrome.debugger` paths (trusted `Input` + `Page.captureScreenshot`), tabs, history, the three `wait_for` modes, and the token gate. The core premise is proven: the extension drives the real logged-in profile end-to-end, including CDP-level trusted input that Chrome 136 blocked.
+
+**Three bugs only the live runtime could surface (all fixed):**
+1. `fe67e87` — MCP server crashed on a busy WebSocket port (orphaned instance → `EADDRINUSE`). Now non-fatal; stdio connects regardless.
+2. `0404602` — `browser_scroll` with no ref crashed: `chrome.scripting.executeScript` can't serialize `undefined` in `args`. Fixed via `toSerializableArgs` (undefined→null).
+3. `9bc4701` — invalid/stale refs **silently succeeded**: when an injected fn throws, Chrome returns `result: null` (not undefined / not a rejection); `callInPage` only guarded `undefined`. Fixed via `unwrapResult` (null *or* undefined → actionable error).
+
+**Not yet exercised live** (need manual/long setup): CONN-5 idle keepalive (3-min soak), TRUST-3 debugger-vs-DevTools conflict, CONN-2/3 not-connected/server-restart (would disconnect the session). SEC-1 localhost-only bind confirmed by inspection.
 
 ---
 
@@ -81,11 +94,12 @@ and the core premise that **all of this drives the default profile end-to-end.**
 
 ## 5. Roadmap
 
-**Phase A — Validate (now).** Run `docs/e2e-test-plan.md` against your real Chrome. Fix whatever
-the live environment surfaces. Then merge `feat/agent-bridge` → `main`.
+**Phase A — Validate.** ✅ Done (2026-06-04) — see §0. 29 E2E cases passed; 3 runtime bugs fixed.
+Remaining: merge `feat/agent-bridge` → `main`; run the deferred soak tests (CONN-5, TRUST-3).
 
-**Phase B — Robustness from E2E findings.** Address whatever breaks in A (likely candidates:
-injection timing, keepalive across culls, debugger attach conflicts with open DevTools).
+**Phase B — Robustness from E2E findings.** Largely addressed by the three §0 fixes. Still open:
+idle keepalive soak across SW culls, debugger-attach conflict UX when DevTools is open, and a
+clearer "port busy" message surfaced through the tools (not just stderr).
 
 **Phase C — Perception fidelity.** Shadow DOM + same-origin iframe traversal; zero-size/`aria-hidden`
 filtering; richer roles (tabs, menus, listbox); optionally trim snapshots to the viewport with an
