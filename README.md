@@ -14,6 +14,8 @@ restores agent control of that profile via a Chrome extension + an MCP server, s
 All documentation lives in [`docs/`](docs/).
 
 - **Setup & usage:** [`docs/setup.md`](docs/setup.md)
+- **Progress & roadmap:** [`docs/progress-and-roadmap.md`](docs/progress-and-roadmap.md)
+- **E2E test plan:** [`docs/e2e-test-plan.md`](docs/e2e-test-plan.md) (+ fixture `test-fixtures/e2e-playground.html`)
 - **Design spec:** [`docs/specs/2026-06-04-chrome-real-profile-agent-bridge-design.md`](docs/specs/2026-06-04-chrome-real-profile-agent-bridge-design.md)
 
 ## Status

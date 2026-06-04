@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agent Bridge E2E Playground</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; line-height: 1.5; }
+      h1 { margin-top: 0; }
+      section { border: 1px solid #ccc; border-radius: 8px; padding: 16px; margin: 16px 0; }
+      label { display: block; margin: 8px 0; }
+      input, select, button { font-size: 1rem; padding: 6px 8px; }
+      #status {
+        position: sticky; top: 0; background: #0b5; color: #fff; padding: 10px 14px;
+        border-radius: 6px; font-weight: 600; z-index: 10;
+      }
+      .filler { height: 600px; background: repeating-linear-gradient(#f6f6f6, #f6f6f6 40px, #eee 40px, #eee 80px); }
+    </style>
+  </head>
+  <body>
+    <h1>Agent Bridge E2E Playground</h1>
+    <!-- The status line is updated by every interaction so tests can verify via browser_snapshot. -->
+    <div id="status" role="status">status: idle</div>
+
+    <section aria-label="Login form">
+      <h2>Form</h2>
+      <!-- TC-PERC: named via <label for> -->
+      <label for="email">Email address</label>
+      <input id="email" type="text" />
+
+      <!-- TC-PERC: named via aria-labelledby -->
+      <span id="pwd-label">Password</span>
+      <input aria-labelledby="pwd-label" type="password" id="password" />
+
+      <!-- TC-PERC: named via placeholder -->
+      <input type="text" placeholder="Search query" id="search" />
+
+      <!-- TC-ACT: select by visible label or value -->
+      <label for="fruit">Favorite fruit</label>
+      <select id="fruit">
+        <option value="a">Apple</option>
+        <option value="b">Banana</option>
+        <option value="c">Cherry</option>
+      </select>
+
+      <form id="login-form">
+        <button type="submit" id="submit-btn">Sign in</button>
+      </form>
+    </section>
+
+    <section aria-label="Buttons and links">
+      <h2>Buttons &amp; links</h2>
+      <!-- TC-ACT: synthetic click is fine here -->
+      <button id="counter">Click counter: <span id="count">0</span></button>
+
+      <!-- TC-ACT (trusted): only a real (isTrusted) event flips this; synthetic is ignored -->
+      <button id="trusted-only">Trusted-only button</button>
+
+      <!-- TC-ACT: hover indicator -->
+      <button id="hover-target">Hover me</button>
+
+      <a href="#section-bottom" id="jump-link">Jump to bottom</a>
+    </section>
+
+    <section aria-label="Async content">
+      <h2>Async (for wait_for)</h2>
+      <!-- TC-WAIT: text appears 1.5s after click -->
+      <button id="load-later">Load message in 1.5s</button>
+      <div id="async-area"></div>
+    </section>
+
+    <section aria-label="Long content for full-page screenshot">
+      <h2>Scroll / full-page region</h2>
+      <div class="filler"></div>
+      <p id="section-bottom">BOTTOM MARKER — visible only after scrolling or in a full-page screenshot.</p>
+    </section>
+
+    <script>
+      const status = document.getElementById("status");
+      const set = (msg) => { status.textContent = "status: " + msg; };
+
+      document.getElementById("email").addEventListener("input", (e) => set("email = " + e.target.value));
+      document.getElementById("password").addEventListener("input", (e) => set("password length = " + e.target.value.length));
+      document.getElementById("search").addEventListener("input", (e) => set("search = " + e.target.value));
+      document.getElementById("fruit").addEventListener("change", (e) => set("fruit = " + e.target.value));
+
+      let count = 0;
+      const countEl = document.getElementById("count");
+      document.getElementById("counter").addEventListener("click", () => { count += 1; countEl.textContent = String(count); set("counter = " + count); });
+
+      // Only a real, trusted event updates this — proves the chrome.debugger trusted-input path.
+      document.getElementById("trusted-only").addEventListener("click", (e) => {
+        set(e.isTrusted ? "TRUSTED click received" : "synthetic click ignored");
+      });
+
+      document.getElementById("hover-target").addEventListener("mouseover", () => set("hovered"));
+
+      const form = document.getElementById("login-form");
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        set("form submitted (email = " + document.getElementById("email").value + ")");
+      });
+
+      document.getElementById("load-later").addEventListener("click", () => {
+        set("loading…");
+        setTimeout(() => { document.getElementById("async-area").textContent = "Async content loaded!"; set("async content loaded"); }, 1500);
+      });
+    </script>
+  </body>
+</html>
