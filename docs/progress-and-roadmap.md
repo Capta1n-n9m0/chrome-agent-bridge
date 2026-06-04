@@ -1,8 +1,8 @@
 # Progress & Roadmap
 
 - **Date:** 2026-06-04
-- **Branch:** `feat/agent-bridge` (not merged to `main`)
-- **Status:** Code complete; **54 unit tests green**; **live in-browser E2E passed (29 cases)** against the real default profile; 3 runtime bugs found & fixed. Ready to merge.
+- **Branch:** `main` (merged from `feat/agent-bridge`; published as a private GitHub repo)
+- **Status:** Code complete; **54 unit tests green**; **live in-browser E2E passed (29 cases)** against the real default profile; 3 runtime bugs found & fixed. Merged to `main` and published (private).
 
 ---
 
@@ -94,8 +94,9 @@ and the core premise that **all of this drives the default profile end-to-end.**
 
 ## 5. Roadmap
 
-**Phase A — Validate.** ✅ Done (2026-06-04) — see §0. 29 E2E cases passed; 3 runtime bugs fixed.
-Remaining: merge `feat/agent-bridge` → `main`; run the deferred soak tests (CONN-5, TRUST-3).
+**Phase A — Validate & ship.** ✅ Done (2026-06-04) — see §0. 29 E2E cases passed; 3 runtime bugs
+fixed; merged to `main`; published as a private GitHub repo. Remaining: deferred soak tests
+(CONN-5 idle keepalive, TRUST-3 DevTools conflict).
 
 **Phase B — Robustness from E2E findings.** Largely addressed by the three §0 fixes. Still open:
 idle keepalive soak across SW culls, debugger-attach conflict UX when DevTools is open, and a

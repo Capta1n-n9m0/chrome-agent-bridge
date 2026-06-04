@@ -22,4 +22,4 @@ All documentation lives in [`docs/`](docs/).
 
 Implemented (Milestones 1–5) and **E2E-validated** against the real default profile (29 cases,
 3 runtime bugs found & fixed — see [`docs/progress-and-roadmap.md`](docs/progress-and-roadmap.md) §0).
-On branch `feat/agent-bridge`, ready to merge.
+Merged to `main` and published as a private GitHub repo.
