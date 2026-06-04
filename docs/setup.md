@@ -96,9 +96,17 @@ and do **not** show the banner.
 
 ## Troubleshooting
 
+- **MCP server "Failed to connect" in Claude Code:** usually a previous Claude session left an
+  orphaned bridge server still holding the port. Check with (PowerShell)
+  `Get-NetTCPConnection -LocalPort 9234 -State Listen`, then kill the stale `node …/server/dist/index.js`
+  process (`Stop-Process -Id <pid> -Force`). The server now treats a busy port as non-fatal — it
+  still connects to Claude Code and logs a `WARNING: could not bind the WebSocket …` to stderr — so
+  the *MCP* connection won't crash, but **browser tools stay unavailable until the port is free**.
+  Only run one Claude session driving the bridge at a time.
 - **"Extension not connected"** from a tool: make sure Chrome is open, the extension is
   enabled, and the Options token/port match the server's `BRIDGE_TOKEN`/`BRIDGE_PORT`.
-  Check the service-worker console for `connection: up`.
+  Check the service-worker console for `connection: up`. (If the server logged the port-bind
+  WARNING above, that's the real cause — free the port.)
 - **A tool errors with "restricted URL"**: the active tab is a `chrome://` page, the New
   Tab page, or the Chrome Web Store, where extensions can't run. Switch to a normal page.
 - **`chrome.debugger` attach fails**: another debugger (e.g. open DevTools) is attached to
