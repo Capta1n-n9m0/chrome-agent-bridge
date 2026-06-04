@@ -11,6 +11,16 @@ export async function ensureContent(tabId: number): Promise<void> {
   }
 }
 
+/**
+ * chrome.scripting.executeScript cannot serialize `undefined` in its args array
+ * (it throws "Value is unserializable"). Optional handler params (e.g. scroll
+ * with no ref) arrive as `undefined`, so coerce them to `null`, which IS
+ * serializable and is falsy in the page-side functions that check for a ref.
+ */
+export function toSerializableArgs(args: unknown[]): unknown[] {
+  return args.map((a) => (a === undefined ? null : a));
+}
+
 export async function callInPage<T>(
   tabId: number,
   fn: (...args: unknown[]) => T | PromiseLike<T>,
@@ -23,7 +33,7 @@ export async function callInPage<T>(
     [injection] = await chrome.scripting.executeScript({
       target: { tabId },
       func: fn,
-      args,
+      args: toSerializableArgs(args),
       world: "ISOLATED",
     });
   } catch (err) {
