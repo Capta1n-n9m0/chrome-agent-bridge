@@ -1,8 +1,8 @@
 # Progress & Roadmap
 
-- **Date:** 2026-06-04
+- **Date:** 2026-09-03
 - **Branch:** `main` (merged from `feat/agent-bridge`; published as a private GitHub repo)
-- **Status:** Code complete; **54 unit tests green**; **live in-browser E2E passed (29 cases)** against the real default profile; 3 runtime bugs found & fixed. Merged to `main` and published (private).
+- **Status:** Code complete; **72 unit tests green**; **live in-browser E2E passed (29 cases)** against the real default profile; 3 runtime bugs found & fixed. Merged to `main` and published (private).
 
 ---
 
@@ -35,8 +35,9 @@ out of.
 | 4 | `chrome.debugger` trusted-input fallback + full-page screenshot | ✅ Done |
 | 5 | Offscreen-document keepalive + setup docs | ✅ Done |
 | + | `browser_wait_for` (closed a spec-§7 gap found in final review) | ✅ Done |
+| C | Perception fidelity: shadow DOM + same-origin iframes, hidden-subtree pruning, richer roles, frame-correct coordinates | ✅ Done (unit-tested; E2E PERC-5…9 pending) |
 
-**Quality state:** 46 unit tests pass; `tsc` typecheck clean across all three packages; all four
+**Quality state:** 72 unit tests pass; `tsc` typecheck clean across all three packages; all four
 bundles build (`server/dist/index.js`, `extension/dist/{sw,options,offscreen,content}.js`). Every
 milestone passed a two-stage review (spec compliance + code quality); the final whole-system review
 verified the end-to-end protocol contract and that esbuild does not break page-injected functions.
@@ -69,11 +70,13 @@ timeouts, reconnect-keeps-newest-connection, token handshake/rejection, the rout
 `RefMap`, the snapshot builder (incl. `<label>`/`aria-labelledby` naming), content-action functions,
 center-point math, and every tool's bridge wiring.
 
-**NOT yet verified (requires real Chrome — this is the next step):** that the extension actually
-connects from the real profile, that injection/snapshot/actions work on live pages, the
-trusted-input banner + escalation, full-page screenshots, the offscreen keepalive across SW culling,
-and the core premise that **all of this drives the default profile end-to-end.** See
-`docs/e2e-test-plan.md`.
+**Verified live (2026-06-04, §0):** connection, navigation, perception, every action, both
+`chrome.debugger` paths, tabs, history, `wait_for`, and the token gate — against the real default
+profile.
+
+**NOT yet verified live:** the Phase C perception work (`docs/e2e-test-plan.md` PERC-5…9: shadow
+DOM, same-origin iframes incl. a trusted click through the frame offset, the hidden decoys, the
+new roles), plus the deferred soak cases CONN-5 and TRUST-3.
 
 ## 4. Known limitations & risks
 
@@ -83,9 +86,13 @@ and the core premise that **all of this drives the default profile end-to-end.**
 - **Typing is synthetic-only** — `browser_type` dispatches input events; there is a `trustedType`
   CDP helper in the code but it is not wired into the `type` handler yet. Sites that reject
   synthetic typing have no fallback.
-- **Snapshot fidelity** — the accessibility walk covers common roles and label associations but
-  does **not** yet descend into Shadow DOM or cross-origin iframes, and treats only CSS
-  `display/visibility/opacity` as "hidden" (not zero-size or `aria-hidden`).
+- **Snapshot fidelity** — the walk now descends into **open** shadow roots and **same-origin**
+  frames, prunes `aria-hidden`/`inert`/`hidden`/`display:none` subtrees, and drops zero-size
+  elements. Still out of reach: closed shadow roots and cross-origin frames (both need a
+  per-frame injection or CDP, not a single content script); `visibility:hidden` prunes the whole
+  subtree even though a descendant could set `visibility:visible`.
+- **Snapshot cap** — very large pages are truncated at 800 listed elements with a note. There is
+  no "expand" or viewport-only mode yet.
 - **Single connection** — one extension at a time; a second valid connection replaces the first.
 - **Active-tab safety** — the agent acts on whatever tab is focused, including sensitive ones.
   Mitigations today are localhost-only + token + the debugger banner.
@@ -102,9 +109,13 @@ fixed; merged to `main`; published as a private GitHub repo. Remaining: deferred
 idle keepalive soak across SW culls, debugger-attach conflict UX when DevTools is open, and a
 clearer "port busy" message surfaced through the tools (not just stderr).
 
-**Phase C — Perception fidelity.** Shadow DOM + same-origin iframe traversal; zero-size/`aria-hidden`
-filtering; richer roles (tabs, menus, listbox); optionally trim snapshots to the viewport with an
-"expand" affordance for very large pages.
+**Phase C — Perception fidelity.** ✅ Done (2026-09-03). Open shadow roots + same-origin frames;
+`aria-hidden`/`inert`/`hidden`/`display:none` subtree pruning; zero-size filtering (gated on the
+document reporting layout, so it no-ops under jsdom); explicit-ARIA-role passthrough plus
+`number`/`range`/`file`/`summary`/`contenteditable`/`select[multiple]`; a `[disabled]` marker;
+frame-offset `centerOf` so trusted clicks inside an iframe land correctly; an 800-element cap.
+Still open: cross-origin frames and closed shadow roots (need per-frame injection or CDP), and a
+viewport-only snapshot with an "expand" affordance instead of a hard cap.
 
 **Phase D — Action fidelity.** Wire `trustedType` into a `type` escalation path; DPR-correct
 coordinates for trusted input; drag, file-upload, and native-dialog handling.

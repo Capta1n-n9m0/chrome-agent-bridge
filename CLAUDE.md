@@ -40,7 +40,7 @@ Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(met
 ```bash
 npm install
 npm run build        # builds server (dist/index.js) + extension (dist/{sw,options,offscreen,content}.js)
-npm test             # vitest (54 tests)
+npm test             # vitest (72 tests)
 npm run typecheck    # tsc --noEmit across shared/server/extension
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
@@ -72,8 +72,17 @@ and follow `docs/e2e-test-plan.md`.
 - **Editing extension code requires a manual reload**: `npm run build` then `chrome://extensions` →
   reload ↻. The service worker won't pick up `dist/` changes otherwise. Server changes need an MCP
   reconnect (`/mcp`) or a fresh session.
-- **Snapshots list only interactive elements** (textbox/button/link/combobox/checkbox/radio) with refs;
-  non-interactive text (e.g. a status `<div>`) won't appear — verify those via screenshot.
+- **Snapshots list only interactive elements** (native controls, links, and an explicit-ARIA-role
+  allowlist — button/tab/menuitem/switch/option/slider/…), each with a ref; non-interactive text
+  (e.g. a status `<div>`) won't appear — verify those via screenshot. The walk descends into **open**
+  shadow roots and **same-origin** frames, and prunes `aria-hidden`/`inert`/`hidden`/`display:none`
+  subtrees. Output is capped at 800 elements.
+- **The zero-size snapshot filter is gated on `hasLayout(doc)`** — jsdom reports every rect as 0x0,
+  so an ungated filter would empty the snapshot in every unit test. Keep the gate if you touch
+  `snapshot.ts`; tests that want the filter stub `documentElement.getBoundingClientRect`.
+- **`centerOf` is top-document relative** — it adds each ancestor `frameElement`'s rect, because
+  CDP `Input.*` dispatches against the top-level viewport. Don't hand it a raw
+  `getBoundingClientRect` from inside a frame.
 
 ## Testing philosophy
 

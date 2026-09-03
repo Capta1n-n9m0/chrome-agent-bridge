@@ -33,8 +33,9 @@ Record outcomes in the [Results template](#results-template). A run "passes" whe
 **Fixture reference:** `test-fixtures/e2e-playground.html` exposes a sticky `status:` line that
 updates on every interaction (so `browser_snapshot` / `browser_screenshot` can verify outcomes), a
 labeled form, a synthetic-friendly counter button, a **trusted-only** button (flips only on a real
-`isTrusted` event), a hover target, a jump link, a 1.5 s **async** loader, and a long region with a
-`BOTTOM MARKER` for scroll / full-page screenshots.
+`isTrusted` event), a hover target, a jump link, a 1.5 s **async** loader, a long region with a
+`BOTTOM MARKER` for scroll / full-page screenshots, and a **Perception fidelity** section (open +
+closed shadow roots, a same-origin iframe, four hidden decoys, and the extra roles).
 
 ## 2. Diagnostics (where to look when something fails)
 
@@ -83,6 +84,11 @@ If SMOKE-1/2 fail, stop and debug connection/injection before the rest.
 | PERC-2 ★ | Label-based naming | Inspect the snapshot text | Email input is `textbox "Email address"` (via `<label for>`); password is named "Password" (via `aria-labelledby`); search shows its placeholder. |
 | PERC-3 ★ | Viewport screenshot | `browser_screenshot` | Returns a PNG of the current viewport that renders in the client. |
 | PERC-4 | Full-page screenshot + banner | `browser_screenshot {"fullPage":true}` | Returns a taller PNG that includes the `BOTTOM MARKER`; the "extension is debugging this browser" banner appears briefly, then clears. |
+| PERC-5 ★ | Shadow DOM | `browser_snapshot`, look in the "Perception fidelity" section | `button "Shadow button"` is listed (open root); `Sealed button` is **not** (closed root). Clicking the shadow ref sets `status: shadow button clicked`. |
+| PERC-6 ★ | Same-origin iframe | `browser_snapshot` | `button "Iframe button"` is listed. `browser_click` on its ref sets `status: iframe button clicked (isTrusted = false)`. |
+| PERC-7 | Iframe trusted click | `browser_click {"ref":"<iframe button>","trusted":true}` | The iframe's own line reads `iframe: TRUSTED click` — i.e. the frame-offset coordinates landed inside the frame, not on the page behind it. |
+| PERC-8 ★ | Hidden variants | `browser_snapshot` | None of the four decoys appear: `Decoy: aria-hidden`, `Decoy: inert`, `Decoy: display none ancestor`, `Decoy: zero size`. |
+| PERC-9 | Extra roles | `browser_snapshot` | Lists `spinbutton "Quantity"`, `slider "Volume"`, `listbox "Tags"`, `textbox "Notes editor"`, `tab "Details tab"`, and `button "Disabled action" [ref=eN] [disabled]`. |
 
 ### 4.4 Actions (content-script path)
 
@@ -147,7 +153,7 @@ Date: ____  Chrome version: ____  Node: ____  OS: ____
 SMOKE-1 [ ]   SMOKE-2 [ ]
 CONN-1 [ ] CONN-2 [ ] CONN-3 [ ] CONN-4 [ ] CONN-5 [ ]
 NAV-1 [ ]  NAV-2 [ ]  NAV-3 [ ]
-PERC-1 [ ] PERC-2 [ ] PERC-3 [ ] PERC-4 [ ]
+PERC-1 [ ] PERC-2 [ ] PERC-3 [ ] PERC-4 [ ] PERC-5 [ ] PERC-6 [ ] PERC-7 [ ] PERC-8 [ ] PERC-9 [ ]
 ACT-1 [ ] ACT-2 [ ] ACT-3 [ ] ACT-4 [ ] ACT-5 [ ] ACT-6 [ ] ACT-7 [ ] ACT-8 [ ]
 TRUST-1 [ ] TRUST-2 [ ] TRUST-3 [ ]
 TAB-1 [ ] TAB-2 [ ] TAB-3 [ ] TAB-4 [ ] HIST-1 [ ]

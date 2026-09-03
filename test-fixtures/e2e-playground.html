@@ -62,6 +62,43 @@
       <a href="#section-bottom" id="jump-link">Jump to bottom</a>
     </section>
 
+    <!-- TC-PERC (Phase C): shadow DOM, same-origin iframe, hidden variants, extra roles. -->
+    <section aria-label="Perception fidelity">
+      <h2>Perception fidelity</h2>
+
+      <!-- Open shadow root: its button must appear in the snapshot. -->
+      <div id="shadow-open"></div>
+      <!-- Closed shadow root: its button must NOT appear. -->
+      <div id="shadow-closed"></div>
+
+      <!-- Same-origin iframe: its button must appear; a trusted click must land on it. -->
+      <iframe id="inner-frame" title="Inner frame" width="320" height="90" style="border:1px solid #ccc"></iframe>
+
+      <!-- None of these four may appear in a snapshot. -->
+      <div aria-hidden="true"><button id="decoy-aria">Decoy: aria-hidden</button></div>
+      <div inert><button id="decoy-inert">Decoy: inert</button></div>
+      <div style="display:none"><button id="decoy-display">Decoy: display none ancestor</button></div>
+      <button id="decoy-zero" style="width:0;height:0;padding:0;border:0;overflow:hidden">Decoy: zero size</button>
+
+      <!-- Extra roles. -->
+      <label for="qty">Quantity</label>
+      <input id="qty" type="number" value="1" />
+      <label for="volume">Volume</label>
+      <input id="volume" type="range" />
+      <label for="tags">Tags</label>
+      <select id="tags" multiple size="3">
+        <option value="x">Xylophone</option>
+        <option value="y">Yak</option>
+      </select>
+      <div id="editor" contenteditable="true" aria-label="Notes editor" style="border:1px solid #ccc;padding:6px">
+        Editable notes
+      </div>
+      <div role="tab" tabindex="0" id="fake-tab" style="display:inline-block;border:1px solid #ccc;padding:6px">
+        Details tab
+      </div>
+      <button id="disabled-btn" disabled>Disabled action</button>
+    </section>
+
     <section aria-label="Async content">
       <h2>Async (for wait_for)</h2>
       <!-- TC-WAIT: text appears 1.5s after click -->
@@ -100,6 +137,27 @@
         e.preventDefault();
         set("form submitted (email = " + document.getElementById("email").value + ")");
       });
+
+      // Open shadow root — buildSnapshot must descend into it.
+      const openRoot = document.getElementById("shadow-open").attachShadow({ mode: "open" });
+      openRoot.innerHTML = '<button id="shadow-btn">Shadow button</button>';
+      openRoot.getElementById("shadow-btn").addEventListener("click", () => set("shadow button clicked"));
+
+      // Closed shadow root — must stay invisible to the snapshot.
+      document.getElementById("shadow-closed")
+        .attachShadow({ mode: "closed" })
+        .innerHTML = '<button>Sealed button (must not be listed)</button>';
+
+      // Same-origin iframe, written from here so the fixture stays a single file.
+      const frameDoc = document.getElementById("inner-frame").contentDocument;
+      frameDoc.body.innerHTML = '<button id="frame-btn">Iframe button</button><p id="frame-status">iframe: idle</p>';
+      frameDoc.getElementById("frame-btn").addEventListener("click", (e) => {
+        frameDoc.getElementById("frame-status").textContent = e.isTrusted ? "iframe: TRUSTED click" : "iframe: synthetic click";
+        set("iframe button clicked (isTrusted = " + e.isTrusted + ")");
+      });
+
+      document.getElementById("fake-tab").addEventListener("click", () => set("role=tab clicked"));
+      document.getElementById("qty").addEventListener("input", (e) => set("qty = " + e.target.value));
 
       document.getElementById("load-later").addEventListener("click", () => {
         set("loading…");
