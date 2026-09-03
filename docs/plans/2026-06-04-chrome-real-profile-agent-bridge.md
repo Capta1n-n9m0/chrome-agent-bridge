@@ -2339,7 +2339,7 @@ Concrete MCP registration block to include:
   "mcpServers": {
     "chrome-agent-bridge": {
       "command": "node",
-      "args": ["C:/Users/aliev/Projects/chrome-remote-extention/server/dist/index.js"],
+      "args": ["<absolute-path-to-repo>/server/dist/index.js"],
       "env": { "BRIDGE_TOKEN": "<your-token>", "BRIDGE_PORT": "9234" }
     }
   }

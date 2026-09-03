@@ -2,7 +2,7 @@
 
 - **Date:** 2026-06-04
 - **Status:** Approved (implementation not started)
-- **Owner:** alievabbas1@gmail.com
+- **Owner:** Abbas Aliyev (@Capta1n-n9m0)
 
 ---
 
