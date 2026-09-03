@@ -27,103 +27,103 @@
 
 ### Task B1.1: `Bridge` carries an "unavailable reason" (TDD)
 
-- [ ] `server/test/bridge.test.ts`: `bridge.setUnavailableReason("…9234 busy…")` → `bridge.call()` rejects
+- [x] `server/test/bridge.test.ts`: `bridge.setUnavailableReason("…9234 busy…")` → `bridge.call()` rejects
       with an error whose message contains that reason **instead of** the generic NOT_CONNECTED text;
       `setUnavailableReason(null)` restores the generic message; a live connection takes precedence (call
       succeeds even if a stale reason is set).
-- [ ] Implement in `server/src/bridge.ts`. Keep the generic NOT_CONNECTED for the ordinary case.
+- [x] Implement in `server/src/bridge.ts`. Keep the generic NOT_CONNECTED for the ordinary case.
 
 ### Task B1.2: bind retry (TDD)
 
-- [ ] `server/test/startup.test.ts`: `startWsHost(host, {retryMs, onStateChange})` — on EADDRINUSE it reports
+- [x] `server/test/startup.test.ts`: `startWsHost(host, {retryMs, onStateChange})` — on EADDRINUSE it reports
       `{ok:false}` immediately (non-blocking for stdio) **and** keeps retrying on a timer; when a later
       `listen()` resolves it calls `onStateChange({ok:true, port})`. Use `vi.useFakeTimers()` and a fake host
       whose `listen` rejects N times then resolves. Retry must stop after success; a returned `stop()` clears
       the timer (so tests and shutdown are clean).
-- [ ] Implement in `server/src/startup.ts` without ever throwing (keep the invariant in its doc comment).
-- [ ] `server/src/index.ts`: on `{ok:false}` → `bridge.setUnavailableReason("WebSocket port 9234 is busy
+- [x] Implement in `server/src/startup.ts` without ever throwing (keep the invariant in its doc comment).
+- [x] `server/src/index.ts`: on `{ok:false}` → `bridge.setUnavailableReason("WebSocket port 9234 is busy
       (EADDRINUSE): another chrome-agent-bridge instance is running — end other Claude sessions or kill the
       stale 'node …/server/dist/index.js' process. Retrying every 5s.")`; on later success →
       `setUnavailableReason(null)` + stderr log. Default `retryMs` 5000.
 
 ### Task B1.3: `browser_status` tool (17th tool; small, high leverage)
 
-- [ ] `server/test/tools.test.ts`: `browser_status` returns text containing the WS port, whether the host is
+- [x] `server/test/tools.test.ts`: `browser_status` returns text containing the WS port, whether the host is
       listening, whether an extension is connected, and — when connected — the active tab's url/title
       (via `bridge.call("listTabs")`, picking the `active` one). When not connected it must **not** call the
       bridge and must include the unavailable reason if set.
-- [ ] Registry: needs read access to host state → hang it on `Bridge` (`bridge.hostState = {listening, port}`)
+- [x] Registry: needs read access to host state → hang it on `Bridge` (`bridge.hostState = {listening, port}`)
       so the `registerTools(server, bridge)` signature stays stable.
-- [ ] Update the "16 tools" count in `CLAUDE.md`, `docs/setup.md`, roadmap.
+- [x] Update the "16 tools" count in `CLAUDE.md`, `docs/setup.md`, roadmap.
 
 ## Part B2 — heartbeat + idle keepalive soak
 
 ### Task B2.1: server-side WS ping/pong (TDD against a real `ws` socket, like `wsHost.test.ts` does)
 
-- [ ] `server/test/wsHost.test.ts`: with `heartbeatMs: 50`, a client that answers pongs stays connected across
+- [x] `server/test/wsHost.test.ts`: with `heartbeatMs: 50`, a client that answers pongs stays connected across
       several intervals; a client whose pong is suppressed (a raw `ws` client with `ws.pong = () => {}` or an
       `autoPong: false` option) is terminated within ~2 intervals and `bridge.isConnected()` becomes `false`.
-- [ ] `server/src/wsHost.ts`: per-connection `isAlive` flag; `setInterval(heartbeatMs)` → if `!isAlive`
+- [x] `server/src/wsHost.ts`: per-connection `isAlive` flag; `setInterval(heartbeatMs)` → if `!isAlive`
       `ws.terminate()` else `isAlive=false; ws.ping()`; `on("pong")` → `isAlive=true`. Clear the interval on
       close and in `close()`. Default 30 000 ms; expose in `WsHostOptions`. Browser `WebSocket` answers pings
       automatically — no extension change needed.
 
 ### Task B2.2: fail fast on a dead connection
 
-- [ ] Verify that `ws.terminate()` triggers the existing `close` → `rejectAll("extension disconnected")` path
+- [x] Verify that `ws.terminate()` triggers the existing `close` → `rejectAll("extension disconnected")` path
       so in-flight calls fail immediately rather than after 30 s. Add a test if `wsHost.test.ts` doesn't
       already cover it.
 
 ### Task B2.3: CONN-5 idle keepalive soak (manual, ~10 min wall clock)
 
-- [ ] Build, reload extension, `browser_snapshot` works.
-- [ ] Leave Chrome idle **≥ 3 min** with the fixture tab in the background (switch to another app). MV3 culls
+- [x] Build, reload extension, `browser_snapshot` works.
+- [x] Leave Chrome idle **≥ 3 min** with the fixture tab in the background (switch to another app). MV3 culls
       the service worker after ~30 s idle; the socket lives in the offscreen document so it should survive.
-- [ ] `browser_snapshot` again → works **without** a reconnect delay. Check the SW console: expect no
+- [x] `browser_snapshot` again → works **without** a reconnect delay. Check the SW console: expect no
       `connection: down` between the two calls. Repeat with a **6 min** gap.
-- [ ] If it drops: record whether it was the offscreen doc being torn down (check `chrome.offscreen.hasDocument`
+- [x] If it drops: record whether it was the offscreen doc being torn down (check `chrome.offscreen.hasDocument`
       from the SW console) or the socket idling out. The `keepalive` alarm already re-calls `connect()` every
       ~25 s; if Chrome is closing the offscreen document, try a different `chrome.offscreen.Reason` or a
       client-side ping from `ReconnectingClient`.
-- [ ] Record in the E2E scorecard (CONN-5).
+- [x] Record in the E2E scorecard (CONN-5).
 
 ## Part B3 — debugger-attach conflict UX (TRUST-3)
 
 ### Task B3.1: map attach errors to actionable messages (TDD, pure)
 
-- [ ] `extension/test/debugger-errors.test.ts`: `describeDebuggerError(err)` maps
+- [x] `extension/test/debugger-errors.test.ts`: `describeDebuggerError(err)` maps
       "Another debugger is already attached to the tab…" → "Chrome DevTools (or another extension) is already
       attached to this tab — close DevTools on that tab and retry"; "Cannot access a chrome:// URL" /
       "Cannot attach to this target" → the restricted-URL message; "Detached while handling command" /
       "Debugger is not attached" → "the debugging session was cancelled (banner ✕) — retry"; anything
       else → passthrough with a `[chrome.debugger]` prefix. Pure function in
       `extension/src/debugger-errors.ts` (no `chrome.*` imports, so it runs under node).
-- [ ] `extension/src/debugger.ts` `withDebugger`: wrap `attach` and the `fn()` body in try/catch →
+- [x] `extension/src/debugger.ts` `withDebugger`: wrap `attach` and the `fn()` body in try/catch →
       `throw new Error(describeDebuggerError(err))`. Keep the detach-in-finally.
 
 ### Task B3.2: detach awareness
 
-- [ ] `extension/src/sw.ts`: `chrome.debugger.onDetach.addListener((source, reason) =>
+- [x] `extension/src/sw.ts`: `chrome.debugger.onDetach.addListener((source, reason) =>
       console.warn("[bridge] debugger detached:", source.tabId, reason))` — purely diagnostic, so the SW
       console explains a mid-action failure when the user clicks the banner's ✕.
 
 ### Task B3.3: E2E
 
-- [ ] TRUST-3: open DevTools on the fixture tab → `browser_click {trusted:true}` → tool returns the DevTools
+- [x] TRUST-3: open DevTools on the fixture tab → `browser_click {trusted:true}` → tool returns the DevTools
       message (not a raw CDP string, not a 30 s timeout). Close DevTools → retry succeeds.
-- [ ] New **TRUST-8**: start a trusted action and click the banner's "Cancel" during it (use
+- [x] New **TRUST-8**: start a trusted action and click the banner's "Cancel" during it (use
       `browser_type {trusted:true}` with a long `text` to have time) → the tool returns the "cancelled" message.
 
 ## Task B.final: docs + commits
 
-- [ ] `docs/e2e-test-plan.md`: add TRUST-8 and a **CONN-6** ("kill Chrome mid-session → next tool call fails
+- [x] `docs/e2e-test-plan.md`: add TRUST-8 and a **CONN-6** ("kill Chrome mid-session → next tool call fails
       within ~60 s with 'Extension not connected', not a 30 s timeout per call; relaunch Chrome → reconnects
       without restarting the server"). Fill scorecard for CONN-5/6, TRUST-3/8.
-- [ ] `docs/setup.md`: document `browser_status`, the port-busy message, and the DevTools conflict.
-- [ ] `docs/progress-and-roadmap.md`: §5 Phase B → ✅; §4 update "Keepalive edge cases" and "Single connection"
+- [x] `docs/setup.md`: document `browser_status`, the port-busy message, and the DevTools conflict.
+- [x] `docs/progress-and-roadmap.md`: §5 Phase B → ✅; §4 update "Keepalive edge cases" and "Single connection"
       with what was measured; §6 answer "is the offscreen keepalive sufficient?" with the soak result.
-- [ ] `CLAUDE.md`: bump tool count; add gotchas learned (heartbeat interval, DevTools = one debugger per tab).
-- [ ] Commits: `feat(server): surface port-busy through tools + retry bind`, `feat(server): browser_status
+- [x] `CLAUDE.md`: bump tool count; add gotchas learned (heartbeat interval, DevTools = one debugger per tab).
+- [x] Commits: `feat(server): surface port-busy through tools + retry bind`, `feat(server): browser_status
       tool`, `feat(server): WS heartbeat; fail fast on dead extension socket`, `fix(extension): actionable
       chrome.debugger attach/detach errors`, `docs: …`. Trailer per `CLAUDE.md`.
 

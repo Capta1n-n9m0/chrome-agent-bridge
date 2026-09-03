@@ -29,22 +29,23 @@ Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(met
 ### Key files
 - `shared/src/protocol.ts` — wire message types + guards (imported by both halves).
 - `server/src/`: `wsHost.ts` (binds 127.0.0.1, token gate), `connection.ts` (id-correlated calls),
-  `bridge.ts` (connection gate), `startup.ts` (non-fatal port bind), `tools/registry.ts` (the 16 MCP
-  tools), `index.ts` (entry).
+  `bridge.ts` (connection gate + unavailable-reason + host state), `startup.ts` (non-fatal port bind
+  with retry), `tools/registry.ts` (the 17 MCP tools), `index.ts` (entry).
 - `extension/src/`: `sw.ts` (router + offscreen orchestration), `offscreen.ts` (the socket),
   `inject.ts` (`ensureContent`/`callInPage` + `toSerializableArgs`/`unwrapResult`), `handlers/*`,
-  `content/{index,snapshot,refmap,actions,geometry}.ts`, `debugger.ts`.
+  `content/{index,snapshot,refmap,actions,geometry}.ts`, `debugger.ts`, `debugger-errors.ts`
+  (pure: CDP failure → actionable message), `keys.ts` (pure: key name → CDP key params).
 
 ## Commands
 
 ```bash
 npm install
 npm run build        # builds server (dist/index.js) + extension (dist/{sw,options,offscreen,content}.js)
-npm test             # vitest (96 tests)
+npm test             # vitest (113 tests)
 npm run typecheck    # tsc --noEmit across shared/server/extension
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
-token + port `9234` in its Options. Full setup + the 16 tools: `docs/setup.md`.
+token + port `9234` in its Options. Full setup + the 17 tools: `docs/setup.md`.
 E2E: serve `test-fixtures/e2e-playground.html` (`python -m http.server 8080 --directory test-fixtures`)
 and follow `docs/e2e-test-plan.md`.
 
@@ -63,7 +64,16 @@ and follow `docs/e2e-test-plan.md`.
   (not `.callback`). Tool tests rely on this.
 - **The server must not crash on a busy WS port.** A single fixed port (9234) is tied to the process; an
   orphaned instance or a 2nd session causes `EADDRINUSE`. `startWsHost` never throws; stdio connects
-  regardless. **Only run one Claude session driving the bridge at a time.**
+  regardless, the reason is surfaced through every tool error via `bridge.setUnavailableReason`, and the
+  bind is retried every 5 s. **Only run one Claude session driving the bridge at a time.**
+- **The server pings the extension socket every 30 s and terminates it on a missed pong** — browsers
+  answer pings automatically, so a missed pong means Chrome (or the offscreen document) is gone. Without
+  this the `Bridge` keeps a stale connection and every call waits the full 30 s timeout. Tests use
+  `heartbeatMs: 30` and a `ws` client with `autoPong: false` to simulate a dead Chrome.
+- **Chrome allows one debugger per tab**: with DevTools open, `chrome.debugger.attach` throws "Another
+  debugger is already attached…"; clicking the banner's Cancel mid-action makes `sendCommand` throw
+  "Detached while handling command". `withDebugger` maps both through `describeDebuggerError` — add new
+  Chrome strings there, not in handlers.
 - **`ws` is `external` in the server esbuild bundle** (it's CJS) — it resolves from `node_modules` at
   runtime, so the server runs from the repo.
 - **`@types/chrome` quirks**: use `chrome.tabs.OnUpdatedInfo` (not `TabChangeInfo`);

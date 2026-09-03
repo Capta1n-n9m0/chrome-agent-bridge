@@ -2,7 +2,7 @@
 
 - **Date:** 2026-09-03
 - **Branch:** `main` (merged from `feat/agent-bridge`; published as a private GitHub repo)
-- **Status:** Code complete; **72 unit tests green**; **live in-browser E2E passed** — 29 cases on 2026-06-04 plus the 13-case Phase C pass on 2026-09-03 — against the real default profile; 3 runtime bugs found & fixed. Merged to `main` and published (private).
+- **Status:** Phases A–D complete; **113 unit tests green**; **live in-browser E2E passed** — 29 cases on 2026-06-04, then the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03 — against the real default profile; 5 runtime bugs found & fixed across those runs. `main`, published (private). **17 tools.**
 
 ---
 
@@ -53,6 +53,28 @@ A fixture defect also surfaced: `#email` sat outside `<form id="login-form">`, s
 could ever submit it — ACT-3's and TRUST-6's "form submitted" expectation had been unreachable.
 Fixed with `form="login-form"`.
 
+### Phase B E2E (2026-09-03)
+
+Ran `docs/plans/2026-09-03-step3-phase-b-robustness.md` (commits `7e35ff9`, `d9a0ba0`, `458f291`)
+against Chrome **152**. **All six cases pass** — STAT-1, TRUST-3, TRUST-8, CONN-5, CONN-6, CONN-7 —
+with no code changes needed after the three commits. Evidence is in `docs/e2e-test-plan.md` §5, "Run 4".
+
+- **Port busy is now legible and self-healing (CONN-7).** With an orphan holding 9234, `browser_status`
+  and every tool report the EADDRINUSE reason instead of "Extension not connected"; killing the orphan
+  brought the server back (5 s bind retry) and the extension reconnected on its own, all inside one poll.
+- **Dead Chrome is detected immediately (CONN-6).** Ending every `chrome.exe` closed the socket cleanly, so
+  the very first poll said "not connected" — the heartbeat never had to fire. It remains the guard for a
+  *hung* peer, exercised only by the unit test.
+- **The idle keepalive holds (CONN-5).** 9.5 minutes of untouched Chrome across two checks; snapshot
+  instant both times. This was the least-exercised path in the system and the roadmap's standing worry.
+- **Cancelling the banner is explained (TRUST-8).** A ~600-char trusted type, cancelled mid-way, returned
+  the one-line "session was cancelled … retry" message; the SW console logged `canceled_by_user`; the retry
+  worked.
+- **TRUST-3 overturned an assumption.** With DevTools docked on the tab, the trusted click simply
+  succeeded: Chrome 152 allows an extension debugger alongside DevTools. The "one debugger per tab"
+  conflict no longer occurs; `describeDebuggerError`'s DevTools branch is kept (unit-tested) for older
+  Chrome and other debugger extensions, and the E2E case now accepts either outcome.
+
 ---
 
 ## 1. Where we are
@@ -73,16 +95,17 @@ out of.
 | + | `browser_wait_for` (closed a spec-§7 gap found in final review) | ✅ Done |
 | C | Perception fidelity: shadow DOM + same-origin iframes, hidden-subtree pruning, richer roles, frame-correct coordinates | ✅ Done (E2E-verified 2026-09-03) |
 | D | Action fidelity: trusted typing + `press_key` via CDP `Input.dispatchKeyEvent`; scroll-into-view + viewport validation for trusted input | ✅ D1/D2 done (E2E-verified 2026-09-03); D3 file upload not started |
+| B | Robustness: port-busy surfaced through tools + bind retry; `browser_status`; WS heartbeat; actionable `chrome.debugger` errors; CONN-5 soak | ✅ Done (E2E-verified 2026-09-03) |
 
-**Quality state:** 96 unit tests pass; `tsc` typecheck clean across all three packages; all four
+**Quality state:** 113 unit tests pass; `tsc` typecheck clean across all three packages; all four
 bundles build (`server/dist/index.js`, `extension/dist/{sw,options,offscreen,content}.js`). Every
 milestone passed a two-stage review (spec compliance + code quality); the final whole-system review
 verified the end-to-end protocol contract and that esbuild does not break page-injected functions.
 
-**16 tools:** `browser_navigate`, `browser_snapshot`, `browser_screenshot`, `browser_click`,
-`browser_type`, `browser_press_key`, `browser_scroll`, `browser_hover`, `browser_select_option`,
-`browser_back`, `browser_forward`, `browser_list_tabs`, `browser_select_tab`, `browser_new_tab`,
-`browser_close_tab`, `browser_wait_for`.
+**17 tools:** `browser_status`, `browser_navigate`, `browser_snapshot`, `browser_screenshot`,
+`browser_click`, `browser_type`, `browser_press_key`, `browser_scroll`, `browser_hover`,
+`browser_select_option`, `browser_back`, `browser_forward`, `browser_list_tabs`, `browser_select_tab`,
+`browser_new_tab`, `browser_close_tab`, `browser_wait_for`.
 
 ## 2. Architecture at a glance
 
@@ -121,9 +144,15 @@ PERC-1…4 / ACT-1…2 regression smoke. Chrome 152 at DPR 1.
 **Windows display scaling 125 %** (TRUST-7, plus PERC-7's iframe click re-run under zoom).
 Chrome 152.
 
-**NOT yet verified live:** the deferred soak cases CONN-5 (idle keepalive) and TRUST-3
-(debugger-vs-DevTools conflict). DPR 2 (a true Retina panel) has not been measured, though DPR
-1.25 and 1.5 both needed no correction.
+**Verified live (2026-09-03, §0 "Phase B E2E"):** `browser_status`, port-busy reporting and
+self-healing (CONN-7), dead-Chrome detection and unattended reconnect (CONN-6), the 9.5-minute idle
+keepalive soak (CONN-5), the cancelled-banner error path (TRUST-8), and DevTools coexistence (TRUST-3).
+
+**NOT yet verified live:** the heartbeat's *hung-peer* branch (a socket that stays open but never
+pongs — Chrome's exit closes the socket cleanly, so only the unit test reaches it); the "another
+debugger is already attached" branch of `describeDebuggerError` (Chrome 152 no longer produces it
+for DevTools; it would take a second debugger extension). DPR 2 (a true Retina panel) has not been
+measured, though DPR 1.25 and 1.5 both needed no correction.
 
 ## 4. Known limitations & risks
 
@@ -138,7 +167,9 @@ Chrome 152.
   field's contents and types over them, so it overwrites rather than appends, and there is no way
   to type *into* an existing value at the caret. `keys.ts` covers printable characters plus
   Enter/Tab/Escape/Backspace/Delete/Home/End/PageUp/PageDown/arrows; it has no chords
-  (Ctrl+A, Shift+Tab) and no IME/composition support.
+  (Ctrl+A, Shift+Tab) and no IME/composition support. `keyEventParams` also rejects any character
+  outside the BMP (an emoji is two UTF-16 units), so trusted-typing emoji throws; Cyrillic, accented
+  Latin and other single-unit text works. `Input.insertText` would be the fix if it matters.
 - **Snapshot fidelity** — the walk now descends into **open** shadow roots and **same-origin**
   frames, prunes `aria-hidden`/`inert`/`hidden`/`display:none` subtrees, and drops zero-size
   elements. Still out of reach: closed shadow roots and cross-origin frames (both need a
@@ -146,25 +177,35 @@ Chrome 152.
   subtree even though a descendant could set `visibility:visible`.
 - **Snapshot cap** — very large pages are truncated at 800 listed elements with a note. There is
   no "expand" or viewport-only mode yet.
-- **Single connection** — one extension at a time; a second valid connection replaces the first.
+- **Single connection, single server** — one extension at a time (a second valid connection
+  replaces the first), and one server per port. A second server on 9234 now *says so* through every
+  tool and `browser_status`, and takes the port over within 5 s of the first exiting — but two Claude
+  sessions still cannot drive the bridge concurrently.
 - **Active-tab safety** — the agent acts on whatever tab is focused, including sensitive ones.
   Mitigations today are localhost-only + token + the debugger banner.
-- **Keepalive edge cases** — the offscreen document should keep the socket alive across SW culls;
-  this is the least-exercised path and a priority for E2E.
+- **Keepalive** — measured (2026-09-03): the offscreen-document socket survived 9.5 minutes of idle
+  Chrome, and a killed Chrome is noticed on the next call because its exit closes the socket. The
+  server-side 30 s heartbeat covers the remaining case — a peer that hangs without closing — which has
+  only been exercised in unit tests. A truly *unattended* setup (Chrome not running when a session
+  starts) still needs someone to launch Chrome.
 
 ## 5. Roadmap
 
-**Next three steps are planned in detail** (2026-09-03): `docs/plans/2026-09-03-step1-phase-c-e2e-verification.md`
-(✅ executed 2026-09-03 — all cases passed) → `…step2-phase-d-action-fidelity.md` →
-`…step3-phase-b-robustness.md`. Execute in that order.
+**The three planned steps of 2026-09-03 are all executed:** `docs/plans/2026-09-03-step1-phase-c-e2e-verification.md`
+(✅ 13/13), `…step2-phase-d-action-fidelity.md` (✅ D1+D2, 2 bugs fixed; D3 not started),
+`…step3-phase-b-robustness.md` (✅ 6/6). Next candidates, in suggested order: **Phase E** safety
+(arm/disarm), **D3** file upload, then Phase F ergonomics.
 
 **Phase A — Validate & ship.** ✅ Done (2026-06-04) — see §0. 29 E2E cases passed; 3 runtime bugs
 fixed; merged to `main`; published as a private GitHub repo. Remaining: deferred soak tests
 (CONN-5 idle keepalive, TRUST-3 DevTools conflict).
 
-**Phase B — Robustness from E2E findings.** Largely addressed by the three §0 fixes. Still open:
-idle keepalive soak across SW culls, debugger-attach conflict UX when DevTools is open, and a
-clearer "port busy" message surfaced through the tools (not just stderr).
+**Phase B — Robustness from E2E findings.** ✅ Done and **E2E-verified live** (2026-09-03; see §0
+"Phase B E2E"). `7e35ff9` — port-busy reason surfaced through every tool, bind retried every 5 s,
+`browser_status` (17th tool). `d9a0ba0` — 30 s WebSocket heartbeat so a hung peer fails fast.
+`458f291` — `describeDebuggerError` turns attach/detach failures into one-line guidance; the SW logs
+detach reasons. CONN-5 soak passed (9.5 min). Still open: nothing blocking; the hung-peer and
+"another debugger attached" branches are unit-tested only (§3).
 
 **Phase C — Perception fidelity.** ✅ Done and **E2E-verified live** (2026-09-03; see §0). Open shadow roots + same-origin frames;
 `aria-hidden`/`inert`/`hidden`/`display:none` subtree pruning; zero-size filtering (gated on the
@@ -196,6 +237,7 @@ build; document the security model for each.
 
 - Should control be restricted to an "agent tab" the user explicitly arms, rather than always the
   active tab? (We chose active-tab for ergonomics; revisit if it feels unsafe in practice.)
-- Is the offscreen-document keepalive sufficient, or do we also need a native-messaging host for
-  truly always-on operation?
+- ~~Is the offscreen-document keepalive sufficient?~~ **Answered 2026-09-03: yes for a running
+  Chrome** — 9.5 min idle with no drop, and reconnect after a Chrome restart is automatic. A
+  native-messaging host would only add the ability to *launch* Chrome; not planned.
 - How should very large pages be snapshotted without blowing the token budget?

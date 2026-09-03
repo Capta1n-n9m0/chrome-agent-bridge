@@ -66,7 +66,10 @@ If SMOKE-1/2 fail, stop and debug connection/injection before the rest.
 | CONN-2 ★ | Not-connected error is clear | Stop the server (or disable the extension), then call any tool | Tool returns an error like "Extension not connected — is Chrome open and the … extension enabled?" |
 | CONN-3 ★ | Reconnect after server restart | With it connected, stop and restart the MCP server | Within a few seconds SW logs `connection: down` then `up`; a subsequent `browser_snapshot` works without touching the extension. |
 | CONN-4 | Wrong token rejected | In Options set a wrong token, Save | SW logs `connection: down`/retries; tools return not-connected. Restore the correct token → reconnects. |
-| CONN-5 | Idle keepalive (offscreen) | Connect, then leave Chrome idle / switch away for 3+ minutes | A `browser_snapshot` afterward still works (the offscreen document kept the socket alive). |
+| CONN-5 | Idle keepalive (offscreen) | Connect, then leave Chrome idle / switch away for 3+ minutes (then repeat with 6+) | A `browser_snapshot` afterward still works (the offscreen document kept the socket alive). SW console shows no `connection: down` in between. |
+| CONN-6 | Dead Chrome is detected fast (heartbeat) | With it connected, kill Chrome outright (Task Manager → end all `chrome.exe`, or close every window), then call `browser_status` once a minute | Within ~60 s (two 30 s heartbeat intervals) the tool reports `Extension: not connected` and the server stderr logs "stopped answering pings" — **not** a 30 s timeout per call. Relaunch Chrome → the extension reconnects on its own; `browser_snapshot` works without restarting the server. |
+| CONN-7 | Port busy is explained and self-heals | Start an orphan first: in a terminal, `set BRIDGE_TOKEN=<token> && node server/dist/index.js` (leave it running). Then reconnect this session's MCP server (`/mcp`) and call `browser_status`, then `browser_snapshot` | `browser_status` says `WebSocket host: NOT listening (port 9234)` + `Problem: WebSocket port 9234 is busy (…EADDRINUSE…)`; `browser_snapshot` fails with that same reason (not the generic "not connected"). Ctrl-C the orphan → within ~15 s (5 s bind retry + extension reconnect) `browser_status` reports listening + connected and `browser_snapshot` works. |
+| STAT-1 ★ | `browser_status` happy path | `browser_status` | Three lines: `WebSocket host: listening on 127.0.0.1:9234`, `Extension: connected`, `Active tab: [id] title — url` (the playground). |
 
 ### 4.2 Navigation
 
@@ -109,7 +112,8 @@ If SMOKE-1/2 fail, stop and debug connection/injection before the rest.
 |---|---|---|---|
 | TRUST-1 ★ | Synthetic click is ignored by the trusted-only button | `browser_click {"ref":"<trusted-only ref>"}` (default) | `status: synthetic click ignored`. (Confirms default path is synthetic.) |
 | TRUST-2 ★ | Trusted click works | `browser_click {"ref":"<trusted-only ref>","trusted":true}` | Debugging banner appears; `status: TRUSTED click received`; banner clears after. |
-| TRUST-3 | DevTools conflict | Open DevTools on the tab, then `browser_click {…,"trusted":true}` | Tool surfaces a clear debugger-attach error (one debugger per tab); closing DevTools and retrying works. |
+| TRUST-3 | DevTools open on the tab | Open DevTools on the tab (F12, docked), then `browser_click {…,"trusted":true}` | **Chrome ≥ 152 (measured 2026-09-03):** the trusted click simply works — `status: TRUSTED click received` — because Chrome now lets an extension debugger attach alongside DevTools. **Older Chrome:** attach throws "Another debugger is already attached…", which the tool must surface as "Chrome DevTools (or another extension) is already attached to this tab — … Close DevTools on that tab and retry." (not a raw CDP string, not a 30 s timeout); closing DevTools → retry succeeds. Either outcome passes; record which. |
+| TRUST-8 | Cancelled debugging session | `browser_type {"ref":"<trusted-input ref>","text":"<~200 chars>","trusted":true}`, and while the banner is up click its **Cancel** | Tool returns "The debugging session was cancelled mid-action … retry the action."; SW console logs `debugger detached … reason: canceled_by_user`. Retrying without cancelling works. |
 | TRUST-4 ★ | Trusted typing replaces the field contents | On `#trusted-input`: `browser_type {"ref":"<ref>","text":"hi","trusted":true}`, then again with `"text":"yo"` | First: `status: TRUSTED input = hi`, field shows `hi`. Second: field shows `yo`, **not** `hiyo` (proves select-all-then-replace). |
 | TRUST-5 ★ | Trusted key press | Click `#trusted-input` (default click focuses it), then `browser_press_key {"key":"Enter","trusted":true}` | `status: TRUSTED key = Enter`. |
 | TRUST-6 | Trusted typing + submit | `browser_type {"ref":"<email ref>","text":"x@y.com","submit":true,"trusted":true}` | `status: form submitted (email = x@y.com)`. |
@@ -155,11 +159,11 @@ Copy this and fill it in during the run:
 Date: ____  Chrome version: ____  Node: ____  OS: ____
 
 SMOKE-1 [ ]   SMOKE-2 [ ]
-CONN-1 [ ] CONN-2 [ ] CONN-3 [ ] CONN-4 [ ] CONN-5 [ ]
+CONN-1 [ ] CONN-2 [ ] CONN-3 [ ] CONN-4 [ ] CONN-5 [ ] CONN-6 [ ] CONN-7 [ ] STAT-1 [ ]
 NAV-1 [ ]  NAV-2 [ ]  NAV-3 [ ]
 PERC-1 [ ] PERC-2 [ ] PERC-3 [ ] PERC-4 [ ] PERC-5 [ ] PERC-6 [ ] PERC-7 [ ] PERC-8 [ ] PERC-9 [ ]
 ACT-1 [ ] ACT-2 [ ] ACT-3 [ ] ACT-4 [ ] ACT-5 [ ] ACT-6 [ ] ACT-7 [ ] ACT-8 [ ]
-TRUST-1 [ ] TRUST-2 [ ] TRUST-3 [ ] TRUST-4 [ ] TRUST-5 [ ] TRUST-6 [ ] TRUST-7 [ ]
+TRUST-1 [ ] TRUST-2 [ ] TRUST-3 [ ] TRUST-4 [ ] TRUST-5 [ ] TRUST-6 [ ] TRUST-7 [ ] TRUST-8 [ ]
 TAB-1 [ ] TAB-2 [ ] TAB-3 [ ] TAB-4 [ ] HIST-1 [ ]
 WAIT-1 [ ] WAIT-2 [ ] WAIT-3 [ ]
 SEC-1 [ ] SEC-2 [ ]
@@ -258,6 +262,53 @@ Zoom/DPR measurements (the D2 spike) are tabulated in
 Failures / notes:
 - No open failures. Both defects found were fixed and re-verified in the same session.
 - TRUST-3 (debugger-vs-DevTools conflict) still deferred.
+
+### Run 4 — 2026-09-03 (Phase B robustness: commits `7e35ff9`, `d9a0ba0`, `458f291`)
+
+```
+Date: 2026-09-03  Chrome version: 152  Node: 20+  OS: Windows 11 Pro 26200
+Display: 1920-px window, Chrome zoom left at 150% from Run 3 (DPR 1.5, innerWidth 1280) — irrelevant to these cases
+
+STAT-1 [P]  TRUST-3 [P*]  TRUST-8 [P]  CONN-6 [P]  CONN-7 [P]  CONN-5 [P]
+(* passed via the Chrome ≥ 152 branch — see below)
+```
+
+Scope: the 17th tool, the debugger-error UX, dead-Chrome detection, port-busy self-healing, and the
+long-deferred idle-keepalive soak. **All six pass; no code changes needed after the three commits.**
+
+Evidence per case:
+
+- **STAT-1** — `browser_status` → `WebSocket host: listening on 127.0.0.1:9234` / `Extension: connected` /
+  `Active tab: [1108099065] Agent Bridge E2E Playground — http://localhost:8080/e2e-playground.html`.
+- **TRUST-3** — with DevTools docked on the tab (the viewport screenshot was visibly narrower), a
+  `trusted:true` click on `#trusted-only` **succeeded**: `status: TRUSTED click received`. Chrome 152 lets
+  an extension debugger attach alongside DevTools, so the "one debugger per tab" conflict this case was
+  written for no longer happens. `describeDebuggerError`'s DevTools branch stays as a defensive path for
+  older Chrome / other debugger extensions; it is unit-tested but could not be triggered live. The case
+  text now accepts either outcome.
+- **TRUST-8** — a ~600-character `browser_type {trusted:true}`; Cancel clicked on the banner mid-typing →
+  tool error: "The debugging session was cancelled mid-action (the 'is debugging this browser' banner's
+  Cancel was clicked, or DevTools took over the tab) — retry the action." SW console:
+  `[bridge] debugger detached from tab 1108099065 reason: canceled_by_user`. Retry typed `retry ok` →
+  `status: TRUSTED input = retry ok`.
+- **CONN-6** — all `chrome.exe` ended. The *first* `browser_status` poll already said `Extension: not
+  connected` — Chrome's exit closed the TCP socket cleanly, so the server saw `close` immediately and the
+  heartbeat was never needed (it covers a *hung* peer, which only the unit test exercises). After relaunch,
+  `browser_status` showed connected + the restored tab and `browser_snapshot` worked; the server was not
+  restarted.
+- **CONN-7** — orphan `node server/dist/index.js` started first, then `/mcp` reconnect. `browser_status`:
+  `WebSocket host: NOT listening (port 9234)` + `Problem: WebSocket port 9234 is busy (listen EADDRINUSE:
+  address already in use 127.0.0.1:9234): another chrome-agent-bridge instance is probably still running …
+  retries the bind every 5s …`; `browser_snapshot` failed with that same text (not the generic "not
+  connected"). Orphan Ctrl-C'd → the next `browser_status` (well under 15 s later) was listening +
+  connected, and `browser_snapshot` worked. Nothing restarted.
+- **CONN-5** — Chrome left untouched from 22:42:08. Checks at 22:45:38 (+3.5 min) and 22:51:43 (+6 min
+  more, 9.5 min total idle): `browser_status` connected, `browser_snapshot` instant, no reconnect delay.
+  The offscreen-document socket survives MV3 service-worker culling.
+
+Failures / notes:
+- None. One expectation was wrong rather than the code: TRUST-3 assumed Chrome still enforces one
+  debugger per tab; Chrome 152 does not.
 
 ## 6. Exit criteria
 

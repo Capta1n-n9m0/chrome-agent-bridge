@@ -63,6 +63,7 @@ With the MCP server running and the extension connected, call the tools from you
 
 | Tool | What it does |
 |---|---|
+| `browser_status()` | Diagnose the bridge: WebSocket host listening? extension connected? active tab. Call it first when other tools fail |
 | `browser_navigate(url)` | Navigate the active tab |
 | `browser_snapshot()` | Accessibility outline of the active tab with element refs |
 | `browser_screenshot(fullPage?)` | Screenshot (viewport; full-page via CDP when `fullPage:true`) |
@@ -101,21 +102,28 @@ than appends; it never assigns `.value`.
 
 ## Troubleshooting
 
-- **MCP server "Failed to connect" in Claude Code:** usually a previous Claude session left an
-  orphaned bridge server still holding the port. Check with (PowerShell)
-  `Get-NetTCPConnection -LocalPort 9234 -State Listen`, then kill the stale `node …/server/dist/index.js`
-  process (`Stop-Process -Id <pid> -Force`). The server now treats a busy port as non-fatal — it
-  still connects to Claude Code and logs a `WARNING: could not bind the WebSocket …` to stderr — so
-  the *MCP* connection won't crash, but **browser tools stay unavailable until the port is free**.
-  Only run one Claude session driving the bridge at a time.
+- **Start with `browser_status`.** It tells you which half is broken: the WebSocket host (port
+  busy), the extension (not connected), or neither (then look at the active tab it reports).
+- **"WebSocket port 9234 is busy (EADDRINUSE)"** from `browser_status` or any tool: a previous
+  Claude session left an orphaned bridge server holding the port. Find it with (PowerShell)
+  `Get-NetTCPConnection -LocalPort 9234 -State Listen` and kill the stale `node …/server/dist/index.js`
+  process (`Stop-Process -Id <pid> -Force`). Nothing else to do: the server retries the bind every
+  5 s and the extension reconnects on its own, so tools start working within ~15 s of the port
+  freeing up. The MCP connection itself never crashes on a busy port. Only run one Claude session
+  driving the bridge at a time.
 - **"Extension not connected"** from a tool: make sure Chrome is open, the extension is
   enabled, and the Options token/port match the server's `BRIDGE_TOKEN`/`BRIDGE_PORT`.
-  Check the service-worker console for `connection: up`. (If the server logged the port-bind
-  WARNING above, that's the real cause — free the port.)
+  Check the service-worker console for `connection: up`.
+- **Chrome was killed / crashed while connected**: the server pings the extension every 30 s and
+  drops a socket that misses a pong, so within ~60 s tools report "not connected" instead of
+  timing out for 30 s each. Relaunch Chrome and it reconnects by itself.
 - **A tool errors with "restricted URL"**: the active tab is a `chrome://` page, the New
   Tab page, or the Chrome Web Store, where extensions can't run. Switch to a normal page.
-- **`chrome.debugger` attach fails**: another debugger (e.g. open DevTools) is attached to
-  that tab. Close DevTools and retry.
+- **"Chrome DevTools (or another extension) is already attached to this tab"**: Chrome allows
+  one debugger per tab, and DevTools wins. Close DevTools on that tab and retry the trusted action.
+- **"The debugging session was cancelled mid-action"**: someone clicked **Cancel** on the
+  "is debugging this browser" banner while a trusted action was running (the service-worker console
+  logs `debugger detached … canceled_by_user`). Just retry.
 - **Connection drops when idle**: the offscreen document should keep it alive; if it still
   drops, reload the extension from `chrome://extensions`.
 - **"ref … is outside the viewport after scrolling"**: a `trusted:true` action could not bring
