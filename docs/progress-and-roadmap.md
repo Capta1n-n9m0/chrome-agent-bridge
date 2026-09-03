@@ -29,6 +29,30 @@ Ran `docs/plans/2026-09-03-step1-phase-c-e2e-verification.md` against real Chrom
 
 One documentation defect surfaced and was fixed: SMOKE-2 expected the fixture's `status:` line in the snapshot, but snapshots list only interactive elements — that line is screenshot-only.
 
+### Phase D E2E (2026-09-03)
+
+Ran `docs/plans/2026-09-03-step2-phase-d-action-fidelity.md` against Chrome **152** on Windows 11.
+**TRUST-4…7 all pass**, plus ACT-1/ACT-7 regression. Evidence is in `docs/e2e-test-plan.md` §5,
+"Run 3". Two defects that only the live runtime could surface:
+
+1. **`.` was silently swallowed by trusted typing.** `keys.ts` derived `windowsVirtualKeyCode`
+   from the character's ASCII code, but that correspondence holds only for `A-Z`, `0-9` and space —
+   `"."` is 46, i.e. `VK_DELETE`. Chrome acted on the virtual key instead of inserting the
+   character, so `x@y.com` was typed as `x@ycom`. Punctuation now sends `text` alone.
+2. **The trusted path never scrolled its target into view.** Found by the zoom spike, and it
+   *disproved the plan's premise*: CDP `Input` coordinates need no scaling at all. Measured at zoom
+   1.0/1.5 and DPR 1/1.25/1.5, the event's `clientX,clientY` came back byte-identical to what
+   `centerOf` sent, so Chrome folds in both page zoom and `devicePixelRatio` itself — the planned
+   `scaleForCdp` would have been an identity function and was not written. What actually broke at
+   150 % zoom is that zoom shrinks the *visual viewport* in CSS px (1920×940 → 1280×630), pushing
+   an element that fit at 100 % off-screen; CDP does not clamp, so the click was dispatched at
+   correct-but-off-screen coordinates, hit-tested `<html>`, and **silently did nothing**.
+   `centerForInput` now scrolls first and throws rather than reporting a success that did nothing.
+
+A fixture defect also surfaced: `#email` sat outside `<form id="login-form">`, so no real Enter
+could ever submit it — ACT-3's and TRUST-6's "form submitted" expectation had been unreachable.
+Fixed with `form="login-form"`.
+
 ---
 
 ## 1. Where we are
@@ -48,8 +72,9 @@ out of.
 | 5 | Offscreen-document keepalive + setup docs | ✅ Done |
 | + | `browser_wait_for` (closed a spec-§7 gap found in final review) | ✅ Done |
 | C | Perception fidelity: shadow DOM + same-origin iframes, hidden-subtree pruning, richer roles, frame-correct coordinates | ✅ Done (E2E-verified 2026-09-03) |
+| D | Action fidelity: trusted typing + `press_key` via CDP `Input.dispatchKeyEvent`; scroll-into-view + viewport validation for trusted input | ✅ D1/D2 done (E2E-verified 2026-09-03); D3 file upload not started |
 
-**Quality state:** 72 unit tests pass; `tsc` typecheck clean across all three packages; all four
+**Quality state:** 96 unit tests pass; `tsc` typecheck clean across all three packages; all four
 bundles build (`server/dist/index.js`, `extension/dist/{sw,options,offscreen,content}.js`). Every
 milestone passed a two-stage review (spec compliance + code quality); the final whole-system review
 verified the end-to-end protocol contract and that esbuild does not break page-injected functions.
@@ -91,19 +116,29 @@ profile.
 trusted click through the frame offset, all four hidden decoys, and the new roles — plus a
 PERC-1…4 / ACT-1…2 regression smoke. Chrome 152 at DPR 1.
 
+**Verified live (2026-09-03, §0 "Phase D E2E"):** trusted typing and `press_key`
+(`docs/e2e-test-plan.md` TRUST-4…6) and trusted-click coordinates under **page zoom 150 %** and
+**Windows display scaling 125 %** (TRUST-7, plus PERC-7's iframe click re-run under zoom).
+Chrome 152.
+
 **NOT yet verified live:** the deferred soak cases CONN-5 (idle keepalive) and TRUST-3
-(debugger-vs-DevTools conflict), and trusted-click coordinates on HiDPI / non-100% zoom.
+(debugger-vs-DevTools conflict). DPR 2 (a true Retina panel) has not been measured, though DPR
+1.25 and 1.5 both needed no correction.
 
 ## 4. Known limitations & risks
 
-- **Trusted-click coordinates on HiDPI/zoom** — `trusted:true` clicks use CSS-pixel coordinates
-  from `getBoundingClientRect`; on zoomed or Retina displays they may land slightly off. Default
-  clicks (by element) are unaffected. Verified correct at 100% zoom / DPR 1 on 2026-09-03,
-  including through an iframe's frame offset (PERC-7); **HiDPI and non-100% zoom are still
-  untested** — that's Phase D's DPR work.
-- **Typing is synthetic-only** — `browser_type` dispatches input events; there is a `trustedType`
-  CDP helper in the code but it is not wired into the `type` handler yet. Sites that reject
-  synthetic typing have no fallback.
+- **Trusted input needs its target on screen** — CDP `Input` takes CSS-pixel viewport coordinates
+  and does **not** clamp, so a point past the viewport edge hit-tests the root element and does
+  nothing. `centerForInput` scrolls the element into view and throws if it still cannot reach it,
+  so the failure is reported rather than silent. It can still refuse on a fixed overlay, an
+  immovable scroll container, or a viewport smaller than the element; the default (non-trusted)
+  action needs no coordinates and is unaffected. Coordinates themselves need **no** zoom or DPR
+  scaling — measured at zoom 1.0/1.5 and DPR 1/1.25/1.5 (§0). DPR 2 is unmeasured.
+- **Trusted typing replaces, and cannot express modifiers** — the `trusted:true` path selects the
+  field's contents and types over them, so it overwrites rather than appends, and there is no way
+  to type *into* an existing value at the caret. `keys.ts` covers printable characters plus
+  Enter/Tab/Escape/Backspace/Delete/Home/End/PageUp/PageDown/arrows; it has no chords
+  (Ctrl+A, Shift+Tab) and no IME/composition support.
 - **Snapshot fidelity** — the walk now descends into **open** shadow roots and **same-origin**
   frames, prunes `aria-hidden`/`inert`/`hidden`/`display:none` subtrees, and drops zero-size
   elements. Still out of reach: closed shadow roots and cross-origin frames (both need a
@@ -139,8 +174,14 @@ frame-offset `centerOf` so trusted clicks inside an iframe land correctly; an 80
 Still open: cross-origin frames and closed shadow roots (need per-frame injection or CDP), and a
 viewport-only snapshot with an "expand" affordance instead of a hard cap.
 
-**Phase D — Action fidelity.** Wire `trustedType` into a `type` escalation path; DPR-correct
-coordinates for trusted input; drag, file-upload, and native-dialog handling.
+**Phase D — Action fidelity.** **D1 ✅** (`4400a21`) — `browser_type` and `browser_press_key` take
+`trusted:true` and dispatch real CDP `Input.dispatchKeyEvent` keystrokes; the trusted path focuses
+and selects the field, then replaces the selection, and never assigns `.value`. **D2 ✅**
+(`c2ceec5`) — measured, not guessed: CDP coordinates need no zoom/DPR scaling; the real bug was the
+missing scroll-into-view, now fixed with an explicit off-screen error. Both E2E-verified
+(§0 "Phase D E2E"). **D3 file upload — not started**: `browser_upload_file` via
+`DOM.setFileInputFiles` (sketched in the plan). Also still open: drag, native-dialog handling,
+modifier chords for `press_key`, and caret-preserving trusted typing.
 
 **Phase E — Safety.** An explicit arm/disarm toggle in the options page; optional per-domain
 allow/block list; never log page content or tokens.

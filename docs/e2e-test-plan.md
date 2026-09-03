@@ -221,6 +221,44 @@ Failures / notes:
   `status:` text in the snapshot; Phase C snapshots list only interactive elements, so that line is
   screenshot-only.
 
+### Run 3 — 2026-09-03 (Phase D verification of commits `4400a21` + `c2ceec5`)
+
+```
+Date: 2026-09-03  Chrome version: 152  Node: 20+  OS: Windows 11 Pro 26200
+Display: 1920-px-wide window. Run across three conditions:
+  (a) OS scaling 100%, Chrome zoom 100%  → DPR 1,    innerWidth 1920
+  (b) OS scaling 100%, Chrome zoom 150%  → DPR 1.5,  innerWidth 1280
+  (c) OS scaling 125%, Chrome zoom 100%  → DPR 1.25, innerWidth 1536
+
+TRUST-4 [P] TRUST-5 [P] TRUST-6 [P] TRUST-7 [P]
+ACT-1 [P] ACT-7 [P]                       (regression: default paths unchanged)
+PERC-7 [P]                                (re-run under 150% zoom)
+```
+
+Evidence:
+- **TRUST-4** — synthetic first as a control: `status: synthetic input ignored`. Then
+  `trusted:true` with `"hi"` → `status: TRUSTED input = hi` and the field reads `hi`, having
+  replaced the pre-existing `nope`. Again with `"yo"` → field reads `yo`, **not** `hiyo`, proving
+  select-all-then-replace.
+- **TRUST-5** — `browser_press_key {"key":"Enter","trusted":true}` → `status: TRUSTED key = Enter`.
+- **TRUST-6** — failed on the first attempt and surfaced two real defects (both fixed in
+  `4400a21`): the field read `x@ycom` because `.` was sent as `windowsVirtualKeyCode` 46 =
+  `VK_DELETE`, and `#email` sat outside the `<form>` so no real Enter could submit it. After the
+  fixes: `status: form submitted (email = x@y.com)` with the `.` intact.
+- **TRUST-7** — at 150 % zoom the hit pad previously reported `hit at 635,755 exp 635,755 on=HTML`:
+  correct coordinates, off-screen, hit nothing. After `c2ceec5`: `hit at 635,331 exp 635,331
+  on=hit-pad`. `#trusted-only` and PERC-7's iframe button both hit under zoom too.
+- **ACT-7** — no error; the `status:` line is unchanged because a synthetic `el.click()` does not
+  move focus, so the synthetic keydown lands on `<body>`. Pre-existing behaviour, not a Phase D
+  regression.
+
+Zoom/DPR measurements (the D2 spike) are tabulated in
+`docs/plans/2026-09-03-step2-phase-d-action-fidelity.md`, "Spike results".
+
+Failures / notes:
+- No open failures. Both defects found were fixed and re-verified in the same session.
+- TRUST-3 (debugger-vs-DevTools conflict) still deferred.
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.

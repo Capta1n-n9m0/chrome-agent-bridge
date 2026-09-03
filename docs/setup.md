@@ -67,8 +67,8 @@ With the MCP server running and the extension connected, call the tools from you
 | `browser_snapshot()` | Accessibility outline of the active tab with element refs |
 | `browser_screenshot(fullPage?)` | Screenshot (viewport; full-page via CDP when `fullPage:true`) |
 | `browser_click(ref, trusted?)` | Click a ref; `trusted:true` forces real CDP input (shows the debugging banner) |
-| `browser_type(ref, text, submit?)` | Type into a ref, optionally submit |
-| `browser_press_key(key)` | Press a key on the focused element |
+| `browser_type(ref, text, submit?, trusted?)` | Type into a ref, optionally submit; `trusted:true` sends real CDP keystrokes (shows the debugging banner) |
+| `browser_press_key(key, trusted?)` | Press a key on the focused element; `trusted:true` sends a real CDP keystroke (shows the debugging banner) |
 | `browser_scroll(ref?, direction?)` | Scroll to a ref or up/down |
 | `browser_hover(ref)` | Hover a ref |
 | `browser_select_option(ref, values)` | Select option(s) in a `<select>` |
@@ -83,10 +83,15 @@ Typical loop: `browser_snapshot()` to see refs → act by ref (`browser_click`, 
 
 ## The debugging banner
 
-When trusted input is used (`browser_click` with `trusted:true`, or full-page screenshots),
-Chrome shows an "an extension is debugging this browser" banner on that tab. This is
-expected and clears when the action finishes. Default clicks/typing use synthetic events
-and do **not** show the banner.
+When trusted input is used (`browser_click`, `browser_type` or `browser_press_key` with
+`trusted:true`, or full-page screenshots), Chrome shows an "an extension is debugging this
+browser" banner on that tab. This is expected and clears when the action finishes. Default
+clicks/typing use synthetic events and do **not** show the banner.
+
+Reach for `trusted:true` when a site ignores synthetic input — some editors, canvas apps and
+anti-automation checks test `event.isTrusted`. Trusted typing focuses the field and selects
+its contents first, then replaces the selection with real keystrokes, so it overwrites rather
+than appends; it never assigns `.value`.
 
 ## Security notes
 
@@ -113,6 +118,10 @@ and do **not** show the banner.
   that tab. Close DevTools and retry.
 - **Connection drops when idle**: the offscreen document should keep it alive; if it still
   drops, reload the extension from `chrome://extensions`.
-- **Trusted clicks land slightly off-target**: on zoomed or HiDPI/Retina displays the
-  `trusted:true` click path can be a few pixels off. Reset page zoom to 100%, or use the
-  default (non-trusted) click which targets the element directly.
+- **"ref … is outside the viewport after scrolling"**: a `trusted:true` action could not bring
+  the element on screen (a fixed overlay, a scroll container that will not move, or a viewport
+  too small for it). CDP dispatches at absolute viewport coordinates and does not clamp, so
+  rather than click nothing the bridge reports this. Close the overlay, scroll manually, or use
+  the default (non-trusted) action, which targets the element directly and needs no coordinates.
+  Note that page zoom and HiDPI scaling need no correction — coordinates are CSS pixels and
+  Chrome accounts for both.

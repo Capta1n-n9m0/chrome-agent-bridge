@@ -46,64 +46,64 @@
 
 ### Task D1.1: key-event params table (pure, TDD)
 
-- [ ] `extension/test/keys.test.ts`: `keyEventParams("Enter")` → `{key:"Enter", code:"Enter",
+- [x] `extension/test/keys.test.ts`: `keyEventParams("Enter")` → `{key:"Enter", code:"Enter",
       windowsVirtualKeyCode:13, text:"\r"}`; `"Tab"` → vk 9, `"Escape"` → 27, `"Backspace"` → 8,
       `"ArrowLeft/Right/Up/Down"` → 37/39/38/40, `"a"` → `{key:"a", code:"KeyA", text:"a"}`,
       `"A"` → shift modifier, `" "` → Space; unknown named key throws with the list of supported keys.
-- [ ] `extension/src/keys.ts`: `keyEventParams(key: string): {key; code; windowsVirtualKeyCode?; text?; modifiers?}`.
+- [x] `extension/src/keys.ts`: `keyEventParams(key: string): {key; code; windowsVirtualKeyCode?; text?; modifiers?}`.
       Keep it a plain table; no `chrome.*` imports (so it's testable under node).
-- [ ] `npm test` green.
+- [x] `npm test` green.
 
 ### Task D1.2: CDP helpers
 
-- [ ] `extension/src/debugger.ts`: rewrite `trustedType(tabId, text)` to iterate `text`, mapping `"\n"` →
+- [x] `extension/src/debugger.ts`: rewrite `trustedType(tabId, text)` to iterate `text`, mapping `"\n"` →
       Enter via `keyEventParams`, all other chars → `{type:"keyDown", text: ch, key: ch}` + `keyUp`. Add
       `trustedPressKey(tabId, key)` = keyDown/keyUp from `keyEventParams(key)`. Remove the "not yet wired"
       comment.
-- [ ] Not unit-tested (chrome glue) — covered by TRUST-4/5 below.
+- [x] Not unit-tested (chrome glue) — covered by TRUST-4/5 below.
 
 ### Task D1.3: content-script focus helper (TDD, jsdom)
 
-- [ ] `extension/test/actions.test.ts`: `focusForTypingRef(refs, ref)` focuses an `<input>`, selects its text
+- [x] `extension/test/actions.test.ts`: `focusForTypingRef(refs, ref)` focuses an `<input>`, selects its text
       (`selectionStart===0 && selectionEnd===value.length`), returns `{ok:true}`; for a `contenteditable`
       div it focuses and the document selection covers its text; unknown ref throws the standard
       "call browser_snapshot to re-snapshot" error.
-- [ ] Implement in `extension/src/content/actions.ts`; expose as `window.__agentBridge.focusForTyping` in
+- [x] Implement in `extension/src/content/actions.ts`; expose as `window.__agentBridge.focusForTyping` in
       `extension/src/content/index.ts` (update the `declare global` interface). It must return a non-null
       object on success — `unwrapResult` treats null/undefined as failure (see `CLAUDE.md`).
 
 ### Task D1.4: handlers
 
-- [ ] `extension/src/handlers/actions.ts` — `type(p)`: mirror `click`'s shape. `if (!trusted) try content
+- [x] `extension/src/handlers/actions.ts` — `type(p)`: mirror `click`'s shape. `if (!trusted) try content
       typeRef; catch → warn + fall through`. Trusted path: `callInPage(focusForTyping)` → `withDebugger(tab,
       () => trustedType(text) then if submit trustedPressKey("Enter"))`. Pass `p.submit ?? false` and
       `p.trusted === true` (never raw `undefined` into executeScript args — `toSerializableArgs` covers it,
       but be explicit).
-- [ ] `pressKey(p)`: `if (p.trusted === true) withDebugger(trustedPressKey)` else the existing synthetic path.
-- [ ] `npm run typecheck`.
+- [x] `pressKey(p)`: `if (p.trusted === true) withDebugger(trustedPressKey)` else the existing synthetic path.
+- [x] `npm run typecheck`.
 
 ### Task D1.5: tool schema + tests (TDD)
 
-- [ ] `server/test/tools.test.ts`: `browser_type` forwards `{ref, text, submit:false, trusted:true}` when
+- [x] `server/test/tools.test.ts`: `browser_type` forwards `{ref, text, submit:false, trusted:true}` when
       `trusted:true` is given, and `trusted:false` when omitted; same for `browser_press_key`.
-- [ ] `server/src/tools/registry.ts`: add `trusted: z.boolean().optional()` to both; extend descriptions:
+- [x] `server/src/tools/registry.ts`: add `trusted: z.boolean().optional()` to both; extend descriptions:
       "Set trusted=true to send real CDP keystrokes (shows the debugging banner) for sites that ignore
       synthetic input."
-- [ ] `npm test` green (count goes up; update the "72 tests" figures in `CLAUDE.md` and the roadmap).
+- [x] `npm test` green (count goes up; update the "72 tests" figures in `CLAUDE.md` and the roadmap).
 
 ### Task D1.6: fixture + E2E cases
 
-- [ ] `test-fixtures/e2e-playground.html`, "Buttons & links" section: add
+- [x] `test-fixtures/e2e-playground.html`, "Buttons & links" section: add
       `<label for="trusted-input">Trusted-only input</label><input id="trusted-input">` whose `input`
       listener sets `status: TRUSTED input = <value>` when `e.isTrusted` else `status: synthetic input
       ignored`; and a `keydown` listener that sets `status: TRUSTED key = <key>` / `synthetic key ignored`.
-- [ ] `docs/e2e-test-plan.md` §4.5: add **TRUST-4** (`browser_type {"ref":…,"text":"hi","trusted":true}` →
+- [x] `docs/e2e-test-plan.md` §4.5: add **TRUST-4** (`browser_type {"ref":…,"text":"hi","trusted":true}` →
       `status: TRUSTED input = hi`, field shows `hi`; then repeat with `"text":"yo"` → field shows `yo`, not
       `hiyo` — proves the select-all-then-replace), **TRUST-5** (`browser_press_key {"key":"Enter",
       "trusted":true}` → `status: TRUSTED key = Enter`), **TRUST-6** (`browser_type {…,"text":"x@y.com",
       "submit":true,"trusted":true}` on the email field → `status: form submitted (email = x@y.com)`).
       Add them to the §5 scorecard line.
-- [ ] Build, reload the extension, run TRUST-4/5/6 live through the MCP tools. Also re-run ACT-1 and ACT-7
+- [x] Build, reload the extension, run TRUST-4/5/6 live through the MCP tools. Also re-run ACT-1 and ACT-7
       (default paths unchanged).
 
 ## Part D2 — zoom / DPR-correct trusted coordinates
@@ -115,27 +115,30 @@ viewport*, so **DPR (Retina) should already be handled by Chrome**; the known fa
 issue history) is **browser page zoom ≠ 100%**, where CDP expects coordinates scaled by the zoom factor.
 Don't assume — measure:
 
-- [ ] Fixture: add a full-width `<div id="hit-pad">` (≈ 200px tall) whose `mousedown` listener sets
+- [x] Fixture: add a full-width `<div id="hit-pad">` (≈ 200px tall) whose `mousedown` listener sets
       `status: hit at <clientX>,<clientY> (isTrusted=…)`, so a trusted click's landing point is observable.
       Also add a `<p id="env">` the fixture fills at load with `devicePixelRatio` and `innerWidth`.
-- [ ] At 100 % zoom: `browser_click {trusted:true}` on `#trusted-only` → `status: TRUSTED click received`.
+- [x] At 100 % zoom: `browser_click {trusted:true}` on `#trusted-only` → `status: TRUSTED click received`.
       Record `chrome.tabs.getZoom` (1.0) and DPR from `#env`.
-- [ ] Set Chrome zoom to 150 % (Ctrl +) and repeat on `#trusted-only` and on `#hit-pad`. Record whether the
+- [x] Set Chrome zoom to 150 % (Ctrl +) and repeat on `#trusted-only` and on `#hit-pad`. Record whether the
       click hits and, from `#hit-pad`, the ratio between where it landed and `centerOf`.
-- [ ] If available, repeat at 100 % on a HiDPI display (DPR 2 / 1.25 Windows scaling). Record.
-- [ ] Write the findings into the "Spike results" table below **before** coding.
+- [x] If available, repeat at 100 % on a HiDPI display (DPR 2 / 1.25 Windows scaling). Record.
+- [x] Write the findings into the "Spike results" table below **before** coding.
 
 ### Task D2.2: apply the factor (TDD for the pure part)
 
-- [ ] `extension/test/geometry.test.ts`: `scaleForCdp({x,y}, zoom)` multiplies (or divides — encode the
-      *measured* rule, not the guess) by `zoom` and rounds. Pure function in `extension/src/content/geometry.ts`.
-- [ ] `extension/src/handlers/actions.ts` `click` trusted path: `const zoom = await chrome.tabs.getZoom(tab.id!)`
-      → `trustedClick(tab.id!, ...scaleForCdp({x,y}, zoom))`. Also apply to any future trusted hover/drag.
-- [ ] Update the comment in `debugger.ts` `trustedClick` ("DPR handling is future work") to state the actual
+- [x] ~~`scaleForCdp`~~ **not written — the measured rule is identity.** The spike showed CDP takes CSS
+      pixels with no zoom/DPR factor, so a scale function would multiply by 1. Instead
+      `extension/test/geometry.test.ts` covers `isInViewport({x,y}, {width,height})`, the pure part of the
+      bug the spike *did* find.
+- [x] `extension/src/content/index.ts`: the bridge's `centerOf` becomes `centerForInput` — scroll into
+      view, measure, and throw if the point is still outside the viewport instead of dispatching a click
+      that hit-tests nothing. `chrome.tabs.getZoom` is not needed. Applies to any future trusted hover/drag.
+- [x] Update the comment in `debugger.ts` `trustedClick` ("DPR handling is future work") to state the actual
       rule found.
-- [ ] `CLAUDE.md` → Runtime gotchas: one bullet with the measured rule (e.g. "CDP Input coords are CSS px of
+- [x] `CLAUDE.md` → Runtime gotchas: one bullet with the measured rule (e.g. "CDP Input coords are CSS px of
       the *unzoomed* viewport: multiply `centerOf` by `chrome.tabs.getZoom()`; DPR needs no scaling").
-- [ ] E2E: **TRUST-7** — at 150 % zoom, `browser_click {trusted:true}` on `#trusted-only` succeeds, and PERC-7
+- [x] E2E: **TRUST-7** — at 150 % zoom, `browser_click {trusted:true}` on `#trusted-only` succeeds, and PERC-7
       (iframe trusted click) still succeeds. Reset zoom to 100 % after.
 
 ### Spike results (fill in)
@@ -176,11 +179,11 @@ Only if D1 + D2 are merged and green. Sketch, to be expanded into tasks if picke
 
 ## Task D.final: docs + commits
 
-- [ ] `docs/setup.md`: tool table — `browser_type`/`browser_press_key` `trusted` flag; note the banner.
-- [ ] `docs/progress-and-roadmap.md`: §1 add a Phase D row; §4 remove the "Typing is synthetic-only" and
+- [x] `docs/setup.md`: tool table — `browser_type`/`browser_press_key` `trusted` flag; note the banner.
+- [x] `docs/progress-and-roadmap.md`: §1 add a Phase D row; §4 remove the "Typing is synthetic-only" and
       "Trusted-click coordinates on HiDPI/zoom" limitations (or rewrite them with what's still open); §5 mark
       D1/D2 done, D3 status; §0 add the E2E results.
-- [ ] Commits (one per part, tests green before each):
+- [x] Commits (one per part, tests green before each):
       `feat(extension): trusted typing + press_key via CDP Input.dispatchKeyEvent`,
       `fix(extension): scale trusted-input coordinates by page zoom`, `docs: …`. Trailer per `CLAUDE.md`.
 
