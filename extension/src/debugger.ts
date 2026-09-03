@@ -1,4 +1,5 @@
 import { keyEventParams, type KeyEventParams } from "./keys.js";
+import { describeDebuggerError } from "./debugger-errors.js";
 
 const PROTOCOL = "1.3";
 
@@ -7,9 +8,17 @@ async function send(tabId: number, method: string, params: { [key: string]: unkn
 }
 
 export async function withDebugger<T>(tabId: number, fn: () => Promise<T>): Promise<T> {
-  await chrome.debugger.attach({ tabId }, PROTOCOL);
+  try {
+    await chrome.debugger.attach({ tabId }, PROTOCOL);
+  } catch (err) {
+    // Chrome allows one debugger per tab: DevTools (or another extension) wins and attach throws.
+    throw new Error(describeDebuggerError(err));
+  }
   try {
     return await fn();
+  } catch (err) {
+    // A cancelled session (banner ✕) surfaces here as a failed sendCommand.
+    throw new Error(describeDebuggerError(err));
   } finally {
     try {
       await chrome.debugger.detach({ tabId });

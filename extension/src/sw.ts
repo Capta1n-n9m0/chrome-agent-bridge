@@ -74,6 +74,12 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
+// Diagnostic only: explains a mid-action trusted-input failure in the SW console when the user
+// clicks the debugging banner's Cancel (reason "canceled_by_user") or DevTools takes the tab over.
+chrome.debugger.onDetach.addListener((source, reason) => {
+  console.warn("[bridge] debugger detached from tab", source.tabId, "reason:", reason);
+});
+
 chrome.runtime.onInstalled.addListener(() => void connect());
 chrome.runtime.onStartup.addListener(() => void connect());
 
