@@ -32,3 +32,15 @@ function frameOffset(doc: Document | null): { x: number; y: number } {
   }
   return { x, y };
 }
+
+/**
+ * Is a top-document viewport point actually on screen?
+ *
+ * CDP `Input.*` takes CSS pixels and does no clamping: a point past the edge hit-tests the root
+ * element, so the click "succeeds" while doing nothing. Page zoom shrinks the visual viewport in CSS
+ * px (at 150 %, 1920x940 becomes 1280x630), which is how an element that fit at 100 % ends up
+ * off-screen. Callers scroll first, then use this to turn a silent miss into an error.
+ */
+export function isInViewport(pt: { x: number; y: number }, size: { width: number; height: number }): boolean {
+  return pt.x >= 0 && pt.y >= 0 && pt.x <= size.width && pt.y <= size.height;
+}

@@ -154,14 +154,16 @@
       });
 
       // Zoom/DPR spike: report the landing point of a trusted click, in CSS client pixels.
+      // Listener sits on the document, not the pad: a mis-aimed trusted click still has to report
+      // where it landed, which is the whole point of the zoom/DPR spike. "exp" is what centerOf()
+      // would compute for the pad right now, so the status line reads landed-vs-expected directly.
       const pad = document.getElementById("hit-pad");
-      pad.addEventListener("mousedown", (e) => {
-        // "exp" is what centerOf() would have computed for this element right now, so the status
-        // line shows landed-vs-expected directly.
+      document.addEventListener("mousedown", (e) => {
         const r = pad.getBoundingClientRect();
         const ex = Math.round(r.left + r.width / 2), ey = Math.round(r.top + r.height / 2);
         set("hit at " + Math.round(e.clientX) + "," + Math.round(e.clientY) +
-            " exp " + ex + "," + ey + " (isTrusted=" + e.isTrusted + ")");
+            " exp " + ex + "," + ey + " on=" + (e.target.id || e.target.tagName) +
+            " (isTrusted=" + e.isTrusted + ")");
       });
 
       document.getElementById("env").textContent =

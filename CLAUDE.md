@@ -40,7 +40,7 @@ Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(met
 ```bash
 npm install
 npm run build        # builds server (dist/index.js) + extension (dist/{sw,options,offscreen,content}.js)
-npm test             # vitest (92 tests)
+npm test             # vitest (96 tests)
 npm run typecheck    # tsc --noEmit across shared/server/extension
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
@@ -84,6 +84,14 @@ and follow `docs/e2e-test-plan.md`.
   `keys.ts`, sending punctuation with `windowsVirtualKeyCode = charCodeAt(0)` makes Chrome act on the
   wrong key and *drop the character*: `"."` is 46, i.e. `VK_DELETE`, so trusted-typing `x@y.com`
   produced `x@ycom`. Punctuation uses OEM virtual keys — send `text` alone for it.
+- **CDP `Input.*` coordinates need no scaling — but the point must be on screen.** `x`/`y` are CSS
+  pixels of the layout viewport (what `getBoundingClientRect` gives). Measured at zoom 1.0/1.5 and
+  DPR 1/1.25/1.5: `clientX,clientY` always came back identical to what was sent, so do **not** multiply
+  by `chrome.tabs.getZoom()` or `devicePixelRatio`. What does bite: CDP never clamps, so a point past
+  the viewport edge hit-tests the root element and the click **silently does nothing**. Page zoom
+  shrinks the visual viewport in CSS px (150 % turns 1920x940 into 1280x630), which is how an element
+  that fit at 100 % ends up off-screen. `centerForInput` scrolls first and throws if it still can't
+  reach — keep that if you add a trusted hover/drag.
 - **`centerOf` is top-document relative** — it adds each ancestor `frameElement`'s rect, because
   CDP `Input.*` dispatches against the top-level viewport. Don't hand it a raw
   `getBoundingClientRect` from inside a frame.

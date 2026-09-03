@@ -20,8 +20,11 @@ export async function withDebugger<T>(tabId: number, fn: () => Promise<T>): Prom
 }
 
 export async function trustedClick(tabId: number, x: number, y: number): Promise<void> {
-  // Coords are CSS pixels from getBoundingClientRect — the space CDP Input expects.
-  // devicePixelRatio scaling is not applied; correct on 1x displays (DPR handling is future work).
+  // Coords are CSS pixels of the layout viewport — exactly getBoundingClientRect's space, with no
+  // scaling. Measured at zoom 1.0/1.5 and DPR 1/1.25/1.5: the event's clientX,clientY came back
+  // identical to what was sent every time, so Chrome folds in both page zoom and DPR itself.
+  // The caller must ensure the point is on screen (see centerForInput) — CDP does not clamp, and a
+  // point past the viewport edge hit-tests the root element and does nothing.
   await send(tabId, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1, buttons: 1 });
   await send(tabId, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1, buttons: 0 });
 }

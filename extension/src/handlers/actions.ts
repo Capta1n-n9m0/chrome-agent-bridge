@@ -23,7 +23,7 @@ export async function click(p: Record<string, unknown>): Promise<{ ok: true }> {
   }
   const { x, y } = await callInPage<{ x: number; y: number }>(
     tab.id!,
-    (ref) => window.__agentBridge!.centerOf(ref as string),
+    (ref) => window.__agentBridge!.centerForInput(ref as string),
     [p.ref],
   );
   await withDebugger(tab.id!, () => trustedClick(tab.id!, x, y));

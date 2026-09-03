@@ -1,7 +1,7 @@
 import { buildSnapshot } from "./snapshot.js";
 import { RefMap } from "./refmap.js";
 import { clickRef, typeRef, scrollRef, hoverRef, selectOptionRef, focusForTypingRef } from "./actions.js";
-import { centerOf } from "./geometry.js";
+import { centerOf, isInViewport } from "./geometry.js";
 
 declare global {
   interface Window {
@@ -14,7 +14,7 @@ declare global {
       scroll: (ref: string | undefined, direction: string) => { ok: true };
       hover: (ref: string) => { ok: true };
       selectOption: (ref: string, values: string[]) => { ok: true };
-      centerOf: (ref: string) => { x: number; y: number };
+      centerForInput: (ref: string) => { x: number; y: number };
     };
   }
 }
@@ -30,10 +30,22 @@ if (!window.__agentBridge) {
     scroll: (ref, direction) => scrollRef(refs, ref, direction),
     hover: (ref) => hoverRef(refs, ref),
     selectOption: (ref, values) => selectOptionRef(refs, ref, values),
-    centerOf: (ref) => {
+    // The aim point for trusted CDP input. Scrolls first: CDP dispatches at the coordinates given
+    // without clamping, so an off-screen point hit-tests the root element and the click silently
+    // does nothing (page zoom shrinks the visual viewport in CSS px, which is how this bites).
+    centerForInput: (ref) => {
       const el = refs.get(ref);
       if (!el) throw new Error(`ref ${ref} not found — call browser_snapshot to re-snapshot`);
-      return centerOf(el);
+      (el as HTMLElement).scrollIntoView?.({ block: "center", inline: "center" });
+      const pt = centerOf(el);
+      const size = { width: window.innerWidth, height: window.innerHeight };
+      if (!isInViewport(pt, size)) {
+        throw new Error(
+          `ref ${ref} is outside the viewport after scrolling (point ${pt.x},${pt.y} vs ` +
+            `${size.width}x${size.height}) — trusted input there would hit nothing`,
+        );
+      }
+      return pt;
     },
   };
 }

@@ -140,11 +140,28 @@ Don't assume — measure:
 
 ### Spike results (fill in)
 
-| Condition | zoom | DPR | `#trusted-only` hit? | `#hit-pad` landed vs `centerOf` |
-|---|---|---|---|---|
-| baseline | 1.0 | | | |
-| page zoom 150 % | 1.5 | | | |
-| HiDPI | 1.0 | 2.0 / 1.25 | | |
+Measured 2026-09-03, Chrome 152, Windows 11, 1920-px-wide window. `#hit-pad` reports the event's
+`clientX,clientY` and, for comparison, the pad's own rect centre at that instant ("exp").
+
+| Condition | zoom | DPR | `innerWidth` | `#trusted-only` hit? | `#hit-pad` landed vs `centerOf` |
+|---|---|---|---|---|---|
+| baseline | 1.0 | 1 | 1920 | yes | `hit at 953,613 exp 953,613` — **exact** |
+| page zoom 150 % | 1.5 | 1.5 | 1280 | **yes** | pad below the fold: `hit at 635,755 exp 635,755` but `on=HTML` — landed on the right coordinates, hit nothing. After `scrollIntoView`: `hit at 635,330 exp 635,330 on=hit-pad` — **exact** |
+| HiDPI (Windows scaling 125 %) | 1.0 | 1.25 | 1536 | yes | `hit at 760,751 exp 760,751 on=hit-pad` — **exact** |
+
+**Conclusion — the premise of this task was wrong.** CDP `Input.dispatchMouseEvent` `x`/`y` are CSS
+pixels of the layout viewport: exactly what `getBoundingClientRect` returns. In all three conditions the
+event's `clientX,clientY` came back **byte-identical** to what `centerOf` sent. Chrome folds both page
+zoom and device pixel ratio in itself, so **no scaling factor is correct** — not `zoom`, not `devicePixelRatio`
+— and `scaleForCdp` would be an identity function. It is not being written; `chrome.tabs.getZoom` is not needed.
+
+The 150 % failure is a *different*, real bug that zoom merely exposed: **the trusted path never scrolls
+its target into view.** The synthetic path does (`clickRef` calls `scrollIntoView`), but the trusted path
+goes straight to `centerOf`. Raising zoom shrinks the visual viewport in CSS px (1920×~940 → 1280×~630),
+so an element that fit at 100 % falls outside it; the click is dispatched at correct coordinates that are
+simply off-screen, hit-tests the root element, and **silently does nothing**. Scrolling first fixes it at
+every zoom level. A trusted click landing outside the viewport should also report an error rather than
+succeed silently.
 
 ## Part D3 (optional) — file upload
 
