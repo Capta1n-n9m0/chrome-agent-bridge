@@ -8,6 +8,33 @@ function text(s: string) {
 
 export function registerTools(server: McpServer, bridge: Bridge): void {
   server.tool(
+    "browser_status",
+    "Diagnose the bridge: is the WebSocket host listening, is the extension connected, and which tab is active. Call this first when other browser tools fail.",
+    {},
+    async () => {
+      const { listening, port } = bridge.hostState;
+      const lines = [
+        listening
+          ? `WebSocket host: listening on 127.0.0.1:${port}`
+          : `WebSocket host: NOT listening${port !== null ? ` (port ${port})` : ""}`,
+      ];
+      const reason = bridge.unavailableReason();
+      if (reason) lines.push(`Problem: ${reason}`);
+      if (!bridge.isConnected()) {
+        lines.push("Extension: not connected — is Chrome open with the Chrome Agent Bridge extension enabled and its token/port set?");
+        return text(lines.join("\n"));
+      }
+      lines.push("Extension: connected");
+      const { tabs } = (await bridge.call("listTabs")) as {
+        tabs: Array<{ id: number; title: string; url: string; active: boolean }>;
+      };
+      const active = tabs.find((t) => t.active);
+      lines.push(active ? `Active tab: [${active.id}] ${active.title} — ${active.url}` : "Active tab: none");
+      return text(lines.join("\n"));
+    },
+  );
+
+  server.tool(
     "browser_navigate",
     "Navigate the active browser tab to a URL.",
     { url: z.string().url().describe("Absolute URL to navigate to") },

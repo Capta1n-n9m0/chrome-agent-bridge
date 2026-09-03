@@ -142,3 +142,52 @@ describe("wait tool", () => {
     expect(calls).toEqual([["waitFor", { text: "Welcome" }]]);
   });
 });
+
+describe("browser_status", () => {
+  function statusTool(bridge: Bridge) {
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    return (server as any)._registeredTools["browser_status"];
+  }
+
+  it("reports a busy port without touching the bridge", async () => {
+    const bridge = new Bridge();
+    const call = vi.spyOn(bridge, "call");
+    bridge.hostState = { listening: false, port: 9234 };
+    bridge.setUnavailableReason("WebSocket port 9234 is busy (EADDRINUSE): another instance is running");
+    const res = await statusTool(bridge).handler({}, {});
+    const out = res.content[0].text as string;
+    expect(out).toMatch(/9234/);
+    expect(out).toMatch(/not listening/i);
+    expect(out).toMatch(/extension: not connected/i);
+    expect(out).toMatch(/EADDRINUSE/);
+    expect(call).not.toHaveBeenCalled();
+  });
+
+  it("reports listening + not connected when Chrome hasn't dialed in", async () => {
+    const bridge = new Bridge();
+    bridge.hostState = { listening: true, port: 9234 };
+    const res = await statusTool(bridge).handler({}, {});
+    const out = res.content[0].text as string;
+    expect(out).toMatch(/listening on 127\.0\.0\.1:9234/);
+    expect(out).toMatch(/extension: not connected/i);
+  });
+
+  it("includes the active tab when connected", async () => {
+    const bridge = fakeBridge(async (m) => {
+      expect(m).toBe("listTabs");
+      return {
+        tabs: [
+          { id: 1, title: "Other", url: "https://other.test/", active: false },
+          { id: 7, title: "Playground", url: "http://localhost:8080/e2e-playground.html", active: true },
+        ],
+      };
+    });
+    bridge.hostState = { listening: true, port: 9234 };
+    bridge.setConnection(new (await import("../src/connection.js")).ExtensionConnection(() => {}));
+    const res = await statusTool(bridge).handler({}, {});
+    const out = res.content[0].text as string;
+    expect(out).toMatch(/extension: connected/i);
+    expect(out).toMatch(/\[7\] Playground — http:\/\/localhost:8080\/e2e-playground\.html/);
+  });
+});
