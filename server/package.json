@@ -1,6 +1,7 @@
 {
   "name": "@bridge/server",
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "bin": { "chrome-bridge-server": "dist/index.js" },
   "scripts": { "build": "node build.mjs" },
