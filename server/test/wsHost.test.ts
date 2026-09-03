@@ -87,3 +87,60 @@ describe("WsHost", () => {
     expect(bridge.isConnected()).toBe(false);
   });
 });
+
+describe("WsHost heartbeat", () => {
+  let host: WsHost | undefined;
+  afterEach(async () => {
+    await host?.close();
+    host = undefined;
+  });
+
+  function connect(port: number, opts: { autoPong?: boolean } = {}): Promise<WebSocket> {
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}`, opts);
+      ws.on("open", () => resolve(ws));
+      ws.on("error", reject);
+    });
+  }
+
+  function waitUntil(pred: () => boolean, timeoutMs = 1000): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const start = Date.now();
+      const tick = () => {
+        if (pred()) return resolve();
+        if (Date.now() - start > timeoutMs) return reject(new Error("waitUntil timed out"));
+        setTimeout(tick, 5);
+      };
+      tick();
+    });
+  }
+
+  it("keeps a client that answers pings connected across several intervals", async () => {
+    const bridge = new Bridge();
+    host = new WsHost(bridge, { port: 0, token: "secret", heartbeatMs: 30 });
+    const port = await host.listen();
+    const ws = await connect(port);
+    ws.send(JSON.stringify({ type: "hello", token: "secret" }));
+    await waitUntil(() => bridge.isConnected());
+    await new Promise((r) => setTimeout(r, 150)); // ~5 intervals
+    expect(bridge.isConnected()).toBe(true);
+    expect(ws.readyState).toBe(WebSocket.OPEN);
+    ws.close();
+  });
+
+  it("terminates a client that stops answering pings and fails in-flight calls fast", async () => {
+    const bridge = new Bridge();
+    host = new WsHost(bridge, { port: 0, token: "secret", heartbeatMs: 30 });
+    const port = await host.listen();
+    const ws = await connect(port, { autoPong: false }); // a dead Chrome never pongs
+    ws.send(JSON.stringify({ type: "hello", token: "secret" }));
+    await waitUntil(() => bridge.isConnected());
+
+    // Attach the expectation before the rejection fires, or Node reports an unhandled rejection.
+    const inFlight = expect(bridge.call("snapshot")).rejects.toThrow(/disconnected/); // never answered
+    const closed = new Promise<void>((resolve) => ws.on("close", () => resolve()));
+    await closed;
+    await waitUntil(() => !bridge.isConnected());
+    await inFlight;
+  });
+});

@@ -7,6 +7,12 @@ import { validateHello } from "./handshake.js";
 export interface WsHostOptions {
   port: number;
   token: string;
+  /**
+   * Ping interval. A socket that misses one pong is terminated, so a Chrome that died (or an
+   * offscreen document Chrome tore down) is detected within ~2 intervals instead of leaving a
+   * stale connection on the Bridge where every call waits the full 30 s timeout. Default 30 000.
+   */
+  heartbeatMs?: number;
 }
 
 export class WsHost {
@@ -36,6 +42,21 @@ export class WsHost {
 
     ws.on("error", (err) => console.error("[chrome-bridge] socket error:", err));
 
+    // Browsers answer WebSocket pings automatically, so a missing pong means the peer is gone.
+    let isAlive = true;
+    ws.on("pong", () => {
+      isAlive = true;
+    });
+    const heartbeat = setInterval(() => {
+      if (!isAlive) {
+        console.error("[chrome-bridge] extension stopped answering pings — dropping the connection");
+        ws.terminate();
+        return;
+      }
+      isAlive = false;
+      ws.ping();
+    }, this.options.heartbeatMs ?? 30_000);
+
     ws.on("message", (raw) => {
       const data = raw.toString();
       if (!authed) {
@@ -53,6 +74,7 @@ export class WsHost {
     });
 
     ws.on("close", () => {
+      clearInterval(heartbeat);
       if (connection) {
         connection.rejectAll("extension disconnected");
         if (this.bridge.currentConnection() === connection) {
