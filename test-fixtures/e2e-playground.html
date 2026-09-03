@@ -24,9 +24,11 @@
 
     <section aria-label="Login form">
       <h2>Form</h2>
-      <!-- TC-PERC: named via <label for> -->
+      <!-- TC-PERC: named via <label for>. The form= attribute makes #login-form its form owner even
+           though it sits outside the <form>, so Enter in this field implicitly submits (TC-ACT-3,
+           TC-TRUST-6) and typeRef's el.form.requestSubmit() has a form to call. -->
       <label for="email">Email address</label>
-      <input id="email" type="text" />
+      <input id="email" type="text" form="login-form" />
 
       <!-- TC-PERC: named via aria-labelledby -->
       <span id="pwd-label">Password</span>
@@ -60,6 +62,16 @@
       <button id="hover-target">Hover me</button>
 
       <a href="#section-bottom" id="jump-link">Jump to bottom</a>
+
+      <!-- TC-TRUST: only real (isTrusted) key/input events register here -->
+      <label for="trusted-input">Trusted-only input</label>
+      <input id="trusted-input" />
+
+      <!-- TC-TRUST/zoom: reports where a trusted click actually lands, in client coords -->
+      <div id="hit-pad" role="button" tabindex="0" aria-label="Trusted-click hit pad" style="height: 200px; background: #eef; border: 1px dashed #99f; display: flex; align-items: center; justify-content: center;">
+        Trusted-click hit pad
+      </div>
+      <p id="env">env: (pending)</p>
     </section>
 
     <!-- TC-PERC (Phase C): shadow DOM, same-origin iframe, hidden variants, extra roles. -->
@@ -131,6 +143,29 @@
       });
 
       document.getElementById("hover-target").addEventListener("mouseover", () => set("hovered"));
+
+      // Only real keystrokes reach these — synthetic .value assignment / KeyboardEvent is rejected.
+      const trustedInput = document.getElementById("trusted-input");
+      trustedInput.addEventListener("input", (e) => {
+        set(e.isTrusted ? "TRUSTED input = " + e.target.value : "synthetic input ignored");
+      });
+      trustedInput.addEventListener("keydown", (e) => {
+        set(e.isTrusted ? "TRUSTED key = " + e.key : "synthetic key ignored");
+      });
+
+      // Zoom/DPR spike: report the landing point of a trusted click, in CSS client pixels.
+      const pad = document.getElementById("hit-pad");
+      pad.addEventListener("mousedown", (e) => {
+        // "exp" is what centerOf() would have computed for this element right now, so the status
+        // line shows landed-vs-expected directly.
+        const r = pad.getBoundingClientRect();
+        const ex = Math.round(r.left + r.width / 2), ey = Math.round(r.top + r.height / 2);
+        set("hit at " + Math.round(e.clientX) + "," + Math.round(e.clientY) +
+            " exp " + ex + "," + ey + " (isTrusted=" + e.isTrusted + ")");
+      });
+
+      document.getElementById("env").textContent =
+        "env: DPR=" + window.devicePixelRatio + " innerWidth=" + window.innerWidth + " outerWidth=" + window.outerWidth;
 
       const form = document.getElementById("login-form");
       form.addEventListener("submit", (e) => {

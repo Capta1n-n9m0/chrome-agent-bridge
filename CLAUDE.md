@@ -40,7 +40,7 @@ Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(met
 ```bash
 npm install
 npm run build        # builds server (dist/index.js) + extension (dist/{sw,options,offscreen,content}.js)
-npm test             # vitest (72 tests)
+npm test             # vitest (92 tests)
 npm run typecheck    # tsc --noEmit across shared/server/extension
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
@@ -80,6 +80,10 @@ and follow `docs/e2e-test-plan.md`.
 - **The zero-size snapshot filter is gated on `hasLayout(doc)`** — jsdom reports every rect as 0x0,
   so an ungated filter would empty the snapshot in every unit test. Keep the gate if you touch
   `snapshot.ts`; tests that want the filter stub `documentElement.getBoundingClientRect`.
+- **A character's ASCII code is its virtual key code only for `A-Z`, `0-9` and space.** In
+  `keys.ts`, sending punctuation with `windowsVirtualKeyCode = charCodeAt(0)` makes Chrome act on the
+  wrong key and *drop the character*: `"."` is 46, i.e. `VK_DELETE`, so trusted-typing `x@y.com`
+  produced `x@ycom`. Punctuation uses OEM virtual keys — send `text` alone for it.
 - **`centerOf` is top-document relative** — it adds each ancestor `frameElement`'s rect, because
   CDP `Input.*` dispatches against the top-level viewport. Don't hand it a raw
   `getBoundingClientRect` from inside a frame.
@@ -93,7 +97,8 @@ by `docs/e2e-test-plan.md` against real Chrome. New pure logic → write a faili
 
 ## Conventions
 
-- Commits end with `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
+- Commits end with the `Co-Authored-By: Claude …` trailer for the model that wrote them (plus the
+  `Claude-Session:` line the session supplies).
 - Don't commit the token (`bridge.token`, `.env` are gitignored). The localhost bind + token are the
   only security boundary — treat the token as a password; never log it.
 

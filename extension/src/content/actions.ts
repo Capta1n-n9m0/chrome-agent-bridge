@@ -27,6 +27,31 @@ export function typeRef(refs: RefMap, ref: string, value: string, submit: boolea
   return { ok: true };
 }
 
+/**
+ * Prepare an element for *trusted* typing: focus it and select its whole contents, so the real
+ * keystrokes that follow replace what was there (the trusted path never touches `.value`).
+ * Returns a non-null object — `unwrapResult` reads null/undefined as failure.
+ */
+export function focusForTypingRef(refs: RefMap, ref: string): { ok: true } {
+  const el = resolve(refs, ref) as HTMLElement;
+  el.scrollIntoView?.({ block: "center", inline: "center" });
+  el.focus();
+  const field = el as HTMLInputElement | HTMLTextAreaElement;
+  if (typeof field.select === "function") {
+    // Not every input type supports selection (email/number throw on selectionStart); select() is safe.
+    field.select();
+    return { ok: true };
+  }
+  const sel = el.ownerDocument.getSelection();
+  if (sel) {
+    const range = el.ownerDocument.createRange();
+    range.selectNodeContents(el);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  return { ok: true };
+}
+
 export function scrollRef(refs: RefMap, ref: string | undefined, direction: string): { ok: true } {
   if (ref) {
     (resolve(refs, ref) as HTMLElement).scrollIntoView?.({ block: "center" });

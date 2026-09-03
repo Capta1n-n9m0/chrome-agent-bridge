@@ -1,6 +1,6 @@
 import { activeTab } from "../tabs.js";
 import { ensureContent, callInPage } from "../inject.js";
-import { withDebugger, trustedClick } from "../debugger.js";
+import { withDebugger, trustedClick, trustedType, trustedPressKey } from "../debugger.js";
 
 async function inActiveTab<T>(fn: (...args: unknown[]) => T, args: unknown[]): Promise<T> {
   const tab = await activeTab();
@@ -30,11 +30,39 @@ export async function click(p: Record<string, unknown>): Promise<{ ok: true }> {
   return { ok: true };
 }
 
-export const type = (p: Record<string, unknown>) =>
-  inActiveTab(
-    (ref, value, submit) => window.__agentBridge!.type(ref as string, value as string, submit as boolean),
-    [p.ref, p.text, p.submit ?? false],
-  );
+/**
+ * Synthetic typing sets `.value` and always "succeeds", so unlike click there is no observable
+ * failure to escalate on — `trusted:true` is the way in to real CDP keystrokes. The content path is
+ * still tried first when untrusted, and a throw there (stale ref) falls through to the trusted path.
+ */
+export async function type(p: Record<string, unknown>): Promise<{ ok: true }> {
+  const tab = await activeTab();
+  await ensureContent(tab.id!);
+  const ref = p.ref as string;
+  const value = p.text as string;
+  const submit = p.submit === true;
+  const trusted = p.trusted === true;
+  if (!trusted) {
+    try {
+      await callInPage(
+        tab.id!,
+        (r, v, s) => window.__agentBridge!.type(r as string, v as string, s as boolean),
+        [ref, value, submit],
+      );
+      return { ok: true };
+    } catch (err) {
+      console.warn("[bridge] content-script type failed; escalating to CDP trusted input:", err);
+      // fall through to trusted input
+    }
+  }
+  // Focus + select-all in the page, then replace the selection with real keystrokes.
+  await callInPage(tab.id!, (r) => window.__agentBridge!.focusForTyping(r as string), [ref]);
+  await withDebugger(tab.id!, async () => {
+    await trustedType(tab.id!, value);
+    if (submit) await trustedPressKey(tab.id!, "Enter");
+  });
+  return { ok: true };
+}
 
 export const scroll = (p: Record<string, unknown>) =>
   inActiveTab(
@@ -51,9 +79,16 @@ export const selectOption = (p: Record<string, unknown>) =>
     [p.ref, p.values],
   );
 
-export const pressKey = (p: Record<string, unknown>) =>
-  inActiveTab((key) => {
-    const el = (document.activeElement ?? document.body) as HTMLElement;
-    for (const t of ["keydown", "keyup"]) el.dispatchEvent(new KeyboardEvent(t, { key: key as string, bubbles: true }));
+export async function pressKey(p: Record<string, unknown>): Promise<{ ok: true }> {
+  const key = p.key as string;
+  if (p.trusted === true) {
+    const tab = await activeTab();
+    await withDebugger(tab.id!, () => trustedPressKey(tab.id!, key));
     return { ok: true };
-  }, [p.key]);
+  }
+  return inActiveTab((k) => {
+    const el = (document.activeElement ?? document.body) as HTMLElement;
+    for (const t of ["keydown", "keyup"]) el.dispatchEvent(new KeyboardEvent(t, { key: k as string, bubbles: true }));
+    return { ok: true };
+  }, [key]);
+}

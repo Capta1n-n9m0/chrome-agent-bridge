@@ -45,20 +45,20 @@ export function registerTools(server: McpServer, bridge: Bridge): void {
 
   server.tool(
     "browser_type",
-    "Type text into the element with the given ref. Optionally submit.",
-    { ref: z.string(), text: z.string(), submit: z.boolean().optional() },
-    async ({ ref, text: value, submit }) => {
-      await bridge.call("type", { ref, text: value, submit: submit ?? false });
+    "Type text into the element with the given ref. Optionally submit. Set trusted=true to send real CDP keystrokes (shows the debugging banner) for sites that ignore synthetic input; the trusted path selects the field's existing text and replaces it.",
+    { ref: z.string(), text: z.string(), submit: z.boolean().optional(), trusted: z.boolean().optional() },
+    async ({ ref, text: value, submit, trusted }) => {
+      await bridge.call("type", { ref, text: value, submit: submit ?? false, trusted: trusted ?? false });
       return text(`Typed into ${ref}`);
     },
   );
 
   server.tool(
     "browser_press_key",
-    "Press a key (e.g. Enter, Escape, Tab) on the focused element.",
-    { key: z.string() },
-    async ({ key }) => {
-      await bridge.call("pressKey", { key });
+    "Press a key (e.g. Enter, Escape, Tab) on the focused element. Set trusted=true to send a real CDP keystroke (shows the debugging banner) for sites that ignore synthetic input.",
+    { key: z.string(), trusted: z.boolean().optional() },
+    async ({ key, trusted }) => {
+      await bridge.call("pressKey", { key, trusted: trusted ?? false });
       return text(`Pressed ${key}`);
     },
   );

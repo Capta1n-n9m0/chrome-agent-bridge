@@ -66,6 +66,57 @@ describe("action tools", () => {
     expect(calls).toEqual([["click", { ref: "e5", trusted: false }]]);
   });
 
+  it("browser_type forwards trusted:false when the flag is omitted", async () => {
+    const calls: Array<[string, any]> = [];
+    const bridge = fakeBridge(async (m, p) => {
+      calls.push([m, p]);
+      return { ok: true };
+    });
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    await (server as any)._registeredTools["browser_type"].handler({ ref: "e5", text: "hi" }, {});
+    expect(calls).toEqual([["type", { ref: "e5", text: "hi", submit: false, trusted: false }]]);
+  });
+
+  it("browser_type forwards trusted:true when asked", async () => {
+    const calls: Array<[string, any]> = [];
+    const bridge = fakeBridge(async (m, p) => {
+      calls.push([m, p]);
+      return { ok: true };
+    });
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    await (server as any)._registeredTools["browser_type"].handler(
+      { ref: "e5", text: "hi", submit: true, trusted: true },
+      {},
+    );
+    expect(calls).toEqual([["type", { ref: "e5", text: "hi", submit: true, trusted: true }]]);
+  });
+
+  it("browser_press_key forwards trusted:false when the flag is omitted", async () => {
+    const calls: Array<[string, any]> = [];
+    const bridge = fakeBridge(async (m, p) => {
+      calls.push([m, p]);
+      return { ok: true };
+    });
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    await (server as any)._registeredTools["browser_press_key"].handler({ key: "Enter" }, {});
+    expect(calls).toEqual([["pressKey", { key: "Enter", trusted: false }]]);
+  });
+
+  it("browser_press_key forwards trusted:true when asked", async () => {
+    const calls: Array<[string, any]> = [];
+    const bridge = fakeBridge(async (m, p) => {
+      calls.push([m, p]);
+      return { ok: true };
+    });
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    await (server as any)._registeredTools["browser_press_key"].handler({ key: "Enter", trusted: true }, {});
+    expect(calls).toEqual([["pressKey", { key: "Enter", trusted: true }]]);
+  });
+
   it("browser_list_tabs renders the tab list as text", async () => {
     const bridge = fakeBridge(async () => ({ tabs: [{ id: 1, title: "A", url: "http://a", active: true }] }));
     const server = new McpServer({ name: "t", version: "0" });
