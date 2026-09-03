@@ -2,7 +2,7 @@
 
 - **Date:** 2026-09-03
 - **Branch:** `main` (merged from `feat/agent-bridge`; published as a private GitHub repo)
-- **Status:** Code complete; **72 unit tests green**; **live in-browser E2E passed (29 cases)** against the real default profile; 3 runtime bugs found & fixed. Merged to `main` and published (private).
+- **Status:** Code complete; **72 unit tests green**; **live in-browser E2E passed** — 29 cases on 2026-06-04 plus the 13-case Phase C pass on 2026-09-03 — against the real default profile; 3 runtime bugs found & fixed. Merged to `main` and published (private).
 
 ---
 
@@ -16,6 +16,18 @@ Ran the suite in `docs/e2e-test-plan.md` against real Chrome + the live MCP conn
 3. `9bc4701` — invalid/stale refs **silently succeeded**: when an injected fn throws, Chrome returns `result: null` (not undefined / not a rejection); `callInPage` only guarded `undefined`. Fixed via `unwrapResult` (null *or* undefined → actionable error).
 
 **Not yet exercised live** (need manual/long setup): CONN-5 idle keepalive (3-min soak), TRUST-3 debugger-vs-DevTools conflict, CONN-2/3 not-connected/server-restart (would disconnect the session). SEC-1 localhost-only bind confirmed by inspection.
+
+### Phase C E2E (2026-09-03)
+
+Ran `docs/plans/2026-09-03-step1-phase-c-e2e-verification.md` against real Chrome **152.0.7977.75** on Windows 11 (1920×1080, OS scaling and Chrome zoom both 100% → DPR 1), verifying commit `39e6cb4` — the perception-fidelity work that until now was only unit-tested. **All 13 cases passed on the first attempt and no code changes were needed**; the service-worker console stayed clean throughout. Full evidence is in `docs/e2e-test-plan.md` §5, "Run 2".
+
+- **PERC-5 (shadow DOM)** — the open root's button is listed and clickable; the closed root's button is *rendered on screen but absent from the snapshot*, and the click fires the listener bound inside the shadow root rather than on the host, proving the RefMap holds the shadow element.
+- **PERC-6 / PERC-7 (same-origin iframe)** — the frame's button appears on the *first* snapshot; a default click reports `isTrusted = false` and a `trusted:true` click lands **inside the frame** (`iframe: TRUSTED click`), so the frame-offset `centerOf` is correct at DPR 1. HiDPI/zoom remains unverified and is Phase D's problem, not a frame-offset one.
+- **PERC-8 (hidden decoys)** — all four excluded. Two of them are visibly rendered, so the exclusion is semantic; the zero-size decoy has no other disqualifier, which is the only available proof that the `hasLayout(doc)` gate works in a browser (jsdom reports every rect as 0×0, so unit tests cannot test it).
+- **PERC-9 (extra roles)** — all six roles listed with the `[disabled]` marker; typing into the spinbutton and clicking the `role="tab"` both reached the page.
+- **Regression smoke** — PERC-1…4 and ACT-1…2 re-ran green, so the Phase C snapshot rewrite did not regress the 2026-06-04 pass.
+
+One documentation defect surfaced and was fixed: SMOKE-2 expected the fixture's `status:` line in the snapshot, but snapshots list only interactive elements — that line is screenshot-only.
 
 ---
 
@@ -35,7 +47,7 @@ out of.
 | 4 | `chrome.debugger` trusted-input fallback + full-page screenshot | ✅ Done |
 | 5 | Offscreen-document keepalive + setup docs | ✅ Done |
 | + | `browser_wait_for` (closed a spec-§7 gap found in final review) | ✅ Done |
-| C | Perception fidelity: shadow DOM + same-origin iframes, hidden-subtree pruning, richer roles, frame-correct coordinates | ✅ Done (unit-tested; E2E PERC-5…9 pending) |
+| C | Perception fidelity: shadow DOM + same-origin iframes, hidden-subtree pruning, richer roles, frame-correct coordinates | ✅ Done (E2E-verified 2026-09-03) |
 
 **Quality state:** 72 unit tests pass; `tsc` typecheck clean across all three packages; all four
 bundles build (`server/dist/index.js`, `extension/dist/{sw,options,offscreen,content}.js`). Every
@@ -74,15 +86,21 @@ center-point math, and every tool's bridge wiring.
 `chrome.debugger` paths, tabs, history, `wait_for`, and the token gate — against the real default
 profile.
 
-**NOT yet verified live:** the Phase C perception work (`docs/e2e-test-plan.md` PERC-5…9: shadow
-DOM, same-origin iframes incl. a trusted click through the frame offset, the hidden decoys, the
-new roles), plus the deferred soak cases CONN-5 and TRUST-3.
+**Verified live (2026-09-03, §0 "Phase C E2E"):** the Phase C perception work —
+`docs/e2e-test-plan.md` PERC-5…9: open vs. closed shadow roots, same-origin iframes including a
+trusted click through the frame offset, all four hidden decoys, and the new roles — plus a
+PERC-1…4 / ACT-1…2 regression smoke. Chrome 152 at DPR 1.
+
+**NOT yet verified live:** the deferred soak cases CONN-5 (idle keepalive) and TRUST-3
+(debugger-vs-DevTools conflict), and trusted-click coordinates on HiDPI / non-100% zoom.
 
 ## 4. Known limitations & risks
 
 - **Trusted-click coordinates on HiDPI/zoom** — `trusted:true` clicks use CSS-pixel coordinates
   from `getBoundingClientRect`; on zoomed or Retina displays they may land slightly off. Default
-  clicks (by element) are unaffected.
+  clicks (by element) are unaffected. Verified correct at 100% zoom / DPR 1 on 2026-09-03,
+  including through an iframe's frame offset (PERC-7); **HiDPI and non-100% zoom are still
+  untested** — that's Phase D's DPR work.
 - **Typing is synthetic-only** — `browser_type` dispatches input events; there is a `trustedType`
   CDP helper in the code but it is not wired into the `type` handler yet. Sites that reject
   synthetic typing have no fallback.
@@ -101,6 +119,10 @@ new roles), plus the deferred soak cases CONN-5 and TRUST-3.
 
 ## 5. Roadmap
 
+**Next three steps are planned in detail** (2026-09-03): `docs/plans/2026-09-03-step1-phase-c-e2e-verification.md`
+(✅ executed 2026-09-03 — all cases passed) → `…step2-phase-d-action-fidelity.md` →
+`…step3-phase-b-robustness.md`. Execute in that order.
+
 **Phase A — Validate & ship.** ✅ Done (2026-06-04) — see §0. 29 E2E cases passed; 3 runtime bugs
 fixed; merged to `main`; published as a private GitHub repo. Remaining: deferred soak tests
 (CONN-5 idle keepalive, TRUST-3 DevTools conflict).
@@ -109,7 +131,7 @@ fixed; merged to `main`; published as a private GitHub repo. Remaining: deferred
 idle keepalive soak across SW culls, debugger-attach conflict UX when DevTools is open, and a
 clearer "port busy" message surfaced through the tools (not just stderr).
 
-**Phase C — Perception fidelity.** ✅ Done (2026-09-03). Open shadow roots + same-origin frames;
+**Phase C — Perception fidelity.** ✅ Done and **E2E-verified live** (2026-09-03; see §0). Open shadow roots + same-origin frames;
 `aria-hidden`/`inert`/`hidden`/`display:none` subtree pruning; zero-size filtering (gated on the
 document reporting layout, so it no-ops under jsdom); explicit-ARIA-role passthrough plus
 `number`/`range`/`file`/`summary`/`contenteditable`/`select[multiple]`; a `[disabled]` marker;

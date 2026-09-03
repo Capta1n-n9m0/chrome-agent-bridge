@@ -52,7 +52,7 @@ closed shadow roots, a same-origin iframe, four hidden decoys, and the extra rol
 | ID | Objective | Steps | Expected |
 |---|---|---|---|
 | SMOKE-1 | The whole loop works | With everything from §1 running, call `browser_navigate {"url":"http://localhost:8080/e2e-playground.html"}` | Active tab loads the playground; tool returns "Navigated active tab to …". SW console shows `connection: up`. |
-| SMOKE-2 | Perception works | `browser_snapshot` | Returns a text outline including `textbox "Email address" [ref=…]`, `button "Sign in" [ref=…]`, `combobox "Favorite fruit" [ref=…]`, and the `status: idle` text. |
+| SMOKE-2 | Perception works | `browser_snapshot` | Returns a text outline including `textbox "Email address" [ref=…]`, `button "Sign in" [ref=…]`, `combobox "Favorite fruit" [ref=…]`. The `status:` line is a non-interactive `<div>` and is **not** in the snapshot by design — read it with `browser_screenshot`. |
 
 If SMOKE-1/2 fail, stop and debug connection/injection before the rest.
 
@@ -164,6 +164,58 @@ REAL-1 [ ] REAL-2 [ ]
 Failures / notes (TC id → what happened → SW-console / server-stderr excerpt):
 - …
 ```
+
+### Run 2 — 2026-09-03 (Phase C verification of commit `39e6cb4`)
+
+```
+Date: 2026-09-03  Chrome version: 152.0.7977.75 (Official Build, 64-bit)  Node: 20+  OS: Windows 11 Pro 26200
+Display: 24" 1920×1080, OS scaling 100%, Chrome zoom 100% → DPR 1
+
+SMOKE-1 [P]   SMOKE-2 [P]
+PERC-1 [P] PERC-2 [P] PERC-3 [P] PERC-4 [P] PERC-5 [P] PERC-6 [P] PERC-7 [P] PERC-8 [P] PERC-9 [P]
+ACT-1 [P] ACT-2 [P]
+(other rows not re-run this pass — see Run 1, 2026-06-04, in §0 of docs/progress-and-roadmap.md)
+```
+
+Scope: PERC-5…9 (never run live before) plus a regression smoke over PERC-1…4 / ACT-1…2 to confirm
+the Phase C snapshot rewrite didn't regress the earlier pass. **All 13 cases passed on the first
+attempt; no code changes were needed.** Service-worker console clean (no errors) for the whole run.
+
+Evidence per case:
+
+- **PERC-1/2** — first snapshot: `textbox "Email address" [ref=e1]`, `textbox "Password" [ref=e2]`
+  (via `aria-labelledby`), `textbox "Search query" [ref=e3]` (via placeholder),
+  `combobox "Favorite fruit" [ref=e4]`, `button "Sign in" [ref=e5]`, `link "Jump to bottom" [ref=e9]`.
+- **PERC-3/4** — viewport PNG renders; `fullPage:true` returns a taller PNG containing `BOTTOM MARKER`.
+  The debugging banner appeared for the full-page capture and cleared afterwards.
+- **ACT-1/2** — `browser_type e1 "a@b.com"` → `status: email = a@b.com`;
+  `browser_click e6` → snapshot `Click counter: 1`, screenshot `status: counter = 1`.
+- **PERC-5 ★** — `button "Shadow button" [ref=e10]` listed; `Sealed button (must not be listed)` absent
+  from the snapshot even though the screenshot shows it *rendered* (so the exclusion is the closed-root
+  rule, not a missing element). Click → `status: shadow button clicked`. The fixture attaches that
+  listener to the button *inside* the open root and gives the host `<div>` none, so the RefMap held the
+  shadow element, not the host.
+- **PERC-6 ★** — `button "Iframe button" [ref=e11]` present on the **first** snapshot (no frame-population
+  timing issue). Click → `status: iframe button clicked (isTrusted = false)`, frame `<p>`:
+  `iframe: synthetic click`.
+- **PERC-7** — `browser_click {ref:e11, trusted:true}` → frame `<p>`: `iframe: TRUSTED click`,
+  `status: iframe button clicked (isTrusted = true)`. The banner appeared and cleared. Frame-offset
+  `centerOf` is therefore correct **at 100% zoom / DPR 1**; HiDPI and non-100% zoom remain unverified
+  (see Phase D / the "Trusted-click coordinates" limitation).
+- **PERC-8 ★** — none of the four decoys appear in any snapshot. `Decoy: aria-hidden` and `Decoy: inert`
+  are *visibly rendered* in the screenshot, so their exclusion is semantic pruning rather than absence.
+  `Decoy: zero size` carries no `aria-hidden`/`inert`/`display:none`, so only the zero-size filter can
+  drop it — confirming the `hasLayout(doc)` gate behaves correctly in real Chrome, which the jsdom unit
+  tests cannot prove.
+- **PERC-9** — snapshot lists `spinbutton "Quantity" [ref=e12]`, `slider "Volume" [ref=e13]`,
+  `listbox "Tags" [ref=e14]`, `textbox "Notes editor" [ref=e15]` (contenteditable),
+  `tab "Details tab" [ref=e16]`, `button "Disabled action" [ref=e17] [disabled]`.
+  `browser_type e12 "7"` → `status: qty = 7`; `browser_click e16` → `status: role=tab clicked`.
+
+Failures / notes:
+- None. One documentation defect found and fixed in this commit: SMOKE-2 previously expected the
+  `status:` text in the snapshot; Phase C snapshots list only interactive elements, so that line is
+  screenshot-only.
 
 ## 6. Exit criteria
 
