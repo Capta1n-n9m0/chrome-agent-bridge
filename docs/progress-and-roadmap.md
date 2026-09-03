@@ -1,8 +1,8 @@
 # Progress & Roadmap
 
 - **Date:** 2026-09-03
-- **Branch:** `main` (merged from `feat/agent-bridge`; published as a private GitHub repo)
-- **Status:** Phases A–D complete; **113 unit tests green**; **live in-browser E2E passed** — 29 cases on 2026-06-04, then the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03 — against the real default profile; 5 runtime bugs found & fixed across those runs. `main`, published (private). **17 tools.**
+- **Branch:** `main` (merged from `feat/agent-bridge`; public on GitHub, MIT, since 2026-09-03)
+- **Status:** Phases A–D complete; **113 unit tests green**; **live in-browser E2E passed** — 29 cases on 2026-06-04, then the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03 — against the real default profile; 5 runtime bugs found & fixed across those runs. `main`, **public on GitHub (MIT) since 2026-09-03**. **17 tools.**
 
 ---
 
@@ -197,7 +197,7 @@ measured, though DPR 1.25 and 1.5 both needed no correction.
 (arm/disarm), **D3** file upload, then Phase F ergonomics.
 
 **Phase A — Validate & ship.** ✅ Done (2026-06-04) — see §0. 29 E2E cases passed; 3 runtime bugs
-fixed; merged to `main`; published as a private GitHub repo. Remaining: deferred soak tests
+fixed; merged to `main`; published on GitHub (private at the time; public + MIT since 2026-09-03). Remaining: deferred soak tests
 (CONN-5 idle keepalive, TRUST-3 DevTools conflict).
 
 **Phase B — Robustness from E2E findings.** ✅ Done and **E2E-verified live** (2026-09-03; see §0
