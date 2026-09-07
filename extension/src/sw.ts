@@ -6,6 +6,10 @@ import { back, forward } from "./handlers/history.js";
 import { listTabs, selectTab, newTab, closeTab } from "./handlers/tabs.js";
 import { waitFor } from "./handlers/wait.js";
 import { evaluate } from "./handlers/evaluate.js";
+import { networkRequests, networkClear } from "./handlers/network.js";
+import { log as networkLog, ownPort, scheduleFlush, setOwnPort } from "./network-state.js";
+import { isOwnTraffic } from "./network-log.js";
+import type { WebRequestDetails, WebRequestEvent } from "./network-log.js";
 
 const DEFAULT_PORT = 9234;
 const router = new Router();
@@ -26,12 +30,66 @@ router.on("newTab", newTab);
 router.on("closeTab", closeTab);
 router.on("waitFor", waitFor);
 router.on("evaluate", evaluate);
+router.on("networkRequests", networkRequests);
+router.on("networkClear", networkClear);
+
+// --- Network capture -------------------------------------------------------------------------
+// MV3 requires every webRequest listener to be registered synchronously while the worker script
+// evaluates (a module SW cannot use top-level `await`), so these live at the top level and ingest
+// into the in-memory log from the first event. `network-state.ts` merges the stored log in
+// underneath once its rehydrate promise resolves. `extraHeaders` is deliberately absent from every
+// extraInfoSpec, so Chrome never hands us Cookie / Set-Cookie.
+
+const ALL_URLS = { urls: ["<all_urls>"] };
+
+function ingest(event: WebRequestEvent, d: WebRequestDetails): void {
+  if (isOwnTraffic(d.url, ownPort())) return;
+  networkLog.ingest(event, d);
+  scheduleFlush();
+}
+
+chrome.webRequest.onBeforeRequest.addListener(
+  (d) => void ingest("onBeforeRequest", d as unknown as WebRequestDetails),
+  ALL_URLS,
+  ["requestBody"],
+);
+chrome.webRequest.onSendHeaders.addListener(
+  (d) => void ingest("onSendHeaders", d as unknown as WebRequestDetails),
+  ALL_URLS,
+  ["requestHeaders"],
+);
+chrome.webRequest.onHeadersReceived.addListener(
+  (d) => void ingest("onHeadersReceived", d as unknown as WebRequestDetails),
+  ALL_URLS,
+  ["responseHeaders"],
+);
+chrome.webRequest.onBeforeRedirect.addListener(
+  (d) => void ingest("onBeforeRedirect", d as unknown as WebRequestDetails),
+  ALL_URLS,
+  ["responseHeaders"],
+);
+chrome.webRequest.onCompleted.addListener(
+  (d) => void ingest("onCompleted", d as unknown as WebRequestDetails),
+  ALL_URLS,
+  ["responseHeaders"],
+);
+chrome.webRequest.onErrorOccurred.addListener(
+  (d) => void ingest("onErrorOccurred", d as unknown as WebRequestDetails),
+  ALL_URLS,
+);
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  networkLog.forgetTab(tabId);
+  scheduleFlush();
+});
 
 let connecting = false;
 
 async function getConfig(): Promise<{ port: number; token: string }> {
   const { port, token } = await chrome.storage.local.get(["port", "token"]);
-  return { port: Number(port) || DEFAULT_PORT, token: String(token ?? "") };
+  const resolved = Number(port) || DEFAULT_PORT;
+  setOwnPort(resolved); // so isOwnTraffic can drop the bridge's own loopback socket
+  return { port: resolved, token: String(token ?? "") };
 }
 
 async function ensureOffscreen(): Promise<void> {

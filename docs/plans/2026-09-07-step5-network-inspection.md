@@ -355,14 +355,14 @@ storage, so re-writing it would be pointless).
 
 ### Task N2.1: manifest
 
-- [ ] `manifest.json`: add `"webRequest"` to `permissions`. `host_permissions: ["<all_urls>"]`
+- [x] `manifest.json`: add `"webRequest"` to `permissions`. `host_permissions: ["<all_urls>"]`
       already covers observation. **No** `webRequestBlocking`.
-- [ ] Note for the N4 human gate: after a permission is added, `chrome://extensions` may show the
+- [x] Note for the N4 human gate: after a permission is added, `chrome://extensions` may show the
       extension disabled with a "requires new permissions" notice — Reload, then Enable/Repair.
 
 ### Task N2.2: listeners, rehydrate, flush (all at the **top level** of `sw.ts`)
 
-- [ ] `const log = new NetworkLog({ now: Date.now })` and the six listeners, registered synchronously
+- [x] `const log = new NetworkLog({ now: Date.now })` and the six listeners, registered synchronously
       (MV3 needs them known on every SW start), all with `{ urls: ["<all_urls>"] }`:
       `onBeforeRequest` (`["requestBody"]`), `onSendHeaders` (`["requestHeaders"]`),
       `onHeadersReceived` (`["responseHeaders"]`), `onBeforeRedirect` (`["responseHeaders"]`),
@@ -370,19 +370,19 @@ storage, so re-writing it would be pointless).
       Each: `if (isOwnTraffic(d.url, port)) return; log.ingest(name, d); scheduleFlush();`
       (`port` is read once from `chrome.storage.local` into a module variable, defaulting to 9234 —
       the WS host is on the loopback so the check is by port only).
-- [ ] `chrome.tabs.onRemoved` → `log.forgetTab(id); scheduleFlush()`.
-- [ ] `const ready: Promise<void> = chrome.storage.session.get(null).then(all => log.merge(fromKeys(all)))
+- [x] `chrome.tabs.onRemoved` → `log.forgetTab(id); scheduleFlush()`.
+- [x] `const ready: Promise<void> = chrome.storage.session.get(null).then(all => log.merge(fromKeys(all)))
       .catch(() => {})` — **not** awaited at the top level (0.2). Handlers receive `{ log, ready }`
       through a small `network-state.ts` module so `sw.ts` stays the wiring file.
-- [ ] `scheduleFlush()`: 250 ms trailing debounce with a 1 s max wait; the flush does
+- [x] `scheduleFlush()`: 250 ms trailing debounce with a 1 s max wait; the flush does
       `const dirty = log.takeDirty(); storage.session.set({ "netlog:meta": …, ...dirtyTabs })` and
       `storage.session.remove` for forgotten tabs; on rejection → `log.evictOldest(0.5)` and one
       retry; `console.warn` counts only.
-- [ ] SW console: `[bridge] network: rehydrated N entries` once; nothing per event.
+- [x] SW console: `[bridge] network: rehydrated N entries` once; nothing per event.
 
 ### Task N2.3: handlers + router
 
-- [ ] `handlers/network.ts`:
+- [x] `handlers/network.ts`:
   - `networkRequests(p)`: `await ready`; resolve `tab` (`undefined`/`"active"` → `activeTab().id`,
     `"all"`, or a number); coerce `limit` (`Number`, finite, default 50, clamp `[1, 500]`);
     `types` must be an array of strings if present; `id` must be a string if present; call
@@ -391,8 +391,19 @@ storage, so re-writing it would be pointless).
   - `networkClear(p)`: `await ready`; resolve `tab`; `cleared = log.clear(scope)`; flush
     immediately (not debounced — the next query must not see stale storage after a wake); return
     `{ cleared }`.
-- [ ] `sw.ts`: `router.on("networkRequests", …)`, `router.on("networkClear", …)`.
-- [ ] `npm run build` succeeds; `dist/sw.js` contains the listener registrations outside any function.
+- [x] `sw.ts`: `router.on("networkRequests", …)`, `router.on("networkClear", …)`.
+- [x] `npm run build` succeeds; `dist/sw.js` contains the listener registrations outside any function.
+
+**Deviations:** (1) `network-state.ts` owns the flush and the WS-port module variable and exports
+`log`, `ready`, `scheduleFlush`, `flushNow`, `ownPort`, `setOwnPort`; `sw.ts` registers the six
+listeners (a thin `ingest(name, d)` wrapper that drops own traffic) plus `chrome.tabs.onRemoved`, and
+`getConfig()` calls `setOwnPort` so the port follows the options page (default 9234 until the first
+read). (2) On a rejected `set` the retry writes the union of the original dirty set and the tabs the
+`evictOldest(0.5)` newly dirtied, otherwise storage would keep rows memory no longer has; a second
+failure warns and keeps memory only. (3) `networkRequests` treats an `id` lookup as global
+(`tabId: "all"`) and skips resolving the active tab, so a detail lookup cannot fail with "No active
+tab"; `tab` is otherwise resolved as specified. (4) `flushNow()` serialises against an in-flight
+flush so `networkClear`'s immediate write cannot interleave with a debounced one.
 
 ## Part N3 — server tools (TDD)
 
