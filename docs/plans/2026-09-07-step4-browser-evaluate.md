@@ -128,7 +128,7 @@ holding a sharp tool. Never log the expression or the result in the SW console b
 Errors from the page are ordinary bridge `error` responses (the `Router` already maps a thrown
 `Error` to `{error:{message}}`), so the server tool needs no new error plumbing.
 
-- [ ] Add `EvalEnvelope` to `shared/src/protocol.ts` (both halves import it) — types only, no guard.
+- [x] Add `EvalEnvelope` to `shared/src/protocol.ts` (both halves import it) — types only, no guard.
 
 ## Part E1 — pure logic (TDD, node + jsdom)
 
@@ -137,14 +137,14 @@ Directory: `extension/src/evaluate/`.
 
 ### Task E1.1: `serialize.ts` — the in-page serialiser
 
-- [ ] `extension/test/evaluate-serialize.test.ts` (jsdom environment, like `snapshot.test.ts`).
+- [x] `extension/test/evaluate-serialize.test.ts` (jsdom environment, like `snapshot.test.ts`).
       Export `serializeForAgent(value, limits)` **and** `SERIALIZER_SRC = String(serializerFn)`.
       One test proves self-containment: `new Function("return " + SERIALIZER_SRC)().call(value, limits)`
       gives the same envelope as calling the export directly (catches an accidental closure over an
       import or helper).
-- [ ] Limits object (defaults): `{ maxDepth: 6, maxItems: 100, maxString: 5_000 }`; the handler passes
+- [x] Limits object (defaults): `{ maxDepth: 6, maxItems: 100, maxString: 5_000 }`; the handler passes
       them explicitly so tests and page agree.
-- [ ] Cases (each is one `it`):
+- [x] Cases (each is one `it`):
   - plain JSON object/array → `kind:"json"`, `value` deep-equal, `description` is pretty JSON.
   - nested `undefined`/function values inside objects → replaced by the strings `"undefined"` /
         `"[Function: name]"` (JSON would silently drop the key; agents should see it existed).
@@ -165,7 +165,7 @@ Directory: `extension/src/evaluate/`.
         own enumerable props, getters **not** invoked (they can throw or have side effects).
   - a getter that throws during own-prop walk → the prop becomes `"[Threw: msg]"`, no overall throw.
   - `ArrayBuffer`/typed arrays → `"Uint8Array(1024)"` — never dump bytes.
-- [ ] Implement. Iterative or bounded-recursive walk; never call `toJSON`/`valueOf` on page objects
+- [x] Implement. Iterative or bounded-recursive walk; never call `toJSON`/`valueOf` on page objects
       (prototype-poisoning safety: use `Object.prototype.toString.call`, `Array.isArray`, and
       `instanceof` guards wrapped in try/catch, because page code can redefine anything).
 
@@ -174,7 +174,7 @@ Directory: `extension/src/evaluate/`.
 `replMode` already handles top-level `await` and completion values, so the wrapper exists for one
 reason: a bare `return` is a syntax error outside a function, and agents will write it.
 
-- [ ] Tests:
+- [x] Tests:
   - `"document.title"` → unchanged.
   - `"const a = 1; a + 1"` → unchanged (replMode returns `2`; verified in EVAL-11).
   - `"await fetch('/x')"` → unchanged (replMode top-level await).
@@ -184,21 +184,21 @@ reason: a bare `return` is a syntax error outside a function, and agents will wr
         string is good enough; document that it is a heuristic and that a false positive only
         costs the completion-value behaviour, a false negative costs a SyntaxError the agent sees).
   - trailing `;`/whitespace/comment lines don't confuse it.
-- [ ] Implement. Don't parse JS. Export the regex so the tool description can state the rule.
+- [x] Implement. Don't parse JS. Export the regex so the tool description can state the rule.
 
 ### Task E1.3: `result.ts` — `shapeEvaluateResult(raw, callFn?)` and `formatException`
 
 Turns the raw CDP responses into an `EvalEnvelope` or a thrown `Error`. Pure; the handler supplies
 the second CDP call as a callback so this module never touches `chrome.*`.
 
-- [ ] Tests for `formatException(exceptionDetails)`:
+- [x] Tests for `formatException(exceptionDetails)`:
   - `throw new Error("boom")` → message is `exception.description` (has `Error: boom` + stack).
   - `throw "x"` → `exception.value` is `"x"` → message `Uncaught x`.
   - rejected promise (`awaitPromise`) → same shape as thrown; covered by the first two.
   - `SyntaxError` at compile → `exceptionDetails.text` (`Uncaught SyntaxError: …`) with
         `lineNumber`/`columnNumber` appended as `(line L, col C)` when present.
   - stack trimmed to 8 lines; total message ≤ 2 000 chars.
-- [ ] Tests for `shapeEvaluateResult(raw, { limits, maxChars, callFn })`:
+- [x] Tests for `shapeEvaluateResult(raw, { limits, maxChars, callFn })`:
   - `{result:{type:"number", value:42}}` → `{kind:"json", value:42, description:"42"}`.
   - `{result:{type:"string", value:"hi"}}` → description `hi` (no added quotes — agents paste it).
   - `{result:{type:"undefined"}}` → `{kind:"undefined", description:"undefined"}`, no `value`.
@@ -213,7 +213,24 @@ the second CDP call as a callback so this module never touches `chrome.*`.
   - description longer than `maxChars` (default 20 000) → cut, suffixed
         `\n… [truncated: N more chars]`, `truncated:true`; `value` is left intact (it is not sent to
         the model, only `description` is).
-- [ ] Implement.
+- [x] Implement.
+
+**Deviations:** (E1, all small and test-pinned)
+
+- `maxDepth` counts levels *below* the root: a value is replaced by `[Object]`/`[Array(N)]` when its
+  depth is **> `maxDepth`** (root = depth 0). The plain reading (`>=`) would have made `maxDepth: 6`
+  expand only five levels.
+- The `… N more` sentinel for an over-long **object** is an extra `"…"` key holding `"… N more"`
+  (arrays push the sentinel as their last element, as specified) — an object has no positional slot.
+- Getter policy: the walk reads only **own enumerable** props, so a class's prototype getters are
+  never invoked (the plan's requirement); an *own* accessor is read inside a `try/catch`, which is
+  what produces `"[Threw: msg]"`. Both bullets hold with one rule.
+- `formatException` renders CDP's 0-based `lineNumber`/`columnNumber` as 1-based `(line L, col C)`,
+  matching what the DevTools console shows.
+- `shapeEvaluateResult` is `async` (its `callFn` does a CDP round-trip) and `callFn` is optional —
+  without one, an `objectId` result degrades to `kind:"other"` instead of throwing.
+- Nested non-finite numbers (`NaN`, `Infinity`) are serialised as their string form rather than
+  `JSON.stringify`'s silent `null`, for the same reason nested `undefined` is kept visible.
 
 ## Part E2 — extension handler
 
