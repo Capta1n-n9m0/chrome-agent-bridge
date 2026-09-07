@@ -24,7 +24,9 @@ Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(met
 `chrome.*` / `callInPage`. Default actions use synthetic content-script events (no banner);
 `browser_click {trusted:true}` (or a content-action failure) escalates to real CDP `Input` via
 `chrome.debugger` (shows the "extension is debugging this browser" banner). Control targets the
-**active tab**; tab tools switch it.
+**active tab**; tab tools switch it. Network capture is separate and always on: six top-level
+`chrome.webRequest` observers feed a bounded per-tab `NetworkLog` (no banner, no debugger), which
+`browser_network_requests` / `browser_network_clear` query.
 
 ### Key files
 - `shared/src/protocol.ts` — wire message types + guards (imported by both halves).
@@ -36,14 +38,16 @@ Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(met
   `content/{index,snapshot,refmap,actions,geometry}.ts`, `debugger.ts`, `debugger-errors.ts`
   (pure: CDP failure → actionable message), `keys.ts` (pure: key name → CDP key params),
   `evaluate/{serialize,wrap,result}.ts` (pure: in-page serialiser source, `return`-wrapper,
-  CDP-result → `EvalEnvelope`).
+  CDP-result → `EvalEnvelope`), `network-log.ts` (pure: `NetworkLog` reducer + query + formatter,
+  redaction, body summary, serialise/merge), `network-state.ts` (the singleton log, the
+  `storage.session` rehydrate/flush, the own-port variable), `handlers/network.ts`.
 
 ## Commands
 
 ```bash
 npm install
 npm run build        # builds server (dist/index.js) + extension (dist/{sw,options,offscreen,content}.js)
-npm test             # vitest (181 tests)
+npm test             # vitest (256 tests)
 npm run typecheck    # tsc --noEmit across shared/server/extension
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
@@ -122,6 +126,27 @@ and follow `docs/e2e-test-plan.md`.
 - **`describeDebuggerError(err, what)` / `withDebugger(tabId, fn, what)` take a caller name** —
   it's interpolated into the restricted-URL and timeout messages ("Trusted input" by default,
   `"browser_evaluate"`, `"Full-page screenshot"`). Add new Chrome strings there, not in handlers.
+- **A module service worker must not use top-level `await`** — Chrome fails the worker with
+  `TypeError: Top-level await is disallowed in service workers`, since the script must finish
+  evaluating synchronously for its listeners to be known. The network log therefore ingests into
+  memory from the first event and `network-state.ts` keeps a `ready` promise that `merge`s the
+  rehydrated `storage.session` blob *underneath* the live entries (live wins); handlers `await ready`.
+- **`chrome.webRequest` listeners must be registered at the top level of `sw.ts`**, synchronously —
+  they have to exist on every worker start or the events that woke it are lost.
+- **Cache hits skip `onHeadersReceived`** — `onCompleted` carries `statusCode`/`statusLine`/
+  `responseHeaders`/`fromCache`, so the reducer fills status from `onCompleted` too. Same for an
+  event whose `requestId` it has never seen (worker restarted mid-request): build the entry from the
+  fields every event carries rather than dropping it.
+- **`extraHeaders` is omitted from every `extraInfoSpec` on purpose** — without it Chrome never hands
+  the extension `Cookie`/`Set-Cookie`, so cookies cannot enter the log at all (stronger than
+  redacting). The price, verified live, is that `referer` and `origin` are missing too. Don't add it.
+- **`storage.session` is emptied by an extension reload and by Chrome exiting**, and has a 10 MB
+  quota — the flush is debounced, writes only `takeDirty()` tabs, and on a rejected `set` calls
+  `evictOldest(0.5)` and retries once (writing the union of both dirty sets). The 25 s keepalive
+  alarm means the worker rarely idles out, so the write-through is really insurance against a forced
+  stop or a crash.
+- **Never log a URL from the service worker** — URLs carry tokens. The network code prints counts
+  only (`[bridge] network: rehydrated N entries`). Same rule for header values and bodies.
 - **`centerOf` is top-document relative** — it adds each ancestor `frameElement`'s rect, because
   CDP `Input.*` dispatches against the top-level viewport. Don't hand it a raw
   `getBoundingClientRect` from inside a frame.
@@ -129,7 +154,7 @@ and follow `docs/e2e-test-plan.md`.
 ## Testing philosophy
 
 Logic units (protocol, WS correlation, bridge, handshake, RefMap, snapshot, actions, geometry, tools,
-startup, inject helpers) are **TDD with real assertions**. The `chrome.*` glue (service worker,
+startup, inject helpers, the `NetworkLog` reducer/query/formatter) are **TDD with real assertions**. The `chrome.*` glue (service worker,
 chrome-API handlers) is **not unit-tested** — mocking the extension runtime is low-value; it's covered
 by `docs/e2e-test-plan.md` against real Chrome. New pure logic → write a failing test first.
 

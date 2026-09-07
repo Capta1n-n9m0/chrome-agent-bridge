@@ -147,6 +147,75 @@ Focus the window (e.g. `browser_select_tab`) if you need those.
 and `aria-hidden` elements that `browser_snapshot` deliberately prunes. Useful, but don't treat the
 two as the same view of the page.
 
+## Inspecting network requests
+
+`browser_network_requests()` lists what the tab has been talking to. Capture is **always on** and
+banner-free — the extension observes `chrome.webRequest`, so there is no `chrome.debugger` attach and
+no "extension is debugging this browser" banner — and it behaves like the DevTools Network panel with
+**Preserve log** ticked: the log is per **tab** and a navigation does *not* clear it.
+
+**What a line shows.** One line per request, oldest first, newest 50 by default:
+
+```
+Network — active tab: showing 3 of 212 (recording since 3m12s ago; 1 pending)
+[3893]  2.8s ago   GET     200  document    5ms  12.9 KB  http://localhost:8080/e2e-playground.html
+[3894]  2.8s ago   GET     200  xhr         3ms  28 B     http://localhost:8080/ok.json
+[3899]  2.8s ago   GET     ERR  xhr         2.0s  —       http://127.0.0.1:9999/  net::ERR_CONNECTION_REFUSED
+Use filter/types/failedOnly to narrow, limit to widen, id for one request's headers and body.
+```
+
+Id, age, method, status (`ERR` for a network failure, `···` while pending), resource type, duration,
+size (`content-length` when the server sent one) and the URL, with the `net::ERR_*` or a redirect's
+`→ <target>` after it. A redirect chain is one line per hop: `3900`, then `3900:2`.
+
+**The workflow that answers "what did my click do":** `browser_network_clear()` → act →
+`browser_network_requests()`. Clearing the active tab does not reset `recording since`; only
+`browser_network_clear({tab:"all"})` does.
+
+**Narrowing.** `filter` matches the URL as a case-insensitive substring, or as a regex when you wrap
+it in slashes (`"/ok\\.json|nope/"`, flags allowed: `"/OK/i"`). `types` keeps the resource types you
+name and accepts the DevTools aliases (`xhr`/`fetch` → `xmlhttprequest`, `document` → `main_frame`,
+`frame` → `sub_frame`). `failedOnly` keeps network errors and status ≥ 400. `limit` is clamped to
+1…500. `tab` takes a tab id from `browser_list_tabs`, or `"all"` (which adds a `tab:<id>` column).
+
+**One request in full.** `browser_network_requests({id: "3894"})` prints that request's headers and
+request-body summary:
+
+```
+[3894] GET http://localhost:8080/ok.json
+type: xhr   initiator: http://localhost:8080   started 5.8s ago   took 3ms
+status: 200 OK   from cache: no   ip: ::1   size: 28 B
+request headers:
+  accept: */*
+response headers:
+  content-type: application/json
+```
+
+This is the **only** way to see headers: `includeHeaders` keeps them on the structured result, but
+the text the tool prints is the table, which has no header columns. Ids are Chrome's `requestId`s and
+are only unique **within a capture session** — if the extension's service worker restarts, the
+counter can start low again, so an id from an older listing may fail to resolve or (rarely) point at
+a different request. Look the id up soon after the listing that gave it to you.
+
+**What is not available.** Response bodies (re-fetch with `browser_evaluate` if you need one),
+request bodies beyond a ≤ 2 KB redacted summary, WebSocket frames, transfer size and the timing
+breakdown (DNS/TLS/TTFB). Also note:
+
+- A network-level status is not the same as a successful `fetch()`. An opaque `no-cors` response is a
+  perfectly good 200 here while the page can read nothing from it, and a 200 whose JSON the page then
+  rejects still logs as 200. Conversely, a CORS-blocked `fetch` shows up as `net::ERR_FAILED` on
+  current Chrome, not as the response the server actually sent.
+- Requests a site's own service worker makes are not attributable to a tab; they land in a `tabId -1`
+  bucket, visible only with `tab:"all"`.
+- Streams (EventSource, long polls) stay `pending` for their whole life; the header's `N pending`
+  counts only requests started in the last 30 s.
+- `data:` / `blob:` URLs never touch the network and never appear.
+
+**Bounds.** 500 entries per tab and 2 000 in total; when the total cap is hit the oldest entry of the
+*largest* tab is evicted, so one chatty background tab cannot push the tab you care about out of the
+log. Closing a tab forgets its entries. The log lives in the extension's session storage and is gone
+when Chrome exits or the extension is reloaded.
+
 ## Security notes
 
 - The WebSocket binds to `127.0.0.1` only and requires the shared token.
@@ -159,6 +228,22 @@ two as the same view of the page.
   only boundary; there is no per-domain allow-list yet (an arm/disarm toggle is on the roadmap).
   Neither the expression nor its result is ever logged — the service worker records only the
   expression's length.
+- **Network capture records URLs, and URLs carry secrets.** `browser_network_requests` keeps the
+  **whole query string** — that is what makes it useful for debugging an API — so an
+  `?access_token=…` in a URL will reach the model, the same way `browser_evaluate` can read
+  `localStorage`. Clear the log (`browser_network_clear({tab:"all"})`) after working on a sensitive
+  tab if that matters to you.
+- **Cookies never enter the extension.** The `webRequest` listeners deliberately omit
+  `extraHeaders`, so Chrome does not hand over `Cookie` / `Set-Cookie` at all — stronger than
+  redacting them. (The same omission costs us `Referer` and `Origin`, which is an accepted trade.)
+  On top of that, `authorization`, `x-api-key`, `x-csrf-token` and any header whose name contains
+  `token`, `secret` or `session` are replaced with `<redacted>` **at ingest**, so only the redacted
+  form is ever stored; form fields named like `password`, `token`, `secret`, `otp` or `code` are
+  redacted in the request-body summary the same way. Headers and bodies are returned only when you
+  ask for them (`includeHeaders`, or an `id` lookup).
+- **Nothing network-related is logged.** The service-worker console prints entry *counts* only —
+  never a URL, a header value or a body — and the server writes nothing about network entries to
+  stderr.
 
 ## Troubleshooting
 

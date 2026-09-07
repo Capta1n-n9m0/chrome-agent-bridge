@@ -207,7 +207,7 @@ export function registerTools(server: McpServer, bridge: Bridge): void {
       types: z.array(z.string()).optional().describe("Resource types to keep: xhr, fetch, document, frame, script, stylesheet, image, font, media, websocket, ping, other."),
       failedOnly: z.boolean().optional().describe("Keep only network errors and responses with status >= 400."),
       limit: z.number().int().min(1).max(500).optional().describe("How many of the newest matching requests to print. Default 50."),
-      includeHeaders: z.boolean().optional().describe("Include request and response headers (redacted) on every returned entry."),
+      includeHeaders: z.boolean().optional().describe("Keep the (redacted) headers on the returned entries. The printed table never shows headers — use `id` to read one request's headers."),
       id: z.string().optional().describe("Show one request in full — headers and request-body summary — by its id from a previous listing."),
     },
     async (params) => {

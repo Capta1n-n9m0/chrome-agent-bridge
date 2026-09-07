@@ -2,7 +2,7 @@
 
 - **Date:** 2026-09-07
 - **Branch:** `main` (merged from `feat/agent-bridge`; public on GitHub, MIT, since 2026-09-03)
-- **Status:** Phases A–D complete plus Step 4 (`browser_evaluate`); **181 unit tests green**; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, and the Step 4 evaluate pass (20 of 22) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. `main`, **public on GitHub (MIT) since 2026-09-03**. **20 tools.**
+- **Status:** Phases A–D complete plus Step 4 (`browser_evaluate`) and Step 5 (network inspection); **256 unit tests green**; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. `main`, **public on GitHub (MIT) since 2026-09-03**. **20 tools.**
 
 ---
 
@@ -104,6 +104,41 @@ same `withDebugger`.
   bridge-side `raceTimeout`, whose deadline starts ~100 ms earlier. Both render the same message by
   design.
 
+### Step 5 E2E — network inspection (2026-09-07)
+
+Ran `docs/plans/2026-09-07-step5-network-inspection.md` (commits `69682cd`, `d64d0fe`, `fdb0378`,
+`ac469da`) against Chrome **152.0.7977.82** on Windows 11. **NET-1…15 all pass** (NET-16 is Part N6,
+not implemented); evidence is in `docs/e2e-test-plan.md` §5, "Run 6". **No code defects surfaced** —
+the findings are all about Chrome's behaviour and about how the results read.
+
+- **The privacy claim holds against a real logged-in session (NET-10).** On github.com, with
+  `includeHeaders` and an `id` lookup, **no `cookie` or `set-cookie` header appears on any entry** —
+  omitting `extraHeaders` keeps them out of the extension entirely. The cost is that `referer` and
+  `origin` are absent too (the §0.4 follow-up flag is now evidence-backed). No `authorization` header
+  appeared live, so the `<redacted>` path remains unit-tested only. A source audit confirms the only
+  network-related console lines carry counts, never a URL.
+- **The write-through survives a worker restart (NET-11), but the case had to be re-scripted.** The
+  bridge's 25 s keepalive alarm means the service worker never idles out, so the plan's "leave Chrome
+  untouched ≥ 3 min" proves nothing; it was run instead by force-stopping the worker from
+  `chrome://serviceworker-internals`. Entries recorded before and after the restart list together and
+  `netlog:meta` survives, with exactly one `rehydrated N entries` line. The write-through therefore
+  protects against a **forced stop or crash**, not against routine culling (prevented) or a Chrome
+  exit (`storage.session` is cleared by design).
+- **Two plan expectations were wrong rather than the code.** `http://127.0.0.1:9/` never reaches the
+  network — Chrome blocks port 9 with `net::ERR_UNSAFE_PORT` — so the fixture uses 9999 (NET-5). And
+  on Chrome 152 a CORS-blocked `fetch` fires `onErrorOccurred` with `net::ERR_FAILED`, so NET-8 does
+  **not** illustrate "a network 200 is not a successful fetch"; `docs/setup.md` uses opaque `no-cors`
+  responses for that point instead.
+- **`includeHeaders: true` has no visible effect through the MCP tool.** The tool prints
+  `result.text` and the formatter renders only the table, so headers are reachable only via the `id`
+  form. Left as-is (changing the formatter is its own decision); the parameter description and
+  `docs/setup.md` now say so.
+- **Ids are session-scoped.** After the worker churn Chrome's `requestId` counter restarted low, so an
+  id from an older listing may fail to resolve or be reused. Documented in `docs/setup.md`.
+- **Caps and responsiveness hold (NET-14).** 600 fetches in a loop left exactly 500 entries for the
+  tab, oldest evicted first, the 20 000-char text cap applied its documented footer, and Chrome, the
+  fixture and the bridge stayed responsive.
+
 ---
 
 ## 1. Where we are
@@ -126,8 +161,9 @@ out of.
 | D | Action fidelity: trusted typing + `press_key` via CDP `Input.dispatchKeyEvent`; scroll-into-view + viewport validation for trusted input | ✅ D1/D2 done (E2E-verified 2026-09-03); D3 file upload not started |
 | B | Robustness: port-busy surfaced through tools + bind retry; `browser_status`; WS heartbeat; actionable `chrome.debugger` errors; CONN-5 soak | ✅ Done (E2E-verified 2026-09-03) |
 | Step 4 | `browser_evaluate`: CDP `Runtime.evaluate` in the page context + in-page serialiser + per-call server timeout | ✅ Done (E2E-verified 2026-09-07) |
+| Step 5 | Network inspection: always-on `chrome.webRequest` capture into a bounded per-tab `NetworkLog` with `storage.session` write-through; `browser_network_requests` + `browser_network_clear` | ✅ Done (E2E-verified 2026-09-07); Part N6 `wait_for networkIdle` not implemented |
 
-**Quality state:** 181 unit tests pass; `tsc` typecheck clean across all three packages; all four
+**Quality state:** 256 unit tests pass; `tsc` typecheck clean across all three packages; all four
 bundles build (`server/dist/index.js`, `extension/dist/{sw,options,offscreen,content}.js`). Every
 milestone passed a two-stage review (spec compliance + code quality); the final whole-system review
 verified the end-to-end protocol contract and that esbuild does not break page-injected functions.
@@ -184,7 +220,17 @@ serialiser's every branch, CSP bypass, both timeout paths, the per-call server t
 completion values, and an ACT-2/TRUST-2/PERC-4 regression smoke after the `withDebugger(…, what)`
 signature change. Chrome 152.
 
-**NOT yet verified live:** EVAL-16 (DevTools open during an evaluate) and EVAL-17 (banner cancelled
+**Verified live (2026-09-07, §0 "Step 5 E2E"):** network inspection — `docs/e2e-test-plan.md`
+NET-1…15: banner-free always-on capture, XHR + `id` detail, 4xx and `net::ERR_*` entries, redirect
+hops, pending entries, filters/types/limit, the per-tab caps under 600 fetches, tab lifecycle,
+clear, the privacy claims against a real logged-in GitHub session, the service-worker
+force-stop/rehydrate cycle, and an ACT-2/TRUST-2/EVAL-1/WAIT-1 regression smoke. Chrome 152.
+
+**NOT yet verified live:** the header-redaction (`<redacted>`) path — no `authorization` header
+appeared on the sites exercised in NET-10, so it is unit-tested only; the session-storage **quota**
+branch (`evictOldest(0.5)` + retry after a rejected `set`) — 600 entries never came near the 10 MB
+quota; the `tabId -1` bucket (no site service worker issued a request during the run); NET-16
+(Part N6, not implemented). Also EVAL-16 (DevTools open during an evaluate) and EVAL-17 (banner cancelled
 mid-evaluate) — covered indirectly by TRUST-3 / TRUST-8 through the shared `withDebugger`; the
 heartbeat's *hung-peer* branch (a socket that stays open but never
 pongs — Chrome's exit closes the socket cleanly, so only the unit test reaches it); the "another
@@ -282,6 +328,23 @@ follow-ups (see that plan's "Follow-ups"):
   needs a lifecycle design, and pairs with Step 5's network work.
 - **Console capture** (`Runtime.enable` + `consoleAPICalled`) appended to the evaluate result — this
   is the console tool above, and the Run 5 promise bug would have been diagnosed much faster with it.
+
+Plus the Step 5 follow-ups (see that plan's "Follow-ups"):
+
+- **`browser_wait_for { networkIdle: true }`** — Part N6 of the Step 5 plan, written but not
+  implemented. Activity-based (no `webRequest` event for the tab in the last `idleMs`), so a
+  long-poll cannot hang it; `NetworkLog.lastActivityAt` already exists for it.
+- **Response bodies via CDP** (`browser_network_capture start/stop` + `Network.getResponseBody`) —
+  the natural Step 6, and the reason bodies are not in v1: it needs the keep-attached per-tab
+  debugger session above, with an attach refcount, so a trusted click during a capture does not
+  detach it. WebSocket frames come with the same work.
+- **Render headers in the listing when `includeHeaders` is set** — today the flag only populates the
+  structured result, so headers are reachable only through the `id` form (Run 6 finding).
+- **`extraHeaders` opt-in** if an agent needs `referer`/`origin`, which Run 6 confirmed are missing
+  without it — with cookies still redacted at ingest.
+- **Query-string redaction flag**, and **scoping the log to the current document**
+  (`since: "navigation"`), for users who do not want *Preserve log* semantics.
+- **Timing breakdown / transfer size** joined from `performance.getEntriesByType("resource")`.
 
 **Phase G — Distribution.** Decide packaging: keep unpacked (developer use) vs. a signed Web Store
 build; document the security model for each.

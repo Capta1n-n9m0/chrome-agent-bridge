@@ -518,28 +518,44 @@ capture session; `docs/setup.md` (N5) should say so.
 
 ## Part N5 — docs + commits
 
-- [ ] `docs/setup.md`: two tool-table rows; a new "Inspecting network requests" subsection (what is
+- [x] `docs/setup.md`: two tool-table rows; a new "Inspecting network requests" subsection (what is
       captured, per-tab + Preserve-log semantics, the clear→act→query workflow, filters, the `id`
       form, what is *not* available: bodies/timing/WS frames, the 500/2 000 caps, `tabId -1`);
       in "Security notes": headers are redacted, cookies are never received, **query strings are
       kept**, nothing network-related is logged to the console.
-- [ ] `docs/e2e-test-plan.md`: §4.8 table above, fixture notes in §1, results template row.
-- [ ] `docs/progress-and-roadmap.md`: 20 tools; Step 5 milestone row; §0 entry once E2E ran; §3
+- [x] `docs/e2e-test-plan.md`: §4.8 table above, fixture notes in §1, results template row.
+- [x] `docs/progress-and-roadmap.md`: 20 tools; Step 5 milestone row; §0 entry once E2E ran; §3
       verified/not-verified; Phase F loses "wait_for network-idle" if N6 landed, gains the follow-ups
       below.
-- [ ] `CLAUDE.md`: 20 tools; key-files line for `network-log.ts` / `handlers/network.ts`; gotchas:
+- [x] `CLAUDE.md`: 20 tools; key-files line for `network-log.ts` / `handlers/network.ts`; gotchas:
       *module SWs reject top-level `await` — rehydrate is a promise the listeners run ahead of, then
       `merge`*; *`webRequest` listeners must be registered synchronously at the top level*;
       *cache hits skip `onHeadersReceived` — fill status from `onCompleted`*; *`extraHeaders` is
       omitted on purpose so cookies never reach the extension*; *`storage.session` is emptied by an
       extension reload and has a 10 MB quota — the flush halves the log on a rejected `set`*;
       *never log a URL from the SW*.
-- [ ] Commits (each green, trailer per `CLAUDE.md`):
+- [x] Commits (each green, trailer per `CLAUDE.md`):
       `feat(extension): NetworkLog reducer, query and formatter (pure)`,
       `feat(extension): webRequest capture with session-storage write-through`,
       `feat(server): browser_network_requests + browser_network_clear`,
       `test(e2e): NET-1…15 + network fixtures`, `docs: network inspection`,
       and, if N6 lands, `feat: browser_wait_for networkIdle`.
+
+**Deviations:** (1) The tool count is **20**, not the plan's 18 → 20 → the orchestrator's 22:
+`CLAUDE.md`/`docs/setup.md`/the roadmap already said 18 before Step 5 and were bumped to 20 in Part
+N3; `server/src/tools/registry.ts` registers exactly 20 `server.tool(…)` calls. Left at 20; the test
+count (181 → **256**) was stale everywhere and is updated. (2) The `docs/setup.md` tool-table rows and
+the whole of `docs/e2e-test-plan.md` (§1 fixture notes, §4.8, the results-template NET row, Run 6)
+had already been written by Parts N3/N4; N5 only corrected §4.8's NET-5 and NET-8 *expectations*,
+which still carried the pre-run text the run itself disproved (`127.0.0.1:9` → `:9999`; CORS →
+`net::ERR_FAILED`, not a `200`). (3) §0.6's "a network 200 is not a successful fetch" illustration is
+replaced in `docs/setup.md` by opaque `no-cors` responses and a 200 whose JSON the page rejects, per
+the N4 finding. (4) One **source** change outside docs, as the orchestrator permitted: the
+`includeHeaders` `.describe(…)` string in `server/src/tools/registry.ts` said "Include … headers on
+every returned entry", which reads as though the printed table would show them; it now says the
+table never shows headers and points at the `id` form. No behaviour change; tests and typecheck
+green. The formatter is untouched. (5) Part N6 (`networkIdle`) is not implemented, so Phase F keeps
+its "wait_for network-idle" item and the roadmap records NET-16 as not run.
 
 ## Part N6 — optional: `browser_wait_for { networkIdle: true }`
 
