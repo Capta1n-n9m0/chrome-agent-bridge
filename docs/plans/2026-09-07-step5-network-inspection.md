@@ -186,7 +186,7 @@ export interface NetworkRequestsResult {
 }
 ```
 
-- [ ] Add both interfaces to `shared/src/protocol.ts` — types only, no guard (same rationale as
+- [x] Add both interfaces to `shared/src/protocol.ts` — types only, no guard (same rationale as
       `EvalEnvelope`: they only ever travel as a `result`).
 
 ## Part N1 — `NetworkLog` (TDD, pure, node — no `chrome.*` imports)
@@ -214,7 +214,7 @@ export type WebRequestEvent = "onBeforeRequest" | "onSendHeaders" | "onHeadersRe
 
 ### Task N1.1: ingest the event chain
 
-- [ ] Tests for `log.ingest(event, details)`:
+- [x] Tests for `log.ingest(event, details)`:
   - `onBeforeRequest` creates an entry keyed by `requestId` with url/method/type/tabId/initiator/
         `startedAt = timeStamp`; the entry is pending.
   - `onSendHeaders` attaches request headers as a lower-cased `Record`, redacted, capped at 40 with
@@ -229,21 +229,21 @@ export type WebRequestEvent = "onBeforeRequest" | "onSendHeaders" | "onHeadersRe
   - Events for an unknown `requestId` (SW restarted mid-request, then `onCompleted` arrives) create
         a best-effort entry from the fields every event carries (url/method/type/tabId/timeStamp) —
         never dropped.
-- [ ] Tests for `redactHeaders(list)` (0.4 list; case-insensitive; the `token`/`secret`/`session`
+- [x] Tests for `redactHeaders(list)` (0.4 list; case-insensitive; the `token`/`secret`/`session`
       substring rule; non-sensitive values untouched; duplicate names → last wins).
-- [ ] Implement.
+- [x] Implement.
 
 ### Task N1.2: redirects
 
-- [ ] Tests: `onBeforeRedirect` closes the current hop (`status: 301`, `redirectUrl`, `endedAt`) and
+- [x] Tests: `onBeforeRedirect` closes the current hop (`status: 301`, `redirectUrl`, `endedAt`) and
       the following `onBeforeRequest` with the **same** `requestId` opens a new entry with id
       `${requestId}:2` (then `:3`, …) so every hop is visible. A hop's headers belong to that hop.
       Querying by the bare id returns the first hop; by `id:2` the second.
-- [ ] Implement.
+- [x] Implement.
 
 ### Task N1.3: bounds, eviction, forget, clear, pending, activity
 
-- [ ] Tests:
+- [x] Tests:
   - per-tab cap 500: the 501st entry for a tab evicts that tab's oldest.
   - total cap 2 000 with **fair eviction** (0.3): with tab A holding 1 500 and tab B 500, a new
         entry for B evicts from **A**.
@@ -256,12 +256,12 @@ export type WebRequestEvent = "onBeforeRequest" | "onSendHeaders" | "onHeadersRe
         `0` when nothing was seen — what N6's `networkIdle` reads.
   - `takeDirty()` returns the set of tabIds touched since the previous `takeDirty()` and clears it;
         eviction and `forgetTab` mark the affected tabs dirty.
-- [ ] Implement. Keep entries per tab in insertion order (an array per tab is enough; `Map<tabId, entry[]>`
+- [x] Implement. Keep entries per tab in insertion order (an array per tab is enough; `Map<tabId, entry[]>`
       plus a `Map<id, entry>` index for O(1) ingest).
 
 ### Task N1.4: query
 
-- [ ] Tests for `query({ tabId: number | "all", filter?, types?, failedOnly?, limit?, includeHeaders?, id? })`:
+- [x] Tests for `query({ tabId: number | "all", filter?, types?, failedOnly?, limit?, includeHeaders?, id? })`:
   - default `limit` 50; returns the newest 50 **in chronological order**; `total` is the pre-limit
         count; `limit` is clamped to `[1, 500]`.
   - `filter: "ok.json"` (substring, case-insensitive); `filter: "/api\\/v[12]\\//"` (regex);
@@ -274,11 +274,11 @@ export type WebRequestEvent = "onBeforeRequest" | "onSendHeaders" | "onHeadersRe
   - headers and `requestBody` are stripped from returned entries unless `includeHeaders` — except
         with `id`, which returns exactly that entry in full (or throws `No request with id …`).
   - `recordingSince` and `pending` are populated on every result.
-- [ ] Implement.
+- [x] Implement.
 
 ### Task N1.5: text rendering
 
-- [ ] Tests for `formatEntries(result, { now, scope })` — header line then one line per entry:
+- [x] Tests for `formatEntries(result, { now, scope })` — header line then one line per entry:
 
   ```
   Network — active tab: showing 4 of 212 (recording since 3m12s ago; 1 pending)
@@ -299,7 +299,7 @@ export type WebRequestEvent = "onBeforeRequest" | "onSendHeaders" | "onHeadersRe
         <scope> (recording since …). Reload or act on the page, then query again.`
   - whole text capped at 20 000 chars with `… [truncated: N more lines — narrow with filter/limit]`
         (Step 4's convention).
-- [ ] Tests for `formatEntry(entry, { now })` (the `id` form):
+- [x] Tests for `formatEntry(entry, { now })` (the `id` form):
 
   ```
   [1043] GET http://localhost:8080/ok.json
@@ -314,11 +314,11 @@ export type WebRequestEvent = "onBeforeRequest" | "onSendHeaders" | "onHeadersRe
     user=a&password=<redacted>
   ```
   - pending / error / redirect variants; missing sections are omitted, not printed empty.
-- [ ] Implement, including the pure `formatAgo(ms)`, `formatDuration(ms)`, `formatSize(bytes)` helpers.
+- [x] Implement, including the pure `formatAgo(ms)`, `formatDuration(ms)`, `formatSize(bytes)` helpers.
 
 ### Task N1.6: request-body summary
 
-- [ ] Tests for `summarizeBody(requestBody)`:
+- [x] Tests for `summarizeBody(requestBody)`:
   - `formData` → `k=v&k2=v2`; multi-valued keys repeat; values cut at 200 chars; fields named like
         the 0.4 list → `<redacted>`.
   - `raw` → UTF-8 decode of the first 2 KB (`TextDecoder`, `fatal: false`), `…[+N bytes]` suffix;
@@ -327,18 +327,29 @@ export type WebRequestEvent = "onBeforeRequest" | "onSendHeaders" | "onHeadersRe
         values redacted after decoding (best effort — parse, redact, re-stringify; on parse failure
         keep the raw cut).
   - `error` (Chrome could not read the body) → `<unavailable: reason>`; `undefined` → `undefined`.
-- [ ] Implement. **Summarise at ingest** — `raw[].bytes` is an `ArrayBuffer`, which cannot be stored
+- [x] Implement. **Summarise at ingest** — `raw[].bytes` is an `ArrayBuffer`, which cannot be stored
       in `storage.session` and must not be kept in memory.
 
 ### Task N1.7: serialise / merge / own-traffic filter
 
-- [ ] Tests: `toJSON()` → `{ meta: { v: 1, since }, tabs: { "<tabId>": NetworkEntry[] } }`;
+- [x] Tests: `toJSON()` → `{ meta: { v: 1, since }, tabs: { "<tabId>": NetworkEntry[] } }`;
       `merge(blob)` inserts entries **that are not already present** (live wins on id collision),
       keeps each tab's array in `startedAt` order, honours the caps, keeps the older `since`;
       a corrupt blob (`null`, wrong `v`, non-array tab) merges to nothing and never throws.
-- [ ] Tests for `isOwnTraffic(url, port)`: `ws://127.0.0.1:9234/` and `wss://…:9234` → true;
+- [x] Tests for `isOwnTraffic(url, port)`: `ws://127.0.0.1:9234/` and `wss://…:9234` → true;
       `chrome-extension://…` → true; `http://127.0.0.1:8080/` → false (the E2E fixture is local too).
-- [ ] Implement.
+- [x] Implement.
+
+**Deviations:** (1) column spacing in `formatEntries` differs from the illustrative sample above by a
+single space between the duration and size columns — every column is fixed-width and joined by two
+spaces (`[id]`6, `tab:<id>`8 only for `"all"`, ago 9, method 6, status 3, type 9, duration 4 right-
+aligned, size 6; pending collapses duration+size into one 12-wide `(pending)` field). (2) `formatAgo`
+returns the `" ago"` suffix itself (`"2.1s ago"`), since every call site wants it. (3) `formatEntries`
+takes an optional `maxChars` (default 20 000) so the truncation test does not need 20 KB of fixture.
+(4) `normalizeType` also maps `iframe` → `sub_frame`. (5) `NetworkLog` additionally exposes
+`entriesFor(tabId)` (a copy of one tab's stored entries) and a `recordingSince` getter — N2's flush
+needs to serialise just the dirty tabs. (6) `merge` does **not** mark tabs dirty (the data came from
+storage, so re-writing it would be pointless).
 
 ## Part N2 — extension wiring (manual E2E; keep the glue thin)
 
