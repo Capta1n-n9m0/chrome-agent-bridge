@@ -95,11 +95,68 @@ anti-automation checks test `event.isTrusted`. Trusted typing focuses the field 
 its contents first, then replaces the selection with real keystrokes, so it overwrites rather
 than appends; it never assigns `.value`.
 
+## Running JavaScript
+
+`browser_evaluate(expression, timeoutMs?)` runs an expression in the active tab's **page context**,
+the same as typing it into the DevTools console: it sees the page's own globals, cookies and
+`localStorage`, and it is **not** limited by the page's `script-src` CSP (it goes through CDP, not
+`eval`).
+
+**What comes back.** The value of the last expression, shaped for reading:
+
+- plain data → pretty JSON you can reuse; `Map`/`Set`/`Date`/`RegExp`/`BigInt` get readable forms;
+- a DOM node → a short description (`<button id="counter"> "Click counter: 0"`) plus a hint to use
+  `browser_snapshot` refs to act on it — nodes are never returned as handles;
+- a function → its source head; an `Error` (or a rejected promise) → a tool error with the message
+  and a trimmed stack;
+- cycles become `[Circular]`, and nested `undefined`/functions stay visible as `"undefined"` /
+  `"[Function: name]"` rather than being dropped by JSON.
+
+**Limits.** Depth 6, 100 items per array/object, 5 000 characters per string *nested inside* a
+serialised object, and 20 000 characters of output in total. When anything is cut the output ends
+with `(output truncated — …)`. Note that `maxString` (5 000) applies only to strings inside an
+object: a **top-level** string is a primitive that never reaches the in-page serialiser, so it is
+capped by the 20 000-character total instead.
+
+**`return` and `await`.** Top-level `await` works, and so does a multi-statement script whose last
+expression is the value (`const a = 1; a + 1` → `2`). A bare `return` is also accepted: the bridge
+wraps the code in an async function when it spots a `return` keyword. That is a regex heuristic, not
+a parser — a false positive only costs you the completion-value behaviour.
+
+**Errors.** Thrown exceptions and rejected promises arrive as tool errors with the message and
+stack. A syntax error arrives as a plain `SyntaxError: …` with **no** line/column information (under
+`replMode` Chrome reports it as an exception object, not a compile-time position).
+
+**Timeouts.** `timeoutMs` defaults to 10 000 and is clamped to 100…60 000; the server waits 5 s
+longer, so a long evaluate is not cut short by the bridge's own call timeout. On expiry the debugger
+detaches and you get `Timed out after Ns …` — but **work the page already started keeps running**
+(a `fetch` in flight is not cancelled).
+
+**The banner.** Every call attaches `chrome.debugger`, so Chrome shows the "an extension is debugging
+this browser" banner for the duration, exactly like `trusted:true` input.
+
+**`userGesture`.** The expression runs with transient user activation, so popups, autoplay and other
+gesture-gated APIs work — but activation is **not window focus**. Anything gated on
+`document.hasFocus()`, notably `navigator.clipboard.writeText`, still fails with `NotAllowedError`
+while the Chrome window is in the background, which is the normal state while an agent drives it.
+Focus the window (e.g. `browser_select_tab`) if you need those.
+
+**It reads the DOM, not the accessibility tree.** `document.querySelectorAll("button")` lists hidden
+and `aria-hidden` elements that `browser_snapshot` deliberately prunes. Useful, but don't treat the
+two as the same view of the page.
+
 ## Security notes
 
 - The WebSocket binds to `127.0.0.1` only and requires the shared token.
 - The agent acts on whatever tab is **active** — it can touch sensitive tabs (banking,
   email). Be aware of what's focused when you let it run.
+- **`browser_evaluate` is the sharpest tool here.** It runs with the full authority of the
+  logged-in page, plus a user gesture — anything you could do in that tab's DevTools console the
+  agent can do: read tokens out of `localStorage`, call authenticated APIs with the page's cookies,
+  submit forms, open popups, write the clipboard. The localhost bind and the shared token remain the
+  only boundary; there is no per-domain allow-list yet (an arm/disarm toggle is on the roadmap).
+  Neither the expression nor its result is ever logged — the service worker records only the
+  expression's length.
 
 ## Troubleshooting
 

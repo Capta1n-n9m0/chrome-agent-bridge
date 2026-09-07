@@ -1,6 +1,8 @@
 # Step 4 — `browser_evaluate`: run JavaScript in the active tab
 
-> **DRAFT — not yet started.** For agentic workers: TDD for the pure logic (`extension/src/evaluate/*`,
+> **DONE — implemented and E2E-verified on 2026-09-07** (commits `8a13b30`, `d2c7a8a`, `0757542`,
+> `376e4dd`, `21c44c6`, `c0026e5`, `1e9e0ee` + the docs commit); 20 of the 22 EVAL cases run, all 20
+> pass (EVAL-16/17 deliberately not run — see Part E4's Deviations). For agentic workers: TDD for the pure logic (`extension/src/evaluate/*`,
 > the `describeDebuggerError` change, the server tool, the per-call timeout in `ExtensionConnection`);
 > the `chrome.debugger` glue is manual E2E. Steps use checkbox (`- [ ]`) syntax and are ordered so each
 > Part leaves `npm test` + `npm run typecheck` green. Prerequisites: Steps 1–3 done
@@ -420,20 +422,38 @@ Fixture changes:
 
 ## Part E5 — docs + commits
 
-- [ ] `docs/setup.md`: add `browser_evaluate(expression, timeoutMs?)` to the tool table; a new
+- [x] `docs/setup.md`: add `browser_evaluate(expression, timeoutMs?)` to the tool table; a new
       "Running JavaScript" subsection (what's returned, limits, `return`/`await` rules, the banner,
       the timeout not cancelling page work); the security paragraph from §0.4 in the security section.
-- [ ] `docs/e2e-test-plan.md`: §4.7 table above + fixture notes in §1.
-- [ ] `docs/progress-and-roadmap.md`: 18 tools; Step 4 entry in §0 once E2E ran; Phase F gains the
+- [x] `docs/e2e-test-plan.md`: §4.7 table above + fixture notes in §1.
+- [x] `docs/progress-and-roadmap.md`: 18 tools; Step 4 entry in §0 once E2E ran; Phase F gains the
       follow-ups below; Phase E note that arm/disarm is now higher priority.
-- [ ] `CLAUDE.md`: 18 tools; key-files line for `evaluate/*`; gotchas: *CDP `Runtime.evaluate.timeout`
+- [x] `CLAUDE.md`: 18 tools; key-files line for `evaluate/*`; gotchas: *CDP `Runtime.evaluate.timeout`
       doesn't fire while awaiting — race your own timer*; *`returnByValue` turns nodes/Maps into `{}` —
       use the `callFunctionOn` serialiser*; *the server call timeout is per-call now — pass
       `timeoutMs` for anything that may exceed 30 s*; *`describeDebuggerError` takes a `what`*.
-- [ ] Commits (each green): `feat(extension): in-page serialiser + expression wrapper (pure)`,
+- [x] Commits (each green): `feat(extension): in-page serialiser + expression wrapper (pure)`,
       `feat(extension): evaluate handler over CDP Runtime.evaluate`,
       `feat(server): per-call timeout + browser_evaluate tool`,
       `test(e2e): EVAL-1…22 + CSP fixture`, `docs: browser_evaluate`. Trailer per `CLAUDE.md`.
+
+**Deviations:** (E5)
+
+- The `browser_evaluate` row in `docs/setup.md`'s tool table and the 17 → 18 tool-count bumps in
+  `CLAUDE.md` / the roadmap landed with Part E3 (see its Deviations); Part E5 added the rest and
+  verified those.
+- Beyond the four gotchas this part lists, `CLAUDE.md` also gained the one the E2E run surfaced —
+  `replMode` + `awaitPromise` unwrap only one promise level, so a promise-valued completion value
+  needs a second `Runtime.awaitPromise` (`pendingPromiseId`) — and the stale "vitest (113 tests)"
+  line was corrected to 181.
+- `docs/setup.md`'s "Running JavaScript" subsection additionally documents four things the run
+  established that the plan did not anticipate: `maxString` applies only to *nested* strings (a
+  top-level string is capped by the 20 000-char total); `userGesture` gives transient activation but
+  not window focus, so `document.hasFocus()`-gated APIs such as the clipboard still throw
+  `NotAllowedError` while Chrome is in the background; the serialiser walks the DOM rather than the
+  a11y tree, so it lists elements `browser_snapshot` prunes; and a `SyntaxError` carries no line/col.
+- The roadmap gained a milestone-table row for Step 4, a §3 verified/not-verified entry, and the
+  Step 4 follow-ups under Phase F, in addition to the bullets listed above.
 
 ## Definition of done
 

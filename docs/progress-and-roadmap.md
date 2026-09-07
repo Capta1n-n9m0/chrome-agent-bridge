@@ -1,8 +1,8 @@
 # Progress & Roadmap
 
-- **Date:** 2026-09-03
+- **Date:** 2026-09-07
 - **Branch:** `main` (merged from `feat/agent-bridge`; public on GitHub, MIT, since 2026-09-03)
-- **Status:** Phases A–D complete; **113 unit tests green**; **live in-browser E2E passed** — 29 cases on 2026-06-04, then the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03 — against the real default profile; 5 runtime bugs found & fixed across those runs. `main`, **public on GitHub (MIT) since 2026-09-03**. **18 tools.**
+- **Status:** Phases A–D complete plus Step 4 (`browser_evaluate`); **181 unit tests green**; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, and the Step 4 evaluate pass (20 of 22) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. `main`, **public on GitHub (MIT) since 2026-09-03**. **18 tools.**
 
 ---
 
@@ -75,6 +75,35 @@ with no code changes needed after the three commits. Evidence is in `docs/e2e-te
   conflict no longer occurs; `describeDebuggerError`'s DevTools branch is kept (unit-tested) for older
   Chrome and other debugger extensions, and the E2E case now accepts either outcome.
 
+### Step 4 E2E — `browser_evaluate` (2026-09-07)
+
+Ran `docs/plans/2026-09-07-step4-browser-evaluate.md` (commits `8a13b30`, `d2c7a8a`, `0757542`,
+`376e4dd`) against Chrome **152.0.0.0** on Windows 11 (DPR 1.25, zoom 100 %). **20 of the 22 EVAL
+cases ran and all 20 pass**; evidence is in `docs/e2e-test-plan.md` §5, "Run 5". EVAL-16 (DevTools
+open) and EVAL-17 (banner cancelled mid-run) were **deliberately not run** — both need a human at
+the keyboard, and TRUST-3 / TRUST-8 already exercise those two Chrome behaviours through the very
+same `withDebugger`.
+
+- **One real defect, found and fixed (`376e4dd`).** `Runtime.evaluate {awaitPromise:true}` unwraps
+  exactly one promise level, and `replMode` spends it on Chrome's own async script wrapper — so any
+  expression whose completion value was itself a promise returned `Promise {}`, including the bare
+  `return` form (EVAL-4) and any `p.then(…)` (EVAL-20). A second `Runtime.awaitPromise`, gated by the
+  new pure `pendingPromiseId`, fixes it; both cases pass on the re-run. Console capture inside the
+  expression (a Phase F follow-up) would have shortened the diagnosis considerably.
+- **The CSP premise holds (EVAL-12).** On a page whose own `new Function("return 1")()` throws
+  `EvalError`, the same call over CDP returns `1` — design option A (`executeScript` + `new Function`)
+  would have failed exactly where it matters.
+- **Two plan expectations were wrong rather than the code**, and §4.7 was corrected: a `SyntaxError`
+  under `replMode` arrives with no line/col (EVAL-7), and a top-level string is capped by `maxChars`
+  (20 000), not by `maxString` (EVAL-19, which applies only to strings nested in a serialised object).
+- **`userGesture` is transient activation, not window focus.** A clipboard write still fails with
+  `NotAllowedError: … Document is not focused` while Chrome is in the background — a probe showed
+  `hasFocus:false, userActivationActive:true`. Chrome's rule, now documented in `docs/setup.md`.
+- **Sync timeouts (EVAL-9):** Chrome 152 does honour `Runtime.evaluate.timeout` (the tab is
+  responsive immediately after a killed `while(true){}`), but the branch that *reports* is always the
+  bridge-side `raceTimeout`, whose deadline starts ~100 ms earlier. Both render the same message by
+  design.
+
 ---
 
 ## 1. Where we are
@@ -96,8 +125,9 @@ out of.
 | C | Perception fidelity: shadow DOM + same-origin iframes, hidden-subtree pruning, richer roles, frame-correct coordinates | ✅ Done (E2E-verified 2026-09-03) |
 | D | Action fidelity: trusted typing + `press_key` via CDP `Input.dispatchKeyEvent`; scroll-into-view + viewport validation for trusted input | ✅ D1/D2 done (E2E-verified 2026-09-03); D3 file upload not started |
 | B | Robustness: port-busy surfaced through tools + bind retry; `browser_status`; WS heartbeat; actionable `chrome.debugger` errors; CONN-5 soak | ✅ Done (E2E-verified 2026-09-03) |
+| Step 4 | `browser_evaluate`: CDP `Runtime.evaluate` in the page context + in-page serialiser + per-call server timeout | ✅ Done (E2E-verified 2026-09-07) |
 
-**Quality state:** 113 unit tests pass; `tsc` typecheck clean across all three packages; all four
+**Quality state:** 181 unit tests pass; `tsc` typecheck clean across all three packages; all four
 bundles build (`server/dist/index.js`, `extension/dist/{sw,options,offscreen,content}.js`). Every
 milestone passed a two-stage review (spec compliance + code quality); the final whole-system review
 verified the end-to-end protocol contract and that esbuild does not break page-injected functions.
@@ -148,7 +178,15 @@ Chrome 152.
 self-healing (CONN-7), dead-Chrome detection and unattended reconnect (CONN-6), the 9.5-minute idle
 keepalive soak (CONN-5), the cancelled-banner error path (TRUST-8), and DevTools coexistence (TRUST-3).
 
-**NOT yet verified live:** the heartbeat's *hung-peer* branch (a socket that stays open but never
+**Verified live (2026-09-07, §0 "Step 4 E2E"):** `browser_evaluate` — `docs/e2e-test-plan.md`
+EVAL-1…22 minus EVAL-16/17: page-context execution and MAIN/ISOLATED isolation, the in-page
+serialiser's every branch, CSP bypass, both timeout paths, the per-call server timeout, `replMode`
+completion values, and an ACT-2/TRUST-2/PERC-4 regression smoke after the `withDebugger(…, what)`
+signature change. Chrome 152.
+
+**NOT yet verified live:** EVAL-16 (DevTools open during an evaluate) and EVAL-17 (banner cancelled
+mid-evaluate) — covered indirectly by TRUST-3 / TRUST-8 through the shared `withDebugger`; the
+heartbeat's *hung-peer* branch (a socket that stays open but never
 pongs — Chrome's exit closes the socket cleanly, so only the unit test reaches it); the "another
 debugger is already attached" branch of `describeDebuggerError` (Chrome 152 no longer produces it
 for DevTools; it would take a second debugger extension). DPR 2 (a true Retina panel) has not been
@@ -225,10 +263,25 @@ missing scroll-into-view, now fixed with an explicit off-screen error. Both E2E-
 modifier chords for `press_key`, and caret-preserving trusted typing.
 
 **Phase E — Safety.** An explicit arm/disarm toggle in the options page; optional per-domain
-allow/block list; never log page content or tokens.
+allow/block list; never log page content or tokens. **Higher priority since Step 4:** `browser_evaluate`
+runs arbitrary JavaScript with the logged-in page's full authority plus a user gesture, so a kill
+switch the user can reach in one click is worth more than it was when the tool set was fixed.
+(Nothing is logged today beyond the expression's length.)
 
 **Phase F — Ergonomics.** `wait_for` variants (network-idle, element-visible); a console/error
-capture tool; cookie/storage read tools; download handling; multi-window awareness.
+capture tool; cookie/storage read tools; download handling; multi-window awareness. Plus the Step 4
+follow-ups (see that plan's "Follow-ups"):
+
+- **Banner-free evaluate** via `chrome.userScripts.execute` once Chrome's API settles — same envelope,
+  only the transport changes; needs the "Allow User Scripts" toggle documented in setup.
+- **`args` for `browser_evaluate`**, so agents pass data without escaping it into the string.
+- **Frame targeting** (`Runtime.evaluate`'s `contextId`) — needs `Runtime.enable` + teardown.
+- **Return a `[ref=eN]` for a `kind:"node"` result**, round-tripping through the content script's
+  RefMap: "find it with JS, act on it with the fixed tools".
+- **Keep-attached debugger session** per tab, to amortise the ~100 ms attach and the banner flicker;
+  needs a lifecycle design, and pairs with Step 5's network work.
+- **Console capture** (`Runtime.enable` + `consoleAPICalled`) appended to the evaluate result — this
+  is the console tool above, and the Run 5 promise bug would have been diagnosed much faster with it.
 
 **Phase G — Distribution.** Decide packaging: keep unpacked (developer use) vs. a signed Web Store
 build; document the security model for each.

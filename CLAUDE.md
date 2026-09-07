@@ -34,14 +34,16 @@ Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(met
 - `extension/src/`: `sw.ts` (router + offscreen orchestration), `offscreen.ts` (the socket),
   `inject.ts` (`ensureContent`/`callInPage` + `toSerializableArgs`/`unwrapResult`), `handlers/*`,
   `content/{index,snapshot,refmap,actions,geometry}.ts`, `debugger.ts`, `debugger-errors.ts`
-  (pure: CDP failure → actionable message), `keys.ts` (pure: key name → CDP key params).
+  (pure: CDP failure → actionable message), `keys.ts` (pure: key name → CDP key params),
+  `evaluate/{serialize,wrap,result}.ts` (pure: in-page serialiser source, `return`-wrapper,
+  CDP-result → `EvalEnvelope`).
 
 ## Commands
 
 ```bash
 npm install
 npm run build        # builds server (dist/index.js) + extension (dist/{sw,options,offscreen,content}.js)
-npm test             # vitest (113 tests)
+npm test             # vitest (181 tests)
 npm run typecheck    # tsc --noEmit across shared/server/extension
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
@@ -102,6 +104,24 @@ and follow `docs/e2e-test-plan.md`.
   shrinks the visual viewport in CSS px (150 % turns 1920x940 into 1280x630), which is how an element
   that fit at 100 % ends up off-screen. `centerForInput` scrolls first and throws if it still can't
   reach — keep that if you add a trusted hover/drag.
+- **CDP `Runtime.evaluate.timeout` does not fire while the script is `await`ing** — an idle promise
+  isn't "executing", so it only bounds *synchronous* code. `evaluateInPage` races the CDP call
+  against its own timer (`raceTimeout`) and swallows the loser's rejection; detaching does **not**
+  stop page-side work already in flight.
+- **`returnByValue: true` flattens nodes, `Map`s and class instances to `{}`.** The value comes back
+  by `objectId` and is described by `Runtime.callFunctionOn` with `SERIALIZER_SRC` (`evaluate/serialize.ts`)
+  as `this` — a self-contained function shipped as `String(fn)`, so the jsdom unit tests test exactly
+  what ships. Keep it closure-free.
+- **`replMode` + `awaitPromise` unwrap only *one* promise level**, and `replMode` spends that level on
+  Chrome's own async script wrapper. A promise-valued completion value (`fetch(…)`, `p.then(…)`, the
+  `(async () => …)()` form `wrapExpression` emits) therefore arrives as `Promise {}` and needs a second
+  `Runtime.awaitPromise` — see `pendingPromiseId` in `extension/src/evaluate/result.ts`.
+- **The server's call timeout is per-call now** — `bridge.call(method, params, { timeoutMs })`. The
+  default is still 30 s, so anything that may run longer (only `browser_evaluate` today) must pass
+  `timeoutMs`, or the *server* reports a timeout while the extension is still working.
+- **`describeDebuggerError(err, what)` / `withDebugger(tabId, fn, what)` take a caller name** —
+  it's interpolated into the restricted-URL and timeout messages ("Trusted input" by default,
+  `"browser_evaluate"`, `"Full-page screenshot"`). Add new Chrome strings there, not in handlers.
 - **`centerOf` is top-document relative** — it adds each ancestor `frameElement`'s rect, because
   CDP `Input.*` dispatches against the top-level viewport. Don't hand it a raw
   `getBoundingClientRect` from inside a frame.
