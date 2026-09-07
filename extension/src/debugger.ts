@@ -2,7 +2,7 @@ import type { EvalEnvelope } from "@bridge/shared";
 import { keyEventParams, type KeyEventParams } from "./keys.js";
 import { describeDebuggerError, isExecutionTerminated, timeoutMessage } from "./debugger-errors.js";
 import { SERIALIZER_SRC, type SerializeLimits } from "./evaluate/serialize.js";
-import { shapeEvaluateResult, type CdpEvaluateResponse } from "./evaluate/result.js";
+import { shapeEvaluateResult, pendingPromiseId, type CdpEvaluateResponse } from "./evaluate/result.js";
 
 const PROTOCOL = "1.3";
 
@@ -123,7 +123,7 @@ export async function evaluateInPage(
         // exceptionDetails "Execution was terminated" — or, in some builds, as a command error. Both
         // are recognised by `isExecutionTerminated` below and re-rendered as `Timed out after Ns`.
         // (Chrome-version behaviour to be pinned in E2E EVAL-9.)
-        const raw = (await raceTimeout(
+        let raw = (await raceTimeout(
           send(tabId, "Runtime.evaluate", {
             expression,
             replMode: true, // top-level await, let/const re-declaration, completion value
@@ -136,6 +136,19 @@ export async function evaluateInPage(
           remaining(),
           timeoutMessage(timeoutMs),
         )) as CdpEvaluateResponse;
+
+        // `awaitPromise` unwraps one level and `replMode`'s own async wrapper consumes it, so a
+        // completion value that is itself a promise arrives unresolved (`Promise {}`). Resolve it
+        // with a second round-trip — this is what makes `fetch(…)`, `p.then(…)` and the
+        // `(async () => { … })()` form of a bare `return` return their value. Same deadline.
+        const promiseId = pendingPromiseId(raw);
+        if (promiseId !== undefined) {
+          raw = (await raceTimeout(
+            send(tabId, "Runtime.awaitPromise", { promiseObjectId: promiseId, returnByValue: false }),
+            remaining(),
+            timeoutMessage(timeoutMs),
+          )) as CdpEvaluateResponse;
+        }
 
         return shapeEvaluateResult(raw, {
           limits,

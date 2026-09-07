@@ -80,6 +80,22 @@ function cap(env: EvalEnvelope, maxChars: number): EvalEnvelope {
 }
 
 /**
+ * The objectId of a completion value that is *itself* an unresolved promise, or `undefined`.
+ *
+ * `Runtime.evaluate {awaitPromise: true}` unwraps exactly **one** level, and under `replMode: true`
+ * that level is Chrome's own async wrapper around the script. So `fetch('/x')`,
+ * `p.then(() => "ok")`, and the `(async () => { … })()` form `wrapExpression` emits for a bare
+ * `return` all came back as `Promise {}` (observed in Chrome 152, E2E EVAL-4 / EVAL-20). The caller
+ * resolves this id with a second `Runtime.awaitPromise` and shapes *that* response instead.
+ */
+export function pendingPromiseId(raw: CdpEvaluateResponse): string | undefined {
+  if (raw.exceptionDetails) return undefined; // a page-side throw wins over the completion value
+  const r = raw.result;
+  if (!r || r.subtype !== "promise" || typeof r.objectId !== "string") return undefined;
+  return r.objectId;
+}
+
+/**
  * Raw CDP `Runtime.evaluate` response → `EvalEnvelope`, or a thrown `Error` for a page-side throw.
  * Pure: the second CDP round-trip (the in-page serialiser) is supplied as `callFn`, so this module
  * never touches `chrome.*`.

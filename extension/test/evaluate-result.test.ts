@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { shapeEvaluateResult, formatException, type CdpEvaluateResponse } from "../src/evaluate/result.js";
+import { shapeEvaluateResult, formatException, pendingPromiseId, type CdpEvaluateResponse } from "../src/evaluate/result.js";
 import { DEFAULT_LIMITS } from "../src/evaluate/serialize.js";
 import type { EvalEnvelope } from "@bridge/shared";
 
@@ -146,5 +146,34 @@ describe("shapeEvaluateResult — total size cap", () => {
     const env = await shape({ result: { type: "string", value: "abc" } }, undefined, 20000);
     expect(env.description).toBe("abc");
     expect(env.truncated).toBe(false);
+  });
+});
+
+describe("pendingPromiseId", () => {
+  // Regression (E2E EVAL-4 / EVAL-20, 2026-09-07): under `replMode: true`, CDP's `awaitPromise`
+  // unwraps exactly one level — replMode's own async wrapper — so an expression whose completion
+  // value is itself a promise came back as `Promise {}`. The handler now unwraps it with a second
+  // `Runtime.awaitPromise`; this predicate decides when.
+  it("returns the objectId of a promise-valued completion", () => {
+    const raw: CdpEvaluateResponse = { result: { type: "object", subtype: "promise", objectId: "7" } };
+    expect(pendingPromiseId(raw)).toBe("7");
+  });
+
+  it("returns undefined for a non-promise object (it goes to the serialiser instead)", () => {
+    expect(pendingPromiseId({ result: { type: "object", objectId: "7" } })).toBeUndefined();
+    expect(pendingPromiseId({ result: { type: "object", subtype: "array", objectId: "7" } })).toBeUndefined();
+  });
+
+  it("returns undefined for primitives and for a promise with no objectId", () => {
+    expect(pendingPromiseId({ result: { type: "number", value: 1 } })).toBeUndefined();
+    expect(pendingPromiseId({ result: { type: "object", subtype: "promise" } })).toBeUndefined();
+  });
+
+  it("returns undefined when the evaluate already threw — the exception wins", () => {
+    const raw: CdpEvaluateResponse = {
+      result: { type: "object", subtype: "promise", objectId: "7" },
+      exceptionDetails: { text: "Uncaught" },
+    };
+    expect(pendingPromiseId(raw)).toBeUndefined();
   });
 });
