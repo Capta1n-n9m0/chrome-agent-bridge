@@ -257,7 +257,7 @@ eval and for full-page screenshots.
      try/catch. The second call is also inside the race (share one deadline).
 - [x] `raceTimeout(p, ms)` helper: rejects with `Error("Timed out after ${ms/1000}s — the debugger was
       detached; page-side work already started (e.g. a fetch) continues")`; attaches `p.catch(()=>{})`.
-- [ ] Pin the observed Chrome 152 behaviour of `Runtime.evaluate.timeout` on a sync loop in a comment
+- [x] Pin the observed Chrome 152 behaviour of `Runtime.evaluate.timeout` on a sync loop in a comment
       next to the call (it surfaces as `exceptionDetails` "Execution was terminated" **or** as a
       command error — record which, and make sure `formatException` / `describeDebuggerError` render
       it as `Timed out after Ns` in either branch — add a regex case for it in `describeDebuggerError`).
@@ -368,7 +368,7 @@ Fixture changes:
 | EVAL-21 | Isolation | `typeof window.__agentBridge` | `"undefined"` — the content-script world is not visible to page code. |
 | EVAL-22 | Regression smoke | ACT-2, TRUST-2, PERC-4 | Still pass (the `withDebugger` signature change and `describeDebuggerError` wording change didn't regress them). |
 
-- [ ] Run all, record in the scorecard (§5) with Chrome version + date, like the Phase B run.
+- [x] Run all, record in the scorecard (§5) with Chrome version + date, like the Phase B run.
 
 **Deviations:** (E4)
 
@@ -382,13 +382,33 @@ Fixture changes:
   cases need: the same `window.__playground` object, a counter button, the status line, and an
   `#eval-probe` paragraph that records the page's own `new Function()` result (`EvalError` under this
   CSP), which is the contrast EVAL-12 asks the scorecard to note.
-- **EVAL-1…22 were not run.** The WebSocket port 9234 was held by an orphaned
-  `node server/dist/index.js` from an earlier Claude session (`browser_status`:
-  `NOT listening … EADDRINUSE`), and this session was not permitted to terminate the stale processes.
-  The two boxes that depend on a live run — "Run all, record in the scorecard (§5)" here and the
-  E2.2 box pinning Chrome's sync-timeout branch — stay unticked. The fixture, the CSP fixture, the
-  §4.7 table and the §1 fixture notes are all in place, so the run is a pure re-execution once the
-  port is free.
+- The run happened in two sittings: port 9234 was first held by orphaned
+  `node server/dist/index.js` processes from earlier Claude sessions (`browser_status` diagnosed it
+  as CONN-7 does), and started once the user closed them.
+- **20 of the 22 cases ran; 18 passed outright.** EVAL-16 (DevTools open) and EVAL-17 (banner
+  Cancel) were **not run** — both need a human at the keyboard, and TRUST-3 / TRUST-8 already cover
+  the same two Chrome behaviours through the same `withDebugger`. EVAL-4 and EVAL-20 **failed on one
+  shared defect**, fixed in this stage (see below); they need a re-run after `npm run build` + an
+  extension reload.
+- **Defect found: a promise-valued completion value came back as `Promise {}`.**
+  `Runtime.evaluate {awaitPromise: true}` unwraps exactly one promise level, and `replMode: true`
+  spends that level on Chrome's own async wrapper around the script. So `fetch('/x')`, `p.then(…)`
+  and the `(async () => { … })()` form `wrapExpression` emits for a bare `return` all returned an
+  unresolved promise. `evaluateInPage` now follows up with `Runtime.awaitPromise` on the same
+  deadline when the new pure `pendingPromiseId(raw)` (in `evaluate/result.ts`, 4 unit tests written
+  red first) says the completion value is a pending promise. This is the fix the plan's §0.2/§0.3
+  did not anticipate; it touches `extension/`, so the extension must be rebuilt and reloaded.
+- **E2.2's sync-timeout box is now ticked.** Chrome 152 *does* honour `Runtime.evaluate.timeout` on a
+  `while(true){}` (the tab is responsive immediately afterwards, which it could not be if V8 were
+  still spinning), but the branch that *reports* is always the bridge-side `raceTimeout` — its
+  deadline starts before `withDebugger` attaches, so it expires ~100 ms before CDP's own timer. Both
+  branches render the identical `Timed out after Ns …` string, so the agent cannot tell them apart —
+  which was the design goal. No code change.
+- Two of the plan's Expected columns were wrong rather than the code, and §4.7 was corrected to match
+  Chrome 152: **EVAL-7** (under `replMode` a `SyntaxError` arrives as a real exception object, so
+  `formatException` prints `SyntaxError: Unexpected end of input` with no `Uncaught` prefix and no
+  line/col) and **EVAL-19** (a top-level string is a CDP primitive that never reaches the in-page
+  serialiser, so `maxString` does not apply — the 20 000-char `maxChars` cap does).
 
 ## Part E5 — docs + commits
 

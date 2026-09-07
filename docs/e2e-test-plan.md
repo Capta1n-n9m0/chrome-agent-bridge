@@ -154,7 +154,7 @@ fixture and EVAL-12 on the **CSP** fixture.
 | EVAL-4 ★ | `return` form | `const r = await fetch('/e2e-playground.html'); return r.status` | `200`. |
 | EVAL-5 ★ | Thrown error | `throw new Error("boom")` | Tool error containing `Error: boom` and an `at` stack line; **not** a 30 s hang. |
 | EVAL-6 | Rejected promise | `await Promise.reject(new TypeError("nope"))` | Tool error containing `TypeError: nope`. |
-| EVAL-7 | Syntax error | `foo(` | Tool error `Uncaught SyntaxError…` with line/col. |
+| EVAL-7 | Syntax error | `foo(` | Tool error naming the `SyntaxError`. Under `replMode` Chrome 152 supplies a real exception object, so `formatException` takes the `description` branch: `SyntaxError: Unexpected end of input` — no `Uncaught` prefix and no line/col (the `text` + `(line L, col C)` branch is the non-replMode shape and stays unit-tested). |
 | EVAL-8 ★ | Async timeout | `await new Promise(r => setTimeout(r, 20000))` with `timeoutMs: 1000` | Fails in ~1 s with `Timed out after 1s…`; banner gone; the next tool call works. |
 | EVAL-9 | Sync timeout | `while(true){}` with `timeoutMs: 1000` | Same outcome as EVAL-8 (CDP `timeout` terminated it); the tab is still responsive afterwards. **Record which CDP branch fired** — `exceptionDetails` "Execution was terminated" vs. a raw command error (pins the open box in plan E2.2). |
 | EVAL-10 | Long timeout beats the server default | `await new Promise(r => setTimeout(r, 35000)); 1` with `timeoutMs: 40000` | Returns `1` after ~35 s — proves the per-call timeout (would otherwise fail at 30 s with "Timed out … calling evaluate"). |
@@ -166,7 +166,7 @@ fixture and EVAL-12 on the **CSP** fixture.
 | EVAL-16 | DevTools open | Open DevTools on the tab, then EVAL-1 | Same rule as TRUST-3: Chrome ≥ 152 just works; older Chrome returns the "one debugger per tab" message. Record which. |
 | EVAL-17 | Banner cancelled mid-run | EVAL-8 with `timeoutMs: 20000`, click the banner's **Cancel** | "The debugging session was cancelled mid-action…" within a second, not the timeout. |
 | EVAL-18 | Restricted URL | Focus `chrome://extensions`, then EVAL-1 | "browser_evaluate is not available here: the active tab is a restricted URL…" |
-| EVAL-19 | Big string | `'x'.repeat(50000)` | Description cut at `maxString` (5 000) with `…[+45000 chars]` and the truncation hint. |
+| EVAL-19 | Big string | `'x'.repeat(50000)` | Cut, with the truncation hint. Note which limit applies: a **top-level** string is a CDP primitive that never reaches the in-page serialiser, so `maxString` (5 000) does not apply — the total `maxChars` cap does: 20 000 chars + `… [truncated: 30000 more chars]`. `maxString` applies to strings **nested** inside a serialised object. |
 | EVAL-20 | `userGesture` | `navigator.clipboard.writeText("hi").then(() => "ok")` | `ok` (would reject without a user gesture on most pages). |
 | EVAL-21 | Isolation | `typeof window.__agentBridge` | `"undefined"` — the content-script world is not visible to page code. |
 | EVAL-22 | Regression smoke | ACT-2, TRUST-2, PERC-4 | Still pass (the `withDebugger` signature change and the `describeDebuggerError` wording change didn't regress them). |
@@ -353,6 +353,114 @@ Evidence per case:
 Failures / notes:
 - None. One expectation was wrong rather than the code: TRUST-3 assumed Chrome still enforces one
   debugger per tab; Chrome 152 does not.
+
+
+### Run 5 — 2026-09-07 (Step 4 `browser_evaluate`: commits `8a13b30`, `d2c7a8a`, `0757542`)
+
+```
+Date: 2026-09-07  Chrome version: 152.0.0.0 (UA-CH brand "Google Chrome" 152)  Node: 20+  OS: Windows 11 Pro 26200
+Display: 1536-px innerWidth, DPR 1.25 (OS scaling 125%), Chrome zoom 100%
+Fixtures: http://localhost:8080/e2e-playground.html and .../e2e-playground-csp.html
+
+EVAL-1 [P] EVAL-2 [P] EVAL-3 [P] EVAL-4 [F -> fixed, re-run pending] EVAL-5 [P] EVAL-6 [P] EVAL-7 [P*]
+EVAL-8 [P] EVAL-9 [P] EVAL-10 [P] EVAL-11 [P] EVAL-12 [P] EVAL-13 [P] EVAL-14 [P] EVAL-15 [P]
+EVAL-16 [-] EVAL-17 [-] EVAL-18 [P] EVAL-19 [P*] EVAL-20 [F -> fixed, re-run pending] EVAL-21 [P] EVAL-22 [P]
+
+(* passed against a corrected expectation — see the EVAL-7 / EVAL-19 rows in §4.7)
+(- not run: EVAL-16 and EVAL-17 need a human at the keyboard — open DevTools, click the banner's Cancel)
+```
+
+**One real defect found and fixed** (`fix(extension): unwrap a promise-valued completion value`):
+`Runtime.evaluate {awaitPromise: true}` unwraps exactly **one** promise level, and under
+`replMode: true` that level is Chrome's own async wrapper around the script. So any expression whose
+*completion value* is itself a promise came back as `Promise {}` — including the
+`(async () => { … })()` form `wrapExpression` emits for a bare `return` (EVAL-4) and any
+`p.then(…)` (EVAL-20). `evaluateInPage` now resolves such a result with a second
+`Runtime.awaitPromise` on the same deadline, gated by the new pure `pendingPromiseId(raw)`
+(4 unit tests). **EVAL-4 and EVAL-20 must be re-run after `npm run build` + an extension reload.**
+
+Evidence per case:
+
+- **EVAL-1 ★** — `document.title` → `Agent Bridge E2E Playground`. Banner appeared and cleared.
+- **EVAL-2 ★** — `window.__playground` → pretty JSON with `"version": "1"`, `"items": [1,2,3]`,
+  `"secret": "[Function: secret]"`, `"node": "<button id=\"counter\"> \"Click counter: 0\""`,
+  `"self": "[Circular]"`, and `big` cut after element `99` with `"… 400 more"` as its last element,
+  then `(output truncated — narrow the expression, e.g. pick fields or slice the array)`. Every
+  serialiser branch behaved in real Chrome exactly as the jsdom unit tests predicted.
+- **EVAL-3 ★** — `(await fetch('/e2e-playground.html')).status` → `200`.
+- **EVAL-4 ★** — `const r = await fetch('/e2e-playground.html'); return r.status` → **`Promise {}`**,
+  not `200`. Root-caused live: `await (async () => (await fetch('/e2e-playground.html')).status)()`
+  — which the `\breturn\b` heuristic leaves unwrapped — returned `200`, and
+  `await (async () => { … r.status })()` returned `undefined`, so `await` *was* being honoured and
+  the missing piece was a second unwrap. Fixed as above; re-run pending.
+- **EVAL-5 ★** — `throw new Error("boom")` → tool error `[chrome.debugger] Error: boom` +
+  `    at <anonymous>:1:7`. Immediate, not a 30 s hang.
+- **EVAL-6** — `await Promise.reject(new TypeError("nope"))` → `TypeError: nope` + `at <anonymous>:1:22`.
+- **EVAL-7** — `foo(` → `SyntaxError: Unexpected end of input`. Clear, but with neither the `Uncaught`
+  prefix nor a line/col: under `replMode` Chrome hands back a real `exception` object, so
+  `formatException` takes its `description` branch rather than the `text` + position branch. The
+  §4.7 expectation was corrected rather than the code — both branches stay unit-tested.
+- **EVAL-8 ★** — `await new Promise(r => setTimeout(r, 20000))` with `timeoutMs: 1000` → in ~1 s,
+  `Timed out after 1s — the debugger was detached; page-side work already started (e.g. a fetch)
+  continues`. The next call (`document.title`) worked immediately; the banner was gone.
+- **EVAL-9** — `while(true){}` with `timeoutMs: 1000` → the identical `Timed out after 1s …` message,
+  and **the tab was fully responsive straight afterwards** (`document.title + document.readyState`
+  returned instantly). *Which CDP branch:* the two branches are byte-identical to the agent by design
+  (`timeoutMessage(ms)` is shared by `raceTimeout` and the `isExecutionTerminated` re-map), so the
+  message cannot discriminate. What this run does pin: (a) Chrome 152 **does** honour
+  `Runtime.evaluate.timeout` for synchronous code — V8 execution really was terminated, or the
+  renderer main thread would still have been spinning and the next evaluate could not have run at
+  all; and (b) the branch that *reports* is the bridge-side `raceTimeout`, because its deadline is
+  set before `withDebugger` attaches (~100 ms) and so always expires before CDP's own timer, which
+  starts only when evaluation begins. Both paths are implemented and render identically, so no code
+  change was needed — this is the behaviour plan task E2.2 asked to pin.
+- **EVAL-10** — `await new Promise(r => setTimeout(r, 35000)); 1` with `timeoutMs: 40000` → `1` after
+  ~35 s. The per-call timeout (`bridge.call(…, {timeoutMs: 45000})`) beats the old fixed 30 s
+  connection timeout, which would have failed with "Timed out after 30000ms calling evaluate".
+- **EVAL-11** — `const a = 1; a + 1` → `2`, and `2` again on an immediate repeat. `replMode` gives
+  both the completion value and `const` re-declaration.
+- **EVAL-12 ★** — on the CSP fixture, `new Function("return 1")()` → `1`. (The `\breturn\b` heuristic
+  correctly left it unwrapped — the word is inside a string literal.) The page's own `#eval-probe`
+  line reads `page eval: BLOCKED — EvalError: Evaluating a string as JavaScript violates the
+  following Content Security Policy directive because 'unsafe-eval' is not an allowed source of
+  script: script-src 'self' 'unsafe-inline'`. Same call, same page: refused from page code, allowed
+  over CDP. Design option A (`executeScript` + `new Function`) would have failed here.
+- **EVAL-13 ★** — `document.querySelector('#counter').click(); document.querySelector('#count').textContent`
+  → `1`; the counter and the `status:` line both moved.
+- **EVAL-14** — `document.querySelectorAll('button')` → `NodeList [ "<button id=\"submit-btn\"> \"Sign
+  in\"", … ]`, ten node descriptions — including the four decoys, because the serialiser walks the
+  DOM rather than the a11y tree. Correct, and a useful contrast with `browser_snapshot`. No
+  `(DOM node — …)` hint: kind is json.
+- **EVAL-15** — `document.body` → `<body> "Agent Bridge E2E Playground status: counter = 1 Form Email
+  address Password Favo…"` followed by `(DOM node — use browser_snapshot refs to act on it)`.
+- **EVAL-16 / EVAL-17** — not run: both need a human at the keyboard (open DevTools on the tab; click
+  the banner's Cancel mid-run). TRUST-3 and TRUST-8 already cover those two Chrome behaviours for the
+  trusted-input path, and `browser_evaluate` reaches them through the same `withDebugger`.
+- **EVAL-18** — a `chrome://extensions` tab made active, then `document.title` → `browser_evaluate is
+  not available here: the active tab is a restricted URL (chrome://, the New Tab page, or the Chrome
+  Web Store) where extensions can't attach a debugger. (Cannot access a chrome:// URL)`. The E2.1
+  `what`-threading works: the message names `browser_evaluate`, not "Trusted input".
+- **EVAL-19** — `'x'.repeat(50000)` → 20 000 `x`s + `… [truncated: 30000 more chars]` + the
+  truncation hint. The limit that applied is `maxChars`, not `maxString`; §4.7 corrected.
+- **EVAL-20** — `navigator.clipboard.writeText("hi").then(() => "ok")` → **`Promise {}`** — the same
+  defect as EVAL-4. `userGesture` itself stays unproven until the re-run.
+- **EVAL-21** — `JSON.stringify([typeof window.__agentBridge, typeof window.__playground])` →
+  `["undefined","object"]`. The ISOLATED-world content script is invisible to page code and the
+  page's own globals are visible, so `browser_evaluate` really is running in MAIN.
+- **EVAL-22** — regression smoke after the `withDebugger(…, what)` signature change: `browser_click e6`
+  → `count=1` (ACT-2); `browser_click {e7, trusted:true}` → `status: TRUSTED click received`
+  (TRUST-2); `browser_screenshot {fullPage:true}` → a taller PNG containing `BOTTOM MARKER` (PERC-4).
+  No regressions.
+
+Failures / notes:
+- One code defect (the promise-valued completion value) — fixed with a unit test; EVAL-4 and EVAL-20
+  need a re-run after a rebuild + extension reload.
+- Two plan expectations were wrong rather than the code (EVAL-7, EVAL-19); §4.7 corrected to match
+  what Chrome 152 actually does.
+- EVAL-16 and EVAL-17 remain unrun (human interaction required).
+- Environment note: port 9234 was initially held by orphaned `node server/dist/index.js` processes
+  from earlier Claude sessions. `browser_status` diagnosed it exactly as CONN-7 describes, and the run
+  started once they were closed — one session at a time really is a hard constraint.
 
 ## 6. Exit criteria
 
