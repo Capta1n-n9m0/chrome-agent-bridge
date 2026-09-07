@@ -196,6 +196,18 @@
       document.getElementById("fake-tab").addEventListener("click", () => set("role=tab clicked"));
       document.getElementById("qty").addEventListener("input", (e) => set("qty = " + e.target.value));
 
+      // TC-EVAL: a page-context object for browser_evaluate to serialise. Deliberately mixes a
+      // function, a DOM node, a 500-element array and a self-reference (cycle) so EVAL-2 exercises
+      // every branch of the in-page serialiser at once.
+      window.__playground = {
+        version: "1",
+        items: [1, 2, 3],
+        secret() { return "s3cret"; },
+        big: Array.from({ length: 500 }, (_, i) => i),
+        node: document.getElementById("counter"),
+      };
+      window.__playground.self = window.__playground;
+
       document.getElementById("load-later").addEventListener("click", () => {
         set("loading…");
         setTimeout(() => { document.getElementById("async-area").textContent = "Async content loaded!"; set("async content loaded"); }, 1500);

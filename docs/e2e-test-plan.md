@@ -35,7 +35,18 @@ updates on every interaction (so `browser_snapshot` / `browser_screenshot` can v
 labeled form, a synthetic-friendly counter button, a **trusted-only** button (flips only on a real
 `isTrusted` event), a hover target, a jump link, a 1.5 s **async** loader, a long region with a
 `BOTTOM MARKER` for scroll / full-page screenshots, and a **Perception fidelity** section (open +
-closed shadow roots, a same-origin iframe, four hidden decoys, and the extra roles).
+closed shadow roots, a same-origin iframe, four hidden decoys, and the extra roles). For §4.7 it also
+defines `window.__playground` in the **page** context — `{version, items, secret(), big: [0…499],
+node: <button#counter>}` plus a `self` back-reference (a cycle) — so one `browser_evaluate` call
+exercises every branch of the in-page serialiser (function, DOM node, over-`maxItems` array, cycle).
+
+**CSP fixture:** `test-fixtures/e2e-playground-csp.html` (served alongside it at
+`http://localhost:8080/e2e-playground-csp.html`) is a small page carrying
+`<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'">` — no
+`'unsafe-eval'`. It has the same `window.__playground`, a counter button, and an `#eval-probe` line
+that records what happens when the **page itself** calls `new Function("return 1")()`. EVAL-12 uses
+it to show that `browser_evaluate` (CDP `Runtime.evaluate`) is not bound by the page CSP that blocks
+the page's own eval. `python -m http.server` picks up the new file without a restart.
 
 ## 2. Diagnostics (where to look when something fails)
 
@@ -129,7 +140,38 @@ If SMOKE-1/2 fail, stop and debug connection/injection before the rest.
 | TAB-4 | Close tab | `browser_close_tab {"id":<id>}` | That tab closes. |
 | HIST-1 | Back/forward | Navigate A → B, then `browser_back`, then `browser_forward` | Tab returns to A, then forward to B. |
 
-### 4.7 Waiting
+### 4.7 Evaluate (`browser_evaluate`, CDP `Runtime.evaluate`)
+
+Every case shows Chrome's "extension is debugging this browser" banner while it runs; the banner
+clearing afterwards is part of each expectation. Run EVAL-1…11 and EVAL-13…22 on the **main**
+fixture and EVAL-12 on the **CSP** fixture.
+
+| ID | Objective | Steps | Expected |
+|---|---|---|---|
+| EVAL-1 ★ | Basic expression + banner | `browser_evaluate {"expression":"document.title"}` | `Agent Bridge E2E Playground`; banner appears and clears. |
+| EVAL-2 ★ | Object serialisation | `window.__playground` | Pretty JSON: `items`, `version`; `secret` shown as `"[Function: secret]"`; `node` shown as `<button id="counter">…`; `self` as `"[Circular]"`; `big` cut at 100 with `… 400 more`; trailing "output truncated" hint. |
+| EVAL-3 ★ | Top-level await, page cookies | `(await fetch('/e2e-playground.html')).status` | `200`. |
+| EVAL-4 ★ | `return` form | `const r = await fetch('/e2e-playground.html'); return r.status` | `200`. |
+| EVAL-5 ★ | Thrown error | `throw new Error("boom")` | Tool error containing `Error: boom` and an `at` stack line; **not** a 30 s hang. |
+| EVAL-6 | Rejected promise | `await Promise.reject(new TypeError("nope"))` | Tool error containing `TypeError: nope`. |
+| EVAL-7 | Syntax error | `foo(` | Tool error `Uncaught SyntaxError…` with line/col. |
+| EVAL-8 ★ | Async timeout | `await new Promise(r => setTimeout(r, 20000))` with `timeoutMs: 1000` | Fails in ~1 s with `Timed out after 1s…`; banner gone; the next tool call works. |
+| EVAL-9 | Sync timeout | `while(true){}` with `timeoutMs: 1000` | Same outcome as EVAL-8 (CDP `timeout` terminated it); the tab is still responsive afterwards. **Record which CDP branch fired** — `exceptionDetails` "Execution was terminated" vs. a raw command error (pins the open box in plan E2.2). |
+| EVAL-10 | Long timeout beats the server default | `await new Promise(r => setTimeout(r, 35000)); 1` with `timeoutMs: 40000` | Returns `1` after ~35 s — proves the per-call timeout (would otherwise fail at 30 s with "Timed out … calling evaluate"). |
+| EVAL-11 | Completion value + REPL re-declare | `const a = 1; a + 1` twice in a row | `2` both times (second call would be `SyntaxError: Identifier 'a' has already been declared` without `replMode`). |
+| EVAL-12 ★ | CSP bypass | On `http://localhost:8080/e2e-playground-csp.html`: `new Function("return 1")()` | `1`. For contrast, the fixture's own `#eval-probe` line reads `page eval: BLOCKED — EvalError: …` — the same call from page code is refused by the page CSP, so the CDP path is demonstrably not subject to it. |
+| EVAL-13 ★ | Page-context DOM action | `document.querySelector('#counter').click(); document.querySelector('#count').textContent` | `"1"` (or the current count); `status: counter = N` on screen. |
+| EVAL-14 | Node list | `document.querySelectorAll('button')` | Array of `<button id="…">…` descriptions; the `(DOM node — …)` hint is **absent** (it's a list, kind json). |
+| EVAL-15 | Single node | `document.body` | `<body …>` description + the `(DOM node — use browser_snapshot refs to act on it)` hint. |
+| EVAL-16 | DevTools open | Open DevTools on the tab, then EVAL-1 | Same rule as TRUST-3: Chrome ≥ 152 just works; older Chrome returns the "one debugger per tab" message. Record which. |
+| EVAL-17 | Banner cancelled mid-run | EVAL-8 with `timeoutMs: 20000`, click the banner's **Cancel** | "The debugging session was cancelled mid-action…" within a second, not the timeout. |
+| EVAL-18 | Restricted URL | Focus `chrome://extensions`, then EVAL-1 | "browser_evaluate is not available here: the active tab is a restricted URL…" |
+| EVAL-19 | Big string | `'x'.repeat(50000)` | Description cut at `maxString` (5 000) with `…[+45000 chars]` and the truncation hint. |
+| EVAL-20 | `userGesture` | `navigator.clipboard.writeText("hi").then(() => "ok")` | `ok` (would reject without a user gesture on most pages). |
+| EVAL-21 | Isolation | `typeof window.__agentBridge` | `"undefined"` — the content-script world is not visible to page code. |
+| EVAL-22 | Regression smoke | ACT-2, TRUST-2, PERC-4 | Still pass (the `withDebugger` signature change and the `describeDebuggerError` wording change didn't regress them). |
+
+### 4.8 Waiting
 
 | ID | Objective | Steps | Expected |
 |---|---|---|---|
@@ -137,14 +179,14 @@ If SMOKE-1/2 fail, stop and debug connection/injection before the rest.
 | WAIT-2 | Wait seconds | `browser_wait_for {"seconds":2}` | Returns after ~2 s. |
 | WAIT-3 | Timeout | `browser_wait_for {"text":"this never appears"}` | After ~10 s, returns a clear "Timed out waiting for text" error. |
 
-### 4.8 Security
+### 4.9 Security
 
 | ID | Objective | Steps | Expected |
 |---|---|---|---|
 | SEC-1 ★ | Localhost-only bind | From another device on the LAN, try to connect to `ws://<this-machine-ip>:9234` | Connection refused (server binds `127.0.0.1` only). |
 | SEC-2 | Token required | Connect a raw WS client to `127.0.0.1:9234` and send a hello with a wrong/absent token | Server closes the socket; no commands accepted. |
 
-### 4.9 Real-world premise validation ★
+### 4.10 Real-world premise validation ★
 
 | ID | Objective | Steps | Expected |
 |---|---|---|---|
@@ -165,6 +207,8 @@ PERC-1 [ ] PERC-2 [ ] PERC-3 [ ] PERC-4 [ ] PERC-5 [ ] PERC-6 [ ] PERC-7 [ ] PER
 ACT-1 [ ] ACT-2 [ ] ACT-3 [ ] ACT-4 [ ] ACT-5 [ ] ACT-6 [ ] ACT-7 [ ] ACT-8 [ ]
 TRUST-1 [ ] TRUST-2 [ ] TRUST-3 [ ] TRUST-4 [ ] TRUST-5 [ ] TRUST-6 [ ] TRUST-7 [ ] TRUST-8 [ ]
 TAB-1 [ ] TAB-2 [ ] TAB-3 [ ] TAB-4 [ ] HIST-1 [ ]
+EVAL-1 [ ] EVAL-2 [ ] EVAL-3 [ ] EVAL-4 [ ] EVAL-5 [ ] EVAL-6 [ ] EVAL-7 [ ] EVAL-8 [ ] EVAL-9 [ ] EVAL-10 [ ] EVAL-11 [ ]
+EVAL-12 [ ] EVAL-13 [ ] EVAL-14 [ ] EVAL-15 [ ] EVAL-16 [ ] EVAL-17 [ ] EVAL-18 [ ] EVAL-19 [ ] EVAL-20 [ ] EVAL-21 [ ] EVAL-22 [ ]
 WAIT-1 [ ] WAIT-2 [ ] WAIT-3 [ ]
 SEC-1 [ ] SEC-2 [ ]
 REAL-1 [ ] REAL-2 [ ]

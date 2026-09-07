@@ -335,11 +335,11 @@ eval and for full-page screenshots.
 ## Part E4 — E2E (manual, `docs/e2e-test-plan.md` new section "4.7 Evaluate")
 
 Fixture changes:
-- [ ] `e2e-playground.html`: add a `<script>` setting `window.__playground = { version: "1",
+- [x] `e2e-playground.html`: add a `<script>` setting `window.__playground = { version: "1",
       items: [1,2,3], secret() { return "s3cret" }, big: Array.from({length: 500}, (_, i) => i),
       node: document.getElementById("counter") }` and a self-reference `window.__playground.self =
       window.__playground` (cycle).
-- [ ] New `e2e-playground-csp.html`: same body, plus
+- [x] New `e2e-playground-csp.html`: same body, plus
       `<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'">` (no
       `'unsafe-eval'`), so option A's failure mode is demonstrably not ours.
 
@@ -369,6 +369,26 @@ Fixture changes:
 | EVAL-22 | Regression smoke | ACT-2, TRUST-2, PERC-4 | Still pass (the `withDebugger` signature change and `describeDebuggerError` wording change didn't regress them). |
 
 - [ ] Run all, record in the scorecard (§5) with Chrome version + date, like the Phase B run.
+
+**Deviations:** (E4)
+
+- The plan assumed §4.7 of `docs/e2e-test-plan.md` was free; it was "Waiting". The Evaluate table went
+  in as the new **§4.7** (next to Actions/Trusted input, where it belongs) and Waiting / Security /
+  Real-world shifted to §4.8 / §4.9 / §4.10. Two EVAL rows in the table were also given a scorecard
+  hook: EVAL-9 now says explicitly to record *which* CDP branch fired, and EVAL-12 points at the CSP
+  fixture's `#eval-probe` line for the contrast rather than asking the runner to type it by hand.
+- `e2e-playground-csp.html` is not a byte-copy of the main fixture's body — the perception fixtures
+  (shadow roots, iframe, decoys, extra roles) have nothing to do with CSP. It carries what the EVAL
+  cases need: the same `window.__playground` object, a counter button, the status line, and an
+  `#eval-probe` paragraph that records the page's own `new Function()` result (`EvalError` under this
+  CSP), which is the contrast EVAL-12 asks the scorecard to note.
+- **EVAL-1…22 were not run.** The WebSocket port 9234 was held by an orphaned
+  `node server/dist/index.js` from an earlier Claude session (`browser_status`:
+  `NOT listening … EADDRINUSE`), and this session was not permitted to terminate the stale processes.
+  The two boxes that depend on a live run — "Run all, record in the scorecard (§5)" here and the
+  E2.2 box pinning Chrome's sync-timeout branch — stay unticked. The fixture, the CSP fixture, the
+  §4.7 table and the §1 fixture notes are all in place, so the run is a pure re-execution once the
+  port is free.
 
 ## Part E5 — docs + commits
 

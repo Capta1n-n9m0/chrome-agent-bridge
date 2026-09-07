@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- The whole point of this fixture: a page CSP WITHOUT 'unsafe-eval'. Any `eval` /
+         `new Function` executed *by the page* throws EvalError here. browser_evaluate runs over
+         CDP Runtime.evaluate, which is not subject to the page's CSP, so it must still work
+         (EVAL-12). A `chrome.scripting.executeScript({world:"MAIN"})` + `new Function` design —
+         option A in docs/plans/2026-09-07-step4-browser-evaluate.md §0.1 — would fail here. -->
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'" />
+    <title>Agent Bridge E2E Playground (CSP)</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; line-height: 1.5; }
+      h1 { margin-top: 0; }
+      section { border: 1px solid #ccc; border-radius: 8px; padding: 16px; margin: 16px 0; }
+      #status {
+        position: sticky; top: 0; background: #b50; color: #fff; padding: 10px 14px;
+        border-radius: 6px; font-weight: 600; z-index: 10;
+      }
+      #eval-probe { font-family: ui-monospace, monospace; }
+    </style>
+  </head>
+  <body>
+    <h1>Agent Bridge E2E Playground (CSP)</h1>
+    <div id="status" role="status">status: idle</div>
+
+    <section aria-label="CSP probe">
+      <h2>CSP probe</h2>
+      <!-- Filled in by the inline script below: what happens when the PAGE itself calls
+           new Function(). Contrast this line with what browser_evaluate returns for the same
+           expression. -->
+      <p id="eval-probe">page eval: (pending)</p>
+    </section>
+
+    <section aria-label="Buttons">
+      <h2>Buttons</h2>
+      <button id="counter">Click counter: <span id="count">0</span></button>
+    </section>
+
+    <script>
+      const status = document.getElementById("status");
+      const set = (msg) => { status.textContent = "status: " + msg; };
+
+      let count = 0;
+      const countEl = document.getElementById("count");
+      document.getElementById("counter").addEventListener("click", () => {
+        count += 1; countEl.textContent = String(count); set("counter = " + count);
+      });
+
+      // Same object as the main fixture, so the EVAL cases can be repeated here verbatim.
+      window.__playground = {
+        version: "1",
+        items: [1, 2, 3],
+        secret() { return "s3cret"; },
+        big: Array.from({ length: 500 }, (_, i) => i),
+        node: document.getElementById("counter"),
+      };
+      window.__playground.self = window.__playground;
+
+      // The contrast for EVAL-12: the page's own new Function() is blocked by the CSP above.
+      try {
+        const v = new Function("return 1")();
+        document.getElementById("eval-probe").textContent = "page eval: ALLOWED (returned " + v + ") — CSP not applied?";
+      } catch (e) {
+        document.getElementById("eval-probe").textContent = "page eval: BLOCKED — " + e.name + ": " + e.message;
+      }
+    </script>
+  </body>
+</html>
