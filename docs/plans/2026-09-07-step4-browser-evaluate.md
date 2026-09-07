@@ -239,15 +239,15 @@ the second CDP call as a callback so this module never touches `chrome.*`.
 The restricted-URL message currently starts with "Trusted input is not available here" — wrong for
 eval and for full-page screenshots.
 
-- [ ] `extension/test/debugger-errors.test.ts`: `describeDebuggerError(err, "browser_evaluate")`
+- [x] `extension/test/debugger-errors.test.ts`: `describeDebuggerError(err, "browser_evaluate")`
       produces "browser_evaluate is not available here: the active tab is a restricted URL…"; the
       one-arg form still says "Trusted input" (no behaviour change for Step 3 callers).
-- [ ] `withDebugger(tabId, fn, what = "Trusted input")` threads `what` into both `describeDebuggerError`
+- [x] `withDebugger(tabId, fn, what = "Trusted input")` threads `what` into both `describeDebuggerError`
       calls. Update `fullPageScreenshot` to pass `"Full-page screenshot"`.
 
 ### Task E2.2: `debugger.ts` gets `evaluateInPage`
 
-- [ ] `export async function evaluateInPage(tabId, expression, timeoutMs, limits): Promise<EvalEnvelope>`:
+- [x] `export async function evaluateInPage(tabId, expression, timeoutMs, limits): Promise<EvalEnvelope>`:
   1. `withDebugger(tabId, …, "browser_evaluate")`.
   2. Inside: `raceTimeout(send("Runtime.evaluate", { expression, replMode: true, awaitPromise: true,
      returnByValue: false, userGesture: true, timeout: timeoutMs, generatePreview: false }), timeoutMs)`.
@@ -255,7 +255,7 @@ eval and for full-page screenshots.
      `Runtime.callFunctionOn { objectId, functionDeclaration: SERIALIZER_SRC, arguments: [{value: limits}],
      returnByValue: true }`, checks its own `exceptionDetails`, then `Runtime.releaseObject` in a
      try/catch. The second call is also inside the race (share one deadline).
-- [ ] `raceTimeout(p, ms)` helper: rejects with `Error("Timed out after ${ms/1000}s — the debugger was
+- [x] `raceTimeout(p, ms)` helper: rejects with `Error("Timed out after ${ms/1000}s — the debugger was
       detached; page-side work already started (e.g. a fetch) continues")`; attaches `p.catch(()=>{})`.
 - [ ] Pin the observed Chrome 152 behaviour of `Runtime.evaluate.timeout` on a sync loop in a comment
       next to the call (it surfaces as `exceptionDetails` "Execution was terminated" **or** as a
@@ -264,17 +264,33 @@ eval and for full-page screenshots.
 
 ### Task E2.3: `handlers/evaluate.ts` + router
 
-- [ ] `evaluate(p)`:
+- [x] `evaluate(p)`:
   - `expression` must be a non-empty string, else throw
     `browser_evaluate requires a non-empty "expression" string`.
   - `timeoutMs`: default 10 000, clamp to `[100, 60_000]` (`Number()` + `isFinite`; undefined → default).
   - `activeTab()`; `evaluateInPage(tab.id, wrapExpression(expression), timeoutMs, DEFAULT_LIMITS)`.
   - Return the envelope unchanged.
-- [ ] `sw.ts`: `router.on("evaluate", evaluate)`.
-- [ ] No `ensureContent` — this path never touches the content script or the ISOLATED world; that is
+- [x] `sw.ts`: `router.on("evaluate", evaluate)`.
+- [x] No `ensureContent` — this path never touches the content script or the ISOLATED world; that is
       deliberate (a page whose CSP blocks the content script still works, and `window.__agentBridge`
       is never visible to page code).
-- [ ] `console.log("[bridge] evaluate", expression.length, "chars")` only — never the text or result.
+- [x] `console.log("[bridge] evaluate", expression.length, "chars")` only — never the text or result.
+
+**Deviations:** (E2)
+
+- The sync-timeout wording lives in `debugger-errors.ts`, not in the handler: `isExecutionTerminated(err)`
+  matches Chrome's `Execution was terminated` (and a bare `Timed out`) wherever it surfaces — as
+  `exceptionDetails` rendered by `formatException`, or as a raw command error — and `timeoutMessage(ms)`
+  is the single wording shared with `raceTimeout`. `describeDebuggerError` gained a branch for it too
+  (it has no `ms`, so it renders "<what> timed out: …"); `evaluateInPage` re-maps any such failure to
+  `Timed out after Ns` in one outer `catch`, so both CDP branches read identically to the agent. No E1
+  module was changed.
+- `raceTimeout(p, ms, message?)` takes an optional message so the second CDP call can share the first
+  call's deadline (remaining ms) while still reporting the *total* timeout.
+- The last E2.2 box stays unticked: which branch Chrome actually uses for a `while(true){}` timeout can
+  only be observed against real Chrome (E2E EVAL-9). Both branches are handled and commented at the call
+  site; EVAL-9 just has to record which one fires.
+
 
 ## Part E3 — server (TDD)
 

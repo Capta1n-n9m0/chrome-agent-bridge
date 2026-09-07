@@ -1,5 +1,8 @@
+import type { EvalEnvelope } from "@bridge/shared";
 import { keyEventParams, type KeyEventParams } from "./keys.js";
-import { describeDebuggerError } from "./debugger-errors.js";
+import { describeDebuggerError, isExecutionTerminated, timeoutMessage } from "./debugger-errors.js";
+import { SERIALIZER_SRC, type SerializeLimits } from "./evaluate/serialize.js";
+import { shapeEvaluateResult, type CdpEvaluateResponse } from "./evaluate/result.js";
 
 const PROTOCOL = "1.3";
 
@@ -7,18 +10,23 @@ async function send(tabId: number, method: string, params: { [key: string]: unkn
   return chrome.debugger.sendCommand({ tabId }, method, params);
 }
 
-export async function withDebugger<T>(tabId: number, fn: () => Promise<T>): Promise<T> {
+/**
+ * Attach, run, always detach. `what` names the caller in the messages `describeDebuggerError`
+ * produces ("Trusted input", "Full-page screenshot", "browser_evaluate") — it is the only part of
+ * those strings that varies, so new Chrome wordings still belong in `debugger-errors.ts`.
+ */
+export async function withDebugger<T>(tabId: number, fn: () => Promise<T>, what = "Trusted input"): Promise<T> {
   try {
     await chrome.debugger.attach({ tabId }, PROTOCOL);
   } catch (err) {
     // Chrome allows one debugger per tab: DevTools (or another extension) wins and attach throws.
-    throw new Error(describeDebuggerError(err));
+    throw new Error(describeDebuggerError(err, what));
   }
   try {
     return await fn();
   } catch (err) {
     // A cancelled session (banner ✕) surfaces here as a failed sendCommand.
-    throw new Error(describeDebuggerError(err));
+    throw new Error(describeDebuggerError(err, what));
   } finally {
     try {
       await chrome.debugger.detach({ tabId });
@@ -72,5 +80,91 @@ export async function fullPageScreenshot(tabId: number): Promise<string> {
       format: "png",
     })) as { data: string };
     return `data:image/png;base64,${result.data}`;
+  }, "Full-page screenshot");
+}
+
+/**
+ * Races `p` against a timer. CDP's own `Runtime.evaluate.timeout` only terminates *synchronous*
+ * execution — a script parked on an `await` is not "executing", so an idle promise would hang until
+ * the server's per-call timeout. `withDebugger`'s `finally` detach cancels the pending command when
+ * this rejects; the loser's rejection is swallowed so the service worker never sees an unhandled one.
+ */
+export function raceTimeout<T>(p: Promise<T>, ms: number, message = timeoutMessage(ms)): Promise<T> {
+  p.catch(() => {});
+  let timer: ReturnType<typeof setTimeout>;
+  const expired = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
   });
+  expired.catch(() => {});
+  return Promise.race([p, expired]).finally(() => clearTimeout(timer)) as Promise<T>;
+}
+
+/**
+ * Run `expression` in the page (MAIN) world via CDP and return a shaped envelope.
+ *
+ * Two calls: `Runtime.evaluate` keeps the result as a handle (`returnByValue:false`) because
+ * returnByValue JSON-serialises in the page and turns a node, a Map and a class instance all into
+ * `{}`; then `Runtime.callFunctionOn` runs the in-page serialiser with `this` = that object. Both
+ * share one deadline. No `Runtime.enable` is needed, so nothing has to be torn down on detach.
+ */
+export async function evaluateInPage(
+  tabId: number,
+  expression: string,
+  timeoutMs: number,
+  limits: SerializeLimits,
+): Promise<EvalEnvelope> {
+  const deadline = Date.now() + timeoutMs;
+  const remaining = () => Math.max(0, deadline - Date.now());
+  try {
+    return await withDebugger(
+      tabId,
+      async () => {
+        // CDP's `timeout` covers synchronous code only (a `while(true){}`); Chrome reports it as
+        // exceptionDetails "Execution was terminated" — or, in some builds, as a command error. Both
+        // are recognised by `isExecutionTerminated` below and re-rendered as `Timed out after Ns`.
+        // (Chrome-version behaviour to be pinned in E2E EVAL-9.)
+        const raw = (await raceTimeout(
+          send(tabId, "Runtime.evaluate", {
+            expression,
+            replMode: true, // top-level await, let/const re-declaration, completion value
+            awaitPromise: true,
+            returnByValue: false,
+            userGesture: true,
+            timeout: timeoutMs,
+            generatePreview: false,
+          }),
+          remaining(),
+          timeoutMessage(timeoutMs),
+        )) as CdpEvaluateResponse;
+
+        return shapeEvaluateResult(raw, {
+          limits,
+          callFn: async (objectId, lim) => {
+            const res = (await raceTimeout(
+              send(tabId, "Runtime.callFunctionOn", {
+                objectId,
+                functionDeclaration: SERIALIZER_SRC,
+                arguments: [{ value: lim }],
+                returnByValue: true,
+              }),
+              remaining(),
+              timeoutMessage(timeoutMs),
+            )) as CdpEvaluateResponse;
+            if (res.exceptionDetails) throw new Error("the in-page serialiser threw");
+            try {
+              await send(tabId, "Runtime.releaseObject", { objectId });
+            } catch {
+              /* best effort — the context may already be gone */
+            }
+            return res.result?.value as EvalEnvelope;
+          },
+        });
+      },
+      "browser_evaluate",
+    );
+  } catch (err) {
+    // Whichever branch it came through, a CDP-terminated script reads as a timeout to the agent.
+    if (isExecutionTerminated(err)) throw new Error(timeoutMessage(timeoutMs));
+    throw err;
+  }
 }
