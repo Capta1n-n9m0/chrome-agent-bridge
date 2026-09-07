@@ -245,3 +245,73 @@ describe("browser_evaluate", () => {
     await expect(tool.handler({ expression: "throw new Error('boom')" }, {})).rejects.toThrow(/Error: boom/);
   });
 });
+
+describe("network tools", () => {
+  function netTool(name: string, handler: (m: string, p?: any) => Promise<unknown>) {
+    const bridge = fakeBridge(handler);
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    return (server as any)._registeredTools[name];
+  }
+
+  it("browser_network_requests calls networkRequests with no defaults injected and returns result.text", async () => {
+    const calls: Array<[string, any]> = [];
+    const tool = netTool("browser_network_requests", async (m, p) => {
+      calls.push([m, p]);
+      return { entries: [], total: 0, pending: 0, recordingSince: 1, text: "Network — active tab: showing 0 of 0" };
+    });
+    const res = await tool.handler({}, {});
+    expect(calls).toEqual([["networkRequests", {}]]);
+    expect(res.content[0].text).toBe("Network — active tab: showing 0 of 0");
+  });
+
+  it("browser_network_requests passes every param through verbatim", async () => {
+    const calls: Array<[string, any]> = [];
+    const tool = netTool("browser_network_requests", async (m, p) => {
+      calls.push([m, p]);
+      return { entries: [], total: 0, pending: 0, recordingSince: 1, text: "ok" };
+    });
+    const params = { filter: "/api/", types: ["xhr"], failedOnly: true, limit: 10, includeHeaders: true, tab: "all" };
+    await tool.handler(params, {});
+    expect(calls).toEqual([["networkRequests", params]]);
+  });
+
+  it("browser_network_requests passes an id lookup through", async () => {
+    const calls: Array<[string, any]> = [];
+    const tool = netTool("browser_network_requests", async (m, p) => {
+      calls.push([m, p]);
+      return { entries: [], total: 1, pending: 0, recordingSince: 1, text: "[1043] GET http://localhost:8080/ok.json" };
+    });
+    const res = await tool.handler({ id: "1043" }, {});
+    expect(calls).toEqual([["networkRequests", { id: "1043" }]]);
+    expect(res.content[0].text).toContain("[1043]");
+  });
+
+  it("browser_network_requests propagates a bridge error", async () => {
+    const tool = netTool("browser_network_requests", async () => {
+      throw new Error("Invalid regex filter: /(/ — Unterminated group");
+    });
+    await expect(tool.handler({ filter: "/(/" }, {})).rejects.toThrow(/Invalid regex filter/);
+  });
+
+  it("browser_network_clear calls networkClear and reports the count", async () => {
+    const calls: Array<[string, any]> = [];
+    const tool = netTool("browser_network_clear", async (m, p) => {
+      calls.push([m, p]);
+      return { cleared: 7 };
+    });
+    const res = await tool.handler({}, {});
+    expect(calls).toEqual([["networkClear", {}]]);
+    expect(res.content[0].text).toBe("Cleared 7 requests.");
+  });
+
+  it("browser_network_clear passes tab through", async () => {
+    const calls: Array<[string, any]> = [];
+    const tool = netTool("browser_network_clear", async (m, p) => {
+      calls.push([m, p]);
+      return { cleared: 0 };
+    });
+    await tool.handler({ tab: "all" }, {});
+    expect(calls).toEqual([["networkClear", { tab: "all" }]]);
+  });
+});

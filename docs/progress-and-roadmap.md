@@ -2,7 +2,7 @@
 
 - **Date:** 2026-09-07
 - **Branch:** `main` (merged from `feat/agent-bridge`; public on GitHub, MIT, since 2026-09-03)
-- **Status:** Phases A–D complete plus Step 4 (`browser_evaluate`); **181 unit tests green**; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, and the Step 4 evaluate pass (20 of 22) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. `main`, **public on GitHub (MIT) since 2026-09-03**. **18 tools.**
+- **Status:** Phases A–D complete plus Step 4 (`browser_evaluate`); **181 unit tests green**; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, and the Step 4 evaluate pass (20 of 22) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. `main`, **public on GitHub (MIT) since 2026-09-03**. **20 tools.**
 
 ---
 
@@ -132,10 +132,10 @@ bundles build (`server/dist/index.js`, `extension/dist/{sw,options,offscreen,con
 milestone passed a two-stage review (spec compliance + code quality); the final whole-system review
 verified the end-to-end protocol contract and that esbuild does not break page-injected functions.
 
-**18 tools:** `browser_status`, `browser_navigate`, `browser_snapshot`, `browser_screenshot`,
+**20 tools:** `browser_status`, `browser_navigate`, `browser_snapshot`, `browser_screenshot`,
 `browser_click`, `browser_type`, `browser_press_key`, `browser_scroll`, `browser_hover`,
 `browser_select_option`, `browser_back`, `browser_forward`, `browser_list_tabs`, `browser_select_tab`,
-`browser_new_tab`, `browser_close_tab`, `browser_wait_for`, `browser_evaluate`.
+`browser_new_tab`, `browser_close_tab`, `browser_wait_for`, `browser_evaluate`, `browser_network_requests`, `browser_network_clear`.
 
 ## 2. Architecture at a glance
 

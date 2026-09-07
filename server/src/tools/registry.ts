@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Bridge } from "../bridge.js";
-import type { EvalEnvelope } from "@bridge/shared";
+import type { EvalEnvelope, NetworkRequestsResult } from "@bridge/shared";
 
 const DEFAULT_EVAL_TIMEOUT_MS = 10_000;
 /** The extension races its own timer at `timeoutMs`; give the server a little more before it gives up. */
@@ -190,6 +190,39 @@ export function registerTools(server: McpServer, bridge: Bridge): void {
       if (envelope.kind === "node") lines.push("(DOM node — use browser_snapshot refs to act on it)");
       if (envelope.truncated) lines.push("(output truncated — narrow the expression, e.g. pick fields or slice the array)");
       return text(lines.join("\n"));
+    },
+  );
+
+  const tabTarget = z
+    .union([z.literal("active"), z.literal("all"), z.number().int()])
+    .optional()
+    .describe('Which tab: "active" (default), "all" for every tab, or a tab id from browser_list_tabs.');
+
+  server.tool(
+    "browser_network_requests",
+    "List recent network requests made by the active tab — method, status, type, duration, size, URL — captured continuously with no debugger banner, like the DevTools Network panel with 'Preserve log'. Newest 50 by default, printed oldest first. `filter` matches the URL (substring or /regex/), `types` narrows by resource type (xhr, script, image, document, …), `failedOnly` keeps network errors and 4xx/5xx. Pass `id` for one request's headers and request-body summary. Response bodies are not available (use browser_evaluate to re-fetch if you need one). Call browser_network_clear before an action to see only what it caused.",
+    {
+      tab: tabTarget,
+      filter: z.string().optional().describe("Match the URL: a case-insensitive substring, or /regex/flags when wrapped in slashes."),
+      types: z.array(z.string()).optional().describe("Resource types to keep: xhr, fetch, document, frame, script, stylesheet, image, font, media, websocket, ping, other."),
+      failedOnly: z.boolean().optional().describe("Keep only network errors and responses with status >= 400."),
+      limit: z.number().int().min(1).max(500).optional().describe("How many of the newest matching requests to print. Default 50."),
+      includeHeaders: z.boolean().optional().describe("Include request and response headers (redacted) on every returned entry."),
+      id: z.string().optional().describe("Show one request in full — headers and request-body summary — by its id from a previous listing."),
+    },
+    async (params) => {
+      const { text: out } = (await bridge.call("networkRequests", params)) as NetworkRequestsResult;
+      return text(out);
+    },
+  );
+
+  server.tool(
+    "browser_network_clear",
+    'Forget the recorded network requests for the active tab (or `tab:"all"`). Use it right before an action so the next browser_network_requests shows only what that action caused.',
+    { tab: tabTarget },
+    async (params) => {
+      const { cleared } = (await bridge.call("networkClear", params)) as { cleared: number };
+      return text(`Cleared ${cleared} requests.`);
     },
   );
 }

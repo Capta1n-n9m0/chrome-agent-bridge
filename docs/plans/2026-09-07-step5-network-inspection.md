@@ -409,19 +409,19 @@ flush so `networkClear`'s immediate write cannot interleave with a debounced one
 
 ### Task N3.1: `browser_network_requests`
 
-- [ ] `server/test/tools.test.ts`:
+- [x] `server/test/tools.test.ts`:
   - `browser_network_requests({})` calls `bridge.call("networkRequests", {})` (no defaults injected —
     the extension owns them) and returns `result.text`.
   - `{ filter: "/api/", types: ["xhr"], failedOnly: true, limit: 10, includeHeaders: true, tab: "all" }`
     passes through verbatim; `{ id: "1043" }` passes through.
   - a bridge error propagates (existing tool-error path).
-- [ ] Schema:
+- [x] Schema:
   `filter: z.string().optional()`, `types: z.array(z.string()).optional()`,
   `failedOnly: z.boolean().optional()`, `limit: z.number().int().min(1).max(500).optional()`,
   `includeHeaders: z.boolean().optional()`, `id: z.string().optional()`,
   `tab: z.union([z.literal("active"), z.literal("all"), z.number().int()]).optional()` — each with a
   one-line `.describe(…)`.
-- [ ] Description (agent-facing — this is the only documentation the model reads at call time):
+- [x] Description (agent-facing — this is the only documentation the model reads at call time):
   *"List recent network requests made by the active tab — method, status, type, duration, size, URL —
   captured continuously with no debugger banner, like the DevTools Network panel with 'Preserve log'.
   Newest 50 by default, printed oldest first. `filter` matches the URL (substring or /regex/),
@@ -432,12 +432,16 @@ flush so `networkClear`'s immediate write cannot interleave with a debounced one
 
 ### Task N3.2: `browser_network_clear`
 
-- [ ] Test: `browser_network_clear({})` → `bridge.call("networkClear", {})` → text `Cleared N requests.`;
+- [x] Test: `browser_network_clear({})` → `bridge.call("networkClear", {})` → text `Cleared N requests.`;
       `{ tab: "all" }` passes through.
-- [ ] Schema `{ tab: <same union> }`. Description: *"Forget the recorded network requests for the
+- [x] Schema `{ tab: <same union> }`. Description: *"Forget the recorded network requests for the
       active tab (or `tab:"all"`). Use it right before an action so the next browser_network_requests
       shows only what that action caused."*
-- [ ] Bump the tool count 18 → 20 in `CLAUDE.md`, `docs/setup.md` (tool table rows) and the roadmap.
+- [x] Bump the tool count 18 → 20 in `CLAUDE.md`, `docs/setup.md` (tool table rows) and the roadmap.
+
+**Deviations:** none — the two tools pass their params to `bridge.call` verbatim (no defaults
+injected), the schemas and descriptions are as specified, and the shared `tab` union is a single
+`tabTarget` zod value reused by both tools.
 
 ## Part N4 — E2E (manual, `docs/e2e-test-plan.md` new §4.8 "Network"; Waiting/Security/Real-world shift to §4.9–4.11)
 

@@ -79,6 +79,8 @@ With the MCP server running and the extension connected, call the tools from you
 | `browser_select_tab(id)` | Make a tab active (the new control target) |
 | `browser_new_tab(url?)` / `browser_close_tab(id)` | Open / close tabs |
 | `browser_evaluate(expression, timeoutMs?)` | Run JavaScript in the active tab’s page context and return the result (shows the debugging banner) |
+| `browser_network_requests(tab?, filter?, types?, failedOnly?, limit?, includeHeaders?, id?)` | List the network requests the tab has made — method, status, type, duration, size, URL — captured continuously with no banner; `id` shows one request's headers and body summary |
+| `browser_network_clear(tab?)` | Forget the recorded network requests, so the next `browser_network_requests` shows only what your next action caused |
 
 Typical loop: `browser_snapshot()` to see refs → act by ref (`browser_click`, `browser_type`)
 → snapshot again to see the result.
