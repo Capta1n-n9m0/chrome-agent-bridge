@@ -204,7 +204,7 @@ giving the redirect case for free. Both are picked up without restarting the ser
 | NET-13 | Clear | `browser_network_clear {}` → `Cleared N requests.`; query | `No requests recorded …` until the next request; `recording since` unchanged (only `"all"` resets it). |
 | NET-14 | Cap + responsiveness | `browser_evaluate` a loop of 600 `fetch('/ok.json?i='+i)` (or click **Fetch 20×** ~25 times); query with `{"limit": 500}` | Header shows `showing 500 of 500`; the oldest ids are gone; Chrome and the fixture stay responsive; no quota warning in the SW console (or exactly one, followed by a working query). |
 | NET-15 | Regression smoke | ACT-2, TRUST-2, EVAL-1, WAIT-1 | Still pass — the manifest change and the new top-level listeners did not disturb the router or `withDebugger`. |
-| NET-16 | *(Part N6 only)* Network idle | **Fetch JSON** then `browser_wait_for {"networkIdle": true}`; **Fetch black hole** then the same | Returns in ~0.5 s both times (activity-based: the pending black hole does not block it); `{"networkIdle": true, "idleMs": 2000}` takes ~2 s. |
+| NET-16 | *(Part N6 only)* Network idle | **Fetch JSON** then `browser_wait_for {"networkIdle": true}`; **Fetch black hole** then the same; then start an 8 s burst of fetches with `browser_evaluate` and wait with `idleMs` 500 and 2000; finally a 20 s burst and wait | The first two return **immediately** — by the time an agent's next call arrives the tab has already been quiet longer than `idleMs`, and the pending black-hole request does not block it (activity-based, not pending-based). During a burst the wait blocks until the burst stops, returning `idleMs` after the last request (500 vs 2000 measurably apart). A burst longer than the 10 s ceiling errors with `Timed out waiting for network idle: no 500ms quiet period in 10s`. |
 
 ### 4.9 Waiting
 
@@ -245,7 +245,7 @@ TAB-1 [ ] TAB-2 [ ] TAB-3 [ ] TAB-4 [ ] HIST-1 [ ]
 EVAL-1 [ ] EVAL-2 [ ] EVAL-3 [ ] EVAL-4 [ ] EVAL-5 [ ] EVAL-6 [ ] EVAL-7 [ ] EVAL-8 [ ] EVAL-9 [ ] EVAL-10 [ ] EVAL-11 [ ]
 EVAL-12 [ ] EVAL-13 [ ] EVAL-14 [ ] EVAL-15 [ ] EVAL-16 [ ] EVAL-17 [ ] EVAL-18 [ ] EVAL-19 [ ] EVAL-20 [ ] EVAL-21 [ ] EVAL-22 [ ]
 NET-1 [ ] NET-2 [ ] NET-3 [ ] NET-4 [ ] NET-5 [ ] NET-6 [ ] NET-7 [ ] NET-8 [ ]
-NET-9 [ ] NET-10 [ ] NET-11 [ ] NET-12 [ ] NET-13 [ ] NET-14 [ ] NET-15 [ ]
+NET-9 [ ] NET-10 [ ] NET-11 [ ] NET-12 [ ] NET-13 [ ] NET-14 [ ] NET-15 [ ] NET-16 [ ]
 WAIT-1 [ ] WAIT-2 [ ] WAIT-3 [ ]
 SEC-1 [ ] SEC-2 [ ]
 REAL-1 [ ] REAL-2 [ ]
@@ -546,7 +546,7 @@ Fixtures: python -m http.server 8080 --directory test-fixtures
 
 NET-1 [P] NET-2 [P] NET-3 [P] NET-4 [P] NET-5 [P*] NET-6 [P] NET-7 [P] NET-8 [P*]
 NET-9 [P] NET-10 [P] NET-11 [P*] NET-12 [P] NET-13 [P] NET-14 [P] NET-15 [P]
-NET-16 [n/a — Part N6 not implemented]
+NET-16 [P*] (added 2026-09-07, Part N6, commit `feat: browser_wait_for networkIdle`)
 (only the NET rows were re-run this pass; ACT-2 / TRUST-2 / EVAL-1 / WAIT-1 re-run as NET-15)
 ```
 
@@ -764,6 +764,57 @@ throughout. No quota warning observed in the tool path (the SW console needs a h
 `Agent Bridge E2E Playground`), WAIT-1 (`browser_wait_for {"text":"Async content loaded!"}` returned
 in ~1.5 s). The manifest permission and the six new top-level `webRequest` listeners disturbed
 neither the router nor `withDebugger`.
+
+**NET-16** — `browser_wait_for {"networkIdle": true}` (Part N6, run 2026-09-07 after a rebuild +
+extension reload + `/mcp`). The `networkIdle`/`idleMs` parameters were present on the reconnected
+server's `browser_wait_for` schema.
+
+*(a) after a completed fetch.* `browser_network_clear {}` → `Cleared 13 requests.`, click
+**Fetch JSON**, then `browser_wait_for {"networkIdle": true}` → `Network idle for 500ms`. Wall-clock
+sandwich (`date` → tool → `date`) 4.51 s against a 4.31 s baseline for a no-op `browser_status` in
+the same sandwich, i.e. **~0.2 s of actual waiting — it returned at once**. That is the expected
+behaviour, not a miss: an agent's next tool call arrives whole seconds after the click, by which time
+the tab has already been quiet for longer than `idleMs`. The plan's "~0.5 s" is unobservable through
+an agent round-trip.
+
+*(b) with a request still pending.* Click **Fetch black hole** (`http://10.255.255.1/`), then
+`browser_wait_for {"networkIdle": true}` → `Network idle for 500ms`, sandwich 4.66 s (again ~0.3 s of
+real waiting). The log taken straight afterwards proves the request was genuinely in flight:
+
+```
+Network — active tab: showing 2 of 2 (recording since 1m39s ago; 1 pending)
+[790]   53.7s ago  GET     200  xhr         2ms  28 B    http://localhost:8080/ok.json
+[791]   9.2s ago   GET     ···  xhr        (pending)     http://10.255.255.1/
+```
+
+This is the case the design turns on (§0.6): a pending stream does **not** block `networkIdle`,
+because idle is defined by the last *event*, not by the pending count.
+
+*(c) the poll loop actually blocks — and `idleMs` is honoured.* Round-trip latency makes (a)/(b)
+unable to show the wait doing any work, so activity was generated with a known end time:
+
+```
+browser_evaluate: window.__burstEnd = Date.now() + 8000;
+                  (function tick(){ if (Date.now() < window.__burstEnd) {
+                     fetch('/ok.json?b=' + Date.now()); setTimeout(tick, 250); } })();
+→ "burst started at 1788798899985, ends at 1788798907985"
+browser_wait_for {"networkIdle": true}            → Network idle for 500ms   (returned by t=…909914)
+```
+
+The wait was issued *during* the burst and returned 1 929 ms after the burst's last fetch (that
+figure includes the post-return round-trip to the clock). Repeating with an identical 8 s burst
+(`ends at 1788798927663`) and `{"networkIdle": true, "idleMs": 2000}` → `Network idle for 2000ms`,
+returning 3 577 ms after the burst end. The **1 648 ms difference matches the 1 500 ms extra
+`idleMs`** within one round-trip of noise — the poll loop is real and `idleMs` is what it waits for.
+
+*(d) the 10 s ceiling.* A 20 s burst, then `browser_wait_for {"networkIdle": true}`:
+
+```
+Error: Timed out waiting for network idle: no 500ms quiet period in 10s
+```
+
+Verdict **P\*** — passes on substance, with the §4.8 expectation rewritten: the "~0.5 s / ~2 s"
+timings in the plan are only observable when the wait is issued while the tab is still busy.
 
 Failures / notes:
 - `includeHeaders: true` has **no visible effect** through the MCP tool: the tool returns

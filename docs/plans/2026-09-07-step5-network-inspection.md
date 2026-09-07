@@ -563,19 +563,36 @@ Only if N1–N5 landed green. Roadmap Phase F item; trivially cheap once `lastAc
 Activity-based, not pending-based (0.6): idle means *no webRequest event for the tab in the last
 `idleMs`*, so a long-poll or EventSource cannot make it hang the way Playwright's `networkidle` does.
 
-- [ ] `extension/src/handlers/wait.ts`: new branch when `p.networkIdle === true`: `await ready`;
+- [x] `extension/src/handlers/wait.ts`: new branch when `p.networkIdle === true`: `await ready`;
       `idleMs` default 500 (clamp `[100, 10_000]`); poll every 100 ms until
       `now - log.lastActivityAt(tab.id) >= idleMs` (a tab with no activity ever is idle
       immediately); give up after the existing 10 s ceiling with `Timed out waiting for network idle`.
       Return `{ ok: true, idleAfterMs }`.
-- [ ] `server/test/tools.test.ts`: `browser_wait_for({ networkIdle: true, idleMs: 800 })` calls
+- [x] `server/test/tools.test.ts`: `browser_wait_for({ networkIdle: true, idleMs: 800 })` calls
       `bridge.call("waitFor", { networkIdle: true, idleMs: 800 })` and returns
       `Network idle for 800ms`; the existing `text`/`seconds` forms are unchanged.
-- [ ] Schema: `networkIdle: z.boolean().optional()`, `idleMs: z.number().int().min(100).max(10000).optional()`;
+- [x] Schema: `networkIdle: z.boolean().optional()`, `idleMs: z.number().int().min(100).max(10000).optional()`;
       description gains *"or `networkIdle:true` to wait until the tab has made no request for
       `idleMs` (default 500)"*. Handler error when none of `text`/`seconds`/`networkIdle` is given
       names all three.
-- [ ] NET-16 recorded; `docs/setup.md` row updated.
+- [x] NET-16 recorded; `docs/setup.md` row updated.
+
+**Deviations:** (1) The `networkIdle` branch is checked **first** in `waitFor`, before `seconds`, so
+`{networkIdle:true}` wins if a caller passes more than one form. (2) The tool prints
+`Network idle for <idleMs ?? 500>ms`; the handler's `idleAfterMs` (how long it actually blocked) is
+returned on the wire but not rendered — the server would otherwise have to trust a field the
+extension may not send. (3) "A tab with no activity ever is idle immediately" also covers the
+**post-service-worker-restart** case: `lastActivity` is in-memory only and is not part of the
+serialised `{meta, tabs}` blob, so a `networkIdle` wait right after a worker restart returns at once.
+Kept deliberately (the alternative — treating an unknown tab as busy — would hang for the full 10 s
+ceiling after every restart); stated in the tool description and in `docs/setup.md`. (4) NET-16's
+expectation in §4.8 was rewritten after the run: through an agent round-trip the tab is *already*
+quiet by the time the wait is issued, so "returns in ~0.5 s" / "takes ~2 s" are unobservable in the
+(a)/(b) form. The run therefore adds a burst-generator case that issues the wait while the tab is
+still busy, which is what actually demonstrates the poll loop and `idleMs`, plus a 10 s-ceiling
+timeout case. (5) Two small out-of-list doc touches: `CLAUDE.md`'s test count 256 → 260, and a
+"Waiting for the tab to go quiet" paragraph in `docs/setup.md`'s network section alongside the
+required tool-table row.
 
 ## Definition of done
 

@@ -74,7 +74,7 @@ With the MCP server running and the extension connected, call the tools from you
 | `browser_hover(ref)` | Hover a ref |
 | `browser_select_option(ref, values)` | Select option(s) in a `<select>` |
 | `browser_back()` / `browser_forward()` | History navigation |
-| `browser_wait_for(text?, seconds?)` | Wait until text appears on the active tab, or for N seconds |
+| `browser_wait_for(text?, seconds?, networkIdle?, idleMs?)` | Wait until text appears on the active tab, for N seconds, or — with `networkIdle:true` — until the tab has made no network request for `idleMs` (default 500, max 10 s wait) |
 | `browser_list_tabs()` | List open tabs |
 | `browser_select_tab(id)` | Make a tab active (the new control target) |
 | `browser_new_tab(url?)` / `browser_close_tab(id)` | Open / close tabs |
@@ -171,6 +171,13 @@ size (`content-length` when the server sent one) and the URL, with the `net::ERR
 **The workflow that answers "what did my click do":** `browser_network_clear()` → act →
 `browser_network_requests()`. Clearing the active tab does not reset `recording since`; only
 `browser_network_clear({tab:"all"})` does.
+
+**Waiting for the tab to go quiet.** `browser_wait_for({networkIdle: true})` returns once the active
+tab has made no request for `idleMs` (default 500, `100`…`10000`), giving up after 10 s. It reads the
+same log, so it is *activity*-based, not pending-based: a long poll, an EventSource or a request to a
+black-hole address stays pending for its whole life and does **not** block it. A tab the log has
+recorded nothing for — including right after the extension's service worker restarts, since the
+last-activity timestamp is in memory only — counts as idle and returns immediately.
 
 **Narrowing.** `filter` matches the URL as a case-insensitive substring, or as a regex when you wrap
 it in slashes (`"/ok\\.json|nope/"`, flags allowed: `"/OK/i"`). `types` keeps the resource types you

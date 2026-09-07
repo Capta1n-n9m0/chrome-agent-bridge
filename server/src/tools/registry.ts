@@ -6,6 +6,8 @@ import type { EvalEnvelope, NetworkRequestsResult } from "@bridge/shared";
 const DEFAULT_EVAL_TIMEOUT_MS = 10_000;
 /** The extension races its own timer at `timeoutMs`; give the server a little more before it gives up. */
 const SERVER_TIMEOUT_SLACK_MS = 5_000;
+/** Mirrors the extension's default quiet period for `browser_wait_for { networkIdle: true }`. */
+const DEFAULT_NETWORK_IDLE_MS = 500;
 
 function text(s: string) {
   return { content: [{ type: "text" as const, text: s }] };
@@ -155,10 +157,25 @@ export function registerTools(server: McpServer, bridge: Bridge): void {
 
   server.tool(
     "browser_wait_for",
-    "Wait until text appears on the active tab, or wait a number of seconds.",
-    { text: z.string().optional(), seconds: z.number().optional() },
-    async ({ text: waitText, seconds }) => {
-      await bridge.call("waitFor", { text: waitText, seconds });
+    "Wait until text appears on the active tab, wait a number of seconds, or `networkIdle:true` to wait until the tab has made no network request for `idleMs` (default 500). Network idle is activity-based, so a long-poll or EventSource left hanging will not block it; a tab that has recorded no requests at all (nothing since capture started, e.g. right after the extension reloaded) counts as idle and returns immediately.",
+    {
+      text: z.string().optional().describe("Text to wait for in the page's visible text (up to 10s)."),
+      seconds: z.number().optional().describe("Fixed wait, in seconds (max 60)."),
+      networkIdle: z
+        .boolean()
+        .optional()
+        .describe("Wait until the active tab has made no network request for `idleMs` (up to 10s)."),
+      idleMs: z
+        .number()
+        .int()
+        .min(100)
+        .max(10000)
+        .optional()
+        .describe("Quiet period that counts as idle, in ms. Default 500. Only used with networkIdle."),
+    },
+    async ({ text: waitText, seconds, networkIdle, idleMs }) => {
+      await bridge.call("waitFor", { text: waitText, seconds, networkIdle, idleMs });
+      if (networkIdle) return text(`Network idle for ${idleMs ?? DEFAULT_NETWORK_IDLE_MS}ms`);
       return text(waitText ? `Waited for text: ${waitText}` : `Waited ${seconds ?? 0}s`);
     },
   );

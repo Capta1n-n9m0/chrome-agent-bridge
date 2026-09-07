@@ -107,8 +107,9 @@ same `withDebugger`.
 ### Step 5 E2E — network inspection (2026-09-07)
 
 Ran `docs/plans/2026-09-07-step5-network-inspection.md` (commits `69682cd`, `d64d0fe`, `fdb0378`,
-`ac469da`) against Chrome **152.0.7977.82** on Windows 11. **NET-1…15 all pass** (NET-16 is Part N6,
-not implemented); evidence is in `docs/e2e-test-plan.md` §5, "Run 6". **No code defects surfaced** —
+`ac469da`) against Chrome **152.0.7977.82** on Windows 11. **NET-1…15 all pass**, and **NET-16**
+(Part N6, `browser_wait_for { networkIdle: true }`) passes in a later pass on the same Chrome;
+evidence is in `docs/e2e-test-plan.md` §5, "Run 6". **No code defects surfaced** —
 the findings are all about Chrome's behaviour and about how the results read.
 
 - **The privacy claim holds against a real logged-in session (NET-10).** On github.com, with
@@ -161,7 +162,7 @@ out of.
 | D | Action fidelity: trusted typing + `press_key` via CDP `Input.dispatchKeyEvent`; scroll-into-view + viewport validation for trusted input | ✅ D1/D2 done (E2E-verified 2026-09-03); D3 file upload not started |
 | B | Robustness: port-busy surfaced through tools + bind retry; `browser_status`; WS heartbeat; actionable `chrome.debugger` errors; CONN-5 soak | ✅ Done (E2E-verified 2026-09-03) |
 | Step 4 | `browser_evaluate`: CDP `Runtime.evaluate` in the page context + in-page serialiser + per-call server timeout | ✅ Done (E2E-verified 2026-09-07) |
-| Step 5 | Network inspection: always-on `chrome.webRequest` capture into a bounded per-tab `NetworkLog` with `storage.session` write-through; `browser_network_requests` + `browser_network_clear` | ✅ Done (E2E-verified 2026-09-07); Part N6 `wait_for networkIdle` not implemented |
+| Step 5 | Network inspection: always-on `chrome.webRequest` capture into a bounded per-tab `NetworkLog` with `storage.session` write-through; `browser_network_requests` + `browser_network_clear` | ✅ Done (E2E-verified 2026-09-07), including Part N6 `browser_wait_for { networkIdle: true }` (NET-16) |
 
 **Quality state:** 256 unit tests pass; `tsc` typecheck clean across all three packages; all four
 bundles build (`server/dist/index.js`, `extension/dist/{sw,options,offscreen,content}.js`). Every
@@ -225,12 +226,14 @@ NET-1…15: banner-free always-on capture, XHR + `id` detail, 4xx and `net::ERR_
 hops, pending entries, filters/types/limit, the per-tab caps under 600 fetches, tab lifecycle,
 clear, the privacy claims against a real logged-in GitHub session, the service-worker
 force-stop/rehydrate cycle, and an ACT-2/TRUST-2/EVAL-1/WAIT-1 regression smoke. Chrome 152.
+NET-16 (same day, after Part N6 landed): `browser_wait_for { networkIdle: true }` — returns at once
+on an already-quiet tab, is not blocked by a request left pending, blocks for the length of a
+generated burst plus `idleMs` (500 vs 2000 measurably apart), and errors at the 10 s ceiling.
 
 **NOT yet verified live:** the header-redaction (`<redacted>`) path — no `authorization` header
 appeared on the sites exercised in NET-10, so it is unit-tested only; the session-storage **quota**
 branch (`evictOldest(0.5)` + retry after a rejected `set`) — 600 entries never came near the 10 MB
-quota; the `tabId -1` bucket (no site service worker issued a request during the run); NET-16
-(Part N6, not implemented). Also EVAL-16 (DevTools open during an evaluate) and EVAL-17 (banner cancelled
+quota; the `tabId -1` bucket (no site service worker issued a request during the run). Also EVAL-16 (DevTools open during an evaluate) and EVAL-17 (banner cancelled
 mid-evaluate) — covered indirectly by TRUST-3 / TRUST-8 through the shared `withDebugger`; the
 heartbeat's *hung-peer* branch (a socket that stays open but never
 pongs — Chrome's exit closes the socket cleanly, so only the unit test reaches it); the "another
@@ -314,7 +317,8 @@ runs arbitrary JavaScript with the logged-in page's full authority plus a user g
 switch the user can reach in one click is worth more than it was when the tool set was fixed.
 (Nothing is logged today beyond the expression's length.)
 
-**Phase F — Ergonomics.** `wait_for` variants (network-idle, element-visible); a console/error
+**Phase F — Ergonomics.** `wait_for` variants (element-visible; network-idle shipped in Step 5's
+Part N6); a console/error
 capture tool; cookie/storage read tools; download handling; multi-window awareness. Plus the Step 4
 follow-ups (see that plan's "Follow-ups"):
 
@@ -331,9 +335,6 @@ follow-ups (see that plan's "Follow-ups"):
 
 Plus the Step 5 follow-ups (see that plan's "Follow-ups"):
 
-- **`browser_wait_for { networkIdle: true }`** — Part N6 of the Step 5 plan, written but not
-  implemented. Activity-based (no `webRequest` event for the tab in the last `idleMs`), so a
-  long-poll cannot hang it; `NetworkLog.lastActivityAt` already exists for it.
 - **Response bodies via CDP** (`browser_network_capture start/stop` + `Network.getResponseBody`) —
   the natural Step 6, and the reason bodies are not in v1: it needs the keep-attached per-tab
   debugger session above, with an attach refcount, so a trusted click during a capture does not

@@ -141,6 +141,54 @@ describe("wait tool", () => {
     await tool.handler({ text: "Welcome" }, {});
     expect(calls).toEqual([["waitFor", { text: "Welcome" }]]);
   });
+
+  it("browser_wait_for forwards seconds unchanged", async () => {
+    const calls: Array<[string, any]> = [];
+    const bridge = fakeBridge(async (m, p) => {
+      calls.push([m, p]);
+      return { ok: true };
+    });
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    const res = await (server as any)._registeredTools["browser_wait_for"].handler({ seconds: 2 }, {});
+    expect(calls).toEqual([["waitFor", { seconds: 2 }]]);
+    expect(res.content[0].text).toBe("Waited 2s");
+  });
+
+  it("browser_wait_for forwards networkIdle + idleMs", async () => {
+    const calls: Array<[string, any]> = [];
+    const bridge = fakeBridge(async (m, p) => {
+      calls.push([m, p]);
+      return { ok: true, idleAfterMs: 812 };
+    });
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    const res = await (server as any)._registeredTools["browser_wait_for"].handler(
+      { networkIdle: true, idleMs: 800 },
+      {},
+    );
+    expect(calls).toEqual([["waitFor", { networkIdle: true, idleMs: 800 }]]);
+    expect(res.content[0].text).toBe("Network idle for 800ms");
+  });
+
+  it("browser_wait_for networkIdle reports the default idleMs", async () => {
+    const bridge = fakeBridge(async () => ({ ok: true }));
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    const res = await (server as any)._registeredTools["browser_wait_for"].handler({ networkIdle: true }, {});
+    expect(res.content[0].text).toBe("Network idle for 500ms");
+  });
+
+  it("browser_wait_for accepts the networkIdle schema and rejects a bad idleMs", () => {
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, fakeBridge(async () => ({ ok: true })));
+    const shape = (server as any)._registeredTools["browser_wait_for"].inputSchema.shape;
+    expect(shape.networkIdle.safeParse(true).success).toBe(true);
+    expect(shape.idleMs.safeParse(800).success).toBe(true);
+    expect(shape.idleMs.safeParse(50).success).toBe(false);
+    expect(shape.idleMs.safeParse(20000).success).toBe(false);
+    expect(shape.idleMs.safeParse(undefined).success).toBe(true);
+  });
 });
 
 describe("browser_status", () => {
