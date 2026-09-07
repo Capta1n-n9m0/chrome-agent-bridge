@@ -1,4 +1,4 @@
-import { ExtensionConnection } from "./connection.js";
+import { ExtensionConnection, type CallOptions } from "./connection.js";
 
 const NOT_CONNECTED =
   "Extension not connected — is Chrome open and the Chrome Agent Bridge extension enabled?";
@@ -40,8 +40,8 @@ export class Bridge {
     return this.reason;
   }
 
-  async call(method: string, params?: Record<string, unknown>): Promise<unknown> {
+  async call(method: string, params?: Record<string, unknown>, options?: CallOptions): Promise<unknown> {
     if (!this.connection) throw new Error(this.reason ?? NOT_CONNECTED);
-    return this.connection.call(method, params);
+    return this.connection.call(method, params, options);
   }
 }

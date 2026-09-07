@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { Bridge } from "../src/bridge.js";
 import { ExtensionConnection } from "../src/connection.js";
 
@@ -59,5 +59,25 @@ describe("Bridge unavailable reason (port busy etc.)", () => {
     expect(bridge.hostState).toEqual({ listening: false, port: null });
     bridge.hostState = { listening: true, port: 9234 };
     expect(bridge.hostState.port).toBe(9234);
+  });
+});
+
+describe("Bridge per-call options", () => {
+  it("forwards call options to the connection", async () => {
+    const bridge = new Bridge();
+    const conn = new ExtensionConnection(() => {}, 30_000);
+    const spy = vi.spyOn(conn, "call").mockResolvedValue("ok");
+    bridge.setConnection(conn);
+    await expect(bridge.call("evaluate", { expression: "1+1" }, { timeoutMs: 15_000 })).resolves.toBe("ok");
+    expect(spy).toHaveBeenCalledWith("evaluate", { expression: "1+1" }, { timeoutMs: 15_000 });
+  });
+
+  it("passes undefined options through when none are given", async () => {
+    const bridge = new Bridge();
+    const conn = new ExtensionConnection(() => {}, 30_000);
+    const spy = vi.spyOn(conn, "call").mockResolvedValue("ok");
+    bridge.setConnection(conn);
+    await bridge.call("snapshot");
+    expect(spy).toHaveBeenCalledWith("snapshot", undefined, undefined);
   });
 });

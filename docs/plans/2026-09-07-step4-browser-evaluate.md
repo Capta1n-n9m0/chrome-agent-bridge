@@ -296,14 +296,14 @@ eval and for full-page screenshots.
 
 ### Task E3.1: per-call timeout through `bridge.call`
 
-- [ ] `server/test/connection.test.ts`: `connection.call("m", {}, { timeoutMs: 20 })` rejects after
+- [x] `server/test/connection.test.ts`: `connection.call("m", {}, { timeoutMs: 20 })` rejects after
       ~20 ms with `Timed out after 20ms calling m`; without the option the constructor default applies.
-- [ ] `server/test/bridge.test.ts`: `bridge.call(m, p, opts)` forwards `opts` to the connection.
-- [ ] Implement in `connection.ts` / `bridge.ts` (optional third arg; no call-site changes elsewhere).
+- [x] `server/test/bridge.test.ts`: `bridge.call(m, p, opts)` forwards `opts` to the connection.
+- [x] Implement in `connection.ts` / `bridge.ts` (optional third arg; no call-site changes elsewhere).
 
 ### Task E3.2: `browser_evaluate` in `registry.ts`
 
-- [ ] `server/test/tools.test.ts`:
+- [x] `server/test/tools.test.ts`:
   - `browser_evaluate({expression:"1+1"})` calls `bridge.call("evaluate", {expression:"1+1",
     timeoutMs: 10000}, {timeoutMs: 15000})` and returns `description` as text.
   - `timeoutMs: 30000` → bridge opts `timeoutMs: 35000`.
@@ -312,15 +312,25 @@ eval and for full-page screenshots.
   - `kind:"node"` → text ends with `(DOM node — use browser_snapshot refs to act on it)`.
   - an `error` from the bridge propagates as a thrown error (existing tool-error path; the SDK turns it
     into `isError:true` content).
-- [ ] Schema: `{ expression: z.string().min(1).describe(…), timeoutMs: z.number().int().min(100).max(60000).optional().describe("Default 10000. Also bounds the server-side wait.") }`.
-- [ ] Description (agent-facing — this wording matters; it's the only docs the model reads at call time):
+- [x] Schema: `{ expression: z.string().min(1).describe(…), timeoutMs: z.number().int().min(100).max(60000).optional().describe("Default 10000. Also bounds the server-side wait.") }`.
+- [x] Description (agent-facing — this wording matters; it's the only docs the model reads at call time):
       *"Run JavaScript in the active tab's page context and return the result, like the DevTools
       console: the last expression's value is returned, top-level `await` works, and `return` is
       allowed. Results are JSON where possible; DOM nodes, functions and errors come back as short
       descriptions — use browser_snapshot refs to act on elements. Output is capped (~20k chars, 100
       items per array, depth 6) — select what you need. Runs with the page's full logged-in authority
       and shows Chrome's 'is debugging this browser' banner while it runs."*
-- [ ] Bump the tool count (17 → 18) in `CLAUDE.md`, `docs/setup.md`, roadmap.
+- [x] Bump the tool count (17 → 18) in `CLAUDE.md`, `docs/setup.md`, roadmap.
+
+**Deviations:** (E3)
+
+- `docs/setup.md` states no tool *count*, so the "17 → 18" bump there is the new
+  `browser_evaluate(expression, timeoutMs?)` row in the tool table; the "Running JavaScript"
+  subsection and the security paragraph remain Part E5's work.
+- Output text format: `description`, then the `(DOM node — …)` hint when `kind === "node"`, then the
+  `(output truncated — …)` hint when `truncated` — so with both, the truncation hint is last.
+- `ExtensionConnection.call` gained an optional third arg typed by a new exported
+  `CallOptions { timeoutMs?: number }`; `Bridge.call` forwards it verbatim.
 
 ## Part E4 — E2E (manual, `docs/e2e-test-plan.md` new section "4.7 Evaluate")
 

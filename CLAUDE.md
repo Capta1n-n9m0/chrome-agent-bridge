@@ -30,7 +30,7 @@ Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(met
 - `shared/src/protocol.ts` — wire message types + guards (imported by both halves).
 - `server/src/`: `wsHost.ts` (binds 127.0.0.1, token gate), `connection.ts` (id-correlated calls),
   `bridge.ts` (connection gate + unavailable-reason + host state), `startup.ts` (non-fatal port bind
-  with retry), `tools/registry.ts` (the 17 MCP tools), `index.ts` (entry).
+  with retry), `tools/registry.ts` (the 18 MCP tools), `index.ts` (entry).
 - `extension/src/`: `sw.ts` (router + offscreen orchestration), `offscreen.ts` (the socket),
   `inject.ts` (`ensureContent`/`callInPage` + `toSerializableArgs`/`unwrapResult`), `handlers/*`,
   `content/{index,snapshot,refmap,actions,geometry}.ts`, `debugger.ts`, `debugger-errors.ts`
@@ -45,7 +45,7 @@ npm test             # vitest (113 tests)
 npm run typecheck    # tsc --noEmit across shared/server/extension
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
-token + port `9234` in its Options. Full setup + the 17 tools: `docs/setup.md`.
+token + port `9234` in its Options. Full setup + the 18 tools: `docs/setup.md`.
 E2E: serve `test-fixtures/e2e-playground.html` (`python -m http.server 8080 --directory test-fixtures`)
 and follow `docs/e2e-test-plan.md`.
 

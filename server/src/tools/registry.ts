@@ -1,6 +1,11 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Bridge } from "../bridge.js";
+import type { EvalEnvelope } from "@bridge/shared";
+
+const DEFAULT_EVAL_TIMEOUT_MS = 10_000;
+/** The extension races its own timer at `timeoutMs`; give the server a little more before it gives up. */
+const SERVER_TIMEOUT_SLACK_MS = 5_000;
 
 function text(s: string) {
   return { content: [{ type: "text" as const, text: s }] };
@@ -155,6 +160,36 @@ export function registerTools(server: McpServer, bridge: Bridge): void {
     async ({ text: waitText, seconds }) => {
       await bridge.call("waitFor", { text: waitText, seconds });
       return text(waitText ? `Waited for text: ${waitText}` : `Waited ${seconds ?? 0}s`);
+    },
+  );
+
+  server.tool(
+    "browser_evaluate",
+    "Run JavaScript in the active tab's page context and return the result, like the DevTools console: the last expression's value is returned, top-level `await` works, and `return` is allowed. Results are JSON where possible; DOM nodes, functions and errors come back as short descriptions — use browser_snapshot refs to act on elements. Output is capped (~20k chars, 100 items per array, depth 6) — select what you need. Runs with the page's full logged-in authority and shows Chrome's 'is debugging this browser' banner while it runs.",
+    {
+      expression: z
+        .string()
+        .min(1)
+        .describe("JavaScript to evaluate in the page. The last expression's value is returned; top-level await and a bare `return` both work."),
+      timeoutMs: z
+        .number()
+        .int()
+        .min(100)
+        .max(60000)
+        .optional()
+        .describe("Default 10000. Also bounds the server-side wait."),
+    },
+    async ({ expression, timeoutMs }) => {
+      const pageTimeoutMs = timeoutMs ?? DEFAULT_EVAL_TIMEOUT_MS;
+      const envelope = (await bridge.call(
+        "evaluate",
+        { expression, timeoutMs: pageTimeoutMs },
+        { timeoutMs: pageTimeoutMs + SERVER_TIMEOUT_SLACK_MS },
+      )) as EvalEnvelope;
+      const lines = [envelope.description];
+      if (envelope.kind === "node") lines.push("(DOM node — use browser_snapshot refs to act on it)");
+      if (envelope.truncated) lines.push("(output truncated — narrow the expression, e.g. pick fields or slice the array)");
+      return text(lines.join("\n"));
     },
   );
 }

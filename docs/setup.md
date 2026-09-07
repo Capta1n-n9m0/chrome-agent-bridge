@@ -78,6 +78,7 @@ With the MCP server running and the extension connected, call the tools from you
 | `browser_list_tabs()` | List open tabs |
 | `browser_select_tab(id)` | Make a tab active (the new control target) |
 | `browser_new_tab(url?)` / `browser_close_tab(id)` | Open / close tabs |
+| `browser_evaluate(expression, timeoutMs?)` | Run JavaScript in the active tab’s page context and return the result (shows the debugging banner) |
 
 Typical loop: `browser_snapshot()` to see refs → act by ref (`browser_click`, `browser_type`)
 → snapshot again to see the result.

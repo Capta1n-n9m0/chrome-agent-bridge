@@ -41,4 +41,19 @@ describe("ExtensionConnection", () => {
     conn.rejectAll("disconnected");
     await expect(p).rejects.toThrow("disconnected");
   });
+
+  it("uses a per-call timeoutMs when given", async () => {
+    const conn = new ExtensionConnection(() => {}, 30_000);
+    const p = conn.call("evaluate", { expression: "1+1" }, { timeoutMs: 20 });
+    vi.advanceTimersByTime(21);
+    await expect(p).rejects.toThrow("Timed out after 20ms calling evaluate");
+  });
+
+  it("falls back to the constructor default when no per-call timeout is given", async () => {
+    const conn = new ExtensionConnection(() => {}, 1000);
+    const p = conn.call("evaluate", {});
+    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(501);
+    await expect(p).rejects.toThrow("Timed out after 1000ms calling evaluate");
+  });
 });

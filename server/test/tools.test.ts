@@ -191,3 +191,57 @@ describe("browser_status", () => {
     expect(out).toMatch(/\[7\] Playground — http:\/\/localhost:8080\/e2e-playground\.html/);
   });
 });
+
+describe("browser_evaluate", () => {
+  function evalTool(handler: (m: string, p?: any, o?: any) => Promise<unknown>) {
+    const bridge = new Bridge();
+    vi.spyOn(bridge, "call").mockImplementation((m, p, o) => handler(m, p, o));
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, bridge);
+    return (server as any)._registeredTools["browser_evaluate"];
+  }
+
+  it("sends the default timeout and returns the description as text", async () => {
+    const calls: Array<[string, any, any]> = [];
+    const tool = evalTool(async (m, p, o) => {
+      calls.push([m, p, o]);
+      return { kind: "json", value: 2, description: "2", truncated: false };
+    });
+    const res = await tool.handler({ expression: "1+1" }, {});
+    expect(calls).toEqual([["evaluate", { expression: "1+1", timeoutMs: 10_000 }, { timeoutMs: 15_000 }]]);
+    expect(res.content[0].text).toBe("2");
+  });
+
+  it("gives the server 5s more than the page timeout", async () => {
+    const calls: Array<[string, any, any]> = [];
+    const tool = evalTool(async (m, p, o) => {
+      calls.push([m, p, o]);
+      return { kind: "undefined", description: "undefined", truncated: false };
+    });
+    await tool.handler({ expression: "x", timeoutMs: 30_000 }, {});
+    expect(calls).toEqual([["evaluate", { expression: "x", timeoutMs: 30_000 }, { timeoutMs: 35_000 }]]);
+  });
+
+  it("appends a hint when the output was truncated", async () => {
+    const tool = evalTool(async () => ({ kind: "json", value: [1], description: "[1]", truncated: true }));
+    const res = await tool.handler({ expression: "big" }, {});
+    const out = res.content[0].text as string;
+    expect(out.startsWith("[1]")).toBe(true);
+    expect(out.endsWith("(output truncated — narrow the expression, e.g. pick fields or slice the array)")).toBe(true);
+  });
+
+  it("appends a hint for a DOM node result", async () => {
+    const tool = evalTool(async () => ({ kind: "node", description: "<body>", truncated: false }));
+    const res = await tool.handler({ expression: "document.body" }, {});
+    const out = res.content[0].text as string;
+    expect(out.startsWith("<body>")).toBe(true);
+    expect(out.endsWith("(DOM node — use browser_snapshot refs to act on it)")).toBe(true);
+  });
+
+  it("propagates a bridge error as a thrown error", async () => {
+    const tool = evalTool(async () => {
+      throw new Error("Error: boom\n    at <anonymous>:1:5");
+    });
+    await expect(tool.handler({ expression: "throw new Error('boom')" }, {})).rejects.toThrow(/Error: boom/);
+  });
+});
