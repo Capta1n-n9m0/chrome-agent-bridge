@@ -118,6 +118,19 @@
       <div id="async-area"></div>
     </section>
 
+    <section aria-label="Network">
+      <h2>Network (for browser_network_requests)</h2>
+      <!-- TC-NET: each button makes one request and reports its outcome on the status line. -->
+      <button id="net-json">Fetch JSON</button>
+      <button id="net-404">Fetch 404</button>
+      <button id="net-post">POST form</button>
+      <button id="net-redirect">Fetch redirect</button>
+      <button id="net-unreachable">Fetch unreachable</button>
+      <button id="net-blackhole">Fetch black hole</button>
+      <button id="net-cors">Fetch cross-origin</button>
+      <button id="net-many">Fetch 20&times;</button>
+    </section>
+
     <section aria-label="Long content for full-page screenshot">
       <h2>Scroll / full-page region</h2>
       <div class="filler"></div>
@@ -207,6 +220,30 @@
         node: document.getElementById("counter"),
       };
       window.__playground.self = window.__playground;
+
+      // TC-NET: one request per button; the status line reports the fetch's own outcome, which is
+      // not always the same as the network entry (a CORS-blocked 200 rejects the fetch).
+      const netFetch = (label, url, init) => {
+        set("fetch " + label + " …");
+        fetch(url, init)
+          .then((r) => set("fetch " + label + " -> " + r.status))
+          .catch((e) => set("fetch " + label + " -> " + e.name + ": " + e.message));
+      };
+      document.getElementById("net-json").addEventListener("click", () => netFetch("ok.json", "/ok.json"));
+      document.getElementById("net-404").addEventListener("click", () => netFetch("nope", "/nope"));
+      document.getElementById("net-post").addEventListener("click", () => netFetch("POST", "/e2e-playground.html", {
+        method: "POST",
+        body: new URLSearchParams({ user: "a", password: "p" }),
+      }));
+      document.getElementById("net-redirect").addEventListener("click", () => netFetch("redir", "/redir"));
+      document.getElementById("net-unreachable").addEventListener("click", () => netFetch("unreachable", "http://127.0.0.1:9999/"));
+      document.getElementById("net-blackhole").addEventListener("click", () => netFetch("blackhole", "http://10.255.255.1/"));
+      document.getElementById("net-cors").addEventListener("click", () => netFetch("cross-origin", "https://example.com/"));
+      document.getElementById("net-many").addEventListener("click", () => {
+        set("fetch 20x …");
+        for (let i = 0; i < 20; i++) fetch("/ok.json?i=" + i);
+        set("fetch 20x issued");
+      });
 
       document.getElementById("load-later").addEventListener("click", () => {
         set("loading…");

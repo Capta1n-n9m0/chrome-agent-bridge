@@ -40,6 +40,12 @@ defines `window.__playground` in the **page** context — `{version, items, secr
 node: <button#counter>}` plus a `self` back-reference (a cycle) — so one `browser_evaluate` call
 exercises every branch of the in-page serialiser (function, DOM node, over-`maxItems` array, cycle).
 
+**Network fixtures:** `test-fixtures/ok.json` and `test-fixtures/redir/index.html` back §4.8 —
+`ok.json` is the small JSON body the XHR cases fetch, and `python -m http.server` answers
+`GET /redir` with a `301` to `/redir/`, which gives the redirect-hop case without any server code.
+The playground's **Network** section has one button per NET case. `python -m http.server` serves
+straight from disk, so new fixture files need no restart.
+
 **CSP fixture:** `test-fixtures/e2e-playground-csp.html` (served alongside it at
 `http://localhost:8080/e2e-playground-csp.html`) is a small page carrying
 `<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'">` — no
@@ -171,7 +177,36 @@ fixture and EVAL-12 on the **CSP** fixture.
 | EVAL-21 | Isolation | `typeof window.__agentBridge` | `"undefined"` — the content-script world is not visible to page code. |
 | EVAL-22 | Regression smoke | ACT-2, TRUST-2, PERC-4 | Still pass (the `withDebugger` signature change and the `describeDebuggerError` wording change didn't regress them). |
 
-### 4.8 Waiting
+### 4.8 Network (`browser_network_requests` / `browser_network_clear`)
+
+Capture is **always on** and banner-free (`chrome.webRequest` observers, no `chrome.debugger`), per
+tab, with *Preserve log* semantics — navigation does not clear it. The fixture's **Network** section
+(`test-fixtures/e2e-playground.html`) has one button per case; each reports the *fetch's* own outcome
+on the status line, which is deliberately not always the same as the *network* entry (NET-8).
+Supporting fixtures: `test-fixtures/ok.json` (`{"ok":true,"items":[1,2,3]}`) and
+`test-fixtures/redir/index.html` — `python -m http.server` answers `GET /redir` with `301 → /redir/`,
+giving the redirect case for free. Both are picked up without restarting the server.
+
+| ID | Objective | Steps | Expected |
+|---|---|---|---|
+| NET-1 ★ | Always-on capture, no banner | Navigate to the fixture, then `browser_network_requests {}` | The `document` GET (200) plus any assets; **no** debugging banner at any point; ids present. |
+| NET-2 ★ | XHR + id lookup | Click **Fetch JSON**; query; then `{"id": "<that id>"}` | Line `GET 200 xhr … 118 B …/ok.json`; the detail shows `content-type: application/json`, request headers **without any `cookie` key** (§0.4 of the plan), `initiator: http://localhost:8080`. |
+| NET-3 | 4xx | **Fetch 404**; `{"failedOnly": true}` | Exactly the `404 …/nope` line (the 200s are filtered out). |
+| NET-4 ★ | Body summary + redaction | **POST form**; `{"id": …}` | `POST 501`; `request body: user=a&password=<redacted>`. |
+| NET-5 | Network error | **Fetch unreachable**; query | `ERR … http://127.0.0.1:9/ net::ERR_CONNECTION_REFUSED`. |
+| NET-6 | Redirect hops | **Fetch redirect**; query | Two lines with ids `N` and `N:2`: `301 … /redir → /redir/` then `200 … /redir/`. |
+| NET-7 | Pending | **Fetch black hole**; query within 5 s; query again after ~25 s | First `··· (pending)` and `1 pending` in the header; later `ERR … net::ERR_CONNECTION_TIMED_OUT` and `0 pending`. |
+| NET-8 | Cross-origin | **Fetch cross-origin**; query | A `200` entry for `https://example.com/` even though the page's status line reports a `TypeError` — "network 200 ≠ fetch success". |
+| NET-9 ★ | Filters | `{"filter":"/nope\|ok\\.json/"}`; `{"filter":"/(/"}`; `{"types":["xhr"]}`; `{"limit":2}` | The regex returns only those URLs; the bad regex is a clear `Invalid regex filter` error; `types` drops the document/assets; `limit:2` prints the two newest in chronological order with `showing 2 of N`. |
+| NET-10 ★ | Logged-in site privacy | Open a site you are signed into (GitHub), act once, `{"includeHeaders": true}` and an `id` lookup | **No `cookie` / `set-cookie` header at all** on any entry; any `authorization` shows `<redacted>`; record whether `referer`/`origin` appear; the SW console contains counts only — **no URL**. |
+| NET-11 ★ | SW culling soak | **Fetch JSON**; leave Chrome untouched ≥ 3 min (verify the SW stopped — "service worker (inactive)" on `chrome://extensions`); **Fetch JSON** again; query | **Both** fetches listed with ids from before and after the restart — proves the write-through + merge; `rehydrated N entries` appears once in the SW console. |
+| NET-12 | Tab lifecycle | `browser_new_tab` to the fixture, **Fetch JSON** there, `{"tab":"all"}`; close that tab; `{"tab":"all"}` again | The second tab's entries appear with a `tab:<id>` column, then vanish after the close; the first tab's entries are intact. |
+| NET-13 | Clear | `browser_network_clear {}` → `Cleared N requests.`; query | `No requests recorded …` until the next request; `recording since` unchanged (only `"all"` resets it). |
+| NET-14 | Cap + responsiveness | `browser_evaluate` a loop of 600 `fetch('/ok.json?i='+i)` (or click **Fetch 20×** ~25 times); query with `{"limit": 500}` | Header shows `showing 500 of 500`; the oldest ids are gone; Chrome and the fixture stay responsive; no quota warning in the SW console (or exactly one, followed by a working query). |
+| NET-15 | Regression smoke | ACT-2, TRUST-2, EVAL-1, WAIT-1 | Still pass — the manifest change and the new top-level listeners did not disturb the router or `withDebugger`. |
+| NET-16 | *(Part N6 only)* Network idle | **Fetch JSON** then `browser_wait_for {"networkIdle": true}`; **Fetch black hole** then the same | Returns in ~0.5 s both times (activity-based: the pending black hole does not block it); `{"networkIdle": true, "idleMs": 2000}` takes ~2 s. |
+
+### 4.9 Waiting
 
 | ID | Objective | Steps | Expected |
 |---|---|---|---|
@@ -179,14 +214,14 @@ fixture and EVAL-12 on the **CSP** fixture.
 | WAIT-2 | Wait seconds | `browser_wait_for {"seconds":2}` | Returns after ~2 s. |
 | WAIT-3 | Timeout | `browser_wait_for {"text":"this never appears"}` | After ~10 s, returns a clear "Timed out waiting for text" error. |
 
-### 4.9 Security
+### 4.10 Security
 
 | ID | Objective | Steps | Expected |
 |---|---|---|---|
 | SEC-1 ★ | Localhost-only bind | From another device on the LAN, try to connect to `ws://<this-machine-ip>:9234` | Connection refused (server binds `127.0.0.1` only). |
 | SEC-2 | Token required | Connect a raw WS client to `127.0.0.1:9234` and send a hello with a wrong/absent token | Server closes the socket; no commands accepted. |
 
-### 4.10 Real-world premise validation ★
+### 4.11 Real-world premise validation ★
 
 | ID | Objective | Steps | Expected |
 |---|---|---|---|
@@ -209,6 +244,8 @@ TRUST-1 [ ] TRUST-2 [ ] TRUST-3 [ ] TRUST-4 [ ] TRUST-5 [ ] TRUST-6 [ ] TRUST-7 
 TAB-1 [ ] TAB-2 [ ] TAB-3 [ ] TAB-4 [ ] HIST-1 [ ]
 EVAL-1 [ ] EVAL-2 [ ] EVAL-3 [ ] EVAL-4 [ ] EVAL-5 [ ] EVAL-6 [ ] EVAL-7 [ ] EVAL-8 [ ] EVAL-9 [ ] EVAL-10 [ ] EVAL-11 [ ]
 EVAL-12 [ ] EVAL-13 [ ] EVAL-14 [ ] EVAL-15 [ ] EVAL-16 [ ] EVAL-17 [ ] EVAL-18 [ ] EVAL-19 [ ] EVAL-20 [ ] EVAL-21 [ ] EVAL-22 [ ]
+NET-1 [ ] NET-2 [ ] NET-3 [ ] NET-4 [ ] NET-5 [ ] NET-6 [ ] NET-7 [ ] NET-8 [ ]
+NET-9 [ ] NET-10 [ ] NET-11 [ ] NET-12 [ ] NET-13 [ ] NET-14 [ ] NET-15 [ ]
 WAIT-1 [ ] WAIT-2 [ ] WAIT-3 [ ]
 SEC-1 [ ] SEC-2 [ ]
 REAL-1 [ ] REAL-2 [ ]
@@ -500,6 +537,244 @@ Failures / notes:
 - Environment note: port 9234 was initially held by orphaned `node server/dist/index.js` processes
   from earlier Claude sessions. `browser_status` diagnosed it exactly as CONN-7 describes, and the run
   started once they were closed — one session at a time really is a hard constraint.
+
+### Run 6 — 2026-09-07 (Step 5 network inspection: commits `69682cd`, `d64d0fe`, `fdb0378`)
+
+```
+Date: 2026-09-07  Chrome version: 152.0.7977.82 (uaFullVersion)  Node: 20+  OS: Windows 11 Pro 26200
+Fixtures: python -m http.server 8080 --directory test-fixtures
+
+NET-1 [P] NET-2 [P] NET-3 [P] NET-4 [P] NET-5 [P*] NET-6 [P] NET-7 [P] NET-8 [P*]
+NET-9 [P] NET-10 [P] NET-11 [P*] NET-12 [P] NET-13 [P] NET-14 [P] NET-15 [P]
+NET-16 [n/a — Part N6 not implemented]
+(only the NET rows were re-run this pass; ACT-2 / TRUST-2 / EVAL-1 / WAIT-1 re-run as NET-15)
+```
+
+Evidence (tool output, trimmed):
+
+**NET-1** — always-on capture, no banner. `browser_network_clear {}` → `Cleared 6 requests.`,
+navigate, `browser_network_requests {}`:
+
+```
+Network — active tab: showing 1 of 1 (recording since 5m02s ago; 0 pending)
+[3893]  2.8s ago   GET     200  document    5ms  12.9 KB  http://localhost:8080/e2e-playground.html
+```
+
+No debugging banner at any point (capture is `chrome.webRequest`; the banner only appeared for the
+`browser_evaluate` calls used to read the status line).
+
+**NET-2** — **Fetch JSON**, then `{"id":"3894"}`:
+
+```
+[3894]  2.8s ago   GET     200  xhr         3ms  28 B    http://localhost:8080/ok.json
+---
+[3894] GET http://localhost:8080/ok.json
+type: xhr   initiator: http://localhost:8080   started 5.8s ago   took 3ms
+status: 200 OK   from cache: no   ip: ::1   size: 28 B
+request headers:
+  sec-ch-ua-platform / user-agent / sec-ch-ua / dnt / sec-ch-ua-mobile / accept
+response headers:
+  server / date / content-type: application/json / content-length: 28 / last-modified
+```
+
+No `cookie` key on the request (extraHeaders omitted, §0.4); `initiator` correct. Size is 28 B, not
+the plan's illustrative 118 B (the fixture body is 28 bytes).
+
+**NET-3** — **Fetch 404**, `{"failedOnly": true}`:
+
+```
+Network — active tab: showing 1 of 1 (recording since 5m22s ago; 0 pending)
+[3895]  3.2s ago   GET     404  xhr         3ms  335 B   http://localhost:8080/nope
+```
+
+**NET-4** — **POST form**, `{"id":"3896"}`:
+
+```
+[3896] POST http://localhost:8080/e2e-playground.html
+status: 501 Unsupported method ('POST')   from cache: no   ip: ::1   size: 357 B
+request headers: … content-type: application/x-www-form-urlencoded;charset=UTF-8 …
+request body:
+  password=<redacted>&user=a
+```
+
+Redaction confirmed. Field order is `password` then `user` — `formData` key order, not the order the
+form sent them; harmless.
+
+**NET-5** — **Fetch unreachable**:
+
+```
+[3899]  2.8s ago   GET     ERR  xhr        2.0s  —       http://127.0.0.1:9999/  net::ERR_CONNECTION_REFUSED
+```
+
+`P*`: the fixture originally used the plan's `http://127.0.0.1:9/`, which Chrome refuses before it
+reaches the network — `net::ERR_UNSAFE_PORT` (port 9 is on Chrome's blocked-port list). The fixture
+now uses port **9999**, which produces the intended `net::ERR_CONNECTION_REFUSED`. Both shapes prove
+the `onErrorOccurred` path.
+
+**NET-6** — **Fetch redirect**, `{"filter":"redir"}`:
+
+```
+[3900]  2.8s ago   GET     301  xhr         2ms  0 B     http://localhost:8080/redir  → http://localhost:8080/redir/
+[3900:2]  2.8s ago   GET     200  xhr         3ms  38 B    http://localhost:8080/redir/
+```
+
+Both hops present with the `:2` suffix. Cosmetic: `[3900:2]` is 8 chars against the 6-wide id column,
+so that row's later columns shift right by two characters.
+
+**NET-7** — **Fetch black hole**, queried immediately and again after 25 s:
+
+```
+[3901]  2.9s ago   GET     ···  xhr        (pending)     http://10.255.255.1/          (header: 1 pending)
+[3901]  34.7s ago  GET     ERR  xhr        21.0s  —      http://10.255.255.1/  net::ERR_CONNECTION_TIMED_OUT   (header: 0 pending)
+```
+
+**NET-8** — **Fetch cross-origin** (`https://example.com/`); page status line reads
+`fetch cross-origin -> TypeError: Failed to fetch`:
+
+```
+[3902]  3.1s ago   GET     ERR  xhr        696ms  —       https://example.com/  net::ERR_FAILED
+```
+
+`P*`: the entry is **not** a 200. In Chrome 152 a CORS-blocked response fires `onErrorOccurred` with
+`net::ERR_FAILED`, so this case does not demonstrate the plan's "a network-level 200 is not a
+successful fetch" claim (§0.6). The claim still holds in principle (opaque/`no-cors` responses, and
+CORS failures on older Chrome), but §0.6 and the docs should not cite a plain cross-origin `fetch()`
+as the example. Recorded for Part N5.
+
+**NET-9** — filters:
+
+```
+{"filter":"/nope|ok\\.json/"}   → showing 2 of 2: …/ok.json (200), …/nope (404)
+{"filter":"/(/"}                → error: Invalid regex filter: /(/ — Invalid regular expression: /(/: Unterminated group
+{"types":["xhr"]}               → showing 9 of 9, all xhr; the document + favicon entries are gone
+{"limit":2}                     → showing 2 of 11, the two newest, oldest-first
+```
+
+**NET-10** — logged-in site (github.com), `{"includeHeaders": true, "limit": 5}` and an `id` lookup on
+one of the tab's own XHRs:
+
+```
+Network — active tab: showing 5 of 308 (recording since 7m23s ago; 0 pending)
+[4210]  2.8s ago   POST    204  ping       199ms  —       https://collector.github.com/github/collect
+[4211]  2.6s ago   GET     404  xhr        246ms  —       https://github.com/github-copilot/chat/entitlement
+… (3 more xhr 200s)
+```
+
+The `id` detail of a 200 XHR listed:
+- **no `cookie` and no `set-cookie` header on any entry** — §0.4's strongest claim holds against a
+  real logged-in session;
+- **no `authorization` header appeared at all** on the entries inspected (GitHub authenticates by
+  cookie), so the `<redacted>` path was not exercised against a live site — it is unit-tested;
+- **`referer` and `origin` are absent** from the stored request headers — they are `extraHeaders`-class
+  headers on this Chrome, so omitting `extraHeaders` costs them. This is the §0.4 follow-up flag:
+  record it, do not add `extraHeaders` in v1;
+- response headers that *are* stored are ordinary ones (`content-type`, `etag`, `cache-control`,
+  `strict-transport-security`, …).
+- SW console: not readable from the agent side (`chrome://extensions` is a restricted URL). Source
+  audit of `extension/src/{sw,network-state,handlers/network}.ts` shows the only network-related
+  console calls are `[bridge] network: rehydrated N entries` and two quota warnings carrying **counts
+  only** — no URL, header or body is ever logged. A human spot-check of the SW console is still the
+  belt-and-braces confirmation.
+
+**NET-11** — service-worker culling soak. **The worker never idles out on its own**: the bridge's
+25 s keepalive alarm keeps it alive indefinitely, so the soak was run by force-stopping the worker
+from `chrome://serviceworker-internals` (the card then reads "service worker (Inactive)"). On the
+next event the worker restarted and its console printed, exactly once:
+
+```
+[bridge] network: rehydrated 4 entries
+```
+
+The worker was force-stopped a second time, then woken by `browser_snapshot`; `browser_click`
+(**Fetch JSON**) and `browser_network_requests {}` gave:
+
+```
+Network — active tab: showing 6 of 6 (recording since 12m56s ago; 0 pending)
+[356]   2m00s ago  GET     200  document    2ms  —       https://www.google.com/search/warmup.html
+[361]   2m00s ago  GET     200  font        4ms  38.6 KB  https://fonts.gstatic.com/s/googlesans/…woff2
+[374]   1m58s ago  GET     200  document    4ms  12.6 KB  http://localhost:8080/e2e-playground.html
+[375]   1m58s ago  GET     404  image       2ms  335 B   http://localhost:8080/favicon.ico
+[376]   1m55s ago  GET     200  xhr         3ms  28 B    http://localhost:8080/ok.json
+[377]   2.6s ago   GET     200  xhr         1ms  28 B    http://localhost:8080/ok.json
+```
+
+`P*` — the claim is proven, but not with the entry the case scripts. Entries **376** (recorded before
+the second force-stop) and **377** (recorded after the restart) are listed together in one query, and
+`recording since` is still 12m56s, i.e. the `netlog:meta` written at the start of the run survived
+several worker restarts. What is missing is the pre-soak entry `[4820]`: **its tab was closed during
+the soak** (the user opened `chrome://extensions` and `chrome://serviceworker-internals`, and the
+fixture was reopened as a new tab — `browser_list_tabs` afterwards shows tab `1108101486` gone), so
+`chrome.tabs.onRemoved` → `forgetTab` dropped that bucket exactly as designed. That is NET-12's
+behaviour, not a write-through failure.
+
+"**rehydrated 4 entries**" vs. the single entry left in the active tab is **expected, not a
+discrepancy**: rehydrate reads `storage.session.get(null)` and merges *every* `netlog:<tabId>` key, so
+the number is the whole log across all tabs at that moment — by then the original tab's bucket had
+been forgotten and the replacement tab had recorded four entries (its Google warm-up pair plus the
+fixture document and favicon).
+
+Two further observations from this case:
+- After the worker churn, Chrome's `webRequest` `requestId` counter restarted low (…4820 → 181, 356,
+  374 …). Entry ids are therefore only unique/stable **within a capture session** — an id from an
+  earlier listing may not resolve later, and can in principle be reused. Worth a sentence in
+  `docs/setup.md`.
+- The write-through's real value is protection against a **forced stop or crash** of the service
+  worker (and against Chrome's own culling on machines where the keepalive alarm is throttled), not
+  against routine idle culling — which the keepalive already prevents — and not against a Chrome
+  exit, which clears `storage.session` by design (a stated non-goal).
+
+
+**NET-12** — `browser_new_tab` → fixture → **Fetch JSON** → `{"tab":"all","filter":"ok.json"}`, then
+close that tab and repeat:
+
+```
+[3894]  tab:1108101486  3m05s ago  GET  200  xhr  3ms  28 B  http://localhost:8080/ok.json
+[4219]  tab:1108101495  3.2s ago   GET  200  xhr  3ms  28 B  http://localhost:8080/ok.json
+--- after browser_close_tab 1108101495 ---
+[3894]  tab:1108101486  3m11s ago  GET  200  xhr  3ms  28 B  http://localhost:8080/ok.json
+```
+
+`chrome.tabs.onRemoved` → `forgetTab` works; the surviving tab is untouched.
+
+**NET-13** — `browser_network_clear {}` → `Cleared 11 requests.`; then:
+
+```
+No requests recorded for active tab (recording since 8m27s ago). Reload or act on the page, then query again.
+```
+
+`recording since` is unchanged across the clear (8m20s → 8m27s of real elapsed time) — only
+`tab:"all"` resets it.
+
+**NET-14** — `browser_evaluate` issuing 600 `fetch('/ok.json?i='+i)`, then
+`{"limit":500,"types":["xhr"]}`:
+
+```
+Network — active tab: showing 500 of 500 (recording since 8m50s ago; 0 pending)
+[4320]  … http://localhost:8080/ok.json?i=100
+…
+… [truncated: 289 more lines — narrow with filter/limit]
+```
+
+The per-tab cap held at exactly 500, `i=0…99` were evicted (oldest-first), the 20 000-char cap cut
+the text with the documented footer, and Chrome, the fixture and the bridge stayed responsive
+throughout. No quota warning observed in the tool path (the SW console needs a human glance).
+
+**NET-15** — regression smoke: ACT-2 (`status: counter = 1`), TRUST-2 (trusted click →
+`status: TRUSTED click received`, banner appeared and cleared), EVAL-1 (`document.title` →
+`Agent Bridge E2E Playground`), WAIT-1 (`browser_wait_for {"text":"Async content loaded!"}` returned
+in ~1.5 s). The manifest permission and the six new top-level `webRequest` listeners disturbed
+neither the router nor `withDebugger`.
+
+Failures / notes:
+- `includeHeaders: true` has **no visible effect** through the MCP tool: the tool returns
+  `result.text`, and `formatEntries` renders only the table — headers are attached to
+  `result.entries`, which the MCP layer never prints. Headers are therefore reachable only via the
+  `id` form. Not a wire-shape bug; either the formatter should render them under each line when
+  asked, or the parameter's description should say "use `id` to see headers". Flagged for Part N5.
+- `net::ERR_UNSAFE_PORT` (NET-5) and CORS → `net::ERR_FAILED` (NET-8): Chrome-behaviour findings, see
+  above.
+- `referer` / `origin` absent without `extraHeaders` (NET-10): the §0.4 follow-up flag is now
+  evidence-backed.
 
 ## 6. Exit criteria
 

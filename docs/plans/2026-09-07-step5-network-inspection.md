@@ -451,10 +451,10 @@ serve the fixtures with `python -m http.server 8080 --directory test-fixtures`; 
 reports connected. Reloading the extension empties `storage.session`, so the log starts fresh.
 
 Fixture additions (`test-fixtures/`):
-- [ ] `ok.json` → `{"ok":true,"items":[1,2,3]}`.
-- [ ] `redir/index.html` → `<!doctype html><title>redir</title>ok` — `python -m http.server`
+- [x] `ok.json` → `{"ok":true,"items":[1,2,3]}`.
+- [x] `redir/index.html` → `<!doctype html><title>redir</title>ok` — `python -m http.server`
       answers `GET /redir` with `301 → /redir/`, which is the redirect case for free.
-- [ ] `e2e-playground.html`: a new `<section aria-label="Network">` with buttons, each updating the
+- [x] `e2e-playground.html`: a new `<section aria-label="Network">` with buttons, each updating the
       status line with the fetch's outcome (`set("fetch ok.json → 200")`, or the error name):
   - **Fetch JSON** → `fetch('/ok.json')`
   - **Fetch 404** → `fetch('/nope')`
@@ -488,8 +488,33 @@ Fixture additions (`test-fixtures/`):
 | NET-15 | Regression smoke | ACT-2, TRUST-2, EVAL-1, WAIT-1 | Still pass — the manifest change and the new top-level listeners did not disturb the router or `withDebugger`. |
 | NET-16 | *(N6 only)* Network idle | **Fetch JSON** then `browser_wait_for {"networkIdle": true}`; **Fetch black hole** then the same | Returns in ~0.5 s both times (activity-based: the pending black hole does not block it); `{"networkIdle": true, "idleMs": 2000}` takes ~2 s. |
 
-- [ ] Run all, record in the scorecard (§5) as **Run 6** with Chrome version + date; add the NET row
+- [x] Run all, record in the scorecard (§5) as **Run 6** with Chrome version + date; add the NET row
       to the results template.
+
+
+**Deviations:** (1) The fixture's **Fetch unreachable** button targets `http://127.0.0.1:9999/`, not
+the plan's `http://127.0.0.1:9/` — Chrome refuses port 9 before it reaches the network
+(`net::ERR_UNSAFE_PORT`), so the plan's URL never produced the intended
+`net::ERR_CONNECTION_REFUSED`. (2) NET-8 does not match its expectation on Chrome 152: a CORS-blocked
+`fetch` fires `onErrorOccurred` (`net::ERR_FAILED`), so the entry is an error, not a `200` — §0.6's
+"a network 200 is not a successful fetch" illustration needs a different example in the N5 docs.
+(3) The cases were run in the order 1–10, 12–15, then 11, because NET-11's ≥ 3 min idle soak must be
+the last thing the agent does (any tool call wakes the service worker). (4) `includeHeaders: true` is
+a no-op through the MCP tool — the tool prints `result.text` and `formatEntries` renders only the
+table, so headers are reachable only via the `id` form; recorded in the scorecard for an N5
+docs/description decision rather than changed here (it would alter frozen N1 formatter output).
+(5) NET-10's "SW console contains counts only" was verified by source audit rather than by reading
+the console — `chrome://extensions` is a restricted URL the agent cannot evaluate in.
+(6) NET-11 could not be run as written: the bridge's 25 s keepalive alarm means the service worker
+**never idles out**, so leaving Chrome untouched for 3 min proves nothing. It was run instead by
+force-stopping the worker from `chrome://serviceworker-internals`. The write-through therefore
+protects against a forced stop or crash of the worker — not against routine idle culling (the
+keepalive prevents it) and not across a Chrome exit (`storage.session` is cleared by design). The
+case passes on its substance (a pre-stop and a post-restart entry listed together, one
+`rehydrated N entries` line, `netlog:meta` surviving), but the specific pre-soak entry was lost
+because its tab was closed during the soak — `forgetTab`, as designed. (7) Chrome's `webRequest`
+`requestId` counter restarted low after the worker churn, so entry ids are unique only within a
+capture session; `docs/setup.md` (N5) should say so.
 
 ## Part N5 — docs + commits
 
