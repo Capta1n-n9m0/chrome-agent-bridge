@@ -385,11 +385,14 @@ Fixture changes:
 - The run happened in two sittings: port 9234 was first held by orphaned
   `node server/dist/index.js` processes from earlier Claude sessions (`browser_status` diagnosed it
   as CONN-7 does), and started once the user closed them.
-- **20 of the 22 cases ran; 18 passed outright.** EVAL-16 (DevTools open) and EVAL-17 (banner
-  Cancel) were **not run** — both need a human at the keyboard, and TRUST-3 / TRUST-8 already cover
-  the same two Chrome behaviours through the same `withDebugger`. EVAL-4 and EVAL-20 **failed on one
-  shared defect**, fixed in this stage (see below); they need a re-run after `npm run build` + an
-  extension reload.
+- **20 of the 22 cases ran, and all 20 pass.** EVAL-4 and EVAL-20 failed the first pass on one
+  shared defect (below), and both pass on a re-run against the rebuilt extension, together with
+  EVAL-3 / EVAL-14 as a smoke that the fix disturbs nothing. EVAL-16 (DevTools open) and EVAL-17
+  (banner Cancel) were **deliberately not run** — both need a human at the keyboard, and
+  TRUST-3 / TRUST-8 already exercise the same two Chrome behaviours through the very same
+  `withDebugger` (attach and detach-reason handling are shared code, not per-tool). The maintainer
+  accepted that as coverage on 2026-09-07; the plan's own EVAL-16/17 rows stay in §4.7 so they can
+  be re-opened if `withDebugger` ever grows a per-caller attach path.
 - **Defect found: a promise-valued completion value came back as `Promise {}`.**
   `Runtime.evaluate {awaitPromise: true}` unwraps exactly one promise level, and `replMode: true`
   spends that level on Chrome's own async wrapper around the script. So `fetch('/x')`, `p.then(…)`
@@ -397,7 +400,12 @@ Fixture changes:
   unresolved promise. `evaluateInPage` now follows up with `Runtime.awaitPromise` on the same
   deadline when the new pure `pendingPromiseId(raw)` (in `evaluate/result.ts`, 4 unit tests written
   red first) says the completion value is a pending promise. This is the fix the plan's §0.2/§0.3
-  did not anticipate; it touches `extension/`, so the extension must be rebuilt and reloaded.
+  did not anticipate. It touches `extension/`, so it needed a rebuild + reload, which the run then
+  verified: `return r.status` gives `200` and `p.then(() => "ok")` gives `ok`.
+- A non-defect worth carrying into the docs: `userGesture: true` supplies **transient activation, not
+  window focus**. EVAL-20's clipboard write still fails with `NotAllowedError: … Document is not
+  focused` whenever Chrome is in the background — the normal state while an agent drives it — even
+  though `navigator.userActivation.isActive` is `true`. Chrome's rule, not the bridge's.
 - **E2.2's sync-timeout box is now ticked.** Chrome 152 *does* honour `Runtime.evaluate.timeout` on a
   `while(true){}` (the tab is responsive immediately afterwards, which it could not be if V8 were
   still spinning), but the branch that *reports* is always the bridge-side `raceTimeout` — its

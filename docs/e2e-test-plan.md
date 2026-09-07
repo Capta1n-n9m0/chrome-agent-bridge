@@ -355,19 +355,24 @@ Failures / notes:
   debugger per tab; Chrome 152 does not.
 
 
-### Run 5 — 2026-09-07 (Step 4 `browser_evaluate`: commits `8a13b30`, `d2c7a8a`, `0757542`)
+### Run 5 — 2026-09-07 (Step 4 `browser_evaluate`: commits `8a13b30`, `d2c7a8a`, `0757542`, `376e4dd`)
 
 ```
 Date: 2026-09-07  Chrome version: 152.0.0.0 (UA-CH brand "Google Chrome" 152)  Node: 20+  OS: Windows 11 Pro 26200
 Display: 1536-px innerWidth, DPR 1.25 (OS scaling 125%), Chrome zoom 100%
 Fixtures: http://localhost:8080/e2e-playground.html and .../e2e-playground-csp.html
 
-EVAL-1 [P] EVAL-2 [P] EVAL-3 [P] EVAL-4 [F -> fixed, re-run pending] EVAL-5 [P] EVAL-6 [P] EVAL-7 [P*]
+EVAL-1 [P] EVAL-2 [P] EVAL-3 [P] EVAL-4 [F -> P] EVAL-5 [P] EVAL-6 [P] EVAL-7 [P*]
 EVAL-8 [P] EVAL-9 [P] EVAL-10 [P] EVAL-11 [P] EVAL-12 [P] EVAL-13 [P] EVAL-14 [P] EVAL-15 [P]
-EVAL-16 [-] EVAL-17 [-] EVAL-18 [P] EVAL-19 [P*] EVAL-20 [F -> fixed, re-run pending] EVAL-21 [P] EVAL-22 [P]
+EVAL-16 [-] EVAL-17 [-] EVAL-18 [P] EVAL-19 [P*] EVAL-20 [F -> P] EVAL-21 [P] EVAL-22 [P]
 
+20 of 22 run, 20 passed. EVAL-4 and EVAL-20 failed on the first pass, were fixed in `376e4dd`, and
+passed on a re-run against the rebuilt extension (see "Re-run" below).
 (* passed against a corrected expectation — see the EVAL-7 / EVAL-19 rows in §4.7)
-(- not run: EVAL-16 and EVAL-17 need a human at the keyboard — open DevTools, click the banner's Cancel)
+(- EVAL-16 and EVAL-17 deliberately not run: both need a human at the keyboard, and TRUST-3 /
+   TRUST-8 already exercise the same two Chrome behaviours — an extension debugger attaching
+   alongside DevTools, and a mid-action Cancel on the banner — through the very same `withDebugger`
+   that `browser_evaluate` uses. Accepted as coverage by the maintainer on 2026-09-07.)
 ```
 
 **One real defect found and fixed** (`fix(extension): unwrap a promise-valued completion value`):
@@ -377,7 +382,7 @@ EVAL-16 [-] EVAL-17 [-] EVAL-18 [P] EVAL-19 [P*] EVAL-20 [F -> fixed, re-run pen
 `(async () => { … })()` form `wrapExpression` emits for a bare `return` (EVAL-4) and any
 `p.then(…)` (EVAL-20). `evaluateInPage` now resolves such a result with a second
 `Runtime.awaitPromise` on the same deadline, gated by the new pure `pendingPromiseId(raw)`
-(4 unit tests). **EVAL-4 and EVAL-20 must be re-run after `npm run build` + an extension reload.**
+(4 unit tests). Both cases were re-run against the rebuilt extension and pass — see "Re-run" below.
 
 Evidence per case:
 
@@ -392,7 +397,7 @@ Evidence per case:
   not `200`. Root-caused live: `await (async () => (await fetch('/e2e-playground.html')).status)()`
   — which the `\breturn\b` heuristic leaves unwrapped — returned `200`, and
   `await (async () => { … r.status })()` returned `undefined`, so `await` *was* being honoured and
-  the missing piece was a second unwrap. Fixed as above; re-run pending.
+  the missing piece was a second unwrap. Fixed as above; **passes on re-run**.
 - **EVAL-5 ★** — `throw new Error("boom")` → tool error `[chrome.debugger] Error: boom` +
   `    at <anonymous>:1:7`. Immediate, not a 30 s hang.
 - **EVAL-6** — `await Promise.reject(new TypeError("nope"))` → `TypeError: nope` + `at <anonymous>:1:22`.
@@ -433,9 +438,12 @@ Evidence per case:
   `(DOM node — …)` hint: kind is json.
 - **EVAL-15** — `document.body` → `<body> "Agent Bridge E2E Playground status: counter = 1 Form Email
   address Password Favo…"` followed by `(DOM node — use browser_snapshot refs to act on it)`.
-- **EVAL-16 / EVAL-17** — not run: both need a human at the keyboard (open DevTools on the tab; click
-  the banner's Cancel mid-run). TRUST-3 and TRUST-8 already cover those two Chrome behaviours for the
-  trusted-input path, and `browser_evaluate` reaches them through the same `withDebugger`.
+- **EVAL-16 / EVAL-17** — deliberately not run: both need a human at the keyboard (open DevTools on
+  the tab; click the banner's Cancel mid-run). TRUST-3 and TRUST-8 already cover those two Chrome
+  behaviours for the trusted-input path, and `browser_evaluate` reaches them through the same
+  `withDebugger` — the attach and the detach-reason handling are shared code, not per-tool. The
+  maintainer accepted that as coverage on 2026-09-07; re-open these two if `withDebugger` ever grows
+  a per-caller attach path.
 - **EVAL-18** — a `chrome://extensions` tab made active, then `document.title` → `browser_evaluate is
   not available here: the active tab is a restricted URL (chrome://, the New Tab page, or the Chrome
   Web Store) where extensions can't attach a debugger. (Cannot access a chrome:// URL)`. The E2.1
@@ -443,7 +451,7 @@ Evidence per case:
 - **EVAL-19** — `'x'.repeat(50000)` → 20 000 `x`s + `… [truncated: 30000 more chars]` + the
   truncation hint. The limit that applied is `maxChars`, not `maxString`; §4.7 corrected.
 - **EVAL-20** — `navigator.clipboard.writeText("hi").then(() => "ok")` → **`Promise {}`** — the same
-  defect as EVAL-4. `userGesture` itself stays unproven until the re-run.
+  defect as EVAL-4. `userGesture` itself stayed unproven on this pass; **passes on re-run**.
 - **EVAL-21** — `JSON.stringify([typeof window.__agentBridge, typeof window.__playground])` →
   `["undefined","object"]`. The ISOLATED-world content script is invisible to page code and the
   page's own globals are visible, so `browser_evaluate` really is running in MAIN.
@@ -452,9 +460,40 @@ Evidence per case:
   (TRUST-2); `browser_screenshot {fullPage:true}` → a taller PNG containing `BOTTOM MARKER` (PERC-4).
   No regressions.
 
+#### Re-run after `376e4dd` (rebuilt extension, reloaded) — 2026-09-07
+
+```
+EVAL-4 [P]  EVAL-20 [P]           (the two cases the fix targets)
+EVAL-3 [P]  EVAL-14 [P]           (smoke: the unwrap must not disturb the paths that already worked)
+```
+
+- **EVAL-4 ★** — `const r = await fetch('/e2e-playground.html'); return r.status` → **`200`**. The
+  `(async () => { … })()` wrapper's promise is now resolved by the follow-up `Runtime.awaitPromise`.
+- **EVAL-20** — took two attempts, and the first one is the more interesting result:
+  `navigator.clipboard.writeText("hi").then(() => "ok")` first returned a *tool error*,
+  `NotAllowedError: Failed to execute 'writeText' on 'Clipboard': Document is not focused.` That is
+  the fix working — the promise was resolved (well, rejected) and its rejection surfaced as an error
+  instead of the old silent `Promise {}`. The cause was environmental: the Chrome **window** did not
+  have OS focus while the agent drove it from a terminal, and `document.hasFocus()` is a separate
+  requirement from transient activation that no `Runtime.evaluate` option can satisfy. A direct probe
+  confirmed the split — `{"hasFocus":false,"userActivationActive":true,"userActivationSticky":true}`
+  — i.e. `userGesture: true` **was** granting activation all along. After `browser_select_tab` gave
+  the window focus, the verbatim expression returned **`ok`**.
+- **EVAL-3 ★** — `(await fetch('/e2e-playground.html')).status` → `200`, unchanged.
+- **EVAL-14** — `document.querySelectorAll('button')` → the same ten node descriptions as before: a
+  non-promise object still routes to the in-page serialiser, untouched by the unwrap.
+- Extra smoke, not a numbered case: `Promise.resolve({a: 1, b: [2, 3]})` → the pretty JSON for
+  `{a, b}`, proving the unwrapped value then goes through the serialiser exactly like a direct one.
+
+**Note for the docs (and for anyone writing EVAL-20 again):** `userGesture: true` supplies transient
+activation, not window focus. Clipboard writes, and any other API that calls `document.hasFocus()`,
+still fail with `NotAllowedError` when Chrome is in the background — which is the normal state while
+an agent drives it. That is a Chrome rule, not a bridge limitation, and the error message says so
+clearly enough to act on.
+
 Failures / notes:
-- One code defect (the promise-valued completion value) — fixed with a unit test; EVAL-4 and EVAL-20
-  need a re-run after a rebuild + extension reload.
+- One code defect (the promise-valued completion value) — fixed with a unit test in `376e4dd`, and
+  both affected cases pass on the re-run below. No open failures.
 - Two plan expectations were wrong rather than the code (EVAL-7, EVAL-19); §4.7 corrected to match
   what Chrome 152 actually does.
 - EVAL-16 and EVAL-17 remain unrun (human interaction required).
