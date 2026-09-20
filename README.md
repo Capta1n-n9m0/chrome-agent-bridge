@@ -20,8 +20,16 @@ All documentation lives in [`docs/`](docs/).
 
 ## Status
 
-Implemented (Milestones 1–5) and **E2E-validated** against the real default profile (29 cases,
-3 runtime bugs found & fixed — see [`docs/progress-and-roadmap.md`](docs/progress-and-roadmap.md) §0).
+**20 tools**, implemented and **E2E-validated** against the real default profile: Phases A–D
+(connection, navigation, perception, action fidelity, robustness) plus `browser_evaluate` and
+network inspection (`browser_network_requests`, `browser_network_clear`, and
+`browser_wait_for({networkIdle:true})`).
+
+256 unit tests green; live in-browser runs of 29 cases (2026-06-04), Phase C (13), Phase D (7) and
+Phase B (6) on 2026-09-03, the evaluate pass (20 of 22) and the network pass (15 of 15) on
+2026-09-07 — 6 runtime bugs found & fixed across them. Details in
+[`docs/progress-and-roadmap.md`](docs/progress-and-roadmap.md).
+
 Merged to `main` and published as a public GitHub repo under the MIT license (2026-09-03).
 
 ## License
