@@ -7,7 +7,8 @@ Guidance for working in this repo. Keep it accurate — update it when the archi
 An MCP server + Chrome MV3 extension that lets an AI agent (Claude) drive the user's **real, logged-in
 Chrome default profile**. Chrome 136 (May 2025) blocked `--remote-debugging-port` on the default
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
-extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
+extension. A separate macOS Safari Web Extension build supports the cross-browser tool subset.
+Mental model: "Playwright MCP, but pointed at your real logged-in browser."
 
 ## Architecture
 
@@ -18,6 +19,11 @@ Claude ⇄ (MCP/stdio) ⇄ server/ [hosts ws://127.0.0.1:9234, token handshake]
     offscreen document  → holds the WebSocket (survives MV3 service-worker culling)
     service worker      → routes methods to handlers; uses chrome.tabs/scripting/debugger
     content script      → window.__agentBridge: RefMap + snapshot + DOM actions (ISOLATED world)
+
+  Safari package (`extension/dist/safari`, generated from `extension/safari/manifest.json`):
+    persistent MV2 background page → owns the WebSocket directly + routes shared handlers
+    browser.* compatibility layer  → tabs / scripting / storage / webRequest
+    no debugger API                → no trusted input or CDP full-page screenshot
 ```
 
 Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(method, …)` → handler →
@@ -33,11 +39,12 @@ Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(met
 - `server/src/`: `wsHost.ts` (binds 127.0.0.1, token gate), `connection.ts` (id-correlated calls),
   `bridge.ts` (connection gate + unavailable-reason + host state), `startup.ts` (non-fatal port bind
   with retry), `tools/registry.ts` (the 20 MCP tools), `index.ts` (entry).
-- `extension/src/`: `sw.ts` (router + offscreen orchestration), `offscreen.ts` (the socket),
+- `extension/src/`: `sw.ts` (Chrome router + offscreen orchestration), `offscreen.ts` (the Chrome socket),
+  `safari.ts` (Safari persistent background + direct socket), `browser-api.ts` (namespace/capability adapter),
   `inject.ts` (`ensureContent`/`callInPage` + `toSerializableArgs`/`unwrapResult`), `handlers/*`,
   `content/{index,snapshot,refmap,actions,geometry}.ts`, `debugger.ts`, `debugger-errors.ts`
   (pure: CDP failure → actionable message), `keys.ts` (pure: key name → CDP key params),
-  `evaluate/{serialize,wrap,result}.ts` (pure: in-page serialiser source, `return`-wrapper,
+  `evaluate/{serialize,wrap,result,scripting}.ts` (pure: in-page serialiser source, `return`-wrapper,
   CDP-result → `EvalEnvelope`), `network-log.ts` (pure: `NetworkLog` reducer + query + formatter,
   redaction, body summary, serialise/merge), `network-state.ts` (the singleton log, the
   `storage.session` rehydrate/flush, the own-port variable), `handlers/network.ts`.
@@ -47,7 +54,8 @@ Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(met
 ```bash
 npm install
 npm run build        # builds server (dist/index.js) + extension (dist/{sw,options,offscreen,content}.js)
-npm test             # vitest (260 tests)
+npm run package:safari # builds and converts extension/dist/safari into ignored safari-app/ Xcode project
+npm test             # vitest (266 tests)
 npm run typecheck    # tsc --noEmit across shared/server/extension
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
@@ -63,6 +71,12 @@ and follow `docs/e2e-test-plan.md`.
 - **A thrown injected function does NOT reject `executeScript`** — Chrome resolves the frame with
   `result: null`. `unwrapResult` treats null OR undefined as failure (no page fn returns those on
   success). Without it, bad/stale refs *silently succeed*. Keep that invariant if you add page fns.
+- **Safari reports per-frame scripting failures on `InjectionResult.error`** rather than Chrome's
+  `result:null`. `unwrapResult` handles both; don't bypass it in shared handlers.
+- **Safari has no `chrome.offscreen` or `chrome.debugger`.** Its distributable is MV2 so the macOS
+  background page can stay persistent and own the WebSocket. `trusted:true` and full-page capture
+  must remain explicit capability errors. `browser_evaluate` uses MAIN-world injection and can be
+  blocked by a page's CSP; it cannot terminate a synchronous infinite loop.
 - **The content script is built as an IIFE** (separate esbuild call in `extension/build.mjs`), because
   it's injected as a *classic* script via `executeScript({files})` — it must contain no `import`/`export`.
   `sw`/`options`/`offscreen` are ESM.

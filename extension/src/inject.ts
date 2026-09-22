@@ -1,12 +1,14 @@
+import { browserApi, browserName } from "./browser-api.js";
+
 export async function ensureContent(tabId: number): Promise<void> {
   try {
-    await chrome.scripting.executeScript({
+    await browserApi.scripting.executeScript({
       target: { tabId },
       files: ["dist/content.js"],
     });
   } catch (err) {
     throw new Error(
-      `Could not inject into the active tab — it may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store) where extensions can't run. (${(err as Error).message})`,
+      `Could not inject into the active tab — it may be a restricted browser page or the extension may not have website access. (${(err as Error).message})`,
     );
   }
 }
@@ -28,11 +30,17 @@ export function toSerializableArgs(args: unknown[]): unknown[] {
  * silently treated as success. None of our page functions return null/undefined
  * on success, so treat either as a failure and surface an actionable error.
  */
-export function unwrapResult<T>(injection: { result?: unknown } | undefined): T {
+export function unwrapResult<T>(injection: { result?: unknown; error?: unknown } | undefined): T {
+  if (injection?.error !== undefined) {
+    const message = typeof injection.error === "string"
+      ? injection.error
+      : (injection.error as { message?: unknown })?.message;
+    throw new Error(`The page action failed in ${browserName()}: ${String(message ?? injection.error)}`);
+  }
   if (!injection || injection.result === undefined || injection.result === null) {
     throw new Error(
       "The page action returned no result — the element ref may be stale (run browser_snapshot to refresh), " +
-        "or the tab may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store).",
+        "or the tab may be a restricted browser page / missing website access.",
     );
   }
   return injection.result as T;
@@ -47,7 +55,7 @@ export async function callInPage<T>(
   // conflicts with TypeScript's built-in `Awaited<T>`, so we fall back to `any`.
   let injection: chrome.scripting.InjectionResult<any> | undefined;
   try {
-    [injection] = await chrome.scripting.executeScript({
+    [injection] = await browserApi.scripting.executeScript({
       target: { tabId },
       func: fn,
       args: toSerializableArgs(args),
@@ -55,7 +63,7 @@ export async function callInPage<T>(
     });
   } catch (err) {
     throw new Error(
-      `Could not run script in the active tab — it may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store). (${(err as Error).message})`,
+      `Could not run script in the active tab — it may be a restricted browser page or the extension may not have website access. (${(err as Error).message})`,
     );
   }
   return unwrapResult<T>(injection);

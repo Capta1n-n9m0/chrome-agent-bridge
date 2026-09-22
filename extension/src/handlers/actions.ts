@@ -1,6 +1,15 @@
 import { activeTab } from "../tabs.js";
 import { ensureContent, callInPage } from "../inject.js";
 import { withDebugger, trustedClick, trustedType, trustedPressKey } from "../debugger.js";
+import { hasDebuggerApi } from "../browser-api.js";
+
+function requireTrustedInput(): void {
+  if (!hasDebuggerApi()) {
+    throw new Error(
+      "Trusted input is not available in Safari because Safari Web Extensions do not expose the browser debugging protocol. Retry without trusted:true to use DOM events.",
+    );
+  }
+}
 
 async function inActiveTab<T>(fn: (...args: unknown[]) => T, args: unknown[]): Promise<T> {
   const tab = await activeTab();
@@ -12,11 +21,13 @@ export async function click(p: Record<string, unknown>): Promise<{ ok: true }> {
   const tab = await activeTab();
   await ensureContent(tab.id!);
   const trusted = p.trusted === true;
+  if (trusted) requireTrustedInput();
   if (!trusted) {
     try {
       await callInPage(tab.id!, (ref) => window.__agentBridge!.click(ref as string), [p.ref]);
       return { ok: true };
     } catch (err) {
+      if (!hasDebuggerApi()) throw err;
       console.warn("[bridge] content-script click failed; escalating to CDP trusted input:", err);
       // fall through to trusted input
     }
@@ -42,6 +53,7 @@ export async function type(p: Record<string, unknown>): Promise<{ ok: true }> {
   const value = p.text as string;
   const submit = p.submit === true;
   const trusted = p.trusted === true;
+  if (trusted) requireTrustedInput();
   if (!trusted) {
     try {
       await callInPage(
@@ -51,6 +63,7 @@ export async function type(p: Record<string, unknown>): Promise<{ ok: true }> {
       );
       return { ok: true };
     } catch (err) {
+      if (!hasDebuggerApi()) throw err;
       console.warn("[bridge] content-script type failed; escalating to CDP trusted input:", err);
       // fall through to trusted input
     }
@@ -82,6 +95,7 @@ export const selectOption = (p: Record<string, unknown>) =>
 export async function pressKey(p: Record<string, unknown>): Promise<{ ok: true }> {
   const key = p.key as string;
   if (p.trusted === true) {
+    requireTrustedInput();
     const tab = await activeTab();
     await withDebugger(tab.id!, () => trustedPressKey(tab.id!, key));
     return { ok: true };

@@ -1,13 +1,13 @@
 # Setup & Usage
 
-This bridge lets an MCP client (e.g. Claude) drive your **real, logged-in Chrome**
-(default profile). It has two halves: a Node MCP server that hosts a localhost
-WebSocket, and a Chrome extension (loaded into your real profile) that connects to it.
+This bridge lets an MCP client (e.g. Claude) drive your **real, logged-in Chrome or Safari**
+profile. It has two halves: a Node MCP server that hosts a localhost WebSocket, and a browser
+extension loaded into your real profile that connects to it.
 
 ## Prerequisites
 
 - Node.js 20+ and npm
-- Google Chrome 116+
+- Google Chrome 116+, or macOS Safari 17+ with Xcode
 
 ## 1. Build
 
@@ -15,7 +15,8 @@ WebSocket, and a Chrome extension (loaded into your real profile) that connects 
 npm install
 npm run build
 ```
-This produces `server/dist/index.js` and the extension bundles in `extension/dist/`.
+This produces `server/dist/index.js`, the Chrome bundles in `extension/dist/`, and a standalone
+Safari Web Extension bundle in `extension/dist/safari/`.
 
 ## 2. Choose a shared token
 
@@ -46,7 +47,7 @@ To try it without an MCP client, use the inspector:
 $env:BRIDGE_TOKEN="<your-token>"; npx @modelcontextprotocol/inspector node server/dist/index.js
 ```
 
-## 4. Load the extension into your real profile
+## 4A. Chrome: load the extension into your real profile
 
 1. Open `chrome://extensions`.
 2. Enable **Developer mode** (top-right).
@@ -57,6 +58,43 @@ $env:BRIDGE_TOKEN="<your-token>"; npx @modelcontextprotocol/inspector node serve
 Open the extension's **service worker** console (chrome://extensions → the extension →
 "service worker"). You should see `[bridge] connection: up`.
 
+## Safari (macOS)
+
+Safari extensions are installed through a containing macOS app. Generate the local Xcode project:
+
+```bash
+npm run package:safari
+```
+
+This builds `extension/dist/safari/` and creates the ignored `safari-app/` directory. Open the
+generated Xcode project, leave both targets on **Sign to Run Locally** (an Apple Developer account
+is not required), choose the **Safari Agent Bridge** macOS scheme, and Run. Then:
+
+1. In Safari, open **Settings → Extensions** and enable **Safari Agent Bridge**.
+2. Grant it access to **All Websites**. Safari 17+ requires this explicit website-access grant.
+3. Open the extension's Options page, set port `9234` and the same token used by the MCP server,
+   then Save.
+4. Keep Safari running. `browser_status()` should report `Extension: connected`.
+
+The generated Xcode project copies the built resources, so rerun `npm run package:safari` after
+moving or deleting an older `safari-app/` directory when you need a fresh package.
+
+Safari uses a persistent Manifest V2 background page because WebKit does not yet provide the
+offscreen document used by the Chrome MV3 build. The shared handlers use the standard `browser.*`
+API, while Chrome continues to use `chrome.*` through the same compatibility layer.
+
+### Safari limitations
+
+- `trusted:true` click/type/key input is unavailable: Safari Web Extensions expose no equivalent to
+  `chrome.debugger`. Use the default DOM-event path.
+- `browser_screenshot({fullPage:true})` is unavailable; viewport screenshots work.
+- `browser_evaluate` uses Safari's MAIN-world script injection. Common expressions, statement-list
+  completion values, top-level-await expressions, return values, and structured serialization work,
+  but a strict page Content Security Policy may block dynamic evaluation. Unlike Chrome, Safari
+  cannot terminate a synchronously stuck script through CDP.
+- Safari may expose a somewhat different set of `webRequest` fields. Sensitive headers, including
+  Cookie and Set-Cookie if Safari supplies them, are redacted at ingest.
+
 ## 5. Use it
 
 With the MCP server running and the extension connected, call the tools from your client:
@@ -66,10 +104,10 @@ With the MCP server running and the extension connected, call the tools from you
 | `browser_status()` | Diagnose the bridge: WebSocket host listening? extension connected? active tab. Call it first when other tools fail |
 | `browser_navigate(url)` | Navigate the active tab |
 | `browser_snapshot()` | Accessibility outline of the active tab with element refs |
-| `browser_screenshot(fullPage?)` | Screenshot (viewport; full-page via CDP when `fullPage:true`) |
-| `browser_click(ref, trusted?)` | Click a ref; `trusted:true` forces real CDP input (shows the debugging banner) |
-| `browser_type(ref, text, submit?, trusted?)` | Type into a ref, optionally submit; `trusted:true` sends real CDP keystrokes (shows the debugging banner) |
-| `browser_press_key(key, trusted?)` | Press a key on the focused element; `trusted:true` sends a real CDP keystroke (shows the debugging banner) |
+| `browser_screenshot(fullPage?)` | Screenshot; `fullPage:true` is Chrome-only |
+| `browser_click(ref, trusted?)` | Click a ref; `trusted:true` is Chrome-only CDP input |
+| `browser_type(ref, text, submit?, trusted?)` | Type into a ref, optionally submit; `trusted:true` is Chrome-only CDP input |
+| `browser_press_key(key, trusted?)` | Press a key; `trusted:true` is Chrome-only CDP input |
 | `browser_scroll(ref?, direction?)` | Scroll to a ref or up/down |
 | `browser_hover(ref)` | Hover a ref |
 | `browser_select_option(ref, values)` | Select option(s) in a `<select>` |
@@ -78,14 +116,14 @@ With the MCP server running and the extension connected, call the tools from you
 | `browser_list_tabs()` | List open tabs |
 | `browser_select_tab(id)` | Make a tab active (the new control target) |
 | `browser_new_tab(url?)` / `browser_close_tab(id)` | Open / close tabs |
-| `browser_evaluate(expression, timeoutMs?)` | Run JavaScript in the active tab’s page context and return the result (shows the debugging banner) |
+| `browser_evaluate(expression, timeoutMs?)` | Run JavaScript in the active tab’s page context and return the result |
 | `browser_network_requests(tab?, filter?, types?, failedOnly?, limit?, includeHeaders?, id?)` | List the network requests the tab has made — method, status, type, duration, size, URL — captured continuously with no banner; `id` shows one request's headers and body summary |
 | `browser_network_clear(tab?)` | Forget the recorded network requests, so the next `browser_network_requests` shows only what your next action caused |
 
 Typical loop: `browser_snapshot()` to see refs → act by ref (`browser_click`, `browser_type`)
 → snapshot again to see the result.
 
-## The debugging banner
+## The Chrome debugging banner
 
 When trusted input is used (`browser_click`, `browser_type` or `browser_press_key` with
 `trusted:true`, or full-page screenshots), Chrome shows an "an extension is debugging this
@@ -99,7 +137,7 @@ than appends; it never assigns `.value`.
 
 ## Running JavaScript
 
-`browser_evaluate(expression, timeoutMs?)` runs an expression in the active tab's **page context**,
+On Chrome, `browser_evaluate(expression, timeoutMs?)` runs an expression in the active tab's **page context**,
 the same as typing it into the DevTools console: it sees the page's own globals, cookies and
 `localStorage`, and it is **not** limited by the page's `script-src` CSP (it goes through CDP, not
 `eval`).
@@ -136,6 +174,9 @@ detaches and you get `Timed out after Ns …` — but **work the page already st
 
 **The banner.** Every call attaches `chrome.debugger`, so Chrome shows the "an extension is debugging
 this browser" banner for the duration, exactly like `trusted:true` input.
+
+Safari uses the MAIN-world scripting fallback described in [Safari limitations](#safari-limitations),
+so it shows no debugger banner and does not have all of CDP's console semantics.
 
 **`userGesture`.** The expression runs with transient user activation, so popups, autoplay and other
 gesture-gated APIs work — but activation is **not window focus**. Anything gated on
@@ -199,7 +240,7 @@ response headers:
 ```
 
 This is the **only** way to see headers: `includeHeaders` keeps them on the structured result, but
-the text the tool prints is the table, which has no header columns. Ids are Chrome's `requestId`s and
+the text the tool prints is the table, which has no header columns. Ids are the browser's request ids and
 are only unique **within a capture session** — if the extension's service worker restarts, the
 counter can start low again, so an id from an older listing may fail to resolve or (rarely) point at
 a different request. Look the id up soon after the listing that gave it to you.
@@ -221,7 +262,7 @@ breakdown (DNS/TLS/TTFB). Also note:
 **Bounds.** 500 entries per tab and 2 000 in total; when the total cap is hit the oldest entry of the
 *largest* tab is evicted, so one chatty background tab cannot push the tab you care about out of the
 log. Closing a tab forgets its entries. The log lives in the extension's session storage and is gone
-when Chrome exits or the extension is reloaded.
+when the browser exits or the extension is reloaded.
 
 ## Security notes
 
@@ -240,10 +281,10 @@ when Chrome exits or the extension is reloaded.
   `?access_token=…` in a URL will reach the model, the same way `browser_evaluate` can read
   `localStorage`. Clear the log (`browser_network_clear({tab:"all"})`) after working on a sensitive
   tab if that matters to you.
-- **Cookies never enter the extension.** The `webRequest` listeners deliberately omit
-  `extraHeaders`, so Chrome does not hand over `Cookie` / `Set-Cookie` at all — stronger than
-  redacting them. (The same omission costs us `Referer` and `Origin`, which is an accepted trade.)
-  On top of that, `authorization`, `x-api-key`, `x-csrf-token` and any header whose name contains
+- **On Chrome, cookies never enter the extension.** The `webRequest` listeners deliberately omit
+  `extraHeaders`, so Chrome does not hand over `Cookie` / `Set-Cookie` at all. Safari's exact fields
+  can differ; `cookie` and `set-cookie` are therefore also in the ingest-time redaction list.
+  In both browsers, `authorization`, `x-api-key`, `x-csrf-token` and any header whose name contains
   `token`, `secret` or `session` are replaced with `<redacted>` **at ingest**, so only the redacted
   form is ever stored; form fields named like `password`, `token`, `secret`, `otp` or `code` are
   redacted in the request-body summary the same way. Headers and bodies are returned only when you
@@ -263,7 +304,7 @@ when Chrome exits or the extension is reloaded.
   5 s and the extension reconnects on its own, so tools start working within ~15 s of the port
   freeing up. The MCP connection itself never crashes on a busy port. Only run one Claude session
   driving the bridge at a time.
-- **"Extension not connected"** from a tool: make sure Chrome is open, the extension is
+- **"Extension not connected"** from a tool: make sure Chrome or Safari is open, the extension is
   enabled, and the Options token/port match the server's `BRIDGE_TOKEN`/`BRIDGE_PORT`.
   Check the service-worker console for `connection: up`.
 - **Chrome was killed / crashed while connected**: the server pings the extension every 30 s and

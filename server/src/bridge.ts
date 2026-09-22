@@ -1,7 +1,7 @@
 import { ExtensionConnection, type CallOptions } from "./connection.js";
 
 const NOT_CONNECTED =
-  "Extension not connected — is Chrome open and the Chrome Agent Bridge extension enabled?";
+  "Extension not connected — is Chrome or Safari open with the Agent Bridge extension enabled?";
 
 export interface HostState {
   listening: boolean;
@@ -28,7 +28,7 @@ export class Bridge {
   }
 
   /**
-   * Why the bridge can't work right now, when it's something more specific than "Chrome isn't
+   * Why the bridge can't work right now, when it's something more specific than "the browser isn't
    * connected" — e.g. the WebSocket port is held by an orphaned instance. Surfaced through every
    * tool error so the agent sees the actual cause instead of a generic message. `null` clears it.
    */

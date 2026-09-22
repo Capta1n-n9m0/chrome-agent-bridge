@@ -37,12 +37,14 @@ breaking upgrades of Vitest and esbuild, so `npm audit fix --force` was not run.
 
 ## Browser compatibility
 
-The Safari extension was not installed. This project depends on Chrome-specific
-Manifest V3 functionality, including `chrome.debugger`, `chrome.offscreen`, and
-a Chrome extension service worker, and declares Chrome 116 as its minimum
-browser version. Packaging the files with Apple's Safari converter would not
-make those APIs available, so the converted extension would not provide the
-bridge's required behavior.
+The original installation did not include Safari because the then-current extension depended on
+Chrome-only `chrome.debugger` and `chrome.offscreen` APIs. The `codex/safari-support` work adds a
+separate macOS Safari package: a persistent Manifest V2 background page owns the WebSocket,
+standard WebExtension APIs provide tabs/scripting/network capture, and page evaluation uses Safari's
+MAIN execution world. Apple's Xcode converter accepts the generated bundle without manifest warnings.
+
+Safari still cannot provide CDP-only trusted input or full-page screenshot capture. Those calls now
+return explicit capability errors; the other browser tools use the Safari-compatible paths.
 
 The built browser extension remains ready to load as an unpacked extension in
 Google Chrome by following `docs/setup.md` and using the locally generated token

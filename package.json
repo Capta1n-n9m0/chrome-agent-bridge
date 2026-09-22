@@ -8,7 +8,9 @@
   "scripts": {
     "typecheck": "tsc -p shared/tsconfig.json && tsc -p server/tsconfig.json && tsc -p extension/tsconfig.json",
     "test": "vitest run",
-    "build": "npm run build -w server && npm run build -w extension"
+    "build": "npm run build -w server && npm run build -w extension",
+    "build:safari": "npm run build -w extension",
+    "package:safari": "./scripts/package-safari.sh"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

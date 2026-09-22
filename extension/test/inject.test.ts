@@ -23,4 +23,7 @@ describe("unwrapResult", () => {
   it("throws when there is no injection frame at all", () => {
     expect(() => unwrapResult(undefined)).toThrow();
   });
+  it("surfaces Safari's per-frame injection error", () => {
+    expect(() => unwrapResult({ error: "Missing host permission" })).toThrow("Missing host permission");
+  });
 });

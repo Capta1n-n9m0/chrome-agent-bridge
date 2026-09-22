@@ -3,11 +3,12 @@ import { keyEventParams, type KeyEventParams } from "./keys.js";
 import { describeDebuggerError, isExecutionTerminated, timeoutMessage } from "./debugger-errors.js";
 import { SERIALIZER_SRC, type SerializeLimits } from "./evaluate/serialize.js";
 import { shapeEvaluateResult, pendingPromiseId, type CdpEvaluateResponse } from "./evaluate/result.js";
+import { browserApi, hasDebuggerApi } from "./browser-api.js";
 
 const PROTOCOL = "1.3";
 
 async function send(tabId: number, method: string, params: { [key: string]: unknown } = {}): Promise<unknown> {
-  return chrome.debugger.sendCommand({ tabId }, method, params);
+  return browserApi.debugger.sendCommand({ tabId }, method, params);
 }
 
 /**
@@ -16,8 +17,11 @@ async function send(tabId: number, method: string, params: { [key: string]: unkn
  * those strings that varies, so new Chrome wordings still belong in `debugger-errors.ts`.
  */
 export async function withDebugger<T>(tabId: number, fn: () => Promise<T>, what = "Trusted input"): Promise<T> {
+  if (!hasDebuggerApi()) {
+    throw new Error(`${what} is not available in Safari because Safari Web Extensions do not expose the browser debugging protocol.`);
+  }
   try {
-    await chrome.debugger.attach({ tabId }, PROTOCOL);
+    await browserApi.debugger.attach({ tabId }, PROTOCOL);
   } catch (err) {
     // Chrome allows one debugger per tab: DevTools (or another extension) wins and attach throws.
     throw new Error(describeDebuggerError(err, what));
@@ -29,7 +33,7 @@ export async function withDebugger<T>(tabId: number, fn: () => Promise<T>, what 
     throw new Error(describeDebuggerError(err, what));
   } finally {
     try {
-      await chrome.debugger.detach({ tabId });
+      await browserApi.debugger.detach({ tabId });
     } catch {
       /* already detached */
     }

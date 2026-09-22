@@ -23,6 +23,7 @@ export const DEFAULT_LIMITS: SerializeLimits = { maxDepth: 6, maxItems: 100, max
  * shape an agent can act on and never calls page-defined `toJSON`/`valueOf`.
  */
 function serializerFn(this: unknown, limits: SerializeLimits): EvalEnvelope {
+  "use strict";
   const maxDepth = limits.maxDepth;
   const maxItems = limits.maxItems;
   const maxString = limits.maxString;

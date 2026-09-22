@@ -1,5 +1,6 @@
 import { NetworkLog } from "./network-log.js";
 import type { NetworkLogBlob } from "./network-log.js";
+import { browserApi } from "./browser-api.js";
 
 /**
  * The service-worker-side state for network capture: the in-memory {@link NetworkLog}, the
@@ -47,7 +48,9 @@ function tabsFromKeys(all: Record<string, unknown>): NetworkLogBlob | null {
 }
 
 async function rehydrate(): Promise<void> {
-  const all = await chrome.storage.session.get(null);
+  const session = browserApi.storage.session;
+  if (!session) return; // Older Safari: keep the bounded log in memory for this background-page run.
+  const all = await session.get(null);
   const blob = tabsFromKeys(all as Record<string, unknown>);
   if (!blob) return;
   log.merge(blob);
@@ -86,6 +89,8 @@ export function flushNow(): Promise<void> {
 }
 
 async function writeTabs(dirty: Set<number>): Promise<void> {
+  const session = browserApi.storage.session;
+  if (!session) return;
   const set: Record<string, unknown> = { [META_KEY]: { v: 1, since: log.recordingSince } };
   const remove: string[] = [];
   for (const tabId of dirty) {
@@ -93,8 +98,8 @@ async function writeTabs(dirty: Set<number>): Promise<void> {
     if (entries) set[KEY_PREFIX + tabId] = entries;
     else remove.push(KEY_PREFIX + tabId);
   }
-  if (remove.length > 0) await chrome.storage.session.remove(remove);
-  await chrome.storage.session.set(set);
+  if (remove.length > 0) await session.remove(remove);
+  await session.set(set);
 }
 
 async function doFlush(): Promise<void> {

@@ -28,7 +28,7 @@ export function registerTools(server: McpServer, bridge: Bridge): void {
       const reason = bridge.unavailableReason();
       if (reason) lines.push(`Problem: ${reason}`);
       if (!bridge.isConnected()) {
-        lines.push("Extension: not connected — is Chrome open with the Chrome Agent Bridge extension enabled and its token/port set?");
+        lines.push("Extension: not connected — is Chrome or Safari open with the Agent Bridge extension enabled and its token/port set?");
         return text(lines.join("\n"));
       }
       lines.push("Extension: connected");
@@ -69,7 +69,7 @@ export function registerTools(server: McpServer, bridge: Bridge): void {
 
   server.tool(
     "browser_click",
-    "Click the element with the given ref. Set trusted=true to force real CDP input (shows the debugging banner).",
+    "Click the element with the given ref. In Chrome, trusted=true forces real CDP input (and shows the debugging banner); Safari supports the default DOM-event path only.",
     { ref: z.string(), trusted: z.boolean().optional() },
     async ({ ref, trusted }) => {
       await bridge.call("click", { ref, trusted: trusted ?? false });
@@ -79,7 +79,7 @@ export function registerTools(server: McpServer, bridge: Bridge): void {
 
   server.tool(
     "browser_type",
-    "Type text into the element with the given ref. Optionally submit. Set trusted=true to send real CDP keystrokes (shows the debugging banner) for sites that ignore synthetic input; the trusted path selects the field's existing text and replaces it.",
+    "Type text into the element with the given ref. Optionally submit. In Chrome, trusted=true sends real CDP keystrokes for sites that ignore synthetic input; Safari supports the default DOM-event path only.",
     { ref: z.string(), text: z.string(), submit: z.boolean().optional(), trusted: z.boolean().optional() },
     async ({ ref, text: value, submit, trusted }) => {
       await bridge.call("type", { ref, text: value, submit: submit ?? false, trusted: trusted ?? false });
@@ -89,7 +89,7 @@ export function registerTools(server: McpServer, bridge: Bridge): void {
 
   server.tool(
     "browser_press_key",
-    "Press a key (e.g. Enter, Escape, Tab) on the focused element. Set trusted=true to send a real CDP keystroke (shows the debugging banner) for sites that ignore synthetic input.",
+    "Press a key (e.g. Enter, Escape, Tab) on the focused element. In Chrome, trusted=true sends a real CDP keystroke; Safari supports the default DOM-event path only.",
     { key: z.string(), trusted: z.boolean().optional() },
     async ({ key, trusted }) => {
       await bridge.call("pressKey", { key, trusted: trusted ?? false });
@@ -182,7 +182,7 @@ export function registerTools(server: McpServer, bridge: Bridge): void {
 
   server.tool(
     "browser_evaluate",
-    "Run JavaScript in the active tab's page context and return the result, like the DevTools console: the last expression's value is returned, top-level `await` works, and `return` is allowed. Results are JSON where possible; DOM nodes, functions and errors come back as short descriptions — use browser_snapshot refs to act on elements. Output is capped (~20k chars, 100 items per array, depth 6) — select what you need. Runs with the page's full logged-in authority and shows Chrome's 'is debugging this browser' banner while it runs.",
+    "Run JavaScript in the active tab's page context and return the result. Results are JSON where possible; DOM nodes, functions and errors come back as short descriptions — use browser_snapshot refs to act on elements. Output is capped (~20k chars, 100 items per array, depth 6). Chrome uses CDP and shows its debugging banner; Safari uses MAIN-world script injection and may be limited by the page's Content Security Policy.",
     {
       expression: z
         .string()
