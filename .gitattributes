@@ -1,0 +1,5 @@
+# Shell scripts must keep LF endings. A CRLF shebang line (`#!/bin/zsh\r`)
+# makes macOS and Linux fail the script with "bad interpreter", and this repo
+# is developed on Windows with core.autocrlf=true, which would otherwise flip
+# them on checkout.
+*.sh text eol=lf
