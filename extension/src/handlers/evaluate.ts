@@ -50,19 +50,25 @@ export async function evaluate(p: Record<string, unknown>): Promise<EvalEnvelope
         args: [wrapped, SERIALIZER_SRC, DEFAULT_LIMITS],
         world,
       });
-    let [injection] = await Promise.race([execute("MAIN"), timeout]);
-    const result = unwrapResult<MainWorldEvaluateResult>(injection as { result?: unknown; error?: unknown });
+    const run = async (world: "MAIN" | "ISOLATED"): Promise<MainWorldEvaluateResult> => {
+      try {
+        const [injection] = await Promise.race([execute(world), timeout]);
+        return unwrapResult<MainWorldEvaluateResult>(injection as { result?: unknown; error?: unknown });
+      } catch (err) {
+        return { ok: false, error: (err as Error).message };
+      }
+    };
+    let result = await run("MAIN");
     if (!result.ok) {
       // Safari pages such as WhatsApp set a strict CSP that rejects eval even for a MAIN-world
       // injected function. The isolated extension world has its own CSP and can still automate
       // the page DOM, so retry there before reporting the page policy error.
       if (/unsafe-eval|content security policy|refused to evaluate/i.test(result.error)) {
-        [injection] = await Promise.race([execute("ISOLATED"), timeout]);
+        result = await run("ISOLATED");
       }
     }
-    const finalResult = unwrapResult<MainWorldEvaluateResult>(injection as { result?: unknown; error?: unknown });
-    if (!finalResult.ok) throw new Error(finalResult.error);
-    return finalResult.value;
+    if (!result.ok) throw new Error(result.error);
+    return result.value;
   } catch (err) {
     const message = (err as Error).message;
     if (/unsafe-eval|content security policy|refused to evaluate/i.test(message)) {
