@@ -90,7 +90,8 @@ const ALL_URLS = { urls: ["<all_urls>"] };
 
 function ingest(event: WebRequestEvent, details: WebRequestDetails): void {
   if (isOwnTraffic(details.url, ownPort())) return;
-  networkLog.ingest(event, details);
+  // Safari omits `type` on some webRequest events; keep the shared formatter/query path safe.
+  networkLog.ingest(event, { ...details, type: String(details.type || "other") });
   scheduleFlush();
 }
 
