@@ -169,10 +169,10 @@ bundles build (`server/dist/index.js`, `extension/dist/{sw,options,offscreen,con
 milestone passed a two-stage review (spec compliance + code quality); the final whole-system review
 verified the end-to-end protocol contract and that esbuild does not break page-injected functions.
 
-**20 tools:** `browser_status`, `browser_navigate`, `browser_snapshot`, `browser_screenshot`,
+**21 tools:** `browser_status`, `browser_navigate`, `browser_snapshot`, `browser_screenshot`,
 `browser_click`, `browser_type`, `browser_press_key`, `browser_scroll`, `browser_hover`,
 `browser_select_option`, `browser_back`, `browser_forward`, `browser_list_tabs`, `browser_select_tab`,
-`browser_new_tab`, `browser_close_tab`, `browser_wait_for`, `browser_evaluate`, `browser_network_requests`, `browser_network_clear`.
+`browser_new_tab`, `browser_close_tab`, `browser_wait_for`, `browser_evaluate`, `browser_network_requests`, `browser_network_clear`, `browser_download` (2026-10-06, live-verified: two Blackboard files, 0.4 MB and 7.2 MB, through the bbcswebdav → S3 redirect, sha256-identical to copies fetched another way).
 
 ## 2. Architecture at a glance
 

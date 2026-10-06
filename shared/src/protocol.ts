@@ -97,6 +97,31 @@ export interface NetworkEntry {
   requestBody?: string;
 }
 
+/**
+ * The value of a `downloadStart` call: the extension fetched the URL with the profile's cookies and
+ * holds the bytes under `id` until `downloadEnd` (or its TTL). The server then pulls them with
+ * `downloadChunk` and writes the file. Only the final host is returned, never the full final URL:
+ * redirect targets are often signed (S3 `X-Amz-Signature`, …).
+ */
+export interface DownloadStartResult {
+  id: string;
+  /** Bytes held. */
+  size: number;
+  status: number;
+  /** `content-type` without parameters, "" when absent. */
+  contentType: string;
+  /** From `content-disposition`, else the last path segment of the final URL, else "". */
+  filename: string;
+  redirected: boolean;
+  finalHost: string;
+}
+
+/** The value of a `downloadChunk` call. */
+export interface DownloadChunkResult {
+  /** Base64 of bytes [offset, offset + length). */
+  data: string;
+}
+
 /** The value of a `browser_network_requests` call. */
 export interface NetworkRequestsResult {
   /** The selected page, oldest → newest. */

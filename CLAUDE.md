@@ -32,7 +32,7 @@ Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(met
 - `shared/src/protocol.ts` — wire message types + guards (imported by both halves).
 - `server/src/`: `wsHost.ts` (binds 127.0.0.1, token gate), `connection.ts` (id-correlated calls),
   `bridge.ts` (connection gate + unavailable-reason + host state), `startup.ts` (non-fatal port bind
-  with retry), `tools/registry.ts` (the 20 MCP tools), `index.ts` (entry).
+  with retry), `tools/registry.ts` (the 21 MCP tools), `index.ts` (entry).
 - `extension/src/`: `sw.ts` (router + offscreen orchestration), `offscreen.ts` (the socket),
   `inject.ts` (`ensureContent`/`callInPage` + `toSerializableArgs`/`unwrapResult`), `handlers/*`,
   `content/{index,snapshot,refmap,actions,geometry}.ts`, `debugger.ts`, `debugger-errors.ts`
@@ -40,18 +40,21 @@ Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(met
   `evaluate/{serialize,wrap,result}.ts` (pure: in-page serialiser source, `return`-wrapper,
   CDP-result → `EvalEnvelope`), `network-log.ts` (pure: `NetworkLog` reducer + query + formatter,
   redaction, body summary, serialise/merge), `network-state.ts` (the singleton log, the
-  `storage.session` rehydrate/flush, the own-port variable), `handlers/network.ts`.
+  `storage.session` rehydrate/flush, the own-port variable), `handlers/network.ts`,
+  `download.ts` (pure: `DownloadStore`, base64, filename from `content-disposition`) +
+  `handlers/download.ts` (the service-worker fetch); server side `server/src/download.ts`
+  (target path, chunked pull, atomic write, sha256).
 
 ## Commands
 
 ```bash
 npm install
 npm run build        # builds server (dist/index.js) + extension (dist/{sw,options,offscreen,content}.js)
-npm test             # vitest (260 tests)
+npm test             # vitest (285 tests)
 npm run typecheck    # tsc --noEmit across shared/server/extension
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
-token + port `9234` in its Options. Full setup + the 20 tools: `docs/setup.md`.
+token + port `9234` in its Options. Full setup + the 21 tools: `docs/setup.md`.
 E2E: serve `test-fixtures/e2e-playground.html` (`python -m http.server 8080 --directory test-fixtures`)
 and follow `docs/e2e-test-plan.md`.
 
@@ -86,7 +89,9 @@ and follow `docs/e2e-test-plan.md`.
   `InjectionResult<any>` (its `Awaited<T>` conflicts with TS's); `sendCommand` params want
   `{[k:string]:unknown}` (not `object`).
 - **Editing extension code requires a manual reload**: `npm run build` then `chrome://extensions` →
-  reload ↻. The service worker won't pick up `dist/` changes otherwise. Server changes need an MCP
+  reload ↻. The service worker won't pick up `dist/` changes otherwise — **not even after a full Chrome
+  restart** (seen 2026-10-06: a restarted Chrome still ran the old worker and answered the new
+  server's `downloadStart` with `unknown method`). An `unknown method: X` error means exactly this. Server changes need an MCP
   reconnect (`/mcp`) or a fresh session.
 - **Snapshots list only interactive elements** (native controls, links, and an explicit-ARIA-role
   allowlist — button/tab/menuitem/switch/option/slider/…), each with a ref; non-interactive text
@@ -150,6 +155,13 @@ and follow `docs/e2e-test-plan.md`.
 - **`centerOf` is top-document relative** — it adds each ancestor `frameElement`'s rect, because
   CDP `Input.*` dispatches against the top-level viewport. Don't hand it a raw
   `getBoundingClientRect` from inside a frame.
+
+- **`browser_download` fetches from the service worker, not the page.** The `<all_urls>` host
+  permission exempts the extension's `fetch` from CORS, so a cross-origin redirect (Blackboard →
+  signed S3) is followed — the page cannot do that. The bytes are held in a `DownloadStore`
+  (TTL 5 min, 8 entries) and pulled by the server in 1 MB `downloadChunk` calls (base64) so no single
+  runtime message or WS frame grows with the file. The final URL is never returned or logged (it is
+  usually signed) — only its host.
 
 ## Testing philosophy
 

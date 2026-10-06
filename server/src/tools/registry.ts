@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Bridge } from "../bridge.js";
 import type { EvalEnvelope, NetworkRequestsResult } from "@bridge/shared";
+import { downloadToFile } from "../download.js";
 
 const DEFAULT_EVAL_TIMEOUT_MS = 10_000;
 /** The extension races its own timer at `timeoutMs`; give the server a little more before it gives up. */
@@ -206,6 +207,29 @@ export function registerTools(server: McpServer, bridge: Bridge): void {
       const lines = [envelope.description];
       if (envelope.kind === "node") lines.push("(DOM node — use browser_snapshot refs to act on it)");
       if (envelope.truncated) lines.push("(output truncated — narrow the expression, e.g. pick fields or slice the array)");
+      return text(lines.join("\n"));
+    },
+  );
+
+  server.tool(
+    "browser_download",
+    "Download a URL to a file on disk with the browser profile's cookies — for files behind a login (course files, reports, exports). The extension fetches it from its service worker, so there is no CORS limit and cross-origin redirects (e.g. to a signed S3 URL) are followed; no tab is touched and no debugger banner shows. `path` is absolute: a file path, or a directory (existing, or ending in a separator) to save under the server-suggested filename. Returns the saved path, size, content type and sha256. A `text/html` result for a binary file usually means a login page or an error page came back.",
+    {
+      url: z.string().url().describe("Absolute http(s) URL; same-site paths of the logged-in site work, redirects are followed."),
+      path: z.string().min(1).describe("Absolute destination: a file path, or a directory to save under the suggested filename."),
+      overwrite: z.boolean().optional().describe("Replace an existing file. Default false."),
+      timeoutMs: z.number().int().min(1000).max(600000).optional().describe("Fetch timeout. Default 120000."),
+    },
+    async ({ url, path: dest, overwrite, timeoutMs }) => {
+      const r = await downloadToFile((m, p, o) => bridge.call(m, p, o), { url, path: dest, overwrite, timeoutMs });
+      const lines = [
+        `Saved ${r.path}`,
+        `${r.size} bytes · ${r.start.contentType || "unknown type"} · sha256 ${r.sha256}`,
+      ];
+      if (r.start.redirected) lines.push(`(followed redirects to ${r.start.finalHost})`);
+      if (r.start.contentType === "text/html" && !/\.html?$/i.test(r.path)) {
+        lines.push("Warning: the response is HTML — possibly a login or error page rather than the file.");
+      }
       return text(lines.join("\n"));
     },
   );

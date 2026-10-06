@@ -7,6 +7,7 @@ import { listTabs, selectTab, newTab, closeTab } from "./handlers/tabs.js";
 import { waitFor } from "./handlers/wait.js";
 import { evaluate } from "./handlers/evaluate.js";
 import { networkRequests, networkClear } from "./handlers/network.js";
+import { downloadStart, downloadChunk, downloadEnd } from "./handlers/download.js";
 import { log as networkLog, ownPort, scheduleFlush, setOwnPort } from "./network-state.js";
 import { isOwnTraffic } from "./network-log.js";
 import type { WebRequestDetails, WebRequestEvent } from "./network-log.js";
@@ -32,6 +33,9 @@ router.on("waitFor", waitFor);
 router.on("evaluate", evaluate);
 router.on("networkRequests", networkRequests);
 router.on("networkClear", networkClear);
+router.on("downloadStart", downloadStart);
+router.on("downloadChunk", downloadChunk);
+router.on("downloadEnd", downloadEnd);
 
 // --- Network capture -------------------------------------------------------------------------
 // MV3 requires every webRequest listener to be registered synchronously while the worker script
