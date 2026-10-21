@@ -8,3 +8,5 @@ Times are UTC from `date -u`.
   Claude Code; it does not hold 9234*). The `chrome-agent-bridge` MCP failed to connect in this
   session and is not used (G6-1 condition 1). Steps dir and `briefs/common.md` created.
 - 2026-10-21 · Stage 0 (spec audit) dispatched.
+- 2026-10-21T20:08:29Z · D0 dispatched (HEAD 490c6c3).
+- 2026-10-21T20:20:29Z · D0 closed: DONE, PASS-with-notes, 6f7768c, 322 tests. Decision #18. D1 dispatched (baseline for D1.1 is 322, 25 files).

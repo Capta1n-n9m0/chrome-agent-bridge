@@ -18,6 +18,23 @@ For the user to review at the Step 6 gate (G6-2). Each was taken by the conserva
 
 ## Log
 
+### 2026-10-22 · D0's protocol shapes: optional wire code, strict v2 hello fields, events without id (#18)
+**Decided:** The wire error is `WireError {code?, message, data?}`; `fromWire` maps a missing,
+non-string or empty code to `INTERNAL` and keeps any other non-empty string. `isHello` rejects a
+hello whose `role`/`name`/`build`/`proto` is present but mistyped (`role` ∈ extension|client,
+`proto` any number so a future version reaches `VERSION` handling). `isEvent` requires a string
+`event`, a non-null `params` object and no `id`. `shared/package.json` exports `./codes` and
+`./error`, and `protocol.ts` re-exports both.
+**Why:** Decision 0.4 already says a v1 `{message}` error becomes `INTERNAL`, so the optional code
+is the pre-stated rule, not a new contract; the strict hello matches D2's "unknown role → 4001"
+and leaves the v1 `{type, token}` hello untouched; spec §10 writes events as `{event, params}`.
+Evidence: `D0.md`, `D0-verifier.md` (322 tests, extension bundle byte-identical).
+**Instead of:** A required `code` (wrong for v1 traffic); accepting any extra hello fields;
+optional event `params`; subpath-only exports.
+**Revisit if:** Step 7 teaches the extension codes (then v2 peers may require `code`); a bundle
+holds two copies of `BridgeError` and `instanceof` breaks.
+**By:** Claude
+
 ### 2026-10-22 · Stage order D0 → D1 → (D2 ∥ D4) → D3 → D5, and the Stage 0 builder resolutions (#17)
 **Decided:** D0 runs before D1 rather than beside it, and D4 lands before D3 so the daemon imports
 the real `sdk/src/token.ts` (behind a `./token` subpath export) instead of a stub. D1 moves

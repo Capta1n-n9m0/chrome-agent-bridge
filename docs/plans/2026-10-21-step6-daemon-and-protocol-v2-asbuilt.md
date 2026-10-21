@@ -23,3 +23,19 @@ One section per stage, appended at stage close, never rewritten; corrections are
 - **Estimate vs actual:** 1.5 h estimated; ~26 min agent wall time.
 - **Needs the user's keyboard:** nothing yet; a `bridge.token` file or `BRIDGE_TOKEN` for the D6 wave
   (F21: none exists on this machine).
+
+## Stage D0 — shared types and codes (closed 2026-10-22, commit 6f7768c)
+
+- **Outputs:** `shared/src/codes.ts` (22 codes: 9 daemon, 13 extension, plus `isErrorCode`),
+  `shared/src/error.ts` (`BridgeError`, `WireError`, `toWire`, `fromWire`), `shared/src/protocol.ts`
+  (hello `role/name/build/proto`, `WelcomeMessage`/`isWelcome`, `EventMessage`/`isEvent`,
+  `ExtensionStatusParams`, request `timeoutMs?`), `shared/package.json` exports `./codes`, `./error`.
+- **Measured:** `npm test` 301 → 322 passed (22 → 25 files); typecheck and build exit 0;
+  `git diff 490c6c3..6f7768c -- extension/ server/` empty; extension bundle byte-identical (verifier).
+- **Verifier:** PASS-with-notes (3 MINOR, 3 NIT, none blocking); D0.4 checked by reverting source
+  only — 7 of 14 new tests fail, the hello/response regression guards pass as expected.
+- **Contracts binding forward:** the wire error code is optional and normalises to `INTERNAL`;
+  `isHello` rejects mistyped v2 fields; events are `{event, params}` with no `id`; `params` required.
+- **Deviations:** the plan's `{code: ErrorCode | string, …}` became `code?` (decisions.md · 2026-10-22
+  · #18); D0.4's stash instruction corrected in place (it stashed the new tests too).
+- **Estimate vs actual:** 1 h estimated; ~12 min agent wall time.
