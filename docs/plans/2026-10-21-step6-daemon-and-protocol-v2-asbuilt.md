@@ -39,3 +39,24 @@ One section per stage, appended at stage close, never rewritten; corrections are
 - **Deviations:** the plan's `{code: ErrorCode | string, …}` became `code?` (decisions.md · 2026-10-22
   · #18); D0.4's stash instruction corrected in place (it stashed the new tests too).
 - **Estimate vs actual:** 1 h estimated; ~12 min agent wall time.
+
+## Stage D1 — repository split (closed 2026-10-22, commit 80e540c)
+
+- **Outputs:** five workspaces `shared daemon sdk mcp extension`; all 21 tracked `server/` files moved
+  as git renames (18 at R100); only import specifiers changed (`mcp/src/index.ts`, `registry.ts`,
+  `tools.test.ts`); `lifecycle.ts` byte-identical. MCP bundle now at `mcp/dist/index.js`, differing
+  from the old `server/dist/index.js` only in 14 esbuild path comments; `ws` still external.
+  `docs/setup.md` (lines 18, 36, 46, 262) and `start-bridge.sh:20` point at `mcp/dist/index.js`.
+- **Measured:** `npm test` 322 → 322 passed, 25 files (clean worktrees with `npm ci`, both sides);
+  per package daemon 30, mcp 44, sdk 12, shared 25, extension 211. Typecheck all five, build
+  mcp + extension green. `git log --follow daemon/src/wsHost.ts` keeps history. Extension diff empty.
+- **Verifier:** PASS-with-notes.
+- **Interim state binding forward:** `mcp` depends on `@bridge/daemon` (exports `./bridge`,
+  `./connection`, `./wsHost`, `./startup`) until D5; `daemon/` has no build script until D3;
+  `tsx` is a root devDependency (decisions.md · 2026-10-22 · #19).
+- **Carried to later stages:** D3 adds `@bridge/shared` to `daemon/package.json`; D5 adds `ws` to
+  `mcp` when it drops `@bridge/daemon`; D5 fixes `mcp/src/index.ts:35` (names `server/dist` in a
+  runtime message) and `docs/e2e-test-plan.md` lines 19, 23, 88 (D5.5); D7 fixes `CLAUDE.md` lines
+  48, 61, 94 (`server/src`).
+- **Needs the user's keyboard:** the MCP config path now must be `<repo>/mcp/dist/index.js` (G6-1).
+- **Estimate vs actual:** 1.5 h estimated; ~13 min agent wall time.

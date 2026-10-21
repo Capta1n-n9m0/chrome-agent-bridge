@@ -18,6 +18,20 @@ For the user to review at the Step 6 gate (G6-2). Each was taken by the conserva
 
 ## Log
 
+### 2026-10-22 · D1's interim wiring: daemon skipped by the build until D3, a `./connection` export, a hand-edited lockfile (#19)
+**Decided:** The root build is `npm run build --workspaces --if-present`, so `daemon/` (no build
+script until D3) is skipped; D3 adds one. Until D5, `@bridge/mcp` depends on `@bridge/daemon`,
+which exports `./bridge`, `./connection`, `./wsHost` and `./startup`; `./connection` exists only for
+a dynamic import in `tools.test.ts`. The builder removed a stale extraneous `"server"` entry from
+`package-lock.json` by hand; `npm ci` accepts the file and `npm install --package-lock-only` leaves
+it unchanged.
+**Why:** Keeps D1 a pure move (322 tests before and after, `D1.md`, `D1-verifier.md`) without
+inventing a daemon entry before D3 designs it.
+**Instead of:** A placeholder daemon build; importing the connection by relative path across
+packages; regenerating the whole lockfile.
+**Revisit if:** D5 leaves any of the interim exports or the `mcp` → `daemon` dependency in place.
+**By:** Claude
+
 ### 2026-10-22 · D0's protocol shapes: optional wire code, strict v2 hello fields, events without id (#18)
 **Decided:** The wire error is `WireError {code?, message, data?}`; `fromWire` maps a missing,
 non-string or empty code to `INTERNAL` and keeps any other non-empty string. `isHello` rejects a
