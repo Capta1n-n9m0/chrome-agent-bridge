@@ -11,3 +11,4 @@ Times are UTC from `date -u`.
 - 2026-10-21T20:08:29Z · D0 dispatched (HEAD 490c6c3).
 - 2026-10-21T20:20:29Z · D0 closed: DONE, PASS-with-notes, 6f7768c, 322 tests. Decision #18. D1 dispatched (baseline for D1.1 is 322, 25 files).
 - 2026-10-21T20:33:54Z · D1 closed: DONE, PASS-with-notes, 80e540c, 322 tests. Decision #19. D2 and D4 dispatched in parallel (file-disjoint: daemon/ vs sdk/).
+- 2026-10-21T20:58:26Z · D2 closed: DONE, PASS-with-notes, 4d0241e, 385 tests. Decision #20. D3 waits for D4 (still running).

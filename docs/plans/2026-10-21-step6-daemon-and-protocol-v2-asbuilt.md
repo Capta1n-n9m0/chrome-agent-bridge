@@ -60,3 +60,32 @@ One section per stage, appended at stage close, never rewritten; corrections are
   48, 61, 94 (`server/src`).
 - **Needs the user's keyboard:** the MCP config path now must be `<repo>/mcp/dist/index.js` (G6-1).
 - **Estimate vs actual:** 1.5 h estimated; ~13 min agent wall time.
+
+## Stage D2 — daemon roles, registry, routing (closed 2026-10-22, commit 4d0241e)
+
+- **Outputs:** `daemon/src/` `handshake.ts` (`parseHello` + `validateHello` wrapper), `registry.ts`
+  (`ClientRegistry`), `route.ts`, `wsHost.ts` (roles, welcome, `ClientConnection`, events ignored and
+  counted, `extensionStatus`, `shutdown(code)` flush), plus tests over real `ws` sockets on port 0.
+- **Measured:** `npm test` 322 → 385 passed (25 → 28 files), stable over 4 runs, in the verifier's
+  worktree (8b30882 + the 12 D2 files, `npm ci`); typecheck and build exit 0; extension diff empty.
+- **Verifier:** PASS-with-notes (1 MINOR, 6 NIT). All 63 new tests fail with `daemon/src` reverted;
+  8 extra attack tests passed (3 clients with colliding ids answered out of order, a real-socket
+  `TIMEOUT`, a hello during the shutdown grace). The real extension ignores the welcome frame
+  (`extension/src/router.ts:18`) and reconnects on a 4002 close.
+- **Contracts binding forward (Step 7 re-examines by execution):**
+  - welcome `{type:"welcome", build, proto:2, clientId:"c<n>"|"extension", extensionConnected}`;
+  - `daemon.status` → `{build, uptime (ms), extensionConnected, clients:[{id,name,since}], port}`;
+  - error envelope `{id, error:{code, message, data?}}`, `code` always present from the daemon;
+  - close 4001 on a failed hello (reasons "expected hello handshake", "invalid token",
+    "unknown role"); close 4002 "upgrading" after `daemon.shutdown` replies `{ok:true}`, ≤ 1 s
+    flush, then terminate;
+  - event `extensionStatus {connected}` — `true` on the extension hello, `false` only when the
+    current extension socket closes;
+  - daemon wait `clamp(timeoutMs ?? 30000, 100, 600000) + 5000`; `timeoutMs` not forwarded;
+  - other `daemon.*` methods → `UNKNOWN_METHOD`, never forwarded.
+- **Deviation:** the handshake checkbox's `validateHello` return shape kept, `parseHello` added
+  (dated Superseded note in the phase doc; decisions.md · 2026-10-22 · #20).
+- **For D3:** pass the real `build`; `host.shutdown(1001)` on a signal; `host.stats()` and
+  `registry.onCountChange` for the log and idle timer; add `@bridge/shared` to `daemon/package.json`
+  (root lockfile edit; D3 lane is granted it by the session agent).
+- **Estimate vs actual:** 3 h estimated; ~23 min agent wall time.

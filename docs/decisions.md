@@ -18,6 +18,24 @@ For the user to review at the Step 6 gate (G6-2). Each was taken by the conserva
 
 ## Log
 
+### 2026-10-22 · D2's daemon details: parseHello beside validateHello, BAD_PARAMS for bad ids, no forwarded timeoutMs, interim defaults (#20)
+**Decided:** `parseHello(data, token)` returns `{ok, role, name?, build?}` or `{ok:false, reason}`;
+`validateHello` stays a wrapper returning `{ok:true}`. A client request with a numeric or empty id
+gets `BAD_PARAMS` with the id echoed; a frame with no id is dropped and counted. The frame forwarded
+to the extension stays `{id, method, params}`: the clamped wait is daemon-side only. `WsHost` takes
+`build` as an option (default `"dev"` until D3 passes the hash); an unnamed client is listed as
+`"unnamed"`; client ids are `c<n>`, never reused in a process. An unknown role closes 4001 with the
+reason "unknown role", checked after the token, echoing no field value.
+**Why:** An existing test pins `validateHello`'s `{ok:true}` and existing tests stay unedited; a
+client sending `id: 1` would otherwise hang to its own timeout (stage0-audit B8); decision 0.2 keeps
+routing dumb and the v1 extension ignores the field; D3 owns the hash. Evidence: `D2.md`,
+`D2-verifier.md` (385 tests; 63 new tests fail with `daemon/src` reverted).
+**Instead of:** Editing the pinned test; dropping non-string ids silently; copying `timeoutMs` onto
+the forwarded request; the generic "expected hello handshake" for an unknown role.
+**Revisit if:** D5 removes the last `validateHello` caller; the SDK ever sends numeric ids; Step 7's
+extension wants the envelope timeout; a real daemon ever reports build `"dev"`.
+**By:** Claude
+
 ### 2026-10-22 · D1's interim wiring: daemon skipped by the build until D3, a `./connection` export, a hand-edited lockfile (#19)
 **Decided:** The root build is `npm run build --workspaces --if-present`, so `daemon/` (no build
 script until D3) is skipped; D3 adds one. Until D5, `@bridge/mcp` depends on `@bridge/daemon`,
