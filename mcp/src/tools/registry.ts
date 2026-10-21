@@ -1,8 +1,8 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { Bridge } from "@bridge/daemon/bridge";
 import type { EvalEnvelope, NetworkRequestsResult } from "@bridge/shared";
-import { downloadToFile } from "@bridge/sdk/download";
+import { downloadToFile, type BridgeClient } from "@bridge/sdk";
+import { CONNECTING_REASON } from "../link.js";
 
 const DEFAULT_EVAL_TIMEOUT_MS = 10_000;
 /** The extension races its own timer at `timeoutMs`; give the server a little more before it gives up. */
@@ -14,21 +14,47 @@ function text(s: string) {
   return { content: [{ type: "text" as const, text: s }] };
 }
 
-export function registerTools(server: McpServer, bridge: Bridge): void {
+/**
+ * What the tools need: a `BridgeClient`'s `call`/`status`, plus whether a client is held and why not
+ * (`BridgeLink` in `../link.ts` supplies both; tests pass a fake).
+ */
+export interface ToolBridge extends Pick<BridgeClient, "call" | "status"> {
+  readonly hasClient: boolean;
+  readonly reason: string | null;
+}
+
+/** The `daemon.status` result (daemon/src/route.ts). */
+interface DaemonStatus {
+  build: string;
+  uptime: number;
+  extensionConnected: boolean;
+  clients: Array<{ id: string; name: string; since: number }>;
+  port: number;
+}
+
+function notConnected(problem: string) {
+  return text(`Daemon: not connected\nProblem: ${problem}`);
+}
+
+export function registerTools(server: McpServer, bridge: ToolBridge): void {
   server.tool(
     "browser_status",
-    "Diagnose the bridge: is the WebSocket host listening, is the extension connected, and which tab is active. Call this first when other browser tools fail.",
+    "Diagnose the bridge: is the daemon connected, is the extension connected, and which tab is active. Call this first when other browser tools fail.",
     {},
     async () => {
-      const { listening, port } = bridge.hostState;
+      // No client: say why without calling anything.
+      if (!bridge.hasClient) return notConnected(bridge.reason ?? CONNECTING_REASON);
+      let status: DaemonStatus;
+      try {
+        status = (await bridge.status()) as DaemonStatus;
+      } catch (err) {
+        return notConnected(err instanceof Error ? err.message : String(err));
+      }
       const lines = [
-        listening
-          ? `WebSocket host: listening on 127.0.0.1:${port}`
-          : `WebSocket host: NOT listening${port !== null ? ` (port ${port})` : ""}`,
+        `Daemon: connected on 127.0.0.1:${status.port} (build ${status.build}, up ${Math.round(status.uptime / 1000)}s)`,
+        `Clients (${status.clients.length}): ${status.clients.map((c) => c.name).join(", ")}`,
       ];
-      const reason = bridge.unavailableReason();
-      if (reason) lines.push(`Problem: ${reason}`);
-      if (!bridge.isConnected()) {
+      if (!status.extensionConnected) {
         lines.push("Extension: not connected — is Chrome open with the Chrome Agent Bridge extension enabled and its token/port set?");
         return text(lines.join("\n"));
       }

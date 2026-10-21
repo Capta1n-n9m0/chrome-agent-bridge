@@ -6,10 +6,10 @@
   "bin": { "chrome-bridge-mcp": "dist/index.js" },
   "scripts": { "build": "node build.mjs" },
   "dependencies": {
-    "@bridge/daemon": "*",
     "@bridge/sdk": "*",
     "@bridge/shared": "*",
     "@modelcontextprotocol/sdk": "^1.12.0",
+    "ws": "^8.18.0",
     "zod": "^3.24.0"
   }
 }

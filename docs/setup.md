@@ -1,8 +1,9 @@
 # Setup & Usage
 
 This bridge lets an MCP client (e.g. Claude) drive your **real, logged-in Chrome**
-(default profile). It has two halves: a Node MCP server that hosts a localhost
-WebSocket, and a Chrome extension (loaded into your real profile) that connects to it.
+(default profile). It has three parts: a Node **daemon** that hosts a localhost WebSocket,
+a Chrome extension (loaded into your real profile) that connects to it, and the MCP server
+your client runs, which connects to the daemon as one of its clients.
 
 ## Prerequisites
 
@@ -15,13 +16,22 @@ WebSocket, and a Chrome extension (loaded into your real profile) that connects 
 npm install
 npm run build
 ```
-This produces `mcp/dist/index.js` and the extension bundles in `extension/dist/`.
+This produces `mcp/dist/index.js` (the MCP server), `daemon/dist/index.js` (the daemon) and the
+extension bundles in `extension/dist/`.
+
+**End every pre-Step-6 session first.** A Claude session started before this version runs the old
+bridge server, which holds port 9234 itself. While one is open the new MCP cannot connect: its tools
+say a pre-Step-6 bridge server holds the port. End that session (or restart Claude Code) once.
 
 ## 2. Choose a shared token
 
-Pick any random secret string (e.g. `openssl rand -hex 16`). The MCP server and the
+Pick any random secret string (e.g. `openssl rand -hex 16`). The daemon, every client and the
 extension must use the **same** token. Treat it like a password — anything that can
 reach the WebSocket with this token can drive your logged-in browser.
+
+Clients find the token in this order: the `BRIDGE_TOKEN` environment variable wins; without it, the
+file `bridge.token` at the repo root (gitignored — never commit it). Every client must also use the
+same `BRIDGE_PORT` (default `9234`).
 
 ## 3. Register the MCP server with your client
 
@@ -39,6 +49,11 @@ token and the absolute path to this repo:
   }
 }
 ```
+
+You do not start the daemon yourself. The first client to connect (usually this MCP server)
+starts it in the background; later clients join it. It **outlives the Claude session on purpose**,
+so the next session and any script reuse it, and it exits on its own after 10 minutes with no
+clients. Its log is `~/.chrome-agent-bridge/daemon.log`.
 
 To try it without an MCP client, use the inspector:
 ```bash
@@ -59,11 +74,11 @@ Open the extension's **service worker** console (chrome://extensions → the ext
 
 ## 5. Use it
 
-With the MCP server running and the extension connected, call the tools from your client:
+With the daemon running and the extension connected, call the tools from your client:
 
 | Tool | What it does |
 |---|---|
-| `browser_status()` | Diagnose the bridge: WebSocket host listening? extension connected? active tab. Call it first when other tools fail |
+| `browser_status()` | Diagnose the bridge: daemon connected (build, clients by name)? extension connected? active tab. Call it first when other tools fail |
 | `browser_navigate(url)` | Navigate the active tab |
 | `browser_snapshot()` | Accessibility outline of the active tab with element refs |
 | `browser_screenshot(fullPage?)` | Screenshot (viewport; full-page via CDP when `fullPage:true`) |
@@ -255,19 +270,23 @@ when Chrome exits or the extension is reloaded.
 
 ## Troubleshooting
 
-- **Start with `browser_status`.** It tells you which half is broken: the WebSocket host (port
-  busy), the extension (not connected), or neither (then look at the active tab it reports).
-- **"WebSocket port 9234 is busy (EADDRINUSE)"** from `browser_status` or any tool: a previous
-  Claude session left an orphaned bridge server holding the port. Find it with (PowerShell)
-  `Get-NetTCPConnection -LocalPort 9234 -State Listen` and kill the stale `node …/mcp/dist/index.js`
-  process (`Stop-Process -Id <pid> -Force`). Nothing else to do: the server retries the bind every
-  5 s and the extension reconnects on its own, so tools start working within ~15 s of the port
-  freeing up. The MCP connection itself never crashes on a busy port. Only run one Claude session
-  driving the bridge at a time.
+- **Start with `browser_status`.** It tells you which part is broken: the daemon
+  (`Daemon: not connected` plus a `Problem:` line), the extension (not connected), or neither (then
+  look at the active tab it reports).
+- **"a pre-Step-6 bridge server holds port 9234"** from `browser_status` or any tool: an old
+  Claude session still runs the previous bridge server. End that session (or find the stale
+  `node …/server/dist/index.js` with `Get-NetTCPConnection -LocalPort 9234 -State Listen` and stop
+  it). The MCP never crashes on this; it retries every 5 s and connects on its own once the port is
+  free.
 - **"Extension not connected"** from a tool: make sure Chrome is open, the extension is
-  enabled, and the Options token/port match the server's `BRIDGE_TOKEN`/`BRIDGE_PORT`.
+  enabled, and the Options token/port match the bridge token (`BRIDGE_TOKEN` or `bridge.token`) and `BRIDGE_PORT` the daemon uses.
   Check the service-worker console for `connection: up`.
-- **Chrome was killed / crashed while connected**: the server pings the extension every 30 s and
+- **`Daemon: not connected` with `Problem: Extension not connected — … (waited 15000 ms on port 9234)`**
+  even though the daemon runs: the MCP started (or lost its client) while Chrome was closed. Its
+  connect waits 15 s for the extension, gives up, and tries again about every 20 s; for the first
+  ~15 s tools say `connecting to the bridge daemon…`. Open Chrome and the next attempt connects —
+  nothing needs restarting.
+- **Chrome was killed / crashed while connected**: the daemon pings the extension every 30 s and
   drops a socket that misses a pong, so within ~60 s tools report "not connected" instead of
   timing out for 30 s each. Relaunch Chrome and it reconnects by itself.
 - **A tool errors with "restricted URL"**: the active tab is a `chrome://` page, the New

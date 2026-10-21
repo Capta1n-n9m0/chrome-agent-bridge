@@ -1,12 +1,19 @@
 import { describe, it, expect, vi } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerTools } from "../src/tools/registry.js";
-import { Bridge } from "@bridge/daemon/bridge";
+import { registerTools, type ToolBridge } from "../src/tools/registry.js";
+import { BridgeLink } from "../src/link.js";
+import { BridgeError, ErrorCodes } from "@bridge/sdk";
 
-function fakeBridge(handler: (method: string, params?: Record<string, unknown>) => Promise<unknown>): Bridge {
-  const bridge = new Bridge();
-  vi.spyOn(bridge, "call").mockImplementation((m, p) => handler(m, p));
-  return bridge;
+type Handler = (method: string, params?: Record<string, unknown>, options?: { timeoutMs?: number }) => Promise<unknown>;
+
+/** A fake BridgeClient (as the tools see it): a client is held; `call` goes to `handler`. */
+function fakeBridge(handler: Handler, status: () => Promise<unknown> = async () => ({})) {
+  return {
+    hasClient: true,
+    reason: null as string | null,
+    call: vi.fn(handler),
+    status: vi.fn(status),
+  } satisfies ToolBridge;
 }
 
 describe("registerTools", () => {
@@ -192,49 +199,69 @@ describe("wait tool", () => {
 });
 
 describe("browser_status", () => {
-  function statusTool(bridge: Bridge) {
+  function statusTool(bridge: ToolBridge) {
     const server = new McpServer({ name: "t", version: "0" });
     registerTools(server, bridge);
     return (server as any)._registeredTools["browser_status"];
   }
 
-  it("reports a busy port without touching the bridge", async () => {
-    const bridge = new Bridge();
-    const call = vi.spyOn(bridge, "call");
-    bridge.hostState = { listening: false, port: 9234 };
-    bridge.setUnavailableReason("WebSocket port 9234 is busy (EADDRINUSE): another instance is running");
-    const res = await statusTool(bridge).handler({}, {});
-    const out = res.content[0].text as string;
-    expect(out).toMatch(/9234/);
-    expect(out).toMatch(/not listening/i);
-    expect(out).toMatch(/extension: not connected/i);
-    expect(out).toMatch(/EADDRINUSE/);
-    expect(call).not.toHaveBeenCalled();
+  const daemonStatus = (extensionConnected: boolean) => ({
+    build: "abc123def456",
+    uptime: 42_400,
+    extensionConnected,
+    clients: [
+      { id: "c1", name: "claude-code #4242", since: 1 },
+      { id: "c2", name: "export-grades.ts", since: 2 },
+    ],
+    port: 9234,
   });
 
-  it("reports listening + not connected when Chrome hasn't dialed in", async () => {
-    const bridge = new Bridge();
-    bridge.hostState = { listening: true, port: 9234 };
+  it("reports the stored reason without calling anything when there is no daemon", async () => {
+    const bridge = {
+      hasClient: false,
+      reason: "a pre-Step-6 bridge server holds port 9234 — end the old session",
+      call: vi.fn(async () => ({})),
+      status: vi.fn(async () => ({})),
+    };
     const res = await statusTool(bridge).handler({}, {});
     const out = res.content[0].text as string;
-    expect(out).toMatch(/listening on 127\.0\.0\.1:9234/);
-    expect(out).toMatch(/extension: not connected/i);
+    expect(out).toBe(
+      "Daemon: not connected\nProblem: a pre-Step-6 bridge server holds port 9234 — end the old session",
+    );
+    expect(bridge.call).not.toHaveBeenCalled();
+    expect(bridge.status).not.toHaveBeenCalled();
   });
 
-  it("includes the active tab when connected", async () => {
-    const bridge = fakeBridge(async (m) => {
-      expect(m).toBe("listTabs");
-      return {
-        tabs: [
-          { id: 1, title: "Other", url: "https://other.test/", active: false },
-          { id: 7, title: "Playground", url: "http://localhost:8080/e2e-playground.html", active: true },
-        ],
-      };
-    });
-    bridge.hostState = { listening: true, port: 9234 };
-    bridge.setConnection(new (await import("@bridge/daemon/connection")).ExtensionConnection(() => {}));
+  it("reports the daemon, its clients by name, and the extension not connected", async () => {
+    const bridge = fakeBridge(async () => ({ tabs: [] }), async () => daemonStatus(false));
     const res = await statusTool(bridge).handler({}, {});
     const out = res.content[0].text as string;
+    expect(out).toBe(
+      [
+        "Daemon: connected on 127.0.0.1:9234 (build abc123def456, up 42s)",
+        "Clients (2): claude-code #4242, export-grades.ts",
+        "Extension: not connected — is Chrome open with the Chrome Agent Bridge extension enabled and its token/port set?",
+      ].join("\n"),
+    );
+    expect(bridge.call).not.toHaveBeenCalled();
+  });
+
+  it("includes the client names and the active tab when connected", async () => {
+    const bridge = fakeBridge(
+      async (m) => {
+        expect(m).toBe("listTabs");
+        return {
+          tabs: [
+            { id: 1, title: "Other", url: "https://other.test/", active: false },
+            { id: 7, title: "Playground", url: "http://localhost:8080/e2e-playground.html", active: true },
+          ],
+        };
+      },
+      async () => daemonStatus(true),
+    );
+    const res = await statusTool(bridge).handler({}, {});
+    const out = res.content[0].text as string;
+    expect(out).toMatch(/Clients \(2\): claude-code #4242, export-grades\.ts/);
     expect(out).toMatch(/extension: connected/i);
     expect(out).toMatch(/\[7\] Playground — http:\/\/localhost:8080\/e2e-playground\.html/);
   });
@@ -242,8 +269,7 @@ describe("browser_status", () => {
 
 describe("browser_evaluate", () => {
   function evalTool(handler: (m: string, p?: any, o?: any) => Promise<unknown>) {
-    const bridge = new Bridge();
-    vi.spyOn(bridge, "call").mockImplementation((m, p, o) => handler(m, p, o));
+    const bridge = fakeBridge(handler);
     const server = new McpServer({ name: "t", version: "0" });
     registerTools(server, bridge);
     return (server as any)._registeredTools["browser_evaluate"];
@@ -361,5 +387,75 @@ describe("network tools", () => {
     });
     await tool.handler({ tab: "all" }, {});
     expect(calls).toEqual([["networkClear", { tab: "all" }]]);
+  });
+});
+
+describe("no daemon (connect() failing)", () => {
+  const REASON = "Extension not connected — is Chrome open and the Chrome Agent Bridge extension enabled? (waited 15000 ms on port 9234)";
+
+  /** Minimal valid arguments for every tool except browser_status. */
+  const ARGS: Record<string, Record<string, unknown>> = {
+    browser_navigate: { url: "https://example.com" },
+    browser_snapshot: {},
+    browser_screenshot: {},
+    browser_click: { ref: "e1" },
+    browser_type: { ref: "e1", text: "hi" },
+    browser_press_key: { key: "Enter" },
+    browser_scroll: {},
+    browser_hover: { ref: "e1" },
+    browser_select_option: { ref: "e1", values: ["a"] },
+    browser_back: {},
+    browser_forward: {},
+    browser_list_tabs: {},
+    browser_select_tab: { id: 1 },
+    browser_new_tab: {},
+    browser_close_tab: { id: 1 },
+    browser_wait_for: { seconds: 1 },
+    browser_evaluate: { expression: "1" },
+    browser_download: { url: "https://example.com/f.pdf", path: "/nonexistent-dir-for-test/f.pdf" },
+    browser_network_requests: {},
+    browser_network_clear: {},
+  };
+
+  async function linkWithFailingConnect() {
+    const connect = vi.fn(async () => {
+      throw new BridgeError(ErrorCodes.NOT_CONNECTED, REASON);
+    });
+    const link = new BridgeLink({
+      connect,
+      timers: { setTimeout: () => 0, clearTimeout: () => {} },
+    });
+    link.start();
+    await new Promise<void>((r) => setImmediate(r));
+    return { link, connect };
+  }
+
+  it("registers all 21 tools and a tool call carries the stored reason", async () => {
+    const { link, connect } = await linkWithFailingConnect();
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, link);
+    const tools = (server as any)._registeredTools as Record<string, { handler: Function }>;
+    expect(Object.keys(tools)).toHaveLength(21);
+    expect(connect).toHaveBeenCalledTimes(1);
+    await expect(tools["browser_snapshot"].handler({}, {})).rejects.toThrow(REASON);
+    const status = await tools["browser_status"].handler({}, {});
+    expect(status.content[0].text).toBe(`Daemon: not connected\nProblem: ${REASON}`);
+  });
+
+  it("every tool except browser_status surfaces the stored reason", async () => {
+    const { link } = await linkWithFailingConnect();
+    const server = new McpServer({ name: "t", version: "0" });
+    registerTools(server, link);
+    const tools = (server as any)._registeredTools as Record<string, { handler: Function }>;
+    const names = Object.keys(tools).filter((n) => n !== "browser_status");
+    expect(names.sort()).toEqual(Object.keys(ARGS).sort());
+    for (const name of names) {
+      const err = await Promise.resolve(tools[name].handler(ARGS[name], {})).then(
+        () => null,
+        (e: unknown) => e,
+      );
+      expect(err, name).toBeInstanceOf(BridgeError);
+      expect((err as BridgeError).message, name).toBe(REASON);
+    }
   });
 });

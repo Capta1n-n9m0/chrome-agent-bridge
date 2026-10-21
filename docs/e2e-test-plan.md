@@ -16,11 +16,14 @@ Record outcomes in the [Results template](#results-template). A run "passes" whe
 
 1. **Versions:** Chrome ≥ 116, Node ≥ 20.
 2. **Build:** from the repo root — `npm install && npm run build`. Confirm
-   `server/dist/index.js` and `extension/dist/{sw,options,offscreen,content}.js` exist.
+   `mcp/dist/index.js`, `daemon/dist/index.js` and `extension/dist/{sw,options,offscreen,content}.js`
+   exist. (*Amended 2026-10-22, Step 6 D5: was `server/dist/index.js`.*)
 3. **Token:** choose a secret, e.g. `openssl rand -hex 16`. Call it `<TOKEN>`.
 4. **Register the MCP server** in your client (see `docs/setup.md` §3) with env
    `BRIDGE_TOKEN=<TOKEN>`, `BRIDGE_PORT=9234`. (Or run the inspector:
-   `$env:BRIDGE_TOKEN="<TOKEN>"; npx @modelcontextprotocol/inspector node server/dist/index.js`.)
+   `$env:BRIDGE_TOKEN="<TOKEN>"; npx @modelcontextprotocol/inspector node mcp/dist/index.js`.)
+   The MCP starts the daemon (`daemon/dist/index.js`) on its first connect; it keeps running after
+   the session ends.
 5. **Load the extension:** `chrome://extensions` → Developer mode → Load unpacked → select
    `extension/`.
 6. **Configure the extension:** open its Options, set Port `9234` + Token `<TOKEN>`, Save.
@@ -58,8 +61,13 @@ the page's own eval. `python -m http.server` picks up the new file without a res
 
 - **Extension service-worker console:** `chrome://extensions` → the extension → "service worker".
   Expect `[bridge] connection: up`. Errors from handlers surface here.
-- **Server stderr:** the terminal/inspector running the MCP server. Expect the
-  `WebSocket host listening on 127.0.0.1:9234` line.
+- **MCP stderr:** the terminal/inspector running the MCP server. Expect
+  `[chrome-bridge] connected to the bridge daemon`; on a failure it prints
+  `[chrome-bridge] bridge daemon unavailable (retrying every 5 s): <reason>`.
+- **Daemon log:** `~/.chrome-agent-bridge/daemon.log` (the daemon runs with no stdio). Expect a
+  `listening on 127.0.0.1:9234` line after its `start` and `config` lines.
+  (*Amended 2026-10-22, Step 6 D5: was "Server stderr … Expect the `WebSocket host listening on
+  127.0.0.1:9234` line"; the WebSocket host now lives in the daemon.*)
 - **MCP client tool output:** the text/image each tool returns, or an error envelope.
 - **Offscreen document:** `chrome://extensions` → the extension → it may list "offscreen.html"
   as an active view; its console shows WS activity.
@@ -79,14 +87,14 @@ If SMOKE-1/2 fail, stop and debug connection/injection before the rest.
 
 | ID | Objective | Steps | Expected |
 |---|---|---|---|
-| CONN-1 ★ | Extension connects | Start server, ensure token set in Options | SW console: `connection: up`. |
-| CONN-2 ★ | Not-connected error is clear | Stop the server (or disable the extension), then call any tool | Tool returns an error like "Extension not connected — is Chrome open and the … extension enabled?" |
-| CONN-3 ★ | Reconnect after server restart | With it connected, stop and restart the MCP server | Within a few seconds SW logs `connection: down` then `up`; a subsequent `browser_snapshot` works without touching the extension. |
+| CONN-1 ★ | Extension connects | Start the MCP server (it starts the daemon if none runs), ensure token set in Options | SW console: `connection: up`. (*Amended 2026-10-22, Step 6 D5: was "Start server"; the extension connects to the daemon.*) |
+| CONN-2 ★ | Not-connected error is clear | (a) With it connected, disable the extension, then call any tool and `browser_status`; re-enable it. (b) Close Chrome, restart the MCP server (`/mcp` reconnect), call `browser_status` at once, then again after ~20 s; then open Chrome | (a) The tool fails with `Extension not connected — is Chrome open and the Chrome Agent Bridge extension enabled?`; `browser_status` shows `Daemon: connected …` and `Extension: not connected — is Chrome open with the Chrome Agent Bridge extension enabled and its token/port set?`. (b) For the first ~15 s `browser_status` says `Daemon: not connected` + `Problem: connecting to the bridge daemon…`; then `Daemon: not connected` + `Problem: Extension not connected — is Chrome open and the Chrome Agent Bridge extension enabled? (waited 15000 ms on port 9234)`, although the daemon is up (the MCP's `connect()` waits 15 s for the extension, gives up, and retries about every 20 s). After Chrome opens, the next retry connects and tools work without restarting anything. (*Amended 2026-10-22, Step 6 D5: was "Stop the server (or disable the extension), then call any tool". Stopping the MCP leaves no tool to call, and stopping the daemon gives `The connection to the bridge daemon closed …` before the next retry starts a new one — that case is CONN-3 (b).*) |
+| CONN-3 ★ | Reconnect after a restart | With it connected, (a) restart the MCP server (`/mcp` reconnect); (b) stop the daemon (end its `node …/daemon/dist/index.js` process) and call `browser_status` within 5 s, then again after ~20 s | (a) The daemon keeps port 9234 and the extension's socket: the SW logs **no** `connection: down`; `browser_status` shows a new `claude-code #<pid>` in its client list and `browser_snapshot` works at once. (b) The SW logs `connection: down`; the MCP stores the reason (`Daemon: not connected` + `Problem: The connection to the bridge daemon closed …`) and its 5 s retry starts a new daemon; the SW logs `connection: up` and a subsequent `browser_snapshot` works without touching the extension. (*Amended 2026-10-22, Step 6 D5: an MCP restart no longer restarts the WebSocket host.*) |
 | CONN-4 | Wrong token rejected | In Options set a wrong token, Save | SW logs `connection: down`/retries; tools return not-connected. Restore the correct token → reconnects. |
 | CONN-5 | Idle keepalive (offscreen) | Connect, then leave Chrome idle / switch away for 3+ minutes (then repeat with 6+) | A `browser_snapshot` afterward still works (the offscreen document kept the socket alive). SW console shows no `connection: down` in between. |
-| CONN-6 | Dead Chrome is detected fast (heartbeat) | With it connected, kill Chrome outright (Task Manager → end all `chrome.exe`, or close every window), then call `browser_status` once a minute | Within ~60 s (two 30 s heartbeat intervals) the tool reports `Extension: not connected` and the server stderr logs "stopped answering pings" — **not** a 30 s timeout per call. Relaunch Chrome → the extension reconnects on its own; `browser_snapshot` works without restarting the server. |
-| CONN-7 | Port busy is explained and self-heals | Start an orphan first: in a terminal, `set BRIDGE_TOKEN=<token> && node server/dist/index.js` (leave it running). Then reconnect this session's MCP server (`/mcp`) and call `browser_status`, then `browser_snapshot` | `browser_status` says `WebSocket host: NOT listening (port 9234)` + `Problem: WebSocket port 9234 is busy (…EADDRINUSE…)`; `browser_snapshot` fails with that same reason (not the generic "not connected"). Ctrl-C the orphan → within ~15 s (5 s bind retry + extension reconnect) `browser_status` reports listening + connected and `browser_snapshot` works. |
-| STAT-1 ★ | `browser_status` happy path | `browser_status` | Three lines: `WebSocket host: listening on 127.0.0.1:9234`, `Extension: connected`, `Active tab: [id] title — url` (the playground). |
+| CONN-6 | Dead Chrome is detected fast (heartbeat) | With it connected, kill Chrome outright (Task Manager → end all `chrome.exe`, or close every window), then call `browser_status` once a minute | Within ~60 s (two 30 s heartbeat intervals) the tool reports `Extension: not connected` — **not** a 30 s timeout per call. The heartbeat and its "stopped answering pings" message are the **daemon's** now; the daemon runs with no stdio and does not write this message to `daemon.log`, so it is seen only when the daemon is started by hand in a terminal. Relaunch Chrome → the extension reconnects on its own; `browser_snapshot` works without restarting anything. (*Amended 2026-10-22, Step 6 D5: was "the server stderr logs 'stopped answering pings'".*) |
+| CONN-7 | A pre-Step-6 server on the port is explained and self-heals | Stop the daemon. Start a pre-Step-6 server first: check out a pre-Step-6 commit in a second worktree, build it, and in a terminal run `set BRIDGE_TOKEN=<token> && node server/dist/index.js` there (leave it running). Then reconnect this session's MCP server (`/mcp`) and call `browser_status`, then `browser_snapshot` | `browser_status` says `Daemon: not connected` + `Problem: No welcome from 127.0.0.1:9234 within 2 s after hello: a pre-Step-6 bridge server holds port 9234. End the old Claude session …`; `browser_snapshot` fails with that same reason (not the generic "not connected"); the MCP does not crash. Ctrl-C the old server → within ~5 s (the MCP's retry) plus the daemon start and the extension reconnect, `browser_status` reports the daemon and the extension connected and `browser_snapshot` works. (*Amended 2026-10-22, Step 6 D5: the MCP no longer binds the port, so the busy-port self-heal is gone; decisions.md · 2026-10-22 #13.*) |
+| STAT-1 ★ | `browser_status` happy path | `browser_status` | Four lines: `Daemon: connected on 127.0.0.1:9234 (build <hash>, up <n>s)`, `Clients (<n>): claude-code #<pid>[, …]`, `Extension: connected`, `Active tab: [id] title — url` (the playground). (*Amended 2026-10-22, Step 6 D5: was three lines starting `WebSocket host: listening on 127.0.0.1:9234`.*) |
 
 ### 4.2 Navigation
 

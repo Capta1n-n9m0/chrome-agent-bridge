@@ -1,19 +1,12 @@
-export interface Config {
-  port: number;
-  token: string;
-}
+// The MCP's own configuration. The token and port are not read here any more: `connect()` from
+// @bridge/sdk resolves them (BRIDGE_TOKEN wins, else `bridge.token` at the workspace root; BRIDGE_PORT,
+// default 9234) — phase-doc decision 0.10.
 
-export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const rawPort = env.BRIDGE_PORT ?? "9234";
-  const port = Number(rawPort);
-  const token = env.BRIDGE_TOKEN ?? "";
-  if (!token) {
-    throw new Error(
-      "BRIDGE_TOKEN is required. Set it in the MCP server config and in the extension options page.",
-    );
-  }
-  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-    throw new Error(`BRIDGE_PORT must be a valid port number, got: "${rawPort}"`);
-  }
-  return { port, token };
+/**
+ * The actor name the daemon lists in `daemon.status` and its log. It carries the MCP's own process
+ * id, not `ppid`: under the nvm-windows shim the parent is the shim (decisions.md · 2026-10-21 ·
+ * The actor name carries the MCP's own process id).
+ */
+export function actorName(pid: number = process.pid): string {
+  return `claude-code #${pid}`;
 }
