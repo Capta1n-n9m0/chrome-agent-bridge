@@ -4,6 +4,9 @@
   "license": "MIT",
   "type": "module",
   "bin": { "chrome-bridge-daemon": "dist/index.js" },
+  "scripts": {
+    "build": "node build.mjs"
+  },
   "exports": {
     "./bridge": "./src/bridge.ts",
     "./connection": "./src/connection.ts",
@@ -11,6 +14,8 @@
     "./startup": "./src/startup.ts"
   },
   "dependencies": {
+    "@bridge/sdk": "*",
+    "@bridge/shared": "*",
     "ws": "^8.18.0"
   },
   "devDependencies": {

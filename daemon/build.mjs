@@ -10,4 +10,4 @@ await build({
   banner: { js: "#!/usr/bin/env node" },
   external: ["bufferutil", "utf-8-validate", "ws"],
 });
-console.error("built server → dist/index.js");
+console.error("built daemon → dist/index.js");

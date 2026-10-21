@@ -30,6 +30,12 @@ export interface WsHostOptions {
   build?: string;
   /** Clock for uptime and client `since`. Default `Date.now`. */
   now?: () => number;
+  /**
+   * Called once, with the code, after the first `shutdown` has finished closing every socket —
+   * whoever started it (a signal, the idle timer, or a client's `daemon.shutdown`). The daemon entry
+   * exits the process here (D3). An exception it throws is swallowed.
+   */
+  onShutdown?: (code: number) => void;
 }
 
 /** Counters for the daemon log (counts only — never URLs, header values, bodies or the token). */
@@ -261,7 +267,13 @@ export class WsHost implements RouteHost {
   shutdown(code: number, reason?: string): Promise<void> {
     if (this.shuttingDown) return this.shuttingDown;
     const why = reason ?? (code === CLOSE_UPGRADING ? "upgrading" : "daemon shutting down");
-    this.shuttingDown = this.doShutdown(code, why);
+    this.shuttingDown = this.doShutdown(code, why).finally(() => {
+      try {
+        this.options.onShutdown?.(code);
+      } catch {
+        // the hook's failure must not turn a completed shutdown into a rejection
+      }
+    });
     return this.shuttingDown;
   }
 

@@ -120,6 +120,11 @@ versions and the stale-code trap is exactly the one we keep falling into with th
 `BRIDGE_DAEMON_IDLE_MS` (default 600 000). The extension connection does not count. On fire:
 `host.close()` then `process.exit(0)`. Pure and tested with fake timers.
 
+*Superseded 2026-10-22: was "`host.close()` then `process.exit(0)`"; as built (D3) the timer calls
+`host.shutdown(1001)` — close frames, ≤ 1 s grace, then terminate — and the process exits 0 once it
+finishes, because decision #15 makes `shutdown(code)` the graceful stop and `close()` terminates
+sockets without a close frame (clients would see 1006).*
+
 ### 0.7 Handover protocol (SDK side)
 
 ```
@@ -284,6 +289,12 @@ stubs the import and D5 wires it. **Parallel with:** D4 (file-disjoint); sequent
 rejects a string with `://` and one containing the test token; the daemon entry has no `console.*`
 call (it has no stdio); `EADDRINUSE` exits 0 without retrying (the bind is the lock, spec §9.3).
 **Needs the user's keyboard:** no (the real detached process is D6).
+
+*As built 2026-10-22 (D3):* `startup.ts` and its 5 tests stay until D5, because `mcp` still imports
+`@bridge/daemon/startup` (decisions.md · 2026-10-22 · #17); D5 deletes them. The entry is a thin
+`index.ts` over `main.ts` (`runDaemon`), which holds the one `listen()`. Every shutdown — a signal,
+the idle timer, or a client's `daemon.shutdown` — ends in a new `WsHost` `onShutdown` hook that
+exits 0. Env, log format and exit codes as built: `…-steps/D3.md`.
 
 ### Stage D4 — SDK core (TDD with injected `connect`/`spawn`/timers)
 

@@ -144,3 +144,40 @@ describe("WsHost heartbeat", () => {
     await inFlight;
   });
 });
+
+describe("WsHost onShutdown hook (D3: the daemon exits when shutdown completes)", () => {
+  it("calls onShutdown once, with the code, after the sockets are closed — even if shutdown is called twice", async () => {
+    const calls: number[] = [];
+    let ws: WebSocket | undefined;
+    const host = new WsHost(new Bridge(), {
+      port: 0,
+      token: "secret",
+      onShutdown: (code) => calls.push(code),
+    });
+    const port = await host.listen();
+    ws = await new Promise<WebSocket>((resolve, reject) => {
+      const s = new WebSocket(`ws://127.0.0.1:${port}`);
+      s.on("open", () => resolve(s));
+      s.on("error", reject);
+    });
+    const first = host.shutdown(4002);
+    const second = host.shutdown(1001);
+    expect(second).toBe(first);
+    expect(calls).toEqual([]); // not before the sockets are closed
+    await first;
+    expect(calls).toEqual([4002]);
+    expect(ws.readyState).not.toBe(WebSocket.OPEN);
+  });
+
+  it("an onShutdown that throws does not reject shutdown", async () => {
+    const host = new WsHost(new Bridge(), {
+      port: 0,
+      token: "secret",
+      onShutdown: () => {
+        throw new Error("boom");
+      },
+    });
+    await host.listen();
+    await expect(host.shutdown(1001)).resolves.toBeUndefined();
+  });
+});
