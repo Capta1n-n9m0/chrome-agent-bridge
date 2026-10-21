@@ -18,8 +18,41 @@ For the user to review at the Step 6 gate (G6-2). Each was taken by the conserva
 - 2026-10-22 · The SDK reports configuration and connection failures as NOT_CONNECTED (#21)
 - 2026-10-22 · A reconnect after 4002 never hands the daemon over (#22)
 - 2026-10-22 · BridgeClient exposes welcome, extensionConnected and on("reconnected") in Step 6 (#24)
+- 2026-10-22 · The MCP connects without waiting for the extension, so Chrome closed reads as today (#27)
 
 ## Log
+
+### 2026-10-22 · The MCP connects without waiting for the extension, so Chrome closed reads as today (#27)
+**Decided:** A follow-up stage D5b adds a `connect()` option that returns the client even when
+the welcome says the extension is down (no 15 s wait, no `NOT_CONNECTED`), and the MCP uses it.
+With Chrome closed, `browser_status` then reports the daemon connected and the extension not
+connected, tool calls get the daemon's immediate `NOT_CONNECTED` with today's text, and the client
+does not churn. Scripts keep the default 15 s wait (MUX-8 unchanged).
+**Why:** As built in D5, Chrome closed made `browser_status` say "Daemon: not connected" although
+the daemon was up, tools said "connecting…" for ~15 s, and the MCP opened and closed a daemon
+client every ~20 s (`D5.md` §5). Long-run §3's conservative rule for a contract choice with no
+pre-stated rule is the option that keeps every existing tool behaving as before; the option is
+additive and undoable.
+**Instead of:** Accepting the churn for Step 6 (D5's proposal); a shorter wait (the SDK closes the
+client when any wait expires).
+**Revisit if:** Step 8's SDK surface review settles the option's final name or shape.
+**By:** Claude (open, for user review: an SDK surface addition)
+
+### 2026-10-22 · D5's MCP link: a `client.connect()` health check, a thin config, interim exports gone (#26)
+**Decided:** `mcp/src/link.ts` (`BridgeLink`) checks the client it holds with `client.connect()`
+every 5 s and after any `NOT_CONNECTED` call; that resolves at once with no wire traffic on an open
+client and rejects with the failure on a client closed by any code but 4002, after which the MCP
+stores the message, drops the client and runs a fresh `connect()` on the 5 s chain; attempts never
+overlap. `mcp/src/config.ts` keeps only `actorName(pid)`; `connect()` resolves token and port.
+`daemon/package.json` loses its interim `exports` block; `mcp` declares `ws` (external in the
+bundle); `validateHello` stays (a test pins it).
+**Why:** Decision #15 asks for exactly this; the SDK's public surface has no failure event and D5's
+lane excluded `sdk/`. Measured: the fresh `connect()` ran 4993 ms after a 1001 close; a 4002
+reconnect left the client in place (`D5-verifier.md`).
+**Instead of:** Exporting the SDK's internal `onClientFailure`; polling with `status()` (a message
+every 5 s); keeping the interim daemon exports.
+**Revisit if:** Step 8 adds a public close or failure event, or reconnect.
+**By:** Claude
 
 ### 2026-10-22 · D3's daemon lifecycle: idle armed at start, every shutdown exits 0, bad env values, the log policy (#25)
 **Decided:** The idle timer is armed at start (zero clients) and counts clients only. Signals

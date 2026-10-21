@@ -14,3 +14,4 @@ Times are UTC from `date -u`.
 - 2026-10-21T20:58:26Z · D2 closed: DONE, PASS-with-notes, 4d0241e, 385 tests. Decision #20. D3 waits for D4 (still running).
 - 2026-10-21T21:21:40Z · D4 closed: DONE, PASS-with-notes after 1 fix round, 9f3fc86, 479 tests. Decisions #21–#24 (#21, #22, #24 open). D3 dispatched.
 - 2026-10-21T21:46:32Z · D3 closed: DONE, PASS-with-notes after 1 fix round, 3964eb1, 528 tests. Decision #25. No process left; 9234 free. D5 dispatched.
+- 2026-10-21T22:11:09Z · D5 closed: DONE, PASS-with-notes, d6832a1, 538 tests. Decisions #26, #27 (#27 open). D5b dispatched (no-wait connect option for the MCP; lane sdk/src connect + mcp/src + the D5 doc notes).

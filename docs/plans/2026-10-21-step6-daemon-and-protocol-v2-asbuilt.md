@@ -138,3 +138,31 @@ One section per stage, appended at stage close, never rewritten; corrections are
   logger for them is a later item; a daemon losing the bind race truncates the shared log first.
 - **Phase-doc notes:** decision 0.6 (`host.close()` → `shutdown(1001)`) and "as built" for D3.
 - **Estimate vs actual:** 1.5 h estimated; ~24 min agent wall time.
+
+## Stage D5 — MCP over the SDK (closed 2026-10-22, commit d6832a1)
+
+- **Outputs:** `mcp/src/index.ts` connects with `connect({name: "claude-code #<pid>"})`;
+  `mcp/src/link.ts` (`BridgeLink`) carries the no-crash rule (21 tools registered with no daemon,
+  stored reason on every tool error and in `browser_status`, `connect()` 5 s after each attempt
+  settles, no overlap, fresh `connect()` after a non-4002 close); registry over `BridgeClient`;
+  `config.ts` keeps only `actorName`; `browser_download` uses the SDK's `downloadToFile`.
+  Removed: `mcp` → `@bridge/daemon`, the daemon's interim exports, `daemon/src/startup.ts` + test.
+- **`browser_status` as built:** `Daemon: connected on 127.0.0.1:<port> (build <b>, up <s>s)` /
+  `Clients (<n>): names…` / `Extension: …` / `Active tab: …`; with no client `Daemon: not connected`
+  + `Problem: <reason>`.
+- **Measured:** `npm test` 528 → 538 passed (41 files): −5 `startup.test.ts` (documented removal),
+  +13 `link.test.ts`, +2 `tools.test.ts`; the three old `browser_status` tests replaced one for one
+  (pairs in `D5.md`). Typecheck and build green. 21 tools, names and schemas byte-identical to
+  `1a92d95` apart from `browser_status`'s description and body. `lifecycle.ts` and `extension/`
+  diffs empty.
+- **Verifier:** PASS-with-notes after one docs-only fix round. 13 code mutations each caught; the
+  built `mcp/dist/index.js` ran over stdio with no daemon and did not crash; cross-package run over
+  real `ws` on port 0: connect, 1001 close and recovery, 4002 reconnect, no welcome → `VERSION`.
+- **Docs:** `docs/setup.md`, `docs/e2e-test-plan.md` (lines 19, 23, §2, CONN-1/2/3/6/7, STAT-1)
+  updated with dated notes; run records unchanged.
+- **Open, outside the lane:** the daemon's heartbeat and socket-error lines (`wsHost.ts:177,187`)
+  never reach `daemon.log`; a stale comment at `sdk/src/connect.ts:48`; D7 rewrites `CLAUDE.md`'s
+  busy-port gotcha (`startup.ts` gone; `link.ts` carries the no-crash rule).
+- **Regression found, sent to D5b:** with Chrome closed the MCP held no client (decisions.md ·
+  2026-10-22 · #27).
+- **Estimate vs actual:** 2 h estimated; ~23 min agent wall time.
