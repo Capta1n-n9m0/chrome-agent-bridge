@@ -89,3 +89,28 @@ One section per stage, appended at stage close, never rewritten; corrections are
   `registry.onCountChange` for the log and idle timer; add `@bridge/shared` to `daemon/package.json`
   (root lockfile edit; D3 lane is granted it by the session agent).
 - **Estimate vs actual:** 3 h estimated; ~23 min agent wall time.
+
+## Stage D4 — SDK core (closed 2026-10-22, commit 9f3fc86)
+
+- **Outputs:** `sdk/src/` `token.ts` (`resolveToken`; `./token` subpath export for the daemon),
+  `paths.ts` (workspace-root walk-up, `BRIDGE_DAEMON` override), `transport.ts`, `spawn.ts` (exactly
+  decision 0.8 plus `unref()`), `knock.ts`, `client.ts` (`BridgeClient`), `connect.ts`, `index.ts`
+  (exports exactly `connect`, `BridgeClient`, `BridgeError`, `ErrorCodes`, `downloadToFile`).
+- **Measured:** verifier's clean worktree at 524ffa3 + D4: `npm test` 385 → 479 passed (28 → 37
+  files); first pass at 8b30882 gave 322 → 394. Typecheck and build exit 0; `grep console. sdk/src`
+  empty; extension diff empty. The 10 s give-up and 2 s no-welcome tests run on an injected clock.
+- **Verifier:** FAIL on the first pass (an `extensionStatus` frame in the same TCP read as the
+  `welcome` was dropped, so `connect()` waited 15 s and blamed Chrome), then PASS-with-notes after one
+  fix round. Three NITs left open (no test for a removed `ws.terminate()` on handshake timeout; a
+  non-4002 close just before the extension wait starts is missed; close-reason masking catches only
+  the whole token).
+- **Contracts binding forward:** SDK error codes per decisions #21 and #22; the 10 s budget per
+  spawn cycle (#23); `BridgeClient` getters and `on("reconnected")` (#24). Exact knock states and
+  error texts: `D4.md`. Phase doc carries an "As built 2026-10-22 (D4)" note under Stage D4.
+- **Measured fact, candidate gotcha:** `ws` emits several frames from one TCP read synchronously,
+  before any promise continuation runs; a one-shot listener must unsubscribe inside its own callback
+  or it swallows the frames behind the one it waited for.
+- **For D5/D7:** D5 reads the token through `resolveToken` (`mcp/src/config.ts` still reads
+  `BRIDGE_TOKEN` raw). D7's `setup.md` covers token precedence, `BRIDGE_DAEMON` as a native Windows
+  path, one shared `BRIDGE_PORT`, and ending pre-Step-6 sessions first.
+- **Estimate vs actual:** 3 h estimated; ~46 min agent wall time.

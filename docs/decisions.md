@@ -15,8 +15,56 @@ For the user to review at the Step 6 gate (G6-2). Each was taken by the conserva
 - 2026-10-22 · A Step 6 client gives up with VERSION when no welcome arrives (#13)
 - 2026-10-22 · The detached daemon's survival depends on how the session's MCP is killed (#14)
 - 2026-10-22 · What clients do on a close code other than 4002 (#15)
+- 2026-10-22 · The SDK reports configuration and connection failures as NOT_CONNECTED (#21)
+- 2026-10-22 · A reconnect after 4002 never hands the daemon over (#22)
+- 2026-10-22 · BridgeClient exposes welcome, extensionConnected and on("reconnected") in Step 6 (#24)
 
 ## Log
+
+### 2026-10-22 · BridgeClient exposes welcome, extensionConnected and on("reconnected") in Step 6 (#24)
+**Decided:** Beyond the D4 checkbox, `BridgeClient` has read-only `welcome` and `extensionConnected`
+getters and an `on("reconnected", cb)` listener. `sdk/src/index.ts` still exports exactly the five
+D4.3 values.
+**Why:** `connect()`'s extension wait needs both getters; `on("reconnected")` is the hook decision
+#11 asks Step 6 to leave for the Step 7/8 cursor clear. Additive and undoable; Step 8 owns the final
+surface.
+**Instead of:** Package-internal accessors that D5 and Step 7 would have to reach into.
+**Revisit if:** Step 8's SDK surface review.
+**By:** Claude (open, for user review)
+
+### 2026-10-22 · The knock's 10 s budget runs per spawn cycle, with a handshake timeout per attempt (#23)
+**Decided:** The 10 s limit restarts at the client's own handover; the knock spawns once per cycle;
+each `tryConnect` gets the remaining budget (floor 100 ms) as its WebSocket handshake timeout
+(`ETIMEDOUT`, no spawn).
+**Why:** The handover starts a new spawn cycle in 0.7's diagram; repeated spawns only lose the bind
+race; a port holder that accepts TCP and never upgrades kept `connect()` pending past 14 s before
+the handshake timeout existed (`D4-verifier.md`). The 10 s limit itself is unchanged.
+**Instead of:** One 10 s budget for the whole `connect()`; a spawn per refusal; no handshake timeout.
+**Revisit if:** D6 sees a handover take longer than 10 s, or a spawned daemon dying silently.
+**By:** Claude
+
+### 2026-10-22 · A reconnect after 4002 never hands the daemon over (#22)
+**Decided:** `BridgeClient`'s 4002 reconnect runs the knock with the handover disabled: a build
+mismatch there rejects with `VERSION` naming both builds (spawning on a refused port is still
+allowed). After a client's own handover, an old build still answering at the deadline also rejects
+with `VERSION`.
+**Why:** Decision #10 caps handovers per `connect()`, but every 4002 reconnect is a fresh knock, so
+two clients on different builds could still hand the daemon back and forth; the D4 verifier
+simulated two handovers. Failing beats looping (`handover-race.test.ts` pins ≤ 1 shutdown).
+**Instead of:** Letting each reconnect hand over once — the letter of #10, not its purpose.
+**Revisit if:** D6 shows a legitimate upgrade that needs a reconnecting client to hand over (a
+long-running MCP after `npm run build` with the old daemon still alive).
+**By:** Claude (open, for user review)
+
+### 2026-10-22 · The SDK reports configuration and connection failures as NOT_CONNECTED (#21)
+**Decided:** A missing token, a missing daemon build, a bad `BRIDGE_PORT`, the 10 s give-up and a
+close 4001 reject with `NOT_CONNECTED`, each message naming its cause and never the token. `VERSION`
+is kept for build or protocol mismatches and the missing welcome.
+**Why:** Spec §10's 22 codes have no configuration or authentication code, and adding one is a spec
+change. `NOT_CONNECTED` is what the MCP's 5 s retry already treats as "not reachable yet".
+**Instead of:** `BAD_PARAMS` (meant for a method's params); `VERSION` for 4001; a new code.
+**Revisit if:** Step 8 adds an authentication or configuration code to spec §10.
+**By:** Claude (open, for user review)
 
 ### 2026-10-22 · D2's daemon details: parseHello beside validateHello, BAD_PARAMS for bad ids, no forwarded timeoutMs, interim defaults (#20)
 **Decided:** `parseHello(data, token)` returns `{ok, role, name?, build?}` or `{ok:false, reason}`;
