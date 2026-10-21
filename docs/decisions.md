@@ -21,6 +21,24 @@ For the user to review at the Step 6 gate (G6-2). Each was taken by the conserva
 
 ## Log
 
+### 2026-10-22 · D3's daemon lifecycle: idle armed at start, every shutdown exits 0, bad env values, the log policy (#25)
+**Decided:** The idle timer is armed at start (zero clients) and counts clients only. Signals
+(SIGINT/SIGTERM/SIGBREAK), idle and `daemon.shutdown` all run `host.shutdown(…)` and exit 0 through
+a `WsHost` `onShutdown` hook. Exit 1 for a bad `BRIDGE_PORT`, a missing token, an unhashable entry,
+any listen error other than `EADDRINUSE` (exit 0, one `listen()`), or an uncaught error. A bad or
+over-2³¹−1 `BRIDGE_DAEMON_IDLE_MS` is logged and replaced by 600000. The log at
+`~/.chrome-agent-bridge/daemon.log` is cut to its last 1 MiB on start; a line containing `://` or
+the token is withheld whole; a log that cannot be written is skipped silently, never stdout.
+**Why:** A spawned daemon nobody connects to must still go away; exit 0 marks every intended end,
+including losing the bind race (the bind is the lock, spec §9.3); setTimeout fires at once above
+2³¹−1, which made the daemon exit after 1 ms before the fix (`D3-verifier.md`). The daemon has no
+stdio, so it cannot report a log failure anywhere else.
+**Instead of:** Arming idle only after the first client leaves; exit 1 on a bad idle value;
+redacting inside a line rather than withholding it.
+**Revisit if:** A lost bind race is seen to drop a log line (the loser truncates before it binds);
+D6 shows the daemon idling out under a spawn that never connected.
+**By:** Claude
+
 ### 2026-10-22 · BridgeClient exposes welcome, extensionConnected and on("reconnected") in Step 6 (#24)
 **Decided:** Beyond the D4 checkbox, `BridgeClient` has read-only `welcome` and `extensionConnected`
 getters and an `on("reconnected", cb)` listener. `sdk/src/index.ts` still exports exactly the five

@@ -114,3 +114,27 @@ One section per stage, appended at stage close, never rewritten; corrections are
   `BRIDGE_TOKEN` raw). D7's `setup.md` covers token precedence, `BRIDGE_DAEMON` as a native Windows
   path, one shared `BRIDGE_PORT`, and ending pre-Step-6 sessions first.
 - **Estimate vs actual:** 3 h estimated; ~46 min agent wall time.
+
+## Stage D3 — daemon lifecycle (closed 2026-10-22, commit 3964eb1)
+
+- **Outputs:** `daemon/src/build.ts`, `idle.ts`, `log.ts` (with `redact`), `main.ts` (`runDaemon`)
+  behind a thin `index.ts`; `WsHost` gains an `onShutdown` hook; `daemon/package.json` gains a build
+  script and `@bridge/shared` + `@bridge/sdk` (token subpath only); 2-line npm-made lockfile change.
+  `npm run build` produces `daemon/dist/index.js` (`ws` external, no SDK client code inside).
+- **Measured:** `npm test` 479 → 528 passed (37 → 41 files), "before" re-derived in a clean worktree
+  at cbd91f9 with `npm ci`; typecheck and build exit 0; D3.1–D3.6 pass; extension diff empty.
+- **Verifier:** PASS-with-notes after one fix round (an idle value above 2³¹−1 ms exited after
+  1 ms; fixed with 3 tests that fail on revert). Live checks of the built entry as a non-detached
+  child on ephemeral ports with a dummy token and temp HOME: held port → exit 0 with empty stdio;
+  idle, `daemon.shutdown` (close 4002) and an unwritable log → clean exit 0; the extension did not
+  count toward idle; the token never reached the log. Signals were not deliverable live on Windows
+  (unit tests only).
+- **As built (env, log, exits):** `BRIDGE_TOKEN` or `bridge.token` via `@bridge/sdk/token`;
+  `BRIDGE_PORT` default 9234 (bad → exit 1); `BRIDGE_DAEMON_IDLE_MS` default 600000 (bad → logged,
+  default). Log lines `YYYY-MM-DDTHH:MM:SSZ <msg>`. Bind `127.0.0.1` only. Decisions.md ·
+  2026-10-22 · #25.
+- **D3.4:** `startup.ts` and its 5 tests stay until D5 because `mcp` still imports them (#17).
+- **Open NITs:** `wsHost`'s D2-era `console.error` lines are lost in the daemon (no stdio) — a
+  logger for them is a later item; a daemon losing the bind race truncates the shared log first.
+- **Phase-doc notes:** decision 0.6 (`host.close()` → `shutdown(1001)`) and "as built" for D3.
+- **Estimate vs actual:** 1.5 h estimated; ~24 min agent wall time.
