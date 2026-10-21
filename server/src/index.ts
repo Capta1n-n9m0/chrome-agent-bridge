@@ -5,6 +5,7 @@ import { Bridge } from "./bridge.js";
 import { WsHost } from "./wsHost.js";
 import { startWsHost } from "./startup.js";
 import { registerTools } from "./tools/registry.js";
+import { installLifecycle, isProcessAlive } from "./lifecycle.js";
 
 const BIND_RETRY_MS = 5000;
 
@@ -39,6 +40,25 @@ async function main(): Promise<void> {
 
   const server = new McpServer({ name: "chrome-agent-bridge", version: "0.1.0" });
   registerTools(server, bridge);
+
+  // Exit with the session: the WS server would otherwise keep this process (and port 9234) alive
+  // after Claude goes away, blocking the next session's bridge.
+  installLifecycle({
+    stdin: process.stdin,
+    stdout: process.stdout,
+    signals: process,
+    parentPid: process.ppid,
+    currentParentPid: () => process.ppid,
+    isAlive: isProcessAlive,
+    exit: (code) => process.exit(code),
+    shutdown: async (reason) => {
+      console.error(`[chrome-bridge] shutting down: ${reason}`);
+      started.stop();
+      await host.close();
+      await server.close().catch(() => {});
+    },
+  });
+
   await server.connect(new StdioServerTransport());
 }
 

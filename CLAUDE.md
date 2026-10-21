@@ -32,7 +32,8 @@ Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(met
 - `shared/src/protocol.ts` — wire message types + guards (imported by both halves).
 - `server/src/`: `wsHost.ts` (binds 127.0.0.1, token gate), `connection.ts` (id-correlated calls),
   `bridge.ts` (connection gate + unavailable-reason + host state), `startup.ts` (non-fatal port bind
-  with retry), `tools/registry.ts` (the 21 MCP tools), `index.ts` (entry).
+  with retry), `lifecycle.ts` (exit with the session), `tools/registry.ts` (the 21 MCP tools),
+  `index.ts` (entry).
 - `extension/src/`: `sw.ts` (router + offscreen orchestration), `offscreen.ts` (the socket),
   `inject.ts` (`ensureContent`/`callInPage` + `toSerializableArgs`/`unwrapResult`), `handlers/*`,
   `content/{index,snapshot,refmap,actions,geometry}.ts`, `debugger.ts`, `debugger-errors.ts`
@@ -50,7 +51,7 @@ Flow: tool → `bridge.call(method, params)` → WS → extension `router.on(met
 ```bash
 npm install
 npm run build        # builds server (dist/index.js) + extension (dist/{sw,options,offscreen,content}.js)
-npm test             # vitest (285 tests)
+npm test             # vitest (301 tests)
 npm run typecheck    # tsc --noEmit across shared/server/extension
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
@@ -75,6 +76,13 @@ and follow `docs/e2e-test-plan.md`.
   orphaned instance or a 2nd session causes `EADDRINUSE`. `startWsHost` never throws; stdio connects
   regardless, the reason is surfaced through every tool error via `bridge.setUnavailableReason`, and the
   bind is retried every 5 s. **Only run one Claude session driving the bridge at a time.**
+- **The server must exit with its session** (`server/src/lifecycle.ts`). The WS server keeps the event
+  loop alive, so before this an ended session left an orphan holding 9234 and the next session's bridge
+  stayed unavailable. It exits on stdin `end`/`close`, a stdout error, SIGINT/SIGTERM/SIGHUP/SIGBREAK,
+  or a vanished parent: on Windows a dead parent stays as `ppid`, so it checks `kill(pid, 0)`; on POSIX
+  the process is re-parented, so it checks whether `ppid` changed. The parent check matters when a launcher
+  sits in between (the nvm-windows `node.exe` shim spawns the real node). Verified on Windows
+  2026-10-21, including force-killing the shim alone; **not yet verified on Linux**.
 - **The server pings the extension socket every 30 s and terminates it on a missed pong** — browsers
   answer pings automatically, so a missed pong means Chrome (or the offscreen document) is gone. Without
   this the `Bridge` keeps a stale connection and every call waits the full 30 s timeout. Tests use
