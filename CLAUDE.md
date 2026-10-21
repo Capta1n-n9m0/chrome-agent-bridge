@@ -188,3 +188,9 @@ by `docs/e2e-test-plan.md` against real Chrome. New pure logic → write a faili
 ## Docs
 `docs/specs/…-design.md` (design), `docs/plans/…` (impl plan), `docs/setup.md` (install/usage),
 `docs/e2e-test-plan.md` (manual suite + fixture), `docs/progress-and-roadmap.md` (status + roadmap).
+
+**Decided, not yet built (2026-10-21):** `server/` becomes a persistent shared **daemon**, a TypeScript
+**SDK** lets scripts drive the browser, the MCP becomes an SDK client, and several actors work on
+different tabs in parallel — `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`, plans
+`docs/plans/2026-10-21-step6…`, `…step7…`, `…step8…`. Until Step 6 lands, don't add coupling to
+`server/` that the `daemon/ sdk/ mcp/` split would undo, and treat "one session at a time" as temporary.

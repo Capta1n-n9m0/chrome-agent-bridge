@@ -280,8 +280,19 @@ measured, though DPR 1.25 and 1.5 both needed no correction.
 
 **The three planned steps of 2026-09-03 are all executed:** `docs/plans/2026-09-03-step1-phase-c-e2e-verification.md`
 (✅ 13/13), `…step2-phase-d-action-fidelity.md` (✅ D1+D2, 2 bugs fixed; D3 not started),
-`…step3-phase-b-robustness.md` (✅ 6/6). Next candidates, in suggested order: **Phase E** safety
-(arm/disarm), **D3** file upload, then Phase F ergonomics.
+`…step3-phase-b-robustness.md` (✅ 6/6).
+
+**Next (decided 2026-10-21): the daemon / SDK / multi-actor re-architecture** —
+`docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`. The MCP-owned WebSocket host becomes a
+persistent, shared **daemon** (started by whoever knocks first, idle-exit, build-hash handover); a
+TypeScript **SDK** lets Claude-written scripts drive the same logged-in Chrome; the MCP becomes an SDK
+client; several actors work on different tabs in parallel (handles, leases, a visibility lock only for
+screenshots); the extension returns data and errors carry codes; the MCP's current tab no longer
+follows the human. Three plans, in order: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`
+(daemon + `daemon/ sdk/ mcp/` split), `…step7-multi-actor-tabs.md` (tabId everywhere, handles, leases,
+lock, structured results), `…step8-sdk-surface-and-mcp-cursor.md` (locators, typed `Tab`, failure
+reports, `browser_use_active_tab`, first recipes). Phase E safety, D3 file upload and the remaining
+Phase F items follow after.
 
 **Phase A — Validate & ship.** ✅ Done (2026-06-04) — see §0. 29 E2E cases passed; 3 runtime bugs
 fixed; merged to `main`; published on GitHub (private at the time; public + MIT since 2026-09-03). Remaining: deferred soak tests
