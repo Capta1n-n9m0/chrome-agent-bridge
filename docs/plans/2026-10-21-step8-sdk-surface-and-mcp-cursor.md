@@ -135,6 +135,11 @@ type Target = string /* ref */ | Locator;
 on the cursor (`b.click(...)`). `trusted` actions: **if BG-1/BG-2 passed**, no focus; **if they
 failed**, `Tab.click({trusted:true})` calls `focus()` first and documents the flash.
 
+*Amended 2026-10-21:* a reconnect after close 4002 (daemon handover or restart) **clears the cursor**,
+because the daemon renumbers handles (Step 7 plan 0.2). The next `tab()` or mirrored call throws
+`NO_CURSOR`; an explicit stale handle returns `TAB_UNKNOWN` (decisions.md · 2026-10-21 · The SDK
+clears its cursor when it reconnects after a daemon restart).
+
 ### 0.5 Failure reports (`sdk/src/error.ts`)
 
 Every SDK call wraps the wire `BridgeError`. For codes where a page state helps —
@@ -151,7 +156,13 @@ which is acceptable.
 
 ### 0.6 MCP cursor: does not follow the human
 
-- Actor name `claude-code #<ppid>`. Cursor: first tab-touching tool without `tab` → `claim({active:true})`.
+- Actor name `claude-code #<pid>` (the MCP's own `process.pid`; *Superseded 2026-10-21: was `#<ppid>`,
+  because under the nvm-windows shim the parent is the shim — decisions.md · 2026-10-21 · The actor
+  name carries the MCP's own process id*). Cursor: first tab-touching tool without `tab` →
+  `claim({active:true})`. A cursor cleared by a daemon restart (0.4, amended) is treated like first
+  touch, and the next tool result opens with one line saying the daemon restarted and which handle is
+  now held (decisions.md · 2026-10-21 · The SDK clears its cursor when it reconnects after a daemon
+  restart).
 - Then **stays** on that handle. New tool `browser_use_active_tab`: "the user opened/switched to a tab
   and wants me there" → `claim({active:true})` + cursor; it is the *only* way the cursor follows the
   human. The tool description says exactly when to call it ("the user says 'this tab' / 'the tab I
@@ -219,7 +230,8 @@ no `import`/`export` (`grep -c "^import\|^export" extension/dist/content.js` →
 - [ ] `handlers/wait.ts`: `locator` + `state` branch (§0.2).
 - [ ] `handlers/evaluate.ts` + `evaluate/mark.ts` (pure `markScript`): `asRef` (§0.3).
 - [ ] `tabs.ts`: delete the `activeTab()` fallback in `targetTab` (migration over); `BAD_PARAMS` when
-      `tabId` is missing.
+      `tabId` is missing. Also remove the `selectTab` alias of `focusTab` from `sw.ts` (*added
+      2026-10-21*; decisions.md · 2026-10-21 · selectTab stays as an alias of focusTab for one release).
 - [ ] `router.test.ts` / `actions.test.ts` cover the resolution path with a fake `locate`.
 
 **Lane:** `extension/src/handlers/`, `extension/src/tabs.ts`, `extension/src/evaluate/`,
@@ -241,8 +253,9 @@ work; the extension must be reloaded before S6 (G8-2).
 - [ ] `sdk/src/tab.ts` (§0.4) and `client.ts` cursor methods; `screenshot({path})` writes the PNG and
       returns the path; `download` wraps `downloadToFile`.
 - [ ] Tests: every `Tab` method sends the expected `{method, params}` with `tab: handle`; cursor
-      semantics; `NO_CURSOR`; `trusted` → `focus()` first *iff* the BG flag says so (a constant in
-      `sdk/src/policy.ts`, set from the Step 7 findings).
+      semantics; `NO_CURSOR`; a 4002 reconnect clears the cursor (*added 2026-10-21*); `trusted` →
+      `focus()` first *iff* the BG flag says so (a constant in `sdk/src/policy.ts`, set from the Step 7
+      findings).
 
 **Lane:** `sdk/src/`, `sdk/test/`. **Parallel with:** S1. **Verifier focus:** the `policy.ts` constant
 cites the Step 7 E2E rows (BG-1/BG-2) it was set from, in a comment and in the stage report — if the
@@ -295,7 +308,12 @@ SDK rows with expected results beforehand; the measurements are taken with the u
 - [ ] **SDK-2** `LOCATOR_NOT_FOUND` report: misspell a name → the report names the nearest candidates,
       saves a screenshot, prints the snapshot window.
 - [ ] **SDK-3** `LOCATOR_AMBIGUOUS` → matches listed; `nth` fixes it.
-- [ ] **SDK-4** `waitFor({locator})` on the fixture's delayed button; `state:"hidden"` after dismissing.
+- [ ] **SDK-4** `waitFor({locator: {text: …}})` on the message that the fixture's `#load-later`
+      ("Load message in 1.5s") makes appear; `state:"hidden"` after removing that element with
+      `evaluate`. *Superseded 2026-10-21: was "the fixture's delayed button; `state:"hidden"` after
+      dismissing", because the fixture has no delayed button and `{text}` has no other row —
+      decisions.md · 2026-10-21 · Step 8 SDK-4 waits for the fixture's delayed text with a {text}
+      locator.*
 - [ ] **SDK-5** `evaluateRef("document.querySelector('#email')")` → ref → `click({trusted:true})`
       lands (`isTrusted` reporter).
 - [ ] **SDK-6** `boot-bb.ts` on a live course tab → `bb.VERSION` printed; the skill's old boot not used.
@@ -303,7 +321,9 @@ SDK rows with expected results beforehand; the measurements are taken with the u
       the MCP `browser_evaluate` path.
 - [ ] **SDK-8** MCP cursor: Claude working on T1, human switches to Gmail, Claude clicks → lands on T1;
       user says "use this tab" → Claude calls `browser_use_active_tab` → status shows the new cursor.
-- [ ] Regression smoke across Steps 6–8: MUX-2, LEASE-1, SCREEN-1, ACT-1…3, TRUST-2, EVAL-1, NET-1, DL-1.
+- [ ] Regression smoke across Steps 6–8: MUX-2, LEASE-1, SCREEN-1, ACT-1…3, TRUST-2, EVAL-1, NET-1, DL-1
+      (DL-1 is written by Step 6's D6; decisions.md · 2026-10-21 · Step 6 writes the DL rows for
+      browser_download before its D6 wave).
 
 **Lane:** `recipes/`, root `package.json` (`tsx`, `recipe` script), `docs/e2e-test-plan.md`,
 `.gitignore` (`exports/` — see Human gates). **Parallel with:** sequential, after S5. **Verifier focus
@@ -324,7 +344,11 @@ saying "use this tab" (SDK-8), a second session for MUX-2/LEASE-1.
 - [ ] `blackboard-ultra` skill (its own repo): boot sequence → `npm run recipe -- recipes/blackboard/boot-bb.ts`
       (or the SDK snippet); keep the old path documented as a fallback for one release.
 - [ ] `docs/progress-and-roadmap.md`: Step 8 entry; the roadmap's Phase F items this closes
-      (element-visible wait, node→ref, args-less evaluate data) and what remains (console capture, D3 upload).
+      ("`wait_for` variants (element-visible …)" and "Return a `[ref=eN]` for a `kind:"node"` result",
+      by the roadmap's own wording) and what remains (`args` for `browser_evaluate`, console capture,
+      D3 upload). *Superseded 2026-10-21: was "element-visible wait, node→ref, args-less evaluate
+      data", because nothing in Step 8 adds `args` to `browser_evaluate` — decisions.md · 2026-10-21 ·
+      Step 8 S7 names only the Phase F items Step 8 closes.*
 - [ ] Commits per Part: `feat(extension): locators resolved by the snapshot's rules; waitFor locator;
       evaluate asRef`, `feat(sdk): typed Tab API with cursor and locators`, `feat(sdk): failure reports
       with snapshot, screenshot and network`, `feat(mcp): cursor that does not follow the human;
@@ -364,7 +388,8 @@ step's baseline is Step 7's closing test count (recorded in Step 7's as-built) a
 
 **S2**
 - S2.1 `npm test` after ≥ before + the resolution-path tests; typecheck green.
-- S2.2 `grep -rn "activeTab" extension/src` returns nothing.
+- S2.2 `grep -rn "activeTab" extension/src` returns nothing; `grep -n "selectTab" extension/src`
+  returns nothing (the alias is gone; *added 2026-10-21*).
 - S2.3 Tests cover: each of `click/type/hover/scroll/selectOption/pressKey` with `ref` and with
   `locator` through a fake `locate`; `waitFor {locator}` polling at 100 ms with the 10 s default and
   `state: "hidden"` resolving on `LOCATOR_NOT_FOUND`; `markScript` output; `targetTab` → `BAD_PARAMS`
@@ -377,7 +402,8 @@ step's baseline is Step 7's closing test count (recorded in Step 7's as-built) a
 - S3.2 `sdk/src/policy.ts` exists, its constant's comment cites BG-1/BG-2 with their recorded result,
   and `docs/decisions.md` has the dated entry (session agent writes it).
 - S3.3 Tests cover: every `Tab` method's exact `{method, params}` with `tab: handle`; `newTab` and
-  `claim` set the cursor; `tab()` without a cursor → `NO_CURSOR` with the stated text; `trusted` →
+  `claim` set the cursor; `tab()` without a cursor → `NO_CURSOR` with the stated text; a reconnect
+  after close 4002 clears the cursor (*added 2026-10-21*); `trusted` →
   `focus()` first iff the policy constant says so; `normalizeTarget` rejects `{name}` alone with the
   friendly message.
 - S3.4 `sdk/src/index.ts` exports `Tab`, `connect`, `BridgeClient`, `BridgeError`, `ErrorCodes`,
@@ -477,30 +503,32 @@ similarity metric's internals, test file placement, the `report()` wording.
 Findings for the Stage-0 spec audit (which also re-examines Step 7's as-built register by execution),
 what the plan leaves open, who decides, revisit triggers, and the keyboard summary.
 
-**Findings for the Stage-0 audit**
-- SDK-4 names "the fixture's delayed button". `test-fixtures/e2e-playground.html` has no delayed
-  *button*: `#load-later` ("Load message in 1.5s", line 117) makes *text* appear 1.5 s after a click
-  (line 250). Either the fixture gains a delayed button (the fixture is not in this plan's Files touched)
-  or SDK-4 targets the delayed text with a `{text}` locator. The audit decides and assigns the stage.
-- The regression smoke cites `DL-1`; `docs/e2e-test-plan.md` has no `DL-*` rows (same finding as
-  Steps 6 and 7).
-- Actor name `claude-code #<ppid>` (0.6) vs `#<pid>` in spec §8.3 — carried from Step 6's audit.
+**Findings for the Stage-0 audit** (ruled with the user on 2026-10-21 where marked; the audit
+re-checks each ruling's premise by execution and raises a finding only if a premise is wrong)
+- *Ruled 2026-10-21:* SDK-4 targets the delayed text with a `{text}` locator; no fixture change
+  (`#load-later`, line 117, makes text appear 1.5 s after a click, line 250) — decisions.md ·
+  2026-10-21 · Step 8 SDK-4 waits for the fixture's delayed text with a {text} locator.
+- *Ruled 2026-10-21:* Step 6's D6 writes DL-1 and DL-2 before its wave; the cite stays (decisions.md ·
+  2026-10-21 · Step 6 writes the DL rows for browser_download before its D6 wave).
+- *Ruled 2026-10-21:* the actor name is `claude-code #<pid>` with the MCP's own `process.pid`; 0.6
+  corrected (decisions.md · 2026-10-21 · The actor name carries the MCP's own process id).
 - S1 says "reuse the Step C fixtures": the fixtures are those of Phase C (`extension/test/snapshot.test.ts`,
   shadow DOM and frame cases, line 111 onward). Naming only.
-- S7 cites roadmap "Phase F items … args-less evaluate data". `docs/progress-and-roadmap.md` (Phase F,
-  line 331 onward) lists "`args` for `browser_evaluate`" and "Return a `[ref=eN]` for a `kind:"node"`
-  result" and "`wait_for` variants (element-visible …)". The `args` item is not closed by this step as
-  written (nothing here adds `args` to `browser_evaluate`); the roadmap entry must name only what the
-  step closes.
+- *Ruled 2026-10-21:* S7's roadmap entry names only "`wait_for` variants (element-visible …)" and
+  "Return a `[ref=eN]` for a `kind:"node"` result"; `args` for `browser_evaluate` stays open in Phase F
+  (decisions.md · 2026-10-21 · Step 8 S7 names only the Phase F items Step 8 closes).
 - SDK-5 and `hello.ts` cite fixture elements that exist: `#email` (line 31), the "Sign in" submit button
   `#submit-btn` (line 49), the `isTrusted` reporter (lines 155–166).
 - `Tab.network({…} | {id})` mirrors `browser_network_requests`'s parameters including `id`
   (`server/src/tools/registry.ts:247–252`) — consistent.
 - 0.4 lists `Tab.release()` and `close()`; the daemon's `tabs.release` and `closeTab` come from Step 7
   T2 — verified by execution in the audit.
-- Handles are renumbered after a daemon restart (Step 7 0.2); `b.tab()` after a handover holds a dead
-  handle. The audit decides whether `BridgeClient` clears the cursor on reconnect (then `NO_CURSOR`
-  tells the script what to do) — a build decision if both options stay reachable.
+- *Ruled 2026-10-21:* `BridgeClient` clears the cursor on a 4002 reconnect; `NO_CURSOR` tells the
+  script what to do, the MCP re-claims the active tab like first touch with a one-line notice (0.4 and
+  0.6 amended; S3 and S3.3 extended; decisions.md · 2026-10-21 · The SDK clears its cursor when it
+  reconnects after a daemon restart).
+- *Ruled 2026-10-21:* S2 also removes the `selectTab` alias Step 7 T3 keeps (decisions.md ·
+  2026-10-21 · selectTab stays as an alias of focusTab for one release).
 
 **Left open by design:** console capture, D3 upload as `Tab.upload`, a Python SDK, generation-stamped
 refs, `tabs.claim {wait:true}`, session recording (follow-ups).

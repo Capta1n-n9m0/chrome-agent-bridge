@@ -1,8 +1,8 @@
 # Progress & Roadmap
 
-- **Date:** 2026-09-07
+- **Date:** 2026-10-21
 - **Branch:** `main` (merged from `feat/agent-bridge`; public on GitHub, MIT, since 2026-09-03)
-- **Status:** Phases A–D complete plus Step 4 (`browser_evaluate`) and Step 5 (network inspection); **256 unit tests green**; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. `main`, **public on GitHub (MIT) since 2026-09-03**. **20 tools.**
+- **Status:** Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **21 tools, 301 unit tests green** (`npm test` on `e60a83a`, 2026-10-21); **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`); nothing of Step 6 is built.**
 
 ---
 
@@ -293,6 +293,15 @@ follows the human. Three plans, in order: `docs/plans/2026-10-21-step6-daemon-an
 lock, structured results), `…step8-sdk-surface-and-mcp-cursor.md` (locators, typed `Tab`, failure
 reports, `browser_use_active_tab`, first recipes). Phase E safety, D3 file upload and the remaining
 Phase F items follow after.
+
+*Updated 2026-10-21 (wave W0, `docs/plans/handoffs.md`):* the three plans are phase docs under the
+`long-run` method (decisions.md · 2026-10-21 · Steps 6–8 run under the long-run contract); the
+findings their Stage-0 audits were to settle were ruled with the user and recorded in
+`docs/decisions.md` (actor name `#<pid>`; `selectTab` alias for one release; `extensionStatus` owned
+by D2; DL rows for `browser_download` written by Step 6; the popup button in Step 7 T1; SDK-4's
+`{text}` locator; one daemon handover per `connect()` then `VERSION`; the cursor cleared on a 4002
+reconnect; Opus 5.5 for every Step 6 agent). The Step 6 kickoff is `docs/plans/next-session-prompt.md`;
+Step 6 starts by pasting it into a fresh session that does not use the bridge MCP. Nothing is built.
 
 **Phase A — Validate & ship.** ✅ Done (2026-06-04) — see §0. 29 E2E cases passed; 3 runtime bugs
 fixed; merged to `main`; published on GitHub (private at the time; public + MIT since 2026-09-03). Remaining: deferred soak tests

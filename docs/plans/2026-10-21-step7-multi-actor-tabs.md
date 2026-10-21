@@ -98,6 +98,14 @@ name). Dead handles are kept 1 h / 1 000 entries for the `TAB_GONE` message. Han
 persisted — a daemon restart renumbers (the SDK's cursor is re-established by the script's own
 `newTab`/`claim`; documented).
 
+*Amended 2026-10-21:* what happens to a cursor after the renumbering is decided, not just
+documented: `BridgeClient` clears its cursor when it reconnects after close 4002 (a script then gets
+`NO_CURSOR`, Step 8), and the MCP treats a missing cursor like first touch — it claims the human's
+active tab and prefixes the next tool result with one line saying the daemon restarted and which
+handle it now holds. A stale handle passed explicitly as `tab` still returns `TAB_UNKNOWN`
+(decisions.md · 2026-10-21 · The SDK clears its cursor when it reconnects after a daemon restart).
+T4's cursor rule below inherits this.
+
 ### 0.3 Leases (`daemon/src/leases.ts`, pure)
 
 `LeaseTable`: `grant(handle, clientId, reason)`, `release(handle)`, `releaseAll(clientId)`,
@@ -185,8 +193,10 @@ T3/T4 will change — list them; no guard accepts an event without a `params` ob
 ### Stage T1 — Extension: `tabId`, codes, events (no behaviour change when `tabId` is absent)
 
 - [ ] `tabs.ts`: `targetTab(p)` (§0.1); replace every `activeTab()` call in `handlers/*` with it
-      (`actions.ts` ×5, `perceive.ts` ×2, `navigate.ts`, `history.ts` ×2, `wait.ts` ×2, `evaluate.ts`,
-      `network.ts`).
+      (`actions.ts` ×4, `perceive.ts` ×2, `navigate.ts`, `history.ts` ×2, `wait.ts` ×2, `evaluate.ts`,
+      `network.ts` — 13 in all). *Superseded 2026-10-21: was `actions.ts ×5`, because the file has 4
+      (lines 6, 12, 39, 85; re-counted on commit `e60a83a`) — decisions.md · 2026-10-21 · Step 7 T1's
+      `activeTab()` count is 4 in actions.ts, 13 across handlers.*
 - [ ] `errors.ts` + `router.ts` + `inject.ts` (`CODE:message` split) + `debugger-errors.ts` (§0.6);
       update `router.test.ts`, `inject.test.ts`, `debugger-errors.test.ts`, `actions.test.ts`.
 - [ ] `sw.ts`: `chrome.tabs.onCreated` → `tabCreated {tabId, openerTabId, url}`; `onRemoved` →
@@ -195,11 +205,17 @@ T3/T4 will change — list them; no guard accepts an event without a `params` ob
       `{event, params}` (no id). The network log's existing `onRemoved` listener stays.
 - [ ] Build + load against the Step 6 daemon: everything still works (daemon ignores events, extension
       falls back to the active tab). Record in the commit.
+- [ ] `test-fixtures/e2e-playground.html`: an "open popup" button that opens a fixture page with
+      `target="_blank"` (so `tabCreated` carries `openerTabId`), for row LEASE-3. *Added 2026-10-21:
+      the button was in Files touched but no stage added it — decisions.md · 2026-10-21 · Step 7 T1
+      adds the fixture's "open popup" button.*
 
-**Lane:** `extension/src/`, `extension/test/`. **Parallel with:** T2. **Verifier focus:**
+**Lane:** `extension/src/`, `extension/test/`, `test-fixtures/e2e-playground.html` (*granted
+2026-10-21* for the popup button). **Parallel with:** T2. **Verifier focus:**
 `grep -rn "activeTab()" extension/src/handlers` returns nothing after the change (the call sites today
 are 13: `handlers/actions.ts` lines 6, 12, 39, 85; `perceive.ts` ×2; `navigate.ts`; `history.ts` ×2;
-`wait.ts` ×2; `evaluate.ts`; `network.ts` — the plan's "×5" for `actions.ts` is stale, see Open items);
+`wait.ts` ×2; `evaluate.ts`; `network.ts`); the popup button's `target="_blank"` page is a fixture
+file, not an external URL;
 `unwrapResult` still treats null **or** undefined as failure (`CLAUDE.md` invariant) and now throws
 `REF_STALE`; the three `chrome.tabs` listeners are registered at the top level of `sw.ts`,
 synchronously, with no top-level `await` (`CLAUDE.md` gotchas); the content script is still an IIFE
@@ -242,7 +258,10 @@ guard covers it). **Needs the user's keyboard:** no.
       `mode:"cdp"` → `Page.captureScreenshot` viewport via `withDebugger(tabId, …, "Screenshot")`;
       default → `activateForCapture` (§0.5).
 - [ ] `handlers/tabs.ts`: `newTab {url, active?}` default `false`; new `focusTab {tabId}`; `selectTab`
-      **removed** from the extension (it was "activate + focus window"; `focusTab` is its honest name);
+      **kept as an alias of `focusTab` for one release** (it was "activate + focus window"; `focusTab`
+      is its honest name; Step 8 S2 removes the alias with the `activeTab()` fallback) — *Superseded
+      2026-10-21: was "removed from the extension", which contradicted the last checkbox below;
+      decisions.md · 2026-10-21 · selectTab stays as an alias of focusTab for one release*;
       `listTabs` adds `windowId`, `openerTabId?`.
 - [ ] `handlers/network.ts`: return `query` result without `text`; `network-log.ts` `format` + its
       tests move (T4).
@@ -268,8 +287,11 @@ wave (G7-2).
       it the MCP uses its cursor — **in this step** the cursor is simply "claim the active tab on first
       touch, then keep it" (Step 8 adds `browser_use_active_tab` and the status line); `browser_snapshot`
       renders with `formatSnapshot`; `browser_network_requests` with `formatNetwork`;
-      `browser_list_tabs` prints `T3* [claude-code #4412] Title — url`; `browser_select_tab {tab}` →
-      claim + cursor (no activation); new `browser_focus_tab`. Tool count 21 → 22.
+      `browser_list_tabs` prints `T3* [claude-code #4412] Title — url` (the number is the MCP's own
+      `process.pid`; decisions.md · 2026-10-21 · The actor name carries the MCP's own process id);
+      `browser_select_tab {tab}` → claim + cursor (no activation); new `browser_focus_tab`. Tool count
+      21 → 22. A cursor lost to a daemon restart (0.2, amended) is re-claimed like first touch, with the
+      one-line notice.
 - [ ] `tools.test.ts` updated: fake client records `tab` resolution; `TAB_HELD` renders the owner.
 
 **Lane:** `sdk/src/`, `sdk/test/`, `mcp/src/`, `mcp/test/`, plus the test cases moved from
@@ -310,11 +332,12 @@ their expected results into `docs/e2e-test-plan.md` beforehand.
 - [ ] **BG-3** `evaluate` clipboard write in a background tab → expected `NotAllowedError`; after
       `browser_focus_tab` → works.
 - [ ] **BG-4** `waitFor {text}` and `networkIdle` on a background tab → work (timers throttled but fine).
-- [ ] Regression smoke: PERC-1…4, ACT-1…3, TRUST-2, EVAL-1, NET-1, DL-1 — via handles.
+- [ ] Regression smoke: PERC-1…4, ACT-1…3, TRUST-2, EVAL-1, NET-1, DL-1 — via handles (DL-1 is
+      written by Step 6's D6; decisions.md · 2026-10-21 · Step 6 writes the DL rows for
+      browser_download before its D6 wave).
 
-**Lane:** `docs/e2e-test-plan.md`, `test-fixtures/e2e-playground.html` (the "open popup" button
-LEASE-3 needs — see Open items for which stage adds it), `recipes/hello.ts` (its 30 s typing variant
-for LEASE-2). **Parallel with:** sequential, after T4. **Verifier focus (wave):** every row's expected
+**Lane:** `docs/e2e-test-plan.md`, `recipes/hello.ts` (its 30 s typing variant for LEASE-2). The
+"open popup" button LEASE-3 needs is added by T1 (*ruled 2026-10-21*). **Parallel with:** sequential, after T4. **Verifier focus (wave):** every row's expected
 text is written before the run; SCREEN-1's flash is a measured number with its method; BG-1/BG-2 are
 recorded as facts either way because Step 8's `sdk/src/policy.ts` constant is set from them; LEASE-1
 and LEASE-4 need two real sessions, so the evidence names both actor names. **Needs the user's
@@ -367,8 +390,10 @@ step's baseline is Step 6's closing test count (recorded in Step 6's as-built) a
 - T1.4 `grep -n "await" extension/src/sw.ts` shows no top-level `await`; the three `chrome.tabs.on*`
   listeners are registered at the top level.
 - T1.5 `grep -rnE "console\.(log|warn|error)\(.*(url|lastUrl|href)" extension/src` returns nothing.
-- T1.6 The last checkbox (load against the Step 6 daemon) is either recorded with the user (G7-1) or
+- T1.6 The "load against the Step 6 daemon" checkbox is either recorded with the user (G7-1) or
   explicitly deferred to T5 in the stage report.
+- T1.7 `grep -n '_blank' test-fixtures/e2e-playground.html` finds the popup button, and its target is
+  a fixture page, not an external URL (*added 2026-10-21*).
 
 **T2**
 - T2.1 `npm test` after ≥ before + the handles/leases/lock/intercept/route tests; typecheck green.
@@ -394,8 +419,8 @@ step's baseline is Step 6's closing test count (recorded in Step 6's as-built) a
   appears only in `focusTab`.
 - T3.4 `grep -n "active: true" extension/src/handlers/tabs.ts` appears only in `focusTab` (and
   `newTab` only when `p.active` is true).
-- T3.5 `sw.ts` registers `focusTab`, and `selectTab` resolves to the same handler (alias) — or the
-  audit has resolved the contradiction in Open items and the report says which.
+- T3.5 `sw.ts` registers `focusTab`, and `selectTab` resolves to the same handler (alias). *Settled
+  2026-10-21: alias for one release, removed in Step 8 S2.*
 
 **T4**
 - T4.1 `npm test` after ≥ before + the formatter fixture test; typecheck and build green.
@@ -442,8 +467,8 @@ step's baseline is Step 6's closing test count (recorded in Step 6's as-built) a
   confirm). The BG-1/BG-2 outcome is a **Step 8 input**: Step 8's kickoff cannot set `sdk/src/policy.ts`
   without it.
 - **G7-3 — the "open popup" fixture button.** Adding it to `test-fixtures/e2e-playground.html` is in
-  the repo and needs no gate; serving the fixture (`python -m http.server 8080 --directory
-  test-fixtures`) and clicking it in the real profile is part of G7-2.
+  the repo and needs no gate (T1 adds it, *ruled 2026-10-21*); serving the fixture (`python -m
+  http.server 8080 --directory test-fixtures`) and clicking it in the real profile is part of G7-2.
 - **Standing gates:** any loosening of the lease or lock semantics in a direction that lets one actor act
   on another's tab is a contract change — stop; never push; no evidence with real-site content.
 
@@ -480,27 +505,27 @@ on module layout inside `daemon/src/` or `extension/src/`.
 Findings for the Stage-0 spec audit (which also re-examines Step 6's as-built register by execution),
 what the plan leaves open, who decides, revisit triggers, and the keyboard summary.
 
-**Findings for the Stage-0 audit**
-- T3 says `selectTab` is **removed** from the extension, and T3's last checkbox keeps `selectTab` as an
-  alias to `focusTab` for one release. Both cannot hold; the audit picks one and the T3 report records
-  it (exit check T3.5).
+**Findings for the Stage-0 audit** (ruled with the user on 2026-10-21 where marked; the audit
+re-checks each ruling's premise by execution and raises a finding only if a premise is wrong)
+- *Ruled 2026-10-21:* `selectTab` stays as an alias of `focusTab` for one release; Step 8 S2 removes
+  it (T3 and T3.5 amended; decisions.md · 2026-10-21 · selectTab stays as an alias of focusTab for one
+  release).
 - 0.3 marks `networkClear` as lease-checked with an explicit note of doubt ("hmm"). The spec §6.3 lists
   only `listTabs`, `networkRequests` and `daemon.status` as free, so "checked" is consistent with the
-  spec; the audit confirms and the doubt is closed.
-- T1 lists `actions.ts ×5` `activeTab()` calls; `extension/src/handlers/actions.ts` has 4 (lines 6, 12,
-  39, 85). Total call sites across handlers today: 13.
-- The regression smoke cites `DL-1`; `docs/e2e-test-plan.md` has no `DL-*` rows (same finding as
-  Step 6). A download row must be written before the wave.
-- The fixture's "open popup" button (LEASE-3) is in Files touched but no Part adds it. The audit assigns
-  it to a stage (T1 or T3 lane, `test-fixtures/`).
-- Actor name `claude-code #<pid>` (spec §8.3, the `#4412` examples) vs `process.ppid` (Step 6 D5) —
-  carried from Step 6's audit; the `browser_list_tabs` format in T4 prints whichever Step 6 settled.
-- 0.2: handles are not persisted, so a daemon restart (idle exit, handover) renumbers every tab. A
-  Claude session's cursor handle becomes `TAB_UNKNOWN` after a handover mid-session. The plan says
-  "documented"; the audit decides whether the MCP re-claims the active tab on `TAB_UNKNOWN` (a Step 8
-  cursor question) or the user is told.
+  spec; the audit confirms and the doubt is closed. (Not put to the user: consistent with the spec.)
+- *Ruled 2026-10-21:* `actions.ts` has 4 `activeTab()` calls, 13 across handlers; T1 corrected
+  (decisions.md · 2026-10-21 · Step 7 T1's `activeTab()` count is 4 in actions.ts, 13 across handlers).
+- *Ruled 2026-10-21:* Step 6's D6 writes DL-1 and DL-2 before its wave; the cite stays (decisions.md ·
+  2026-10-21 · Step 6 writes the DL rows for browser_download before its D6 wave).
+- *Ruled 2026-10-21:* T1 adds the "open popup" button; its lane gains `test-fixtures/` (decisions.md ·
+  2026-10-21 · Step 7 T1 adds the fixture's "open popup" button).
+- *Ruled 2026-10-21:* the actor name is `claude-code #<pid>` with the MCP's own `process.pid`
+  (decisions.md · 2026-10-21 · The actor name carries the MCP's own process id); T4 prints it.
+- *Ruled 2026-10-21:* after a daemon restart the SDK clears its cursor and the MCP re-claims the
+  active tab like first touch, with a one-line notice (0.2 amended; decisions.md · 2026-10-21 · The
+  SDK clears its cursor when it reconnects after a daemon restart).
 - T2 says `extensionStatus` is "already emitted (Step 6)" — verified by execution against Step 6's
-  as-built, not assumed (it is Step 6's exit check D2.7).
+  as-built, not assumed (it is Step 6's exit check D2.7 and, since 2026-10-21, a D2 checkbox).
 
 **Left open by design:** `tabs.claim {wait:true}`; read-only foreign snapshots; generation-stamped
 refs; `daemon.kick` (follow-ups).

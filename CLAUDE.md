@@ -15,10 +15,12 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
   `browser_download`; the server exits with its session. Public on GitHub (MIT).
 - **Next: Step 6 — daemon + protocol v2** (`docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`),
   then Step 7 (multi-actor tabs) and Step 8 (SDK surface + MCP cursor). Design of record:
-  `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`. **Not started.** Each step runs as an
-  autonomous phase under the `long-run` contract (decision 2026-10-21 "Steps 6–8 run under the
-  long-run contract"); the first action is to write its kickoff with the `phase-kickoff` skill
-  (`docs/plans/next-session-prompt.md` — does not exist yet).
+  `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`. **Not started; kickoff written.** Each
+  step runs as an autonomous phase under the `long-run` contract (decision 2026-10-21 "Steps 6–8 run
+  under the long-run contract"). **Next action: paste `docs/plans/next-session-prompt.md` into a fresh
+  session** that does not use the bridge MCP (stage D1 moves the MCP entry point). The plans' audit
+  findings were ruled on 2026-10-21 (wave W0, `docs/plans/handoffs.md`; entries in `docs/decisions.md`);
+  every Step 6 agent runs Opus 5.5.
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
 

@@ -43,7 +43,10 @@ a Python client; a daemon GUI or tray icon.
 
 **Files touched:**
 - `shared/src/protocol.ts` (v2 message types + guards), new `shared/src/codes.ts`, `shared/test/protocol.test.ts`
-- `server/` → **`daemon/`** (git `mv`): `wsHost.ts` (roles, welcome, registry), `connection.ts` (unchanged),
+- `server/` → **`daemon/`** (git `mv`): `wsHost.ts` (roles, welcome, registry), `connection.ts` (rejects with
+  a `BridgeError` carrying `code`, per 0.4 — *Superseded 2026-10-21: was "(unchanged)", because 0.4 is the
+  contract and the file list was stale; decisions.md · 2026-10-21 · connection.ts changes in Step 6, per
+  decision 0.4*),
   `handshake.ts` (role/name/build), new `registry.ts`, new `route.ts`, new `idle.ts`, new `build.ts`,
   new `log.ts`, `index.ts` (daemon entry), `startup.ts` (bind = lock: no retry in daemon mode);
   tests move with them
@@ -131,6 +134,15 @@ code `4002 "upgrading"`, closes the extension socket, exits. Clients that were c
 run `connect()` again (`BridgeClient` auto-reconnects on 4002 only; any other close is an error to the
 script — a script should not silently keep going on a different daemon).
 
+*Amended 2026-10-21:* `connect()` hands over **at most once**. If `welcome.build` still differs from
+the expected build after the client's own handover, `connect()` rejects with the spec §10 code
+`VERSION`, naming both builds — it never loops. Rule for users: every client on a machine points at
+one daemon build; `BRIDGE_DAEMON` is a development override. Two clients with different
+`BRIDGE_DAEMON` paths would otherwise hand the daemon back and forth forever (decisions.md ·
+2026-10-21 · One daemon handover per connect(), then a VERSION error). A client that reconnects after
+4002 also clears any tab cursor it holds (Step 7/8; decisions.md · 2026-10-21 · The SDK clears its
+cursor when it reconnects after a daemon restart).
+
 ### 0.8 Spawn details
 
 `spawn(process.execPath, [daemonPath], { detached: true, stdio: "ignore", windowsHide: true, env:
@@ -216,6 +228,10 @@ the baseline commit) — a pure move loses no test; the three root scripts cover
       to `{code, message, data}` (`NOT_CONNECTED`, `TIMEOUT`, extension errors passed through).
 - [ ] Extension events (`isEvent`) are accepted and ignored in this step (logged as a count), so a
       Step 7 extension against a Step 6 daemon does not spam errors.
+- [ ] Emit `extensionStatus {connected: true}` to every client when the extension hello arrives and
+      `{connected: false}` when the extension socket closes (D4's `waitForExtensionMs` and Step 7 T2
+      rely on it; exit check D2.7). *Added 2026-10-21: the item existed only as exit check D2.7 and
+      D4's "add in D2"; decisions.md · 2026-10-21 · Stage D2 emits the extensionStatus event.*
 - [ ] Tests: two clients + one fake extension — interleaved calls get their own ids back; a client
       disconnecting rejects only its pending calls; extension gone → every client's in-flight call
       rejects `NOT_CONNECTED`; `daemon.status` lists names; `daemon.shutdown` closes all with 4002;
@@ -257,7 +273,9 @@ call (it has no stdio); `EADDRINUSE` exits 0 without retrying (the bind is the l
 - [ ] `knock.ts`: the state machine of §0.7 as a pure function over an `io` object
       `{tryConnect, spawnDaemon, hashDaemon, sleep}`; tests: refused→spawn→connected; connected but
       stale→shutdown→spawn; two starters where spawn fails with EADDRINUSE → keep knocking; give up after
-      10 s with a message naming the log file.
+      10 s with a message naming the log file; **one handover per `connect()`** — a second build
+      mismatch rejects with `VERSION` naming both builds (*added 2026-10-21*, decisions.md ·
+      2026-10-21 · One daemon handover per connect(), then a VERSION error).
 - [ ] `spawn.ts`: the real `spawnDaemon` (§0.8). Not unit-tested; E2E.
 - [ ] `token.ts` (§0.9) + tests over a temp directory tree.
 - [ ] `connect({ name, waitForExtensionMs = 15000 })`: after welcome, if `!extensionConnected`, wait for
@@ -274,7 +292,10 @@ calls `unref()`. **Needs the user's keyboard:** no.
 
 ### Stage D5 — MCP over the SDK
 
-- [ ] `mcp/src/index.ts`: `const b = await connect({ name: \`claude-code #${process.ppid}\` })` —
+- [ ] `mcp/src/index.ts`: `const b = await connect({ name: \`claude-code #${process.pid}\` })` —
+      (*Superseded 2026-10-21: was `process.ppid`, because under the nvm-windows shim the parent is the
+      shim, not Claude Code; the spec §8.3 `#<pid>` stands — decisions.md · 2026-10-21 · The actor name
+      carries the MCP's own process id*) —
       **failure to connect must not crash the MCP** (same rule as the busy-port rule today): register the
       tools regardless, store the reason, surface it through every tool and `browser_status`, and retry
       `connect()` every 5 s. (`startup.ts`'s shape, reused for the SDK connection.)
@@ -315,8 +336,13 @@ the measurements are taken with the user.
 - [ ] **MUX-8** No Chrome: daemon up, Chrome closed → `connect()` fails after 15 s with the
       "is Chrome open" message; open Chrome → next `connect()` succeeds.
 - [ ] **MUX-9** Regression smoke: ACT-1/2, TRUST-2, EVAL-1, NET-1, DL-1 through the daemon.
+- [ ] **DL-1, DL-2** written before the run (*added 2026-10-21*): `browser_download` has no E2E row
+      yet. DL-1 — a plain download from the fixture server saved to disk, sha256 reported; DL-2 — a
+      cross-origin redirect followed by the service-worker fetch (the page could not). Expected text
+      first, as for the MUX rows (decisions.md · 2026-10-21 · Step 6 writes the DL rows for
+      browser_download before its D6 wave).
 
-**Lane:** `docs/e2e-test-plan.md` (§ MUX rows + the run record), `recipes/hello.ts`. **Parallel with:**
+**Lane:** `docs/e2e-test-plan.md` (§ MUX rows, the new § DL rows, the run record), `recipes/hello.ts`. **Parallel with:**
 sequential, last before D7. **Verifier focus (wave):** each row's expected text is written before the
 run; MUX-6 is judged by a process listing, not by the scripts' output alone; MUX-4's timing is measured
 with a timestamp, not estimated; the daemon.log produced during the wave is grepped for `://` and for
@@ -402,6 +428,8 @@ The baseline for the whole step is 301 tests (`CLAUDE.md`, `npm test`) and 21 to
 - D4.2 Tests cover: refused → spawn → connected; connected but stale build → shutdown → spawn →
   reconnected; spawn fails with `EADDRINUSE` → keeps knocking and succeeds; give-up after the injected
   10 s names `~/.chrome-agent-bridge/daemon.log`; close 4002 → reconnect; any other close → rejected;
+  a second build mismatch after the client's own handover → rejected with `VERSION` naming both
+  builds, no second handover (*added 2026-10-21*);
   `token.ts` env wins over the file, the file is found from a nested directory, a missing token throws
   before any socket and names both places.
 - D4.3 `sdk/src/index.ts` exports exactly `connect`, `BridgeClient`, `BridgeError`, `ErrorCodes`,
@@ -420,7 +448,8 @@ The baseline for the whole step is 301 tests (`CLAUDE.md`, `npm test`) and 21 to
   do differently (the MCP path, the daemon).
 
 **D6 (wave, with the user)**
-- D6.1 Rows MUX-1…9 exist in `docs/e2e-test-plan.md` with expected results written before the run.
+- D6.1 Rows MUX-1…9 and DL-1…2 exist in `docs/e2e-test-plan.md` with expected results written before
+  the run (*DL rows added 2026-10-21*).
 - D6.2 Each row's result is recorded with the command and the observed text; MUX-6 evidence is a
   process listing showing one daemon; MUX-4 evidence is two timestamps.
 - D6.3 The attached `daemon.log` excerpt contains no `://` and not the token (grep both).
@@ -477,7 +506,8 @@ layout, test structure) — decided and recorded per `long-run` §3.
 - logging a URL, header value, body or token — including "temporarily, to debug the daemon";
 - making the daemon retry the bind (the bind is the lock, 0.7/spec §9.3) or exit non-zero on
   `EADDRINUSE`;
-- making `BridgeClient` reconnect on any close code other than 4002;
+- making `BridgeClient` reconnect on any close code other than 4002, or letting `connect()` attempt a
+  second handover instead of failing with `VERSION` (*added 2026-10-21*);
 - letting the MCP crash when `connect()` fails (D5's no-crash rule), or removing the 5 s retry;
 - editing a test's expected message text to match a changed error instead of keeping the message
   (0.4: existing message-matching tests keep passing).
@@ -487,26 +517,27 @@ layout, test structure) — decided and recorded per `long-run` §3.
 Findings for the Stage-0 spec audit (not fixed here; the audit resolves them before stage 1), what
 the plan leaves open, who decides, and what needs the user's keyboard.
 
-**Findings for the Stage-0 audit**
-- D4 requires the daemon to emit `extensionStatus {connected:true}` to clients "(add in D2)", but D2's
-  checkbox list does not mention the event. Pre-registered here as exit check D2.7; the audit confirms
-  D2 owns it. Step 7 T2 relies on it ("`extensionStatus` already emitted (Step 6)").
-- Actor name: spec §8.3 says `claude-code #<pid>`; D5 uses `process.ppid` (Step 8 0.6 also says
-  `#<ppid>`). Under the nvm-windows shim the MCP's parent is the shim, not Claude Code
-  (`CLAUDE.md` lifecycle gotcha), so `ppid` names the shim. The audit decides which id the name should
-  carry; the session agent records it (a naming decision, build-level, but it appears in the spec).
-- "Files touched" lists `connection.ts (unchanged)`, while 0.4 makes `ExtensionConnection`
-  (`server/src/connection.ts:14`) reject with a `BridgeError` carrying `code`. One of the two is stale.
-- MUX-9 cites regression row `DL-1`; `docs/e2e-test-plan.md` has no `DL-*` rows (its IDs are ACT,
-  TRUST, EVAL, NET, PERC, TAB, WAIT, HIST, NAV). `browser_download` (commit eec05a0) has no E2E row
-  yet; the wave needs one written before the run.
+**Findings for the Stage-0 audit** (ruled with the user on 2026-10-21 where marked; the audit
+re-checks each ruling's premise by execution and raises a finding only if a premise is wrong)
+- *Ruled 2026-10-21:* the `extensionStatus` emit is a D2 checkbox, tested by D2.7 (decisions.md ·
+  2026-10-21 · Stage D2 emits the extensionStatus event). Step 7 T2 relies on it.
+- *Ruled 2026-10-21:* the actor name is `claude-code #<pid>` with the MCP's own `process.pid`, as spec
+  §8.3 says; D5 corrected (decisions.md · 2026-10-21 · The actor name carries the MCP's own process id).
+- *Ruled 2026-10-21:* `connection.ts` changes per 0.4; the "Files touched" line corrected (decisions.md ·
+  2026-10-21 · connection.ts changes in Step 6, per decision 0.4).
+- *Ruled 2026-10-21:* D6 writes DL-1 and DL-2 for `browser_download` (commit eec05a0) before the wave;
+  the `DL-1` cite stays (decisions.md · 2026-10-21 · Step 6 writes the DL rows for browser_download
+  before its D6 wave). `docs/e2e-test-plan.md` families today: ACT, CONN, EVAL, HIST, NAV, NET, PERC,
+  REAL, SEC, SMOKE, STAT, TAB, TRUST, WAIT.
 - `bridge.token` is gitignored but today `server/src/config.ts` reads only `BRIDGE_TOKEN`; 0.9 adds the
-  file lookup. `docs/setup.md` must state the precedence (env wins) in D5/D7.
-- Blind spot: two clients with different `BRIDGE_DAEMON` paths (0.5) would each see a build mismatch
-  and hand the daemon over to each other in turn. Spec §12 does not cover it. The audit decides whether
-  a rule is needed; if none, it is recorded as a known limitation.
+  file lookup. `docs/setup.md` must state the precedence (env wins) in D5/D7. (Not a ruling: a work
+  item the audit confirms is scheduled.)
+- *Ruled 2026-10-21:* the blind spot of two clients with different `BRIDGE_DAEMON` paths is closed by
+  "one handover per `connect()`, then `VERSION`" (0.7 amended; D4 and D4.2 extended; decisions.md ·
+  2026-10-21 · One daemon handover per connect(), then a VERSION error).
 - `lifecycle.ts`'s parent check is verified on Windows only (`CLAUDE.md`); MUX-7 measures the detached
-  daemon on Windows only. POSIX stays unverified unless the user runs it there.
+  daemon on Windows only. POSIX stays unverified unless the user runs it there. (Open; needs a POSIX
+  machine, not a ruling.)
 
 **Left open by design (follow-ups below decide):** a `daemon.clients` kick; service variants of the
 daemon; a Python client.
