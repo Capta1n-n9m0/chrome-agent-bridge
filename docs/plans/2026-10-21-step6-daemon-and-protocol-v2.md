@@ -3,8 +3,7 @@
 **Date:** 2026-10-21 · **Status:** Planned
 **Design of record:** docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md (§4, §5, §9, §10, §11) ·
 **As-built:** docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md (does not exist yet; written
-at stage close) · **Steps dir:** docs/plans/2026-10-21-step6-daemon-and-protocol-v2-steps/ (does not
-exist yet; created at kickoff for ledgers, briefs, reports and evidence)
+at stage close) · **Steps dir:** docs/plans/2026-10-21-step6-daemon-and-protocol-v2-steps/ (created at kickoff 2026-10-21 for ledgers, briefs, reports and evidence; *amended 2026-10-21 (Stage 0)*)
 
 ## Outcome
 
@@ -53,8 +52,8 @@ a Python client; a daemon GUI or tray icon.
 - new **`sdk/`**: `src/client.ts` (`BridgeClient`), `src/knock.ts` (connect-or-spawn state machine),
   `src/token.ts`, `src/index.ts`; `test/*`
 - new **`mcp/`**: `src/index.ts`, `src/tools/registry.ts` (moved, now over `BridgeClient`),
-  `src/lifecycle.ts` (moved unchanged), `src/config.ts` (moved), `src/download.ts` (moved → later to sdk);
-  `test/tools.test.ts` (moved)
+  `src/lifecycle.ts` (moved unchanged), `src/config.ts` (moved); `download.ts` moves to `sdk/src/` and its test to `sdk/test/` in D1 (0.10);
+  `test/tools.test.ts`, `test/lifecycle.test.ts` (moved). *Amended 2026-10-21 (Stage 0): was "`src/download.ts` (moved → later to sdk)" and omitted `lifecycle.test.ts` (stage0-audit F12).*
 - root `package.json` (workspaces, scripts), `tsconfig` per package, `vitest.config.*`, `.gitignore`
 - `docs/setup.md` (MCP config path changes to `mcp/dist/index.js`), `docs/e2e-test-plan.md` (§ MUX),
   `docs/progress-and-roadmap.md`, `CLAUDE.md` (architecture, key files, commands, gotchas)
@@ -89,13 +88,13 @@ A client request `{id, method, params, timeoutMs?}` → the daemon calls
 `extensionConnection.call(method, params, {timeoutMs})` and replies with the result or the error,
 under the client's `id`. No interception yet except `daemon.status` and `daemon.shutdown`. If no
 extension is connected → `{code: "NOT_CONNECTED"}` immediately (same text as today's message, which is
-the `NOT_CONNECTED_MESSAGE` in `server/src/bridge.ts`). Per-client ordering is preserved by the socket;
+the module-private `NOT_CONNECTED` constant at `server/src/bridge.ts:3-4`). *Amended 2026-10-21 (Stage 0): was `NOT_CONNECTED_MESSAGE`, a name that does not exist (stage0-audit F9).* Per-client ordering is preserved by the socket;
 cross-client calls run concurrently — the extension's router is already `async` and id-correlated,
 which is why this is safe without a queue.
 
 ### 0.3 `timeoutMs` moves to the envelope
 
-Today only the MCP's `browser_evaluate` passes a per-call timeout, in-process. A client can't reach
+Today the MCP's `browser_evaluate` (`registry.ts:205`) and `browser_download` (`download.ts:61`, `timeoutMs + 5_000`) pass a per-call timeout, in-process. *Amended 2026-10-21 (Stage 0): was "only `browser_evaluate`" (stage0-audit F10).* A client can't reach
 `CallOptions`, so the request message carries `timeoutMs?` (bounded by the daemon to `[100, 600000]`).
 The daemon waits `timeoutMs + 5000` on its side so the extension's own timer reports first (same
 slack rule as `SERVER_TIMEOUT_SLACK_MS = 5_000` in `server/src/tools/registry.ts` today).
@@ -171,8 +170,8 @@ tool needs it and it already takes a `call` function.
 
 One stage per Part. **Lane** is the explicit grant a step agent needs under the `step-agent` ESCALATION
 list ("an effect outside its own stage escalates unless the kickoff grants the lane"). **Parallel with**
-follows the dependency graph in "Order of work". Only one process may own port 9234 at a time, so any
-stage whose tests bind a real socket (D2, D3) serialises with any other that does.
+follows the dependency graph in "Order of work". Tests bind port 0 (none binds 9234), so stages never contend for the port; D2 and D3 serialise because
+they edit the same files. *Amended 2026-10-21 (Stage 0): was "only one process may own port 9234, so stages whose tests bind a real socket serialise" (stage0-audit F11).*
 
 ### Stage D0 — Shared types and codes (TDD)
 
@@ -238,7 +237,7 @@ the baseline commit) — a pure move loses no test; the three root scripts cover
       v1 hello still works; bad token still 4001.
 
 **Lane:** `daemon/src/`, `daemon/test/`. **Parallel with:** D4 (file-disjoint, no shared socket in
-D4's tests); never with D3 (same files and the same test port). **Verifier focus:** attack the id
+D4's tests); never with D3 (same files; *amended 2026-10-21 (Stage 0): was "and the same test port", but tests bind port 0*). **Verifier focus:** attack the id
 remap with interleaved calls from two clients whose ids collide (both send `id: 1`); confirm the bad
 token and the unknown role both close with 4001 and nothing is logged about the token; confirm the
 heartbeat still terminates a client that misses a pong (the existing `heartbeatMs: 30` /
