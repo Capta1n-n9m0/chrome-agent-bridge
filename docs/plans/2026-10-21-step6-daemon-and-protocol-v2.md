@@ -4,6 +4,10 @@
 **Design of record:** docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md (§4, §5, §9, §10, §11) ·
 **As-built:** docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md (does not exist yet; written
 at stage close) · **Steps dir:** docs/plans/2026-10-21-step6-daemon-and-protocol-v2-steps/ (created at kickoff 2026-10-21 for ledgers, briefs, reports and evidence; *amended 2026-10-21 (Stage 0)*)
+*Corrected 2026-10-22: was "Status: Planned" and "As-built … (does not exist yet)"; as built the
+step is in progress — D0–D5b and the D6 rows are committed, D7's docs are verified with their commit
+waiting for the user, the D6 wave is pending — and the as-built register exists — see as-built
+§ Stage D7.*
 
 ## Outcome
 
@@ -54,6 +58,10 @@ a Python client; a daemon GUI or tray icon.
 - new **`mcp/`**: `src/index.ts`, `src/tools/registry.ts` (moved, now over `BridgeClient`),
   `src/lifecycle.ts` (moved unchanged), `src/config.ts` (moved); `download.ts` moves to `sdk/src/` and its test to `sdk/test/` in D1 (0.10);
   `test/tools.test.ts`, `test/lifecycle.test.ts` (moved). *Amended 2026-10-21 (Stage 0): was "`src/download.ts` (moved → later to sdk)" and omitted `lifecycle.test.ts` (stage0-audit F12).*
+  *Corrected 2026-10-22: was `startup.ts` kept in `daemon/` (bind = lock); as built `startup.ts` and
+  its 5 tests are deleted (D5), `daemon/` gains `main.ts` (`runDaemon`) behind a thin `index.ts`,
+  `sdk/src/` also has `connect.ts`, `transport.ts`, `spawn.ts` and `paths.ts`, and `mcp/src/` gains
+  `link.ts` (`BridgeLink`, the no-crash rule) — see as-built § Stage D3, § Stage D4, § Stage D5.*
 - root `package.json` (workspaces, scripts), `tsconfig` per package, `vitest.config.*`, `.gitignore`
 - `docs/setup.md` (MCP config path changes to `mcp/dist/index.js`), `docs/e2e-test-plan.md` (§ MUX),
   `docs/progress-and-roadmap.md`, `CLAUDE.md` (architecture, key files, commands, gotchas)
@@ -63,6 +71,11 @@ roles, routing — TDD over `ws`) → D3 (daemon lifecycle: build hash, idle, sh
 client + knock/spawn, TDD with injected I/O) → D5 (mcp over sdk) → D6 (E2E) → D7 (docs + commits).
 D0 and D1 are independent. D2 needs D0+D1. D4 needs D0 only (can run parallel to D2/D3). D5 needs D4
 and D2.
+*Corrected 2026-10-22: was "D0 and D1 are independent" with D3 before D4; as built the order was
+D0 → D1 → (D2 ∥ D4) → D3 → D5 → D5b → D6 rows → D7 (decisions.md · 2026-10-22 · Stage order D0 → D1
+→ (D2 ∥ D4) → D3 → D5, and the Stage 0 builder resolutions; D5b from decisions.md · 2026-10-22 · The
+MCP connects without waiting for the extension, so Chrome closed reads as today) — see as-built
+§ Stage 0, § Stage D5b.*
 
 ---
 
@@ -88,7 +101,8 @@ A client request `{id, method, params, timeoutMs?}` → the daemon calls
 `extensionConnection.call(method, params, {timeoutMs})` and replies with the result or the error,
 under the client's `id`. No interception yet except `daemon.status` and `daemon.shutdown`. If no
 extension is connected → `{code: "NOT_CONNECTED"}` immediately (same text as today's message, which is
-the module-private `NOT_CONNECTED` constant at `server/src/bridge.ts:3-4`). *Amended 2026-10-21 (Stage 0): was `NOT_CONNECTED_MESSAGE`, a name that does not exist (stage0-audit F9).* Per-client ordering is preserved by the socket;
+the module-private `NOT_CONNECTED` constant at `server/src/bridge.ts:3-4`). *Amended 2026-10-21 (Stage 0): was `NOT_CONNECTED_MESSAGE`, a name that does not exist (stage0-audit F9).* *Corrected 2026-10-22: was `server/src/bridge.ts:3-4`;
+as built the constant is at `daemon/src/bridge.ts:4-5` (D1 move) — see as-built § Stage D1.* Per-client ordering is preserved by the socket;
 cross-client calls run concurrently — the extension's router is already `async` and id-correlated,
 which is why this is safe without a queue.
 
@@ -98,6 +112,12 @@ Today the MCP's `browser_evaluate` (`registry.ts:205`) and `browser_download` (`
 `CallOptions`, so the request message carries `timeoutMs?` (bounded by the daemon to `[100, 600000]`).
 The daemon waits `timeoutMs + 5000` on its side so the extension's own timer reports first (same
 slack rule as `SERVER_TIMEOUT_SLACK_MS = 5_000` in `server/src/tools/registry.ts` today).
+
+*Corrected 2026-10-22: as built the daemon waits `clamp(timeoutMs ?? 30000, 100, 600000) + 5000`;
+`timeoutMs` stays on the envelope and is **not** forwarded to the extension (the forwarded frame is
+`{id, method, params}`); `BridgeClient` waits 1 s longer than the daemon (decisions.md · 2026-10-22 ·
+D2's daemon details: parseHello beside validateHello, BAD_PARAMS for bad ids, no forwarded timeoutMs,
+interim defaults) — see as-built § Stage D2.*
 
 ### 0.4 Errors become `{code, message, data?}` everywhere
 
@@ -114,6 +134,12 @@ package → `../daemon/dist/index.js`, overridable by `BRIDGE_DAEMON` env) and h
 Mismatch → handover (§0.7). A hash, not the package version, because `npm run build` doesn't bump
 versions and the stale-code trap is exactly the one we keep falling into with the extension.
 
+*Corrected 2026-10-22: was "resolved relative to the sdk package → `../daemon/dist/index.js`"; as
+built the path is `<workspace root>/daemon/dist/index.js`, found by the same walk-up as `bridge.token`
+(`sdk/src/paths.ts`); `BRIDGE_DAEMON` overrides it; a missing file rejects before the knock
+(decisions.md · 2026-10-22 · Stage order D0 → D1 → (D2 ∥ D4) → D3 → D5, and the Stage 0 builder
+resolutions) — see as-built § Stage D4.*
+
 ### 0.6 Idle exit
 
 `idle.ts`: a timer armed when the client count drops to 0, cleared when it rises above 0; fires after
@@ -124,6 +150,12 @@ versions and the stale-code trap is exactly the one we keep falling into with th
 `host.shutdown(1001)` — close frames, ≤ 1 s grace, then terminate — and the process exits 0 once it
 finishes, because decision #15 makes `shutdown(code)` the graceful stop and `close()` terminates
 sockets without a close frame (clients would see 1006).*
+
+*Corrected 2026-10-22: was "armed when the client count drops to 0"; as built the timer is also
+armed at start, with zero clients, so a spawned daemon nobody connects to still exits; a
+`BRIDGE_DAEMON_IDLE_MS` that is not a whole number of ms or exceeds 2³¹−1 is logged and replaced by
+600000 (decisions.md · 2026-10-22 · D3's daemon lifecycle: idle armed at start, every shutdown exits
+0, bad env values, the log policy) — see as-built § Stage D3.*
 
 ### 0.7 Handover protocol (SDK side)
 
@@ -147,6 +179,14 @@ one daemon build; `BRIDGE_DAEMON` is a development override. Two clients with di
 4002 also clears any tab cursor it holds (Step 7/8; decisions.md · 2026-10-21 · The SDK clears its
 cursor when it reconnects after a daemon restart).
 
+*Corrected 2026-10-22: was a single "≤ 10 s" knock and "Clients … run `connect()` again"; as built the
+10 s budget runs per spawn cycle and restarts at the client's own handover; after `hello` the knock
+waits at most 2 s for `welcome`, else rejects with `VERSION` and never spawns or hands over; a
+reconnect after 4002 runs the knock with the handover disabled (a build mismatch there → `VERSION`)
+(decisions.md · 2026-10-22 · A Step 6 client gives up with VERSION when no welcome arrives; · A
+reconnect after 4002 never hands the daemon over; · The knock's 10 s budget runs per spawn cycle,
+with a handshake timeout per attempt) — see the D4 note below and as-built § Stage D4.*
+
 ### 0.8 Spawn details
 
 `spawn(process.execPath, [daemonPath], { detached: true, stdio: "ignore", windowsHide: true, env:
@@ -161,6 +201,10 @@ value, body or token.
 `BRIDGE_TOKEN` env → else `bridge.token` file at the repo root (found by walking up from the sdk
 package to the first directory containing `package.json` with `"workspaces"`), trimmed. Missing →
 throws before any socket is opened, naming both places. The daemon uses the same function.
+
+*Corrected 2026-10-22: was "throws"; as built `resolveToken` throws and `connect()` turns that into a
+`NOT_CONNECTED` rejection naming both places, never the token (decisions.md · 2026-10-22 · The SDK
+reports configuration and connection failures as NOT_CONNECTED) — see as-built § Stage D4.*
 
 ### 0.10 Package split, not a rewrite
 
@@ -317,6 +361,9 @@ exits 0. Env, log format and exit codes as built: `…-steps/D3.md`.
 - [ ] `connect({ name, waitForExtensionMs = 15000 })`: after welcome, if `!extensionConnected`, wait for
       `extensionStatus {connected:true}` (the daemon emits it to clients when the extension hello
       arrives — add in D2) or fail `NOT_CONNECTED` with the usual "is Chrome open…" text.
+      *Corrected 2026-10-22: as built `connect()` also takes `requireExtension?: boolean` (default
+      `true`; `false` resolves on the welcome with no wait), `port`, `env`, `startDir` and the test
+      seams `io` and `timers` — see as-built § Stage D5b.*
 - [ ] `index.ts` exports: `connect`, `BridgeClient`, `BridgeError`, `ErrorCodes`, `downloadToFile`.
 
 *As built 2026-10-22 (D4, see `…-steps/D4.md`): the knock's 10 s budget runs per spawn cycle and restarts at
@@ -347,6 +394,10 @@ calls `unref()`. **Needs the user's keyboard:** no.
       **failure to connect must not crash the MCP** (same rule as the busy-port rule today): register the
       tools regardless, store the reason, surface it through every tool and `browser_status`, and retry
       `connect()` every 5 s. (`startup.ts`'s shape, reused for the SDK connection.)
+      *Corrected 2026-10-22: was "`startup.ts`'s shape"; as built the rule lives in
+      `mcp/src/link.ts` (`BridgeLink`: the next `connect()` 5 s after each attempt settles, never
+      overlapping, plus a `client.connect()` health check), and `startup.ts` is deleted — see
+      as-built § Stage D5.*
 - [ ] `tools/registry.ts`: takes `BridgeClient`; `bridge.call` → `b.call`; `browser_status` prints
       `daemon.status` (build, clients by name, extension connected) and the active tab as today.
 - [ ] `lifecycle.ts` unchanged; the `shutdown` callback passed to it in `mcp/src/index.ts`
@@ -617,7 +668,10 @@ re-checks each ruling's premise by execution and raises a finding only if a prem
   REAL, SEC, SMOKE, STAT, TAB, TRUST, WAIT.
 - `bridge.token` is gitignored but today `server/src/config.ts` reads only `BRIDGE_TOKEN`; 0.9 adds the
   file lookup. `docs/setup.md` must state the precedence (env wins) in D5/D7. (Not a ruling: a work
-  item the audit confirms is scheduled.)
+  item the audit confirms is scheduled.) *Corrected 2026-10-22: closed — `connect()` resolves the
+  token through `resolveToken` (`sdk/src/token.ts`), `mcp/src/config.ts` keeps only the actor name and
+  `connectOptions()`, and `docs/setup.md` §2 states the precedence (D7, commit pending) — see as-built
+  § Stage D5, § Stage D7.*
 - *Ruled 2026-10-21:* the blind spot of two clients with different `BRIDGE_DAEMON` paths is closed by
   "one handover per `connect()`, then `VERSION`" (0.7 amended; D4 and D4.2 extended; decisions.md ·
   2026-10-21 · One daemon handover per connect(), then a VERSION error).
@@ -638,7 +692,9 @@ service variant, only with evidence); a second trust boundary is wanted (out of 
 
 **Needs the user's keyboard:** updating the MCP config path after D1 and reconnecting (`/mcp`); the
 whole D6 wave (MUX-1…9), including a second Claude session, process-tree kills, closing Chrome, and a
-mid-session rebuild; any push.
+mid-session rebuild; any push. *Corrected 2026-10-22: also the D7 docs commit (`CLAUDE.md`,
+`docs/setup.md`, `docs/progress-and-roadmap.md`, the D7 reports), which the permission classifier
+denied to the builder — see as-built § Stage D7.*
 
 ## Follow-ups (not this step)
 

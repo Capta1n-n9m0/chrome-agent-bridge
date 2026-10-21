@@ -1,7 +1,10 @@
 # Daemon, SDK and Multi-Actor Control — Design Spec
 
 - **Date:** 2026-10-21
-- **Status:** Approved in discussion (implementation not started). Plans: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`, `…step7-multi-actor-tabs.md`, `…step8-sdk-surface-and-mcp-cursor.md`.
+- **Status:** Approved in discussion (implementation not started). *Corrected 2026-10-22: was
+  "implementation not started"; as built Step 6 (§4, §5's daemon/SDK/MCP rows, §9, §10 without tabs,
+  §11) is built — stages D0–D5b, 542 tests — and its live E2E waits for the D6 wave; contracts and
+  deviations in `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md`.* Plans: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`, `…step7-multi-actor-tabs.md`, `…step8-sdk-surface-and-mcp-cursor.md`.
 - **Owner:** Abbas Aliyev (@Capta1n-n9m0)
 - **Supersedes in part:** `2026-06-04-chrome-real-profile-agent-bridge-design.md` §3 "Controller: MCP server", §4 topology, and the "Tab targeting: active tab" decision. Everything about the extension's perception/action model stands.
 
@@ -276,17 +279,41 @@ renders the same fields as text. Nothing here needs a model in the loop.
 2. **Detached spawn.** `spawn(process.execPath, [daemon/dist/index.js], { detached: true, stdio:
    "ignore", windowsHide: true })` + `unref()`. The daemon therefore has no stdio; it logs to
    `~/.chrome-agent-bridge/daemon.log` (size-capped), counts only, never URLs or tokens.
+   *Corrected 2026-10-22: as built the log is cut to its last 1 MiB on start and a line containing
+   `://` or the token is withheld whole (decisions.md · 2026-10-22 · D3's daemon lifecycle: idle armed
+   at start, every shutdown exits 0, bad env values, the log policy) — see as-built § Stage D3.*
 3. **The bind is the lock.** Two starters that both saw `ECONNREFUSED` both spawn; the loser's daemon
    gets `EADDRINUSE` and exits at once; the loser client simply keeps knocking (up to 10 s).
+   *Corrected 2026-10-22: as built the 10 s runs per spawn cycle and restarts at the client's own
+   handover, and each attempt's WebSocket handshake is bounded by the remaining budget (decisions.md ·
+   2026-10-22 · The knock's 10 s budget runs per spawn cycle, with a handshake timeout per attempt);
+   the losing daemon exits 0 — see as-built § Stage D3, § Stage D4.*
 4. **Hello / welcome.** Client → `{type:"hello", token, role:"client", name, build, proto: 2}`.
    Daemon → `{type:"welcome", build, proto, clientId, extensionConnected}`. Extension hellos carry no
    `role` and get the same `welcome` (the router ignores a message without `id`+`method`).
+   *Corrected 2026-10-22: as built `clientId` is `"c<n>"` for a client (never reused within a daemon
+   process) and `"extension"` for the extension; a failed hello closes with 4001 and the reason
+   "expected hello handshake", "invalid token" or "unknown role"; a client waits at most 2 s for the
+   welcome, then rejects with `VERSION` and neither spawns nor hands over (decisions.md · 2026-10-22 ·
+   A Step 6 client gives up with VERSION when no welcome arrives — open for user review) — see
+   as-built § Stage D2, § Stage D4.*
 5. **Version handover.** `build` is the sha256 of `daemon/dist/index.js`. A client whose expected
    build (it hashes the file it would spawn) differs from `welcome.build` sends `daemon.shutdown`,
    waits for the port to free, spawns, reconnects. Other clients see their socket close and reconnect
    with the same logic — so after `npm run build` the first client to connect upgrades the daemon for
    everyone. The extension reconnects on its own (`ReconnectingClient`, 0.5–10 s backoff).
+   *Corrected 2026-10-22: was "reconnect with the same logic"; as built a client reconnecting after
+   4002 runs the knock **without** a handover — a build mismatch there rejects with `VERSION` naming
+   both builds — so two clients on different builds cannot hand the daemon back and forth; `connect()`
+   itself hands over at most once (decisions.md · 2026-10-22 · A reconnect after 4002 never hands the
+   daemon over — open for user review; decisions.md · 2026-10-21 · One daemon handover per connect(),
+   then a VERSION error). The daemon replies `{ok:true}`, closes every socket with 4002 "upgrading",
+   waits ≤ 1 s, then terminates — see as-built § Stage D2, § Stage D4.*
 6. **Idle exit.** Zero *clients* (the extension does not count) for 10 min → exit. Also `daemon.shutdown`.
+   *Corrected 2026-10-22: as built the timer is also armed at start with zero clients, and idle,
+   `daemon.shutdown` and signals all close the sockets (1001, or 4002 for `daemon.shutdown`) and exit 0
+   (decisions.md · 2026-10-22 · D3's daemon lifecycle: idle armed at start, every shutdown exits 0, bad
+   env values, the log policy) — see as-built § Stage D3.*
 7. **Waiting for Chrome.** A fresh daemon has no extension yet; the SDK's `connect({ waitForExtensionMs })`
    waits for the `extensionStatus {connected:true}` event (default 15 s) before resolving, so a script
    does not start with `NOT_CONNECTED`. *Amended 2026-10-22: `connect({ requireExtension: false })`
@@ -295,6 +322,11 @@ renders the same fields as text. Nothing here needs a model in the loop.
 8. **Token.** Same token as the extension. Source of truth: `bridge.token` at the repo root (gitignored);
    `BRIDGE_TOKEN` env overrides (the MCP config still passes it that way). The daemon reads it the
    same way; a client that cannot find a token fails before knocking with a message naming both places.
+   *Corrected 2026-10-22: as built that failure is a `NOT_CONNECTED` rejection of `connect()` (as are
+   a missing daemon build, a bad `BRIDGE_PORT`, the 10 s give-up and a 4001 close), never naming the
+   token (decisions.md · 2026-10-22 · The SDK reports configuration and connection failures as
+   NOT_CONNECTED — open for user review); "repo root" is the first directory above the code whose
+   `package.json` has `"workspaces"` — see as-built § Stage D4.*
 9. **MCP exit-with-session** stays exactly as implemented in `lifecycle.ts`, moved to `mcp/`. The
    daemon gets none of it — it is meant to outlive sessions.
 
@@ -323,6 +355,18 @@ event    D→C  {event, params}   tabGone | leaseGranted | extensionStatus
 - **Compatibility.** A v1 hello is accepted as an extension. A v1 error `{message}` from an old
   extension is wrapped as `INTERNAL`. Beyond that, extension and daemon of this generation ship
   together — nothing else speaks the protocol yet.
+- *Corrected 2026-10-22 (as built in Step 6):* the error `code` is optional on the wire (`WireError
+  {code?, message, data?}`; `fromWire` maps a missing code to `INTERNAL`) and the daemon always sends
+  one (decisions.md · 2026-10-22 · D0's protocol shapes: optional wire code, strict v2 hello fields,
+  events without id). `timeoutMs` stays on the envelope: the daemon waits `clamp(timeoutMs ?? 30000,
+  100, 600000) + 5000` and forwards `{id, method, params}` only (decisions.md · 2026-10-22 · D2's daemon
+  details: parseHello beside validateHello, BAD_PARAMS for bad ids, no forwarded timeoutMs, interim
+  defaults). `daemon.status` returns `{build, uptime (ms), extensionConnected, clients:[{id, name,
+  since}], port}`; any other `daemon.*` method answers `UNKNOWN_METHOD`; `tabs.claim`/`tabs.release` are
+  not handled until Step 7 and are forwarded meanwhile. `extensionStatus {connected}` is `true` on each
+  extension hello and `false` only when the current extension socket closes. Close codes, not listed
+  above: 4001 on a failed hello, 4002 "upgrading" after `daemon.shutdown`, 1001 on idle exit or a
+  signal — see as-built § Stage D0, § Stage D2, § Stage D3.
 
 ## 11. Repository layout after the work
 
@@ -338,6 +382,13 @@ recipes/    Claude-written scripts; first dogfood: a Blackboard export, and a on
 
 `npm test` and `npm run typecheck` cover all five packages; `npm run build` builds daemon, mcp, sdk
 and extension. Scripts run with `tsx` (dev dependency) until Node's type stripping is the floor.
+
+*Corrected 2026-10-22: as built `daemon/` has no `startup.ts` (deleted in D5; the daemon never retries
+the bind) and adds `main.ts`, `route.ts` and `build.ts`; `sdk/` has `connect.ts`, `knock.ts`,
+`client.ts`, `transport.ts`, `spawn.ts`, `paths.ts`, `token.ts` and `download.ts`; `mcp/` adds `link.ts`
+(the no-crash 5 s retry). `npm run build` builds daemon, mcp and extension only: `sdk/` has no build
+step and is consumed as TypeScript source (bundled into the MCP; scripts run it with `tsx`) — see
+as-built § Stage D1, § Stage D3, § Stage D5.*
 
 ## 12. Risks and what E2E must settle
 

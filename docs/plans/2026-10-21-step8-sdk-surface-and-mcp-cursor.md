@@ -24,7 +24,9 @@ Targets at planning time; rewritten as results when the step closes.
 - A typed `Tab` API with the actor's cursor; a `BridgeError` that carries a snapshot, a screenshot path
   and the last 20 network entries, rendered by `error.report()`.
 - The MCP cursor does **not follow the human** unless told to (`browser_use_active_tab`); tool count
-  22 → 23 (baseline 22 at Step 7's close; 21 today per `server/src/tools/registry.ts`).
+  22 → 23 (baseline 22 at Step 7's close; 21 today per `server/src/tools/registry.ts`). *Corrected
+  2026-10-22: was `server/src/tools/registry.ts`; as built `mcp/src/tools/registry.ts` (Step 6 D1) —
+  see Step 6 as-built § Stage D1.*
 - The first two recipes — a one-line `bb.js` boot and a read-only Blackboard grade export — run as the
   dogfood; tests and typecheck green at every stage close, counts recorded per stage.
 
@@ -58,6 +60,12 @@ XPath locators; drag; file upload (D3, still separate); a recipes runner/schedul
 - new `recipes/README.md`, `recipes/hello.ts`, `recipes/blackboard/boot-bb.ts`, `recipes/blackboard/export-grades.ts`
 - root `package.json` (`tsx` dev dep, `npm run recipe -- <file>`), `docs/*`, `CLAUDE.md`,
   `~/.claude/skills/blackboard-ultra` (separate repo: the boot sequence shrinks to one SDK call)
+- *Corrected 2026-10-22: was "new `recipes/hello.ts`" and a new `tsx` dev dependency; as built
+  `recipes/hello.ts` and `recipes/tsconfig.json` exist from Step 6 D6 (rows MUX-3, MUX-5, MUX-6, MUX-8
+  and MUX-10 judge the recipe's exact output), and `tsx` has been a root devDependency since Step 6 D1
+  (decisions.md · 2026-10-22 · D1's interim wiring: daemon skipped by the build until D3, a
+  `./connection` export, a hand-edited lockfile); S6 adds only the `recipe` script — see Step 6
+  as-built § Stage D1, § Stage D6.*
 
 **Order of work:** S0 (types) → S1 (content `locate`, TDD) → S2 (extension handlers accept locators;
 node→ref) → S3 (sdk `Tab`, cursor, locator normalisation, TDD) → S4 (sdk failure enrichment, TDD) →
@@ -140,6 +148,15 @@ because the daemon renumbers handles (Step 7 plan 0.2). The next `tab()` or mirr
 `NO_CURSOR`; an explicit stale handle returns `TAB_UNKNOWN` (decisions.md · 2026-10-21 · The SDK
 clears its cursor when it reconnects after a daemon restart).
 
+*Corrected 2026-10-22: Step 6 already ships `BridgeClient.connect()`, `call()`, `status()`,
+`close()`, `on("event")`, `on("reconnected")` (where the cursor clear hooks in) and the read-only
+`welcome` and `extensionConnected` getters (decisions.md · 2026-10-22 · BridgeClient exposes welcome,
+extensionConnected and on("reconnected") in Step 6 — open for user review; the final surface is this
+step's). A 4002 reconnect never hands the daemon over and rejects with `VERSION` on a build mismatch
+(decisions.md · 2026-10-22 · A reconnect after 4002 never hands the daemon over); after any other close
+the client fails and does not reconnect (decisions.md · 2026-10-22 · What clients do on a close code
+other than 4002) — see Step 6 as-built § Stage D4.*
+
 ### 0.5 Failure reports (`sdk/src/error.ts`)
 
 Every SDK call wraps the wire `BridgeError`. For codes where a page state helps —
@@ -154,6 +171,12 @@ network requests. `connect({ failureReports: false })` turns it off for hot loop
 takes the visibility lock like any screenshot — a human may see a flash exactly when a script fails,
 which is acceptable.
 
+*Corrected 2026-10-22: `failureReports` joins Step 6's `ConnectOptions {name, waitForExtensionMs?,
+requireExtension?, port?, env?, startDir?, io?, timers?}`. Configuration failures (token, daemon path,
+port), the 10 s give-up and close 4001 already reject with `NOT_CONNECTED` (decisions.md · 2026-10-22 ·
+The SDK reports configuration and connection failures as NOT_CONNECTED), so the attach set's exclusion
+of `NOT_CONNECTED` covers them — see Step 6 as-built § Stage D4, § Stage D5b.*
+
 ### 0.6 MCP cursor: does not follow the human
 
 - Actor name `claude-code #<pid>` (the MCP's own `process.pid`; *Superseded 2026-10-21: was `#<ppid>`,
@@ -162,13 +185,21 @@ which is acceptable.
   `claim({active:true})`. A cursor cleared by a daemon restart (0.4, amended) is treated like first
   touch, and the next tool result opens with one line saying the daemon restarted and which handle is
   now held (decisions.md · 2026-10-21 · The SDK clears its cursor when it reconnects after a daemon
-  restart).
+  restart). *Corrected 2026-10-22: as built the MCP holds its client through `mcp/src/link.ts`
+  (`BridgeLink`), which drops a client closed with any code but 4002 and runs a fresh `connect()` 5 s
+  later; that new client has no cursor, so a daemon that was killed or crashed (not replaced with
+  4002) also takes the first-touch rule and the one-line notice — see Step 6 as-built § Stage D5.*
 - Then **stays** on that handle. New tool `browser_use_active_tab`: "the user opened/switched to a tab
   and wants me there" → `claim({active:true})` + cursor; it is the *only* way the cursor follows the
   human. The tool description says exactly when to call it ("the user says 'this tab' / 'the tab I
   opened'").
 - `browser_status` adds: `Cursor: T3 "Title" — url (held by me)` and, when different,
   `Human's active tab: T7 "Gmail" — not mine; call browser_use_active_tab to work there`.
+  *Corrected 2026-10-22: as built `browser_status` prints `Daemon: connected on 127.0.0.1:<port>
+  (build <b>, up <s>s)`, `Clients (<n>): names…`, `Extension: …` and `Active tab: [id] title — url`
+  (the human's active tab), or `Daemon: not connected` + `Problem: <reason>`; E2E rows STAT-1, MUX-1
+  and MUX-8 expect that text, so S5 says how `Cursor:` and `Human's active tab:` relate to the
+  existing `Active tab:` line and updates those rows — see Step 6 as-built § Stage D5, § Stage D5b.*
 - `browser_new_tab`: `active: true` **only if** the cursor's tab is currently the human's active tab
   (the human was watching Claude; keep them watching); otherwise background. `browser_select_tab {tab}`
   → claim + cursor, no activation; `browser_focus_tab` brings the cursor on screen.
@@ -303,6 +334,10 @@ SDK rows with expected results beforehand; the measurements are taken with the u
 
 - [ ] `recipes/README.md`, `recipes/hello.ts` (connect, newTab to the fixture, locate the login button,
       click, waitFor text, print, close).
+      *Corrected 2026-10-22: `recipes/hello.ts` already exists (Step 6 D6: connect, `daemon.status`,
+      `listTabs`, an optional hold; prints no URLs) and MUX-3/5/6/8/10 judge its output, so S6 either
+      writes this flow as another recipe or updates those rows' expected text in the same stage — see
+      Step 6 as-built § Stage D6.*
 - [ ] **SDK-1** `hello.ts` end to end against the fixture while a Claude session is connected on
       another tab.
 - [ ] **SDK-2** `LOCATOR_NOT_FOUND` report: misspell a name → the report names the nearest candidates,
@@ -520,7 +555,9 @@ re-checks each ruling's premise by execution and raises a finding only if a prem
 - SDK-5 and `hello.ts` cite fixture elements that exist: `#email` (line 31), the "Sign in" submit button
   `#submit-btn` (line 49), the `isTrusted` reporter (lines 155–166).
 - `Tab.network({…} | {id})` mirrors `browser_network_requests`'s parameters including `id`
-  (`server/src/tools/registry.ts:247–252`) — consistent.
+  (`server/src/tools/registry.ts:247–252`) — consistent. *Corrected 2026-10-22: was
+  `server/src/tools/registry.ts:247–252`; as built `mcp/src/tools/registry.ts:270–279` (Step 6 D1
+  move) — see Step 6 as-built § Stage D1.*
 - 0.4 lists `Tab.release()` and `close()`; the daemon's `tabs.release` and `closeTab` come from Step 7
   T2 — verified by execution in the audit.
 - *Ruled 2026-10-21:* `BridgeClient` clears the cursor on a 4002 reconnect; `NO_CURSOR` tells the
@@ -529,6 +566,18 @@ re-checks each ruling's premise by execution and raises a finding only if a prem
   reconnects after a daemon restart).
 - *Ruled 2026-10-21:* S2 also removes the `selectTab` alias Step 7 T3 keeps (decisions.md ·
   2026-10-21 · selectTab stays as an alias of focusTab for one release).
+- *Corrected 2026-10-22: was no Step 6 items; as built several Step 6 decisions name this step as
+  their revisit point, and the Stage-0 audit takes them up (all in decisions.md, 2026-10-22): "The SDK
+  reports configuration and connection failures as NOT_CONNECTED" (an authentication or configuration
+  code in spec §10); "BridgeClient exposes welcome, extensionConnected and on("reconnected") in Step 6"
+  (the surface review); "D5's MCP link: a client.connect() health check, a thin config, interim
+  exports gone" and "What clients do on a close code other than 4002" (a public close or failure
+  event, or reconnect); "The MCP connects without waiting for the extension, so Chrome closed reads as
+  today" and "D5b's shape: requireExtension: false, a connectOptions() helper, a test-only daemon
+  import" (the option's final name and shape); "setup.md documents stopping the daemon by killing its
+  process, with no stop script" (a stop command in the SDK); "A Step 6 client gives up with VERSION
+  when no welcome arrives" (once v1 servers can no longer exist) — see Step 6 as-built § Stage D4,
+  § Stage D5, § Stage D5b, § Stage D7.*
 
 **Left open by design:** console capture, D3 upload as `Tab.upload`, a Python SDK, generation-stamped
 refs, `tabs.claim {wait:true}`, session recording (follow-ups).

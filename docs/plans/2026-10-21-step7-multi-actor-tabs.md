@@ -10,6 +10,15 @@ created at kickoff for ledgers, briefs, reports and evidence)
 step's **Stage-0 spec audit re-examines Step 6's as-built register by execution** — every contract it
 lists (welcome shape, `extensionStatus` event, close code 4002, the error envelope) is exercised, not
 read, before T0 starts.
+*Corrected 2026-10-22: was four contracts; as built the register's § Stage D2 "Contracts binding
+forward" lists the set to exercise: welcome `{type:"welcome", build, proto:2, clientId:"c<n>"|"extension",
+extensionConnected}`; `daemon.status` → `{build, uptime (ms), extensionConnected,
+clients:[{id,name,since}], port}`; the error envelope `{id, error:{code, message, data?}}`, `code`
+always present from the daemon but optional on the wire (a v1 `{message}` becomes `INTERNAL`); close
+4001 on a failed hello (reasons "expected hello handshake", "invalid token", "unknown role") and 4002
+"upgrading" after `daemon.shutdown` replies `{ok:true}`; `extensionStatus {connected}`; `timeoutMs` not
+forwarded to the extension; any other `daemon.*` method → `UNKNOWN_METHOD`. Step 6's live E2E (the D6
+wave) has not run yet — see as-built § Stage D2, § Stage D6.*
 
 ## Outcome
 
@@ -27,7 +36,10 @@ Targets at planning time; rewritten as results when the step closes.
   E2E expectations in `docs/e2e-test-plan.md` do not change.
 - The MCP tool count goes 21 → 22 (`browser_focus_tab` added; baseline 21 per
   `server/src/tools/registry.ts`); tests and typecheck green at every stage close, counts recorded per
-  stage (Step 6's closing count is the baseline).
+  stage (Step 6's closing count is the baseline). *Corrected 2026-10-22: was
+  `server/src/tools/registry.ts`; as built the registry is `mcp/src/tools/registry.ts` (21
+  `server.tool(` calls), and Step 6's closing count is 542 tests in 42 files (`npm test` at D5b
+  commit `033b1bc`; D6 and D7 added none) — see as-built § Stage D1, § Stage D5b.*
 
 Test-driven development applies to the daemon's `HandleTable`, `LeaseTable`, `VisibilityLock` and the
 `intercept` layer (all pure), to the extension's `BridgeError` → wire mapping in `Router`, and to
@@ -35,7 +47,11 @@ Test-driven development applies to the daemon's `HandleTable`, `LeaseTable`, `Vi
 background-tab behaviour of CDP (Chrome DevTools Protocol) are manual E2E. Each stage leaves `npm test`
 and `npm run typecheck` green. **This step changes the wire protocol in a way the extension must
 follow — build and reload the extension before E2E (`unknown method` / `BAD_PARAMS tabId` means an old
-worker; `CLAUDE.md` gotcha).**
+worker; `CLAUDE.md` gotcha).** *Corrected 2026-10-22: through the Step 6 daemon a stale extension's
+`unknown method: X` reaches clients with code `INTERNAL` (the v1 extension sends `{message}` only and
+`fromWire` normalises it); the daemon answers `UNKNOWN_METHOD` only for an unknown `daemon.*` method.
+Match the message text, not the code, until T1 teaches the extension codes — see as-built § Stage D0,
+§ Stage D2.*
 
 **Goal:** Let several actors work in parallel on different tabs without their actions mixing. Every
 extension method takes an explicit `tabId`; the daemon mints **handles**, enforces **leases**, and
@@ -106,6 +122,15 @@ handle it now holds. A stale handle passed explicitly as `tab` still returns `TA
 (decisions.md · 2026-10-21 · The SDK clears its cursor when it reconnects after a daemon restart).
 T4's cursor rule below inherits this.
 
+*Corrected 2026-10-22: as built the hook for the cursor clear is `BridgeClient.on("reconnected", cb)`,
+fired after a 4002 reconnect is welcomed; that reconnect never hands the daemon over (a build mismatch
+→ `VERSION`); and after any other close (a daemon killed or crashed) `BridgeClient` does not reconnect —
+the MCP's `BridgeLink` drops the client and runs a fresh `connect()` 5 s later, so the MCP holds a new
+client with no cursor and must give the same one-line notice on that path too (decisions.md ·
+2026-10-22 · BridgeClient exposes welcome, extensionConnected and on("reconnected") in Step 6; · A
+reconnect after 4002 never hands the daemon over; · D5's MCP link: a client.connect() health check, a
+thin config, interim exports gone) — see as-built § Stage D4, § Stage D5.*
+
 ### 0.3 Leases (`daemon/src/leases.ts`, pure)
 
 `LeaseTable`: `grant(handle, clientId, reason)`, `release(handle)`, `releaseAll(clientId)`,
@@ -125,6 +150,11 @@ certain call — see Open items). `newTab` leases its result to the caller. `clo
 `LOCK_TIMEOUT {holder}`; `releaseAllOf(clientId)` on disconnect. Needs-screen methods: `screenshot`
 when `mode !== "cdp" && !fullPage`, `focusTab`. The lock wraps the forwarded call, so the extension's
 activate→capture→restore runs atomically against other screen users.
+
+*Corrected 2026-10-22: the call's timeout is the envelope's `timeoutMs`, which as built `route.ts`
+reads and clamps (`daemonWaitMs`: `clamp(timeoutMs ?? 30000, 100, 600000) + 5000`) and never forwards
+to the extension, so T2 takes the lock's deadline there; the SDK client gives up 1 s after the daemon's
+wait — see as-built § Stage D2, § Stage D4.*
 
 ### 0.5 Activation sequence in the extension (`tabs.ts: activateForCapture`)
 
@@ -160,7 +190,8 @@ script throws come back as strings through `executeScript`; the content script p
 today's for the fields that existed (so the MCP transcript doesn't change and the E2E expectations in
 `docs/e2e-test-plan.md` hold). Same for `NetworkLog.format` → `sdk/src/format/network.ts`. The
 extension handler no longer builds `text`; `NetworkRequestsResult.text` (today
-`shared/src/protocol.ts:136`) is removed from the wire.
+`shared/src/protocol.ts:136`) is removed from the wire. *Corrected 2026-10-22: was line 136; as built
+the field is at `shared/src/protocol.ts:204` (D0 grew the file) — see as-built § Stage D0.*
 
 ### 0.8 `newTab` no longer activates
 
@@ -183,6 +214,13 @@ tests are jsdom/pure.
       `TabRemovedParams`, `TabReplacedParams`, `TabGoneParams`, `LeaseGrantedParams`,
       `ScreenshotMode = "switch" | "cdp"`; `NetworkRequestsResult` loses `text`.
 - [ ] Tests for any new guard (events have a `params` object).
+
+*Corrected 2026-10-22: as built `WireError.code` is optional and `fromWire` maps a missing, non-string
+or empty code to `INTERNAL` — the revisit trigger of decisions.md · 2026-10-22 · D0's protocol shapes:
+optional wire code, strict v2 hello fields, events without id is this step teaching the extension
+codes, so T0 rules whether v2 peers now require `code`; `isEvent` already requires a string `event`, a
+non-null `params` object and no `id`; `codes.ts` holds the 22 codes of spec §10 — see as-built
+§ Stage D0.*
 
 **Lane:** `shared/src/`, `shared/test/`. **Parallel with:** sequential, first (T1 and T2 both import
 these types). **Verifier focus:** `shared/src/codes.ts` really is complete against spec §10 (the plan
@@ -232,9 +270,20 @@ they go on the wire, never into a log line). **Needs the user's keyboard:** yes 
       `tabs.release`; `screenshot`/`focusTab` → lock.
 - [ ] `route.ts`: resolve `params.tab` → `params.tabId` (strip `tab`); `TAB_UNKNOWN` / `TAB_GONE`;
       lease check; then forward. Methods with no `tab` and not free → `BAD_PARAMS "tab is required"`.
+      *Corrected 2026-10-22: as built `route.ts` answers only `daemon.*` itself (`status`,
+      `shutdown`; any other → `UNKNOWN_METHOD`) and forwards everything else — `tabs.claim` and
+      `tabs.release` included — to the extension, so T2 adds them to the daemon-handled set; a
+      request with a non-string or empty id already gets `BAD_PARAMS` — see as-built § Stage D2.*
 - [ ] `wsHost.ts`: extension events → `HandleTable`/`LeaseTable` updates; `tabGone` to the lease
       holder; `leaseGranted` on the opener rule; `extensionStatus` already emitted (Step 6).
+      *Corrected 2026-10-22: as built `extensionStatus {connected:true}` goes out on every
+      extension hello and `{connected:false}` only when the current extension socket closes (a
+      replaced socket emits nothing); extension events are ignored and counted (`extensionEvents=<n>`
+      in the log's `exit` line) — see as-built § Stage D2, § Stage D3.*
 - [ ] `daemon.status` adds `tabs: [{tab, tabId, owner, url?}]` and `lock: {holder?} `.
+      *Corrected 2026-10-22: the base it extends is, as built, `{build, uptime (ms),
+      extensionConnected, clients:[{id,name,since}], port}`; `browser_status` and `recipes/hello.ts`
+      read these fields, so T2 only adds — see as-built § Stage D2, § Stage D6.*
 - [ ] Tests over real `ws`: two clients, fake extension that answers `listTabs`/`newTab` and emits
       events — client A's `newTab` is held by A; B's `click` on it → `TAB_HELD` naming A; A disconnects →
       B can claim; `tabReplaced` keeps A's handle valid; `tabRemoved` → `TAB_GONE` with lastUrl; two
@@ -283,6 +332,11 @@ wave (G7-2).
       the existing fixtures — add a test that renders the Step 5 fixture entries and compares to the
       stored expected text).
 - [ ] `sdk/src/client.ts`: typed events `tabGone`, `leaseGranted`, `extensionStatus`.
+      *Corrected 2026-10-22: as built `BridgeClient` has one untyped `on("event", cb)` for every
+      `{event, params}` frame and `on("reconnected", cb)`; it consumes `extensionStatus` itself and
+      exposes it as the `extensionConnected` getter; `sdk/src/index.ts` still exports exactly the five
+      D4.3 values, and Step 8 owns the final surface (decisions.md · 2026-10-22 · BridgeClient exposes
+      welcome, extensionConnected and on("reconnected") in Step 6) — see as-built § Stage D4.*
 - [ ] `mcp/src/tools/registry.ts`: every tab-touching tool gets `tab: z.string().optional()`; without
       it the MCP uses its cursor — **in this step** the cursor is simply "claim the active tab on first
       touch, then keep it" (Step 8 adds `browser_use_active_tab` and the status line); `browser_snapshot`
@@ -308,6 +362,10 @@ This stage is a **wave run with the user** after the autonomous phase closes (hu
 starts with `npm run build` → `chrome://extensions` ↻ → `/mcp`; an `unknown method: focusTab` or
 `BAD_PARAMS tabId` error means the loaded extension is stale. The autonomous run writes the rows and
 their expected results into `docs/e2e-test-plan.md` beforehand.
+*Corrected 2026-10-22: since Step 6, `npm run build` also changes the daemon's build: the first client
+to connect hands the running daemon over, and every other client reconnects on 4002 without a
+handover; every Claude session in the wave needs `/mcp` (T4 changes the MCP bundle) — see as-built
+§ Stage D4.*
 
 - [ ] **LEASE-1** Two Claude sessions: A snapshots (claims the active tab), B's `browser_snapshot` →
       `TAB_HELD` naming A; B `browser_new_tab` → works on its own tab; both click in parallel.
@@ -336,7 +394,11 @@ their expected results into `docs/e2e-test-plan.md` beforehand.
       written by Step 6's D6; decisions.md · 2026-10-21 · Step 6 writes the DL rows for
       browser_download before its D6 wave).
 
-**Lane:** `docs/e2e-test-plan.md`, `recipes/hello.ts` (its 30 s typing variant for LEASE-2). The
+**Lane:** `docs/e2e-test-plan.md`, `recipes/hello.ts` (its 30 s typing variant for LEASE-2).
+*Corrected 2026-10-22: `recipes/hello.ts` exists (Step 6 D6): it connects, prints `daemon.status` and
+`listTabs` (tab ids and titles, never URLs), optionally holds, and rows MUX-3, MUX-5, MUX-6, MUX-8 and
+MUX-10 judge its exact output; the typing variant is a separate file or leaves that output unchanged —
+see as-built § Stage D6.* The
 "open popup" button LEASE-3 needs is added by T1 (*ruled 2026-10-21*). **Parallel with:** sequential, after T4. **Verifier focus (wave):** every row's expected
 text is written before the run; SCREEN-1's flash is a measured number with its method; BG-1/BG-2 are
 recorded as facts either way because Step 8's `sdk/src/policy.ts` constant is set from them; LEASE-1
@@ -408,6 +470,10 @@ step's baseline is Step 6's closing test count (recorded in Step 6's as-built) a
   `listTabs`, `networkRequests`, `daemon.*`, `tabs.claim/release` succeed without a lease; `networkClear`
   on a foreign tab → `TAB_HELD`.
 - T2.5 `grep -rn "lastUrl\|url" daemon/src/log.ts daemon/src/wsHost.ts` shows no log call carrying a URL.
+  *Corrected 2026-10-22: as built the daemon's log calls are in `daemon/src/main.ts` (`logger.log`);
+  `wsHost.ts`'s `console.error` lines go nowhere (no stdio). The grep covers `daemon/src/main.ts` and
+  any new module that logs; `log.ts` withholds a whole line containing `://` or the token — see
+  as-built § Stage D3.*
 
 **T3**
 - T3.1 `npm test` after ≥ before (text assertions moved, not deleted — the moved count is stated);
@@ -478,7 +544,10 @@ step's baseline is Step 6's closing test count (recorded in Step 6's as-built) a
 test fails (T4.2) and the proposed fix is to regenerate the expected text; a `CLAUDE.md` runtime
 invariant would have to change (`unwrapResult` null-or-undefined, IIFE content script, no top-level
 `await`, top-level `webRequest` listeners, never logging URLs — `step-agent` ESCALATION list); a
-security-boundary question; an unexplained port-9234 holder.
+security-boundary question; an unexplained port-9234 holder. *Corrected 2026-10-22: since Step 6 the
+daemon (`node …/daemon/dist/index.js`, or a `BRIDGE_DAEMON` path) holds 9234 by design; a holder is
+unexplained only when it is not that process (its pid and build are in
+`~/.chrome-agent-bridge/daemon.log`) — see as-built § Stage D3.*
 
 **Continues anyway, recorded:** BG-1…4 and SCREEN-4 results in either direction (they are findings,
 and Step 8 reads them); a longer-than-expected flash in SCREEN-1 (report the number); build decisions
