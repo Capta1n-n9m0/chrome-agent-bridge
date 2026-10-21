@@ -186,3 +186,47 @@ pre-registered in `journal.md` before dispatch.
   passes the options is untested on its own (as the D5 entry point); CONN-2 (b) covers it live.
 - **Governing docs amended by the session agent:** phase doc D5 `connect` line and spec §9.7, dated.
 - **Estimate vs actual:** not in the original split; ~13 min agent wall time.
+
+## Stage D6 — E2E rows, autonomous part (closed 2026-10-22, commit 7d2e665)
+
+- **Outputs:** `docs/e2e-test-plan.md` (additions only): MUX-1…9, an optional MUX-10 (the SDK
+  side of decision #13), DL-1 and DL-2, each with exact commands and literal expected text; §1
+  item 8 (wave set-up, token via `bridge.token` only); the D6.3 grep step counting `://` and token
+  matches without printing them; a §5 "Run 7" skeleton marked "waits for the D6 wave".
+  `recipes/hello.ts` + `recipes/tsconfig.json`; fixtures `test-fixtures/dl/hello.txt` (known
+  sha256) and `test-fixtures/redirect_server.py` (127.0.0.1 only). Dated MUX-5 note in the phase doc.
+- **Measured:** `npm test` 542 passed, 42 files (unchanged); typecheck, build and
+  `npx tsc --noEmit -p recipes` exit 0; all 6 PowerShell blocks parse; extension diff empty.
+- **Verifier:** FAIL on round 1 (DL-1 ran twice with no reset), PASS-with-notes after two fix
+  rounds. No row was run (G6-2).
+- **User input:** the wave may use UI automation (2026-10-22); every step is tagged [UI]/[SH]/[USER]
+  with cautions A1–A10 (decisions.md · 2026-10-22 · #30).
+- **Rows that measure open decisions:** MUX-7 → #14 (plus cases (d) tree kill of a non-spawning
+  session, optional (e) a daemon kill measuring #15); MUX-8 → #21, #27; MUX-10 → #13.
+- **Process note:** fixer round 1 left a scratch fake-extension `node` (PID 11092, a client looping
+  on a dead scratch port, bound nothing); the step agent checked its command line and stopped it.
+  After the stage: only PID 2928 (codex, not ours); 9234 free (session agent, `tasklist`/`netstat`).
+- **Candidate gotcha:** Windows PowerShell 5.1 turns `—` into `â€"` in program output and in UTF-8
+  files read without a BOM.
+- **Unmeasured until the wave:** the fixture's `text/plain` type in Chrome; whether Local Network
+  Access prompts for `127.0.0.1:8081`.
+- **Estimate vs actual:** 1 h estimated; ~45 min agent wall time.
+
+## Stage D7 — docs, non-E2E part (verified 2026-10-22; commit pending the user)
+
+- **Outputs (in the working tree, uncommitted):** `CLAUDE.md` (architecture with the daemon, key
+  files for five packages, commands with 542 tests, busy-port gotcha rewritten, one-session rule
+  removed, five new gotchas; Current state block untouched), `docs/setup.md` (token precedence, one
+  `BRIDGE_PORT`, "The daemon" section, troubleshooting), `docs/progress-and-roadmap.md` (Step 6 block,
+  per-stage counts 301 → 542, E2E part "waits for the D6 wave"); `D7.md`, `D7-verifier.md`,
+  `D7.ledger.md`.
+- **Verifier:** FAIL on round 1 (roadmap "Quality state" still named `server/dist/index.js` and 256
+  tests), PASS-with-notes after one fix round. D7.1 grep empty; D7.2 all 50 key-file paths exist;
+  D7.3 every stage commit maps to its list text with no `dist/`, `bridge.token` or `.env`; 23
+  sampled claims held; 542 tests, typecheck and build green.
+- **Blocked:** the permission classifier denied the builder's `git commit -F`, with no reason given.
+  No agent retried it. The commit is the user's (long-run §4.5). The session agent unstaged the six
+  files so D6's commit could not take them.
+- **Decision:** decisions.md · 2026-10-22 · #29.
+- **Carried to close-out:** `README.md` still says "20 tools" and "256 unit tests"; the `CLAUDE.md`
+  Current state block; the roadmap's E2E results after the wave.

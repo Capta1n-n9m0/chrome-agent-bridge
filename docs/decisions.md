@@ -22,6 +22,35 @@ For the user to review at the Step 6 gate (G6-2). Each was taken by the conserva
 
 ## Log
 
+### 2026-10-22 · The D6 wave's set-up: token from `bridge.token`, a quiet recipe, a dist-comment rebuild, a local redirect fixture, tagged steps (#30)
+**Decided:** The wave provides the token only through a `bridge.token` file created by a command
+that prints nothing, with `BRIDGE_TOKEN` unset. `recipes/hello.ts` prints tab ids and titles, never
+URLs, and re-checks its connection after the hold. MUX-5 changes the build by appending a comment
+to `daemon/dist/index.js` (the SDK has no "upgraded daemon" message, so the row judges the build,
+the new pid and the log). DL-2's cross-origin redirect comes from a stdlib fixture
+(`test-fixtures/redirect_server.py`) bound to `127.0.0.1:8081`. Every wave step is tagged [UI]
+(UI automation), [SH] (an agent's shell) or [USER], with ten cautions where automation would
+disturb a measurement.
+**Why:** One token source keeps the D6.3 log grep meaningful and the token off every screen; the
+user said on 2026-10-22 that the E2E tests may use UI automation; the rest are the cheapest
+discriminating set-ups (`D6.md`, `D6-verifier.md`).
+**Instead of:** `BRIDGE_TOKEN` in the environment; a real rebuild for MUX-5; a third-party redirect
+host.
+**Revisit if:** Chrome's Local Network Access prompts on the request to `127.0.0.1:8081`, or the
+fixture's `text/plain` type differs in real Chrome (both unmeasured until the wave).
+**By:** Claude
+
+### 2026-10-22 · setup.md documents stopping the daemon by killing its process, with no stop script (#29)
+**Decided:** `setup.md` documents the idle exit and the OS commands that stop the daemon (Windows:
+stop the process listening on 9234; Linux/macOS: `pkill -f daemon/dist/index.js`, with a note for
+`BRIDGE_DAEMON` paths), warns that an open MCP starts a new daemon 5 s later, and offers no
+`daemon.shutdown` recipe as a stop command.
+**Why:** No stop command exists, and `daemon.shutdown` closes clients with 4002, which SDK clients
+treat as "reconnect", so it may spawn a new daemon at once (`D7.md`).
+**Instead of:** An untested tsx snippet calling `daemon.shutdown`.
+**Revisit if:** Step 8 adds a stop command to the SDK.
+**By:** Claude
+
 ### 2026-10-22 · D5b's shape: `requireExtension: false`, a `connectOptions()` helper, a test-only daemon import (#28)
 **Decided:** The option of decision #27 is `connect({ requireExtension?: boolean })`, default
 `true`. `false` resolves on the welcome whatever the extension's state, with no wait timer, and
