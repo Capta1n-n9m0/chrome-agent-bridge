@@ -23,3 +23,4 @@ Times are UTC from `date -u`.
   `extensionStatus {connected:true}` on the same client; D5b.4 five SDK exports, 21 tools with
   unchanged schemas, `lifecycle.ts` identical, extension diff empty; D5b.5 new tests fail with source
   reverted; D5b.6 `setup.md` Troubleshooting and e2e CONN-2 updated with a dated note, nothing else.
+- 2026-10-21T22:24:58Z · D5b closed: DONE, PASS-with-notes, 033b1bc, 542 tests. Decision #28. Spec §9.7 and phase-doc D5 amended. D6 (rows + recipes/hello.ts) and D7 (docs, non-E2E) dispatched in parallel (file-disjoint: e2e-test-plan.md + recipes/ vs CLAUDE.md + setup.md + roadmap).

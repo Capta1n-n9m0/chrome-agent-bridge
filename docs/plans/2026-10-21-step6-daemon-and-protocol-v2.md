@@ -341,7 +341,9 @@ calls `unref()`. **Needs the user's keyboard:** no.
 - [ ] `mcp/src/index.ts`: `const b = await connect({ name: \`claude-code #${process.pid}\` })` —
       (*Superseded 2026-10-21: was `process.ppid`, because under the nvm-windows shim the parent is the
       shim, not Claude Code; the spec §8.3 `#<pid>` stands — decisions.md · 2026-10-21 · The actor name
-      carries the MCP's own process id*) —
+      carries the MCP's own process id*) — (*Superseded 2026-10-22: the MCP passes `requireExtension: false`;
+      was the default 15 s extension wait, because with Chrome closed that left the MCP without a
+      daemon client and churning every ~20 s — decisions.md · 2026-10-22 · #27, stage D5b*) —
       **failure to connect must not crash the MCP** (same rule as the busy-port rule today): register the
       tools regardless, store the reason, surface it through every tool and `browser_status`, and retry
       `connect()` every 5 s. (`startup.ts`'s shape, reused for the SDK connection.)

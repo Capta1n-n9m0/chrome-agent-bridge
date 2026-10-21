@@ -289,7 +289,9 @@ renders the same fields as text. Nothing here needs a model in the loop.
 6. **Idle exit.** Zero *clients* (the extension does not count) for 10 min → exit. Also `daemon.shutdown`.
 7. **Waiting for Chrome.** A fresh daemon has no extension yet; the SDK's `connect({ waitForExtensionMs })`
    waits for the `extensionStatus {connected:true}` event (default 15 s) before resolving, so a script
-   does not start with `NOT_CONNECTED`.
+   does not start with `NOT_CONNECTED`. *Amended 2026-10-22: `connect({ requireExtension: false })`
+   skips the wait and resolves on the welcome; the MCP uses it so that Chrome closed reads as before
+   Step 6 (decisions.md · 2026-10-22 · #27, stage D5b).*
 8. **Token.** Same token as the extension. Source of truth: `bridge.token` at the repo root (gitignored);
    `BRIDGE_TOKEN` env overrides (the MCP config still passes it that way). The daemon reads it the
    same way; a client that cannot find a token fails before knocking with a message naming both places.

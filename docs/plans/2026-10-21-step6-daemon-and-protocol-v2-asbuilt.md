@@ -166,3 +166,23 @@ One section per stage, appended at stage close, never rewritten; corrections are
 - **Regression found, sent to D5b:** with Chrome closed the MCP held no client (decisions.md ·
   2026-10-22 · #27).
 - **Estimate vs actual:** 2 h estimated; ~23 min agent wall time.
+
+## Stage D5b — the MCP connects without waiting for the extension (closed 2026-10-22, commit 033b1bc)
+
+Added by the session agent after D5 (decisions.md · 2026-10-22 · #27); exit checks D5b.1–D5b.6
+pre-registered in `journal.md` before dispatch.
+- **Outputs:** `connect({ requireExtension?: boolean })` in `sdk/src/connect.ts` (default `true`,
+  unchanged; `false` resolves on the welcome, no wait, client stays open); `mcp/src/config.ts`
+  `connectOptions()` → `{name, requireExtension: false}`; stale comment at `connect.ts:48` fixed;
+  `setup.md` Troubleshooting and e2e CONN-2 (b) updated with dated notes. SDK still exports the five
+  D4.3 values.
+- **`browser_status` with the extension down:** `Daemon: connected on 127.0.0.1:<port> (build …,
+  up 0s)` / `Clients (1): claude-code #<pid>` / `Extension: not connected — …`.
+- **Measured:** `npm test` 538 → 542 passed (41 → 42 files), clean worktree with `npm ci`;
+  typecheck and build exit 0; all 4 new tests fail with the source reverted; extension diff empty.
+- **Verifier:** PASS-with-notes (2 MINOR, 4 NIT). Ran over real `ws` on port 0: a tool call fails in
+  0–1 ms with the `1a92d95` NOT_CONNECTED text, the client is not dropped, the next call succeeds
+  once the extension connects; 4002 and 1001 closes behave as in D5. The one `index.ts` line that
+  passes the options is untested on its own (as the D5 entry point); CONN-2 (b) covers it live.
+- **Governing docs amended by the session agent:** phase doc D5 `connect` line and spec §9.7, dated.
+- **Estimate vs actual:** not in the original split; ~13 min agent wall time.

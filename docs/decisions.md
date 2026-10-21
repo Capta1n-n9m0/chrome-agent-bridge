@@ -22,6 +22,22 @@ For the user to review at the Step 6 gate (G6-2). Each was taken by the conserva
 
 ## Log
 
+### 2026-10-22 · D5b's shape: `requireExtension: false`, a `connectOptions()` helper, a test-only daemon import (#28)
+**Decided:** The option of decision #27 is `connect({ requireExtension?: boolean })`, default
+`true`. `false` resolves on the welcome whatever the extension's state, with no wait timer, and
+ignores `waitForExtensionMs`; the client stays open and `extensionConnected` follows
+`extensionStatus`. The MCP builds its options in `mcp/src/config.ts` `connectOptions()` →
+`{name, requireExtension: false}`. The new MCP test imports `daemon/src` by relative path, so the
+`NOT_CONNECTED` text, welcome and `daemon.status` come from the daemon itself; the mcp bundle holds
+no daemon code.
+**Why:** An explicit boolean reads better than overloading `waitForExtensionMs: 0`, whose "wait
+0 ms then fail" reading is the opposite. Measured: with the extension down a tool call fails in
+0–1 ms with the `1a92d95` text and the client stays; once the extension connects the next call
+succeeds on the same client (`D5b-verifier.md`, real `ws` on port 0).
+**Instead of:** `waitForExtensionMs: 0`; inline options in `index.ts`; a fake copy of the daemon.
+**Revisit if:** Step 8's SDK surface review (the option is listed under #27 for user review).
+**By:** Claude
+
 ### 2026-10-22 · The MCP connects without waiting for the extension, so Chrome closed reads as today (#27)
 **Decided:** A follow-up stage D5b adds a `connect()` option that returns the client even when
 the welcome says the extension is down (no 15 s wait, no `NOT_CONNECTED`), and the MCP uses it.
