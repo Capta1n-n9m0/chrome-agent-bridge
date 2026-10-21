@@ -30,8 +30,14 @@ extension must use the **same** token. Treat it like a password — anything tha
 reach the WebSocket with this token can drive your logged-in browser.
 
 Clients find the token in this order: the `BRIDGE_TOKEN` environment variable wins; without it, the
-file `bridge.token` at the repo root (gitignored — never commit it). Every client must also use the
-same `BRIDGE_PORT` (default `9234`).
+file `bridge.token` at the repo root (gitignored — never commit it). The repo root is the first
+directory above the code whose `package.json` has `"workspaces"`; leading and trailing whitespace in
+the file is ignored. With a `bridge.token` in place, scripts need no environment variable and the
+MCP config's `BRIDGE_TOKEN` is optional. The daemon a client starts gets that client's token and port.
+
+Every client must also use the **same** `BRIDGE_PORT` (default `9234`), the port set in the
+extension's Options. A client on another port starts a second daemon there, which the extension
+never reaches; that client then fails with `Extension not connected — …`.
 
 ## 3. Register the MCP server with your client
 
@@ -50,10 +56,14 @@ token and the absolute path to this repo:
 }
 ```
 
+**If you used the bridge before Step 6**, your config still points at the old server entry. Change
+`args` to `<absolute-path-to-repo>/mcp/dist/index.js` yourself, once, then restart the session; the
+build does not touch your client config.
+
 You do not start the daemon yourself. The first client to connect (usually this MCP server)
 starts it in the background; later clients join it. It **outlives the Claude session on purpose**,
 so the next session and any script reuse it, and it exits on its own after 10 minutes with no
-clients. Its log is `~/.chrome-agent-bridge/daemon.log`.
+clients. Its log is `~/.chrome-agent-bridge/daemon.log`. See [The daemon](#the-daemon) below.
 
 To try it without an MCP client, use the inspector:
 ```bash
@@ -101,6 +111,54 @@ With the daemon running and the extension connected, call the tools from your cl
 Typical loop: `browser_snapshot()` to see refs → act by ref (`browser_click`, `browser_type`)
 → snapshot again to see the result.
 
+## The daemon
+
+One daemon per machine holds the extension's socket; every Claude session and every script is a
+client of it. It runs `node <repo>/daemon/dist/index.js`, listens on `127.0.0.1` only, and has no
+console window or output — the log is its only voice.
+
+**The log.** `~/.chrome-agent-bridge/daemon.log`, one line per event, `YYYY-MM-DDTHH:MM:SSZ <message>`
+in UTC: `start pid=…`, `config pid=… port=… idleMs=… build=…`, `listening on 127.0.0.1:9234`,
+`client + "claude-code #1234" (1 client)`, `client - …`, and `exit <code> (<why>) …` with counts. It
+holds counts, ids and names only; a line that would contain a URL or the token is replaced by
+`[line withheld: contained a URL or the token]`. On start the file is cut back to its last 1 MiB.
+
+**Which build is running.** The build id is the sha256 of `daemon/dist/index.js`. `browser_status`
+prints it on its first line (`Daemon: connected on 127.0.0.1:9234 (build <sha256>, up <s>s)`), the
+log prints it in the `config` line, and an SDK script gets it from `client.status()` (`daemon.status`).
+Compare it with `sha256sum daemon/dist/index.js`, or `Get-FileHash daemon\dist\index.js` in
+PowerShell (which prints the same hex in upper case). After `npm run build` changes that file, the
+next client to connect asks the old daemon to step down (`daemon.shutdown`), starts the new one, and
+the other clients reconnect to it on their own. A `/mcp` reconnect counts as a new client.
+
+**Stopping it by hand.** There is no stop command. The daemon exits by itself after
+`BRIDGE_DAEMON_IDLE_MS` (default `600000`, 10 minutes) with no clients — Chrome's extension does not
+count as a client. To stop it sooner, stop its process:
+
+```powershell
+# Windows (PowerShell): the process listening on the bridge port
+Get-NetTCPConnection -LocalPort 9234 -State Listen -ErrorAction SilentlyContinue |
+  ForEach-Object { Stop-Process -Id $_.OwningProcess }
+```
+```bash
+# Linux / macOS: the node process running the daemon file
+pkill -f daemon/dist/index.js
+```
+
+The PowerShell line does nothing when no daemon is listening. The `pkill` pattern matches the
+default daemon file; a daemon started from a `BRIDGE_DAEMON` path (below) needs that path instead.
+
+An open Claude session's MCP starts a new daemon 5 s after the connection drops; a running script
+gets an error instead. End the sessions (and any script that would call `connect()` again) first if you want it to stay stopped. The daemon also answers a `daemon.shutdown` request (reply `{ok:true}`, then
+it closes every client with code 4002 and exits 0); that is how a newer build replaces an older one,
+and connected clients treat 4002 as "reconnect", so it is not a stop button either.
+
+**Development override.** `BRIDGE_DAEMON` points clients at a different daemon file instead of
+`<repo>/daemon/dist/index.js`. On Windows give a native path (`C:\…\index.js`): Node reads a Git Bash
+path such as `/c/Users/…` as `C:\c\Users\…`. Every client on the machine must point at the same build:
+a client with a different one replaces the running daemon (once per connect), and the clients
+already connected then fail with a `VERSION` error when they reconnect.
+
 ## The debugging banner
 
 When trusted input is used (`browser_click`, `browser_type` or `browser_press_key` with
@@ -145,8 +203,8 @@ a parser — a false positive only costs you the completion-value behaviour.
 stack. A syntax error arrives as a plain `SyntaxError: …` with **no** line/column information (under
 `replMode` Chrome reports it as an exception object, not a compile-time position).
 
-**Timeouts.** `timeoutMs` defaults to 10 000 and is clamped to 100…60 000; the server waits 5 s
-longer, so a long evaluate is not cut short by the bridge's own call timeout. On expiry the debugger
+**Timeouts.** `timeoutMs` defaults to 10 000 and is clamped to 100…60 000; the daemon waits 5 s
+longer (the SDK client 1 s more), so a long evaluate is not cut short by the bridge's own call timeout. On expiry the debugger
 detaches and you get `Timed out after Ns …` — but **work the page already started keeps running**
 (a `fetch` in flight is not cancelled).
 
@@ -265,19 +323,25 @@ when Chrome exits or the extension is reloaded.
   redacted in the request-body summary the same way. Headers and bodies are returned only when you
   ask for them (`includeHeaders`, or an `id` lookup).
 - **Nothing network-related is logged.** The service-worker console prints entry *counts* only —
-  never a URL, a header value or a body — and the server writes nothing about network entries to
-  stderr.
+  never a URL, a header value or a body — and neither the MCP nor the daemon writes anything about network
+  entries (the daemon's log holds counts, ids and names only).
 
 ## Troubleshooting
 
 - **Start with `browser_status`.** It tells you which part is broken: the daemon
   (`Daemon: not connected` plus a `Problem:` line), the extension (not connected), or neither (then
   look at the active tab it reports).
-- **"a pre-Step-6 bridge server holds port 9234"** from `browser_status` or any tool: an old
-  Claude session still runs the previous bridge server. End that session (or find the stale
-  `node …/server/dist/index.js` with `Get-NetTCPConnection -LocalPort 9234 -State Listen` and stop
-  it). The MCP never crashes on this; it retries every 5 s and connects on its own once the port is
-  free.
+- **"No welcome from 127.0.0.1:9234 within 2 s after hello: a pre-Step-6 bridge server holds port
+  9234"** from `browser_status` or any tool: an old Claude session still runs the previous bridge
+  server. End that session, or stop the process listening on the port (`Stop-Process -Id
+  (Get-NetTCPConnection -LocalPort 9234 -State Listen).OwningProcess` in PowerShell). The MCP never
+  crashes on this; it retries every 5 s and connects on its own once the port is free.
+- **Tools report a different build than you just built, or `VERSION`**: see
+  [Which build is running](#the-daemon). Two checkouts or a `BRIDGE_DAEMON` override on the same
+  port fight over the one daemon; point every client at the same `daemon/dist/index.js`.
+- **"Could not reach the bridge daemon on 127.0.0.1:9234 within 10 s … — see …daemon.log"**: the
+  daemon did not start or did not bind. Read the last lines of `~/.chrome-agent-bridge/daemon.log`
+  (for example `cannot listen on port …`, or no `start` line at all when node could not run the file).
 - **"Extension not connected"** from a tool: make sure Chrome is open, the extension is
   enabled, and the Options token/port match the bridge token (`BRIDGE_TOKEN` or `bridge.token`) and `BRIDGE_PORT` the daemon uses.
   Check the service-worker console for `connection: up`.

@@ -1,8 +1,8 @@
 # Progress & Roadmap
 
-- **Date:** 2026-10-21
+- **Date:** 2026-10-22
 - **Branch:** `main` (merged from `feat/agent-bridge`; public on GitHub, MIT, since 2026-09-03)
-- **Status:** Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **21 tools, 301 unit tests green** (`npm test` on `e60a83a`, 2026-10-21); **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`); nothing of Step 6 is built.**
+- **Status:** **Step 6 (daemon + SDK + MCP as an SDK client) code complete, live E2E pending** — the D6 wave with the user ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)); **21 tools, 542 unit tests green** (`npm test` → 542 passed, 42 files, at D5b commit `033b1bc`, 2026-10-22). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
 
 ---
 
@@ -163,9 +163,14 @@ out of.
 | B | Robustness: port-busy surfaced through tools + bind retry; `browser_status`; WS heartbeat; actionable `chrome.debugger` errors; CONN-5 soak | ✅ Done (E2E-verified 2026-09-03) |
 | Step 4 | `browser_evaluate`: CDP `Runtime.evaluate` in the page context + in-page serialiser + per-call server timeout | ✅ Done (E2E-verified 2026-09-07) |
 | Step 5 | Network inspection: always-on `chrome.webRequest` capture into a bounded per-tab `NetworkLog` with `storage.session` write-through; `browser_network_requests` + `browser_network_clear` | ✅ Done (E2E-verified 2026-09-07), including Part N6 `browser_wait_for { networkIdle: true }` (NET-16) |
+| Step 6 | Daemon + protocol v2: `daemon/ sdk/ mcp/` split, a shared detached daemon (roles, welcome, error codes, build-hash handover, idle exit, log), the SDK's `connect()`, the MCP as an SDK client | 🟡 Code complete 2026-10-22 (542 tests); live E2E waits for the D6 wave |
 
-**Quality state:** 256 unit tests pass; `tsc` typecheck clean across all three packages; all four
-bundles build (`server/dist/index.js`, `extension/dist/{sw,options,offscreen,content}.js`). Every
+**Quality state:** 542 unit tests pass in 42 files (`npm test` at D5b commit `033b1bc`,
+2026-10-22); `tsc` typecheck clean across all five packages (`shared daemon sdk mcp extension`);
+`npm run build` produces `daemon/dist/index.js`, `mcp/dist/index.js` and
+`extension/dist/{sw,options,offscreen,content}.js`. *Superseded 2026-10-22: was "256 unit tests
+pass; `tsc` typecheck clean across all three packages; all four bundles build (`server/dist/index.js`,
+…)", because Step 6 split `server/` into `daemon/ sdk/ mcp/`.* Every
 milestone passed a two-stage review (spec compliance + code quality); the final whole-system review
 verified the end-to-end protocol contract and that esbuild does not break page-injected functions.
 
@@ -174,11 +179,49 @@ verified the end-to-end protocol contract and that esbuild does not break page-i
 `browser_select_option`, `browser_back`, `browser_forward`, `browser_list_tabs`, `browser_select_tab`,
 `browser_new_tab`, `browser_close_tab`, `browser_wait_for`, `browser_evaluate`, `browser_network_requests`, `browser_network_clear`, `browser_download` (2026-10-06, live-verified: two Blackboard files, 0.4 MB and 7.2 MB, through the bbcswebdav → S3 redirect, sha256-identical to copies fetched another way).
 
+### Step 6 — daemon, SDK and the MCP as an SDK client (2026-10-22)
+
+Phase doc `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`; contracts and deviations in
+`…-asbuilt.md`; decisions in `docs/decisions.md` 2026-10-22 #13–#30.
+
+- **What exists:** five workspaces (`shared daemon sdk mcp extension`); one detached daemon per
+  machine on `127.0.0.1:9234` that every client shares (welcome, 22 error codes, build-hash handover,
+  idle exit after 10 min with no clients, `~/.chrome-agent-bridge/daemon.log`); the SDK's `connect()`
+  (finds, spawns or hands over the daemon); the MCP as an SDK client that never crashes without a
+  daemon. The extension is unchanged (`git diff -- extension/` empty at every stage).
+- **Tools:** still 21, names and schemas identical to `1a92d95` apart from `browser_status`'s
+  description and body (D5 verifier, as-built register).
+- **Tests per stage** (`npm test`, "Tests N passed", at each stage's commit; the as-built register
+  records how each was measured):
+
+| Stage | Commit | Tests | Files |
+|---|---|---|---|
+| Baseline | `1a92d95` | 301 | 22 |
+| D0 — shared types and codes | `6f7768c` | 322 | 25 |
+| D1 — repository split | `80e540c` | 322 | 25 |
+| D2 — daemon roles, registry, routing | `4d0241e` | 385 | 28 |
+| D4 — SDK core | `9f3fc86` | 479 | 37 |
+| D3 — daemon lifecycle | `3964eb1` | 528 | 41 |
+| D5 — MCP over the SDK | `d6832a1` | 538 | 41 |
+| D5b — connect without waiting for the extension | `033b1bc` | 542 | 42 |
+
+  D5's net +10 includes the documented removal of `startup.test.ts` (−5 tests) with `startup.ts`.
+- **Not done:** the live E2E (the D6 MUX and DL rows in `docs/e2e-test-plan.md`); the user's MCP
+  config change to `<repo>/mcp/dist/index.js`; the D7 docs commit (the permission classifier denied
+  the builder's commit; it is the user's). POSIX behaviour (the MCP's parent check, the detached
+  daemon) is unverified.
+
+**E2E results — waits for the D6 wave** (with the user, gate G6-2 in the phase doc). Nothing is
+measured live yet.
+
 ## 2. Architecture at a glance
 
 ```
-Claude ⇄ (MCP/stdio) ⇄ MCP server [hosts ws://127.0.0.1:9234]
-                              ⇅ (JSON {id,method,params} + token)
+Claude ⇄ (MCP/stdio) ⇄ MCP server ─┐  SDK clients (connect(): find, spawn or hand over the daemon)
+scripts ⇄ SDK ─────────────────────┤
+                                   ⇅ ws://127.0.0.1:9234 + token
+   daemon (one per machine, detached, outlives sessions; holds the extension socket)
+                                   ⇅ (JSON {id,method,params})
    Chrome extension (real profile):
      offscreen document  →  holds the WebSocket (survives MV3 service-worker culling)
      service worker      →  routes commands to chrome.tabs / scripting / debugger
@@ -264,16 +307,18 @@ measured, though DPR 1.25 and 1.5 both needed no correction.
   subtree even though a descendant could set `visibility:visible`.
 - **Snapshot cap** — very large pages are truncated at 800 listed elements with a note. There is
   no "expand" or viewport-only mode yet.
-- **Single connection, single server** — one extension at a time (a second valid connection
-  replaces the first), and one server per port. A second server on 9234 now *says so* through every
-  tool and `browser_status`, and takes the port over within 5 s of the first exiting — but two Claude
-  sessions still cannot drive the bridge concurrently.
+- **One extension, one daemon, one active tab** — one extension at a time (a second valid connection
+  replaces the first) and one daemon per port. Several Claude sessions and scripts can connect to
+  the daemon at once, but they all act on the same active tab; parallel actors on separate tabs are
+  Step 7. *Superseded 2026-10-22: was "one server per port … two Claude sessions still cannot drive
+  the bridge concurrently", because Step 6 made the daemon shared (not yet verified live).*
 - **Active-tab safety** — the agent acts on whatever tab is focused, including sensitive ones.
   Mitigations today are localhost-only + token + the debugger banner.
 - **Keepalive** — measured (2026-09-03): the offscreen-document socket survived 9.5 minutes of idle
   Chrome, and a killed Chrome is noticed on the next call because its exit closes the socket. The
-  server-side 30 s heartbeat covers the remaining case — a peer that hangs without closing — which has
-  only been exercised in unit tests. A truly *unattended* setup (Chrome not running when a session
+  daemon's 30 s heartbeat (`daemon/src/wsHost.ts`) covers the remaining case — a peer that hangs
+  without closing — which has only been exercised in unit tests. *Superseded 2026-10-22: was "The
+  server-side 30 s heartbeat", because Step 6 moved the socket host into the daemon.* A truly *unattended* setup (Chrome not running when a session
   starts) still needs someone to launch Chrome.
 
 ## 5. Roadmap
@@ -300,8 +345,12 @@ findings their Stage-0 audits were to settle were ruled with the user and record
 `docs/decisions.md` (actor name `#<pid>`; `selectTab` alias for one release; `extensionStatus` owned
 by D2; DL rows for `browser_download` written by Step 6; the popup button in Step 7 T1; SDK-4's
 `{text}` locator; one daemon handover per `connect()` then `VERSION`; the cursor cleared on a 4002
-reconnect; Opus 5.5 for every Step 6 agent). The Step 6 kickoff is `docs/plans/next-session-prompt.md`;
-Step 6 starts by pasting it into a fresh session that does not use the bridge MCP. Nothing is built.
+reconnect; Opus 5.5 for every Step 6 agent). The Step 6 kickoff is `docs/plans/next-session-prompt.md`.
+Step 6's code is built (stages D0–D5b, 542 tests; [§1 Step 6
+block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)); its live E2E waits for the D6
+wave with the user. Next after that: Step 7, then Step 8. *Superseded 2026-10-22: was "Step 6 starts
+by pasting it into a fresh session that does not use the bridge MCP. Nothing is built.", because
+Step 6's code stages D0–D5b landed.*
 
 **Phase A — Validate & ship.** ✅ Done (2026-06-04) — see §0. 29 E2E cases passed; 3 runtime bugs
 fixed; merged to `main`; published on GitHub (private at the time; public + MIT since 2026-09-03). Remaining: deferred soak tests
