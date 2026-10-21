@@ -1,4 +1,4 @@
-import { isResponse, isErrorResponse, type RequestMessage } from "@bridge/shared";
+import { BridgeError, ErrorCodes, fromWire, isResponse, isErrorResponse, type RequestMessage } from "@bridge/shared";
 
 /** Per-call overrides. `timeoutMs` replaces the connection default for this call only. */
 export interface CallOptions {
@@ -28,7 +28,7 @@ export class ExtensionConnection {
     return new Promise<unknown>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new Error(`Timed out after ${timeoutMs}ms calling ${method}`));
+        reject(new BridgeError(ErrorCodes.TIMEOUT, `Timed out after ${timeoutMs}ms calling ${method}`));
       }, timeoutMs);
       this.pending.set(id, { resolve, reject, timer });
       this.send(JSON.stringify(message));
@@ -47,14 +47,16 @@ export class ExtensionConnection {
     if (!pending) return;
     this.pending.delete(parsed.id);
     clearTimeout(pending.timer);
-    if (isErrorResponse(parsed)) pending.reject(new Error(parsed.error.message));
+    // v2 errors keep their code/data; a v1 `{message}` becomes INTERNAL (decision 0.4).
+    if (isErrorResponse(parsed)) pending.reject(fromWire(parsed.error));
     else pending.resolve(parsed.result);
   }
 
+  /** Fail every pending call with `NOT_CONNECTED`, keeping `reason` as the message. */
   rejectAll(reason: string): void {
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
-      pending.reject(new Error(reason));
+      pending.reject(new BridgeError(ErrorCodes.NOT_CONNECTED, reason));
     }
     this.pending.clear();
   }

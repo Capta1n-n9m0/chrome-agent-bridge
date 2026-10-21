@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { Bridge } from "../src/bridge.js";
 import { ExtensionConnection } from "../src/connection.js";
+import { BridgeError } from "@bridge/shared";
 
 describe("Bridge", () => {
   it("throws a clear error when no extension is connected", async () => {
@@ -79,5 +80,24 @@ describe("Bridge per-call options", () => {
     bridge.setConnection(conn);
     await bridge.call("snapshot");
     expect(spy).toHaveBeenCalledWith("snapshot", undefined, undefined);
+  });
+});
+
+describe("Bridge error codes (decision 0.4)", () => {
+  it("not connected throws a BridgeError NOT_CONNECTED with today's text", async () => {
+    const bridge = new Bridge();
+    await expect(bridge.call("navigate", {})).rejects.toMatchObject({
+      name: "BridgeError",
+      code: "NOT_CONNECTED",
+      message: "Extension not connected — is Chrome open and the Chrome Agent Bridge extension enabled?",
+    });
+  });
+
+  it("a stored unavailable reason keeps NOT_CONNECTED with the reason as text", async () => {
+    const bridge = new Bridge();
+    bridge.setUnavailableReason("port busy");
+    const err = await bridge.call("navigate", {}).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(BridgeError);
+    expect(err).toMatchObject({ code: "NOT_CONNECTED", message: "port busy" });
   });
 });

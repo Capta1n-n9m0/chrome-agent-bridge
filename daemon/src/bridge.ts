@@ -1,3 +1,4 @@
+import { BridgeError, ErrorCodes } from "@bridge/shared";
 import { ExtensionConnection, type CallOptions } from "./connection.js";
 
 const NOT_CONNECTED =
@@ -41,7 +42,7 @@ export class Bridge {
   }
 
   async call(method: string, params?: Record<string, unknown>, options?: CallOptions): Promise<unknown> {
-    if (!this.connection) throw new Error(this.reason ?? NOT_CONNECTED);
+    if (!this.connection) throw new BridgeError(ErrorCodes.NOT_CONNECTED, this.reason ?? NOT_CONNECTED);
     return this.connection.call(method, params, options);
   }
 }

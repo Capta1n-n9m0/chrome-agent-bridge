@@ -227,6 +227,11 @@ until D3 adds its build script. See `…-steps/D1.md`.*
 
 - [ ] `handshake.ts`: `validateHello` returns `{ok, role, name, build}`; absent role → `"extension"`;
       unknown role → reject 4001.
+      *Superseded 2026-10-22 (D2): was "`validateHello` returns `{ok, role, name, build}`"; as built a new
+      `parseHello` returns that shape (absent role → `"extension"`, unknown role → `"unknown role"`, 4001)
+      and `validateHello` keeps its v1 `{ok: true}` shape as a wrapper, because the existing test
+      `handshake.test.ts` "accepts a valid hello" pins `toEqual({ ok: true })` and existing tests stay
+      unedited (`D2.md`, `D2-verifier.md` finding 1).*
 - [ ] `registry.ts` (pure): `ClientRegistry` — `add(conn, meta) → clientId`, `remove`, `count()`,
       `list()` for `daemon.status`, `onCountChange(cb)`.
 - [ ] `wsHost.ts`: on hello → send `welcome {build, proto:2, clientId, extensionConnected}`; extension
