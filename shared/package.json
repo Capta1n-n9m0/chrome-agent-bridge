@@ -4,5 +4,9 @@
   "license": "MIT",
   "type": "module",
   "main": "src/protocol.ts",
-  "exports": { ".": "./src/protocol.ts" }
+  "exports": {
+    ".": "./src/protocol.ts",
+    "./codes": "./src/codes.ts",
+    "./error": "./src/error.ts"
+  }
 }

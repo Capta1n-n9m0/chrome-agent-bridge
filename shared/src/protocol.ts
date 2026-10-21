@@ -1,7 +1,14 @@
+import type { WireError } from "./error.js";
+
+export * from "./codes.js";
+export * from "./error.js";
+
 export interface RequestMessage {
   id: string;
   method: string;
   params?: Record<string, unknown>;
+  /** Per-call timeout the client wants (v2); the daemon bounds and pads it. */
+  timeoutMs?: number;
 }
 
 export interface SuccessResponse {
@@ -11,19 +18,57 @@ export interface SuccessResponse {
 
 export interface ErrorResponse {
   id: string;
-  error: { message: string };
+  /** v2 carries `code` (and maybe `data`); a v1 extension sends `{message}` only. */
+  error: WireError;
 }
 
 export type ResponseMessage = SuccessResponse | ErrorResponse;
 
+export type HelloRole = "extension" | "client";
+
+/**
+ * First frame on every connection. v1 is `{type, token}` and is accepted as an extension; v2 adds
+ * the optional fields below, each validated by `isHello` when present.
+ */
 export interface HelloMessage {
   type: "hello";
   token: string;
+  role?: HelloRole;
+  name?: string;
+  build?: string;
+  proto?: number;
+}
+
+/** The daemon's answer to a client's hello (spec §10). */
+export interface WelcomeMessage {
+  type: "welcome";
+  build: string;
+  proto: number;
+  clientId: string;
+  extensionConnected: boolean;
+}
+
+/**
+ * An unsolicited message: extension → daemon (`tabCreated`, `tabRemoved`, `tabReplaced`, …) or
+ * daemon → client (`tabGone`, `leaseGranted`, `extensionStatus`). It never has an `id`.
+ */
+export interface EventMessage<P extends object = Record<string, unknown>> {
+  event: string;
+  params: P;
+}
+
+/** Params of the daemon → client `extensionStatus` event (spec §9.7). */
+export interface ExtensionStatusParams {
+  connected: boolean;
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 export function isResponse(value: unknown): value is ResponseMessage {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value as Record<string, unknown>;
+  if (!isObject(value)) return false;
+  const v = value;
   return typeof v.id === "string" && ("result" in v || "error" in v);
 }
 
@@ -32,9 +77,32 @@ export function isErrorResponse(value: ResponseMessage): value is ErrorResponse 
 }
 
 export function isHello(value: unknown): value is HelloMessage {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return v.type === "hello" && typeof v.token === "string";
+  if (!isObject(value)) return false;
+  const v = value;
+  if (v.type !== "hello" || typeof v.token !== "string") return false;
+  if ("role" in v && v.role !== "extension" && v.role !== "client") return false;
+  if ("name" in v && typeof v.name !== "string") return false;
+  if ("build" in v && typeof v.build !== "string") return false;
+  if ("proto" in v && typeof v.proto !== "number") return false;
+  return true;
+}
+
+export function isWelcome(value: unknown): value is WelcomeMessage {
+  if (!isObject(value)) return false;
+  const v = value;
+  return (
+    v.type === "welcome" &&
+    typeof v.build === "string" &&
+    typeof v.proto === "number" &&
+    typeof v.clientId === "string" &&
+    typeof v.extensionConnected === "boolean"
+  );
+}
+
+export function isEvent(value: unknown): value is EventMessage {
+  if (!isObject(value)) return false;
+  const v = value;
+  return typeof v.event === "string" && !("id" in v) && isObject(v.params);
 }
 
 /**

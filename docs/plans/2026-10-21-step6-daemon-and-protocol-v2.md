@@ -181,6 +181,10 @@ they edit the same files. *Amended 2026-10-21 (Stage 0): was "only one process m
       new `WelcomeMessage`; `RequestMessage` gains `timeoutMs?`; `ErrorResponse.error` becomes
       `{code: ErrorCode | string, message, data?}`; new `EventMessage {event, params}` + `isEvent`;
       `isWelcome`. Keep `isResponse`/`isErrorResponse` semantics.
+      *Superseded 2026-10-22 (D0): was `{code: ErrorCode | string, …}` with `code` required; as built
+      the wire type is `WireError {code?: ErrorCode | string, message, data?}`, because the unmodified
+      v1 extension sends `{message}` only and `fromWire` normalises a missing code to `INTERNAL`
+      (stage0-audit B6; D0-verifier finding 3). The daemon always sends `code`.*
 - [ ] `shared/src/error.ts`: `class BridgeError extends Error { code; data? }` + `fromWire(err)` that
       wraps a v1 `{message}` as `INTERNAL`.
 - [ ] Tests: guards accept v1 and v2 hellos; `fromWire` v1/v2; `isEvent` rejects responses/requests.
@@ -419,7 +423,9 @@ The baseline for the whole step is 301 tests (`CLAUDE.md`, `npm test`) and 21 to
   `git stash push -u -- shared/`, so new files are included). The "v1 and v2 hello accepted" test is a
   regression guard: today's `isHello` already accepts a v2 hello. *Amended 2026-10-22: was "Each new
   test fails with the type/guard change reverted (verifier re-runs with a stash)", because the hello
-  test cannot fail on revert (stage0-audit F15, A8).*
+  test cannot fail on revert (stage0-audit F15, A8).* *Corrected 2026-10-22 (D0): `git stash push -u --
+  shared/` also stashes the new test files, so they vanish instead of failing; the D0 verifier kept the
+  new tests and reverted only `shared/src/` and `shared/package.json` to HEAD (D0-verifier finding 1).*
 
 **D1**
 - D1.1 `npm test` after == before (a pure move; the verifier re-derives "before" on the baseline
