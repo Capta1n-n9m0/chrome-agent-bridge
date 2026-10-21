@@ -3,6 +3,78 @@
 Format: `.claude/skills/phase-kickoff/template-wave.md`. Phase kickoffs live in
 `next-session-prompt.md`, not here.
 
+## W1 — the Step 6 live E2E wave: MUX and DL rows (written 2026-10-22; precondition: the D7 docs commit is made, `npm run build` is run, and the MCP config points at `<repo>/mcp/dist/index.js`)
+
+```
+Dear Claude, let's run wave W1: the live end-to-end (E2E) wave of Step 6 (the daemon, protocol v2,
+and the daemon/sdk/mcp split), human gate G6-2. Working dir:
+C:\Users\aliev\Projects\chrome-remote-extention (Git Bash; node is not on PATH — prefix
+`export PATH="$(cygpath "$LOCALAPPDATA")/Author Software/nvm/.nodejs:$PATH"`; checks: npm run
+typecheck, npm test, npm run build). I am present: this session drives my real, logged-in Chrome
+profile with me, row by row, and may use UI automation where the wave sheet tags a step [UI]. Limits:
+no code change, no protocol change, no extension change or reload, nothing pushed. No ratified
+decision reopens (docs/decisions.md). A failed row is recorded, never "fixed" in the same session;
+anything that needs a code change returns to me as a proposed decision. If context runs short, stop
+at a clean row boundary, write the run record for what was measured, and list the remainder.
+
+HOW THIS SESSION RUNS: two-level form (long-run §2). You run the rows with me, in the wave sheet's
+order. At the end a fresh verifier agent (model "opus", Claude Opus 5.5) re-reads the run record
+against the rows' pre-written expected text and greps the attached daemon.log for "://" and the
+token without printing them (exit check D6.3).
+
+READ FIRST, in this order:
+1. CLAUDE.md — Current state, Architecture, Runtime gotchas (the daemon ones are new).
+2. docs/plans/2026-10-21-step6-daemon-and-protocol-v2-steps/D6.md — the "Wave sheet" (steps 0–14,
+   each tagged [UI] / [SH] / [USER]) and cautions A1–A10. This is the procedure.
+3. docs/e2e-test-plan.md — §1 item 8 (wave set-up: the token only from bridge.token, created by a
+   command that prints nothing, BRIDGE_TOKEN unset), rows MUX-1…10 and DL-1/2 with their expected
+   text, the §5 "Run 7" skeleton you fill in.
+4. docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md — what was built, the contracts,
+   "Open decisions", "Needs the user's keyboard", the gate checklist.
+5. docs/decisions.md — Open decisions at the top (2026-10-22 #13, #14, #15, #21, #22, #24, #27) and
+   #30 (the wave's set-up). Rows MUX-7 → #14, MUX-8 → #21 and #27, MUX-10 → #13 measure them.
+6. docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md — exit checks D6.1–D6.4, STOP rules.
+
+SCOPE:
+1. Check the preconditions and say which hold: D7's docs committed (`git status` clean except
+   expected files); `npm run build` done; MCP config at `<repo>/mcp/dist/index.js` and reconnected;
+   port 9234 free or held only by our daemon (`netstat -ano | grep :9234`); a `bridge.token` file
+   exists (never print it); the extension's Options token matches.
+2. Run MUX-1…9, DL-1, DL-2 (and MUX-10 if I agree) per the wave sheet. Record each result in the
+   §5 "Run 7" record: the command, the observed text, PASS/FAIL against the pre-written expectation.
+   MUX-6 evidence is a process listing; MUX-4 evidence is two timestamps.
+3. MUX-9 (regression smoke) passes with the same expected text as each row's last recorded run.
+4. For each open decision a row measured, put it to me as an option question with a
+   recommendation and the measurement; record my ruling in docs/decisions.md (move it out of
+   Open decisions). FLAGGED DEFAULT (execute unless I object): if MUX-7 shows the daemon surviving a
+   normal session end, #14 is ratified as is; if it dies, the fallback (a double spawn) becomes a
+   Step 7 prerequisite item, not a fix in this wave.
+
+STANDING CONSTRAINTS: the 127.0.0.1 bind and the token gate are unchanged; the token is never
+committed, printed or pasted (grep for it by count only); nothing is pushed, tagged or published; the
+extension is not reloaded or modified; the repo is public, so no private URLs, hostnames or
+credentials enter docs or evidence (daemon.log excerpts are grepped for "://" first); CLAUDE.md stays
+lean (state + pointers + gotchas). Kill only processes the wave sheet names, after its safety check.
+
+IF ANYTHING BLOCKS: record the exact error, surface options with a recommendation, stop that row;
+never improvise a change to get past a check. An "unknown method" error means the loaded extension
+is stale for some other reason: report it.
+
+EXIT CHECKS:
+(a) D6.2 — every row has a result with the command and the observed text; MUX-6 by a process
+    listing; MUX-4 by two timestamps.
+(b) D6.3 — the attached daemon.log excerpt contains no "://" and not the token (both counts 0).
+(c) D6.4 — MUX-9's rows pass with the same expected text as their last recorded run.
+(d) `git diff -- extension/` empty; `npm test` still 542 passed.
+
+WHEN DONE: append the wave as-built to docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md
+(format .claude/skills/phase-kickoff/asbuilt.md § Wave), ending with "Proposed decisions — for the
+user"; fill the roadmap's "E2E results" part of the Step 6 block and flip its status; update the
+phase doc's Outcome with what D6 measured and its Status to closed if the gate checklist is met;
+run session-closeout; commit ("docs: Step 6 E2E results"). Then write the Step 7 phase kickoff
+(phase-kickoff skill, overwrite docs/plans/next-session-prompt.md).
+```
+
 ## W0 — ratify the Step 6–8 plan findings and write the Step 6 kickoff (written 2026-10-21; precondition: the long-run skills are committed at 77794a5 and the three rewritten plans sit uncommitted in the working tree)
 
 ```

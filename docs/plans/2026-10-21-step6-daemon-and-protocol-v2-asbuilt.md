@@ -230,3 +230,62 @@ pre-registered in `journal.md` before dispatch.
 - **Decision:** decisions.md · 2026-10-22 · #29.
 - **Carried to close-out:** `README.md` still says "20 tools" and "256 unit tests"; the `CLAUDE.md`
   Current state block; the roadmap's E2E results after the wave.
+
+## Propagator (2026-10-22, commit c13e882)
+
+46 dated "*Corrected 2026-10-22*" notes: phase doc 13, Step 7 plan 15, Step 8 plan 9, design spec 9
+(notes only). `docs/e2e-test-plan.md` checked, no correction needed. One contract-level
+contradiction: spec §9.5 says other clients "reconnect with the same logic"; as built a 4002
+reconnect never hands over (decisions.md · 2026-10-22 · A reconnect after 4002 never hands the
+daemon over — open). A dated note was added; the contract text is unchanged. Six report-only items
+for `CLAUDE.md`, `docs/setup.md` and the roadmap were applied by the session agent in the working
+tree, on top of D7's uncommitted edits. Ledger: `…-steps/propagator.md`.
+
+## Contracts binding forward (summary for Step 7's Stage 0)
+
+Welcome shape, `daemon.status` shape, the error envelope, close codes 4001/4002/1001 and their
+reasons, the `extensionStatus` event, `UNKNOWN_METHOD` for other `daemon.*`, `timeoutMs` not
+forwarded (§ D2); optional wire `code` → `INTERNAL`, strict v2 hello fields, events `{event, params}`
+(§ D0); the SDK's five exports, `connect` options incl. `requireExtension`, `BridgeClient` getters and
+`on("reconnected")`, the knock's 2 s no-welcome → `VERSION`, no handover on a 4002 reconnect, the
+per-cycle 10 s budget, configuration failures as `NOT_CONNECTED` (§ D4, D5b); the daemon's env vars,
+log and exit codes (§ D3); `browser_status` lines (§ D5, D5b). Step 7 re-examines each by execution.
+
+## Open decisions (for the user at G6-2)
+
+decisions.md · 2026-10-22: #13 no welcome → `VERSION`; #14 the detached daemon vs `taskkill /T`
+(MUX-7 measures it); #15 non-4002 close handling; #21 configuration failures as `NOT_CONNECTED`;
+#22 no handover on a 4002 reconnect; #24 `BridgeClient` getters and `on("reconnected")`;
+#27 the MCP connects without waiting for the extension (`requireExtension: false`).
+
+## Needs the user's keyboard
+
+1. **Commit D7's docs** (the classifier denied the agent's commit; no agent retried). The working
+   tree holds D7's verified edits plus the session agent's close-out edits to the same files.
+2. **Point the MCP config at `<repo>/mcp/dist/index.js`** and reconnect (`/mcp`), after
+   `npm run build`.
+3. **The D6 wave** (G6-2): MUX-1…10, DL-1/2 — a second Claude session (MUX-2), killing process trees
+   and the nvm shim (MUX-7), closing and reopening Chrome (MUX-8), a rebuild mid-session (MUX-5); may
+   be UI-automated per the wave sheet in `D6.md`. A `bridge.token` file must be created first.
+4. Any push.
+
+## Gate checklist (autonomous part)
+
+| Item | Met? | Evidence |
+|---|---|---|
+| D0.1–D0.4 | yes | `D0.md`, `D0-verifier.md` |
+| D1.1–D1.5 | yes | `D1.md`, `D1-verifier.md` |
+| D2.1–D2.7 | yes | `D2.md`, `D2-verifier.md` |
+| D3.1–D3.6 | yes | `D3.md`, `D3-verifier.md` |
+| D4.1–D4.4 | yes | `D4.md`, `D4-verifier.md` |
+| D5.1–D5.5 | yes | `D5.md`, `D5-verifier.md` |
+| D5b.1–D5b.6 (pre-registered in `journal.md`) | yes | `D5b.md`, `D5b-verifier.md` |
+| D6.1 (autonomous part) | yes | `D6.md`, `D6-verifier.md`; D6.2–D6.4 wait for the wave |
+| D7.1, D7.2 | yes | `D7.md`, `D7-verifier.md` |
+| D7.3 one commit per stage, no `dist/`/token | **no — D7's own commit pending** | stage commits 6f7768c…7d2e665 and c13e882 contain no `dist/`, `bridge.token` or `.env` (session agent, `git show --name-only`) |
+| `git diff 1a92d95..HEAD -- extension/` empty | yes | session agent, 2026-10-22 |
+| STOP rules | none fired | no failed check after 2 rounds; no test-count drop without a documented move (D5's −5 is documented); no G6-3 question; no unexplained 9234 holder |
+| Permission denial (long-run §4.5) | fired once | D7's `git commit -F`, surfaced to the user, not retried |
+| Stray process | explained | D6 fixer's scratch `node` (PID 11092), stopped by the step agent; afterwards only PID 2928 (codex) |
+
+**Estimates vs actuals:** ~14.5 h estimated across Stage 0 and D0–D7; about 4 h of agent wall time.

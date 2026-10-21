@@ -1,6 +1,7 @@
 # Step 6 — The daemon, protocol v2, and the `daemon/ sdk/ mcp/` split
 
-**Date:** 2026-10-21 · **Status:** Planned
+**Date:** 2026-10-21 · **Status:** Autonomous part closed 2026-10-22 (D0–D5b, D6 rows, D7 docs); stopped at
+human gate G6-2 — the D6 wave with the user and the D7 docs commit are pending
 **Design of record:** docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md (§4, §5, §9, §10, §11) ·
 **As-built:** docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md (does not exist yet; written
 at stage close) · **Steps dir:** docs/plans/2026-10-21-step6-daemon-and-protocol-v2-steps/ (created at kickoff 2026-10-21 for ledgers, briefs, reports and evidence; *amended 2026-10-21 (Stage 0)*)
@@ -11,7 +12,29 @@ waiting for the user, the D6 wave is pending — and the as-built register exist
 
 ## Outcome
 
-Targets at planning time; rewritten as results when the step closes.
+**Results of the autonomous part (2026-10-22)** — source: each stage's report in the steps dir and
+the as-built register; counts from `npm test` in the verifiers' clean worktrees.
+
+| Stage | Commit | `npm test` after | Verifier |
+|---|---|---|---|
+| Baseline | 1a92d95 | 301 passed, 22 files | — |
+| D0 shared types and codes | 6f7768c | 322, 25 files | PASS-with-notes |
+| D1 repository split | 80e540c | 322, 25 files | PASS-with-notes |
+| D2 daemon roles, registry, routing | 4d0241e | 385, 28 files | PASS-with-notes |
+| D4 SDK core | 9f3fc86 | 479, 37 files | PASS-with-notes (1 fix round) |
+| D3 daemon lifecycle | 3964eb1 | 528, 41 files | PASS-with-notes (1 fix round) |
+| D5 MCP over the SDK | d6832a1 | 538, 41 files (−5 `startup.test.ts`, documented) | PASS-with-notes |
+| D5b connect without waiting for the extension | 033b1bc | 542, 42 files | PASS-with-notes |
+| D6 rows + `recipes/hello.ts` | 7d2e665 | 542, 42 files | PASS-with-notes (2 fix rounds) |
+| D7 docs | pending the user's commit | 542, 42 files | PASS-with-notes (1 fix round) |
+
+- 21 tools, names and schemas unchanged from `1a92d95` apart from `browser_status`'s description
+  and body (`grep -c "server.tool(" mcp/src/tools/registry.ts` → 21).
+- `git diff 1a92d95..HEAD -- extension/` is empty: the extension was not modified.
+- The live targets below (second session, script beside Claude, idle exit, handover) are **not yet
+  measured**: they are the D6 wave (gate G6-2).
+
+Targets at planning time (kept for comparison):
 
 - The WebSocket host on `127.0.0.1:9234` runs as a **persistent, shared daemon** started by whoever
   knocks first and gone after 10 min with zero clients (spec §9).
