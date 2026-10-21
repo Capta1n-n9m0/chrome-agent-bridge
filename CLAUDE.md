@@ -17,10 +17,14 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
   D7 docs are done (`npm test` → 542 passed, 42 files, at `033b1bc`). As-built:
   `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md`; decisions 2026-10-22 #13–#30, of
   which #13, #14, #15, #21, #22, #24, #27 are open for the user.
-- **Next action (the user's):** point the MCP config at `<repo>/mcp/dist/index.js` and reconnect
-  (`/mcp`); then run the **D6 wave** (MUX-1…10, DL-1/2 in `docs/e2e-test-plan.md`, wave sheet in
-  `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-steps/D6.md`; handoff in `docs/plans/handoffs.md`).
-  After the wave: Step 7 (multi-actor tabs), then Step 8 (SDK surface + MCP cursor).
+- **Done 2026-10-22:** the D7 docs commit; this machine's MCP config now points at
+  `<repo>/mcp/dist/index.js` (other machines: `docs/setup.md` §3 "Upgrading a machine that ran the
+  bridge before Step 6"); pushed.
+- **Next, deferred by the user to a later session:** (1) review the seven open decisions —
+  `docs/plans/2026-10-22-step6-open-decisions-review.md`; (2) the **D6 wave** (MUX-1…10, DL-1/2 in
+  `docs/e2e-test-plan.md`, wave sheet in `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-steps/D6.md`;
+  paste wave W1 from `docs/plans/handoffs.md`; may use UI automation). After the wave: Step 7
+  (multi-actor tabs), then Step 8 (SDK surface + MCP cursor).
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
 

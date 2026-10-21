@@ -289,3 +289,12 @@ decisions.md · 2026-10-22: #13 no welcome → `VERSION`; #14 the detached daemo
 | Stray process | explained | D6 fixer's scratch `node` (PID 11092), stopped by the step agent; afterwards only PID 2928 (codex) |
 
 **Estimates vs actuals:** ~14.5 h estimated across Stage 0 and D0–D7; about 4 h of agent wall time.
+
+## Status after the user's return (2026-10-22)
+
+*Added 2026-10-22.* Item 1 of "Needs the user's keyboard" is done: the user committed D7's docs
+(0cf6cb5). Item 2 is done on this machine: the user-level MCP config (`~/.claude.json`) points at
+`mcp/dist/index.js` and `npm run build` was run; other machines follow `docs/setup.md` §3 "Upgrading
+a machine that ran the bridge before Step 6". Item 3, the D6 wave, is **deferred by the user to a
+later session** (wave W1 in `docs/plans/handoffs.md`). Item 4, the push, is done. The open decisions
+are written up for review in `docs/plans/2026-10-22-step6-open-decisions-review.md`.

@@ -10,7 +10,8 @@ as a dated entry and point back.
 ## Open decisions
 
 For the user to review at the Step 6 gate (G6-2). Each was taken by the conservative rule of
-`long-run` §3 and does not block the run.
+`long-run` §3 and does not block the run. Why each is needed, the options, and the proposed option
+with its reasons: `docs/plans/2026-10-22-step6-open-decisions-review.md`.
 
 - 2026-10-22 · A Step 6 client gives up with VERSION when no welcome arrives (#13)
 - 2026-10-22 · The detached daemon's survival depends on how the session's MCP is killed (#14)

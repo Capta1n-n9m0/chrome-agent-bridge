@@ -56,9 +56,34 @@ token and the absolute path to this repo:
 }
 ```
 
-**If you used the bridge before Step 6**, your config still points at the old server entry. Change
-`args` to `<absolute-path-to-repo>/mcp/dist/index.js` yourself, once, then restart the session; the
-build does not touch your client config.
+### Upgrading a machine that ran the bridge before Step 6
+
+Step 6 (2026-10-22) moved the MCP entry from `server/dist/index.js` to `mcp/dist/index.js`. The old
+path no longer exists, and the build does not touch your client config, so do this once on every
+machine that used the bridge before:
+
+1. **End every Claude session that uses the bridge.** A pre-Step-6 server still holding port 9234
+   takes a new client's hello as the extension and breaks that old session; a new client gives up
+   after 2 s with a `VERSION` error naming this cause.
+2. **Update and build:** `git pull`, then `npm install` (it relinks the five workspaces) and
+   `npm run build`. Check that `mcp/dist/index.js` and `daemon/dist/index.js` exist.
+3. **Point the MCP config at the new entry.** In Claude Code the user-level entry lives under
+   `mcpServers` in `~/.claude.json` (on Windows `%USERPROFILE%\.claude.json`); a project-level one
+   lives in the repo's `.mcp.json`. Change only the path in `args`:
+   `<absolute-path-to-repo>/server/dist/index.js` → `<absolute-path-to-repo>/mcp/dist/index.js`.
+   Leave `env` as it is: `BRIDGE_TOKEN` there still wins over a `bridge.token` file. Instead of
+   editing the file you can re-register the server with the CLI:
+   ```bash
+   claude mcp remove chrome-agent-bridge -s user
+   claude mcp add chrome-agent-bridge -s user -e BRIDGE_TOKEN=<your-token> -e BRIDGE_PORT=9234 -- node <absolute-path-to-repo>/mcp/dist/index.js
+   ```
+   For Claude Desktop, edit `claude_desktop_config.json` the same way.
+4. **Reconnect:** run `/mcp` in Claude Code (or start a new session).
+5. **Check:** `browser_status` now starts with `Daemon: connected on 127.0.0.1:9234 (build …)` and
+   lists this session as `claude-code #<pid>` under `Clients`. The extension needs **no** reload:
+   it is unchanged in Step 6.
+
+Every client on a machine must use the same `BRIDGE_PORT`; see [The daemon](#the-daemon).
 
 You do not start the daemon yourself. The first client to connect (usually this MCP server)
 starts it in the background; later clients join it. It **outlives the Claude session on purpose**,

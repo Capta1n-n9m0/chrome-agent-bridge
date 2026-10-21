@@ -206,9 +206,10 @@ Phase doc `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`; contracts and
 | D5b — connect without waiting for the extension | `033b1bc` | 542 | 42 |
 
   D5's net +10 includes the documented removal of `startup.test.ts` (−5 tests) with `startup.ts`.
-- **Not done:** the live E2E (the D6 MUX and DL rows in `docs/e2e-test-plan.md`); the user's MCP
-  config change to `<repo>/mcp/dist/index.js`; the D7 docs commit (the permission classifier denied
-  the builder's commit; it is the user's). POSIX behaviour (the MCP's parent check, the detached
+- **Not done:** the live E2E (the D6 MUX and DL rows in `docs/e2e-test-plan.md`), deferred by the
+  user to a later session (2026-10-22); the review of the seven open decisions
+  (`docs/plans/2026-10-22-step6-open-decisions-review.md`). Done 2026-10-22: the D7 docs commit and
+  this machine's MCP config change (other machines: `docs/setup.md` §3). POSIX behaviour (the MCP's parent check, the detached
   daemon) is unverified.
 
 **E2E results — waits for the D6 wave** (with the user, gate G6-2 in the phase doc). Nothing is
