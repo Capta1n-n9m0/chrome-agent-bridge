@@ -9,6 +9,19 @@ Chrome default profile**. Chrome 136 (May 2025) blocked `--remote-debugging-port
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
+## Current state (2026-10-21)
+
+- **Shipped:** Steps 1–5 (21 tools, 301 tests, live E2E passes recorded in `docs/e2e-test-plan.md` §5);
+  `browser_download`; the server exits with its session. Public on GitHub (MIT).
+- **Next: Step 6 — daemon + protocol v2** (`docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`),
+  then Step 7 (multi-actor tabs) and Step 8 (SDK surface + MCP cursor). Design of record:
+  `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`. **Not started.** Each step runs as an
+  autonomous phase under the `long-run` contract (decision 2026-10-21 "Steps 6–8 run under the
+  long-run contract"); the first action is to write its kickoff with the `phase-kickoff` skill
+  (`docs/plans/next-session-prompt.md` — does not exist yet).
+- Update this block with the `session-closeout` skill whenever a stage/phase completes or the
+  resume point moves.
+
 ## Architecture
 
 ```
@@ -185,9 +198,26 @@ by `docs/e2e-test-plan.md` against real Chrome. New pure logic → write a faili
 - Don't commit the token (`bridge.token`, `.env` are gitignored). The localhost bind + token are the
   only security boundary — treat the token as a password; never log it.
 
+## Skills & workflow (project skills in `.claude/skills/`, ported 2026-10-21 from the research repos)
+
+- `long-run` — session-agent contract for an autonomous multi-stage run: context discipline,
+  the agent tree (session agent → step agent → builder/verifier/fixer + propagator), decisions
+  while the user is away, the exhaustive stop list, waiting/revival rules.
+- `step-agent` — STEP BRIEF template, ledger, step-report schema, ESCALATION list, and the
+  builder/verifier/fixer/propagator role prompts (`role-prompts.md`).
+- `phase-kickoff` — writes `docs/plans/next-session-prompt.md` (phase kind) or an entry in
+  `docs/plans/handoffs.md` (wave kind); as-built format in `asbuilt.md`.
+- `session-closeout` — end of significant work: doc entry, `docs/decisions.md`,
+  `docs/progress-and-roadmap.md`, the Current state block above, a new gotcha if one was learned,
+  memory, commit.
+- Writing rules for every doc: `docs/docs-writing-guide.md`. Decisions are dated plain-language
+  entries in `docs/decisions.md`, cited by date + title.
+
 ## Docs
-`docs/specs/…-design.md` (design), `docs/plans/…` (impl plan), `docs/setup.md` (install/usage),
-`docs/e2e-test-plan.md` (manual suite + fixture), `docs/progress-and-roadmap.md` (status + roadmap).
+`docs/specs/…-design.md` (design of record), `docs/plans/…` (phase docs; beside each, `…-asbuilt.md`
+and `…-steps/` once a phase runs), `docs/decisions.md` (decision log), `docs/docs-writing-guide.md`
+(how we write), `docs/setup.md` (install/usage), `docs/e2e-test-plan.md` (manual suite + fixture),
+`docs/progress-and-roadmap.md` (status + roadmap).
 
 **Decided, not yet built (2026-10-21):** `server/` becomes a persistent shared **daemon**, a TypeScript
 **SDK** lets scripts drive the browser, the MCP becomes an SDK client, and several actors work on
