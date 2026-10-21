@@ -52,7 +52,8 @@ A step agent escalates instead of deciding on:
 - a guard, timeout or test firing that is not explained, or a recorded "Revisit if" trigger being
   met (decisions.md entries of 2026-10-21);
 - an unexplained port-9234 holder or an orphan `node` process it did not start (W0 saw exactly one
-  `node.exe`, Claude Code's own; the daemon is never started by the autonomous run);
+  `node.exe`: PID 2928, a codex `host-daemon.mjs`, not Claude Code — corrected 2026-10-22 by
+  Stage 0 F25; it does not hold 9234 and is not ours to touch; the daemon is never started by the autonomous run);
 - a test count that drops without a documented move (D1 must keep 301);
 - anything that needs the real Chrome profile (extension reload, live E2E) — none is granted; D6 is
   the user's wave;
@@ -149,3 +150,11 @@ You hold long waits yourself — run the job in the background, end your turn, g
 completion; never a foreground sleep loop. A notice that a child is "waiting on its own background
 work" is NOT completion: end your turn and wait for its hand-back report. Builders, verifiers and
 fixers finish in one go and never wait.
+
+## Stage 0 rulings (added 2026-10-22)
+
+Read `docs/decisions.md` entries 2026-10-22 #13–#17 and `stage0-audit.md` (§D1 move map, §Builder
+ambiguities) for your stage. The phase doc already carries the resulting amendments as dated notes.
+Stage order: D0 → D1 → (D2 ∥ D4) → D3 → D5 → D6 rows → D7. Other step agents may be running in
+parallel lanes: never touch files outside your lane, and stage only your own files when committing
+(`git add <exact paths>`); on `index.lock`, wait and retry.
