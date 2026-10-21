@@ -1,5 +1,6 @@
 // connect(): the SDK entry point. Token → port → daemon path → hash → knock → BridgeClient, then
-// wait for the extension (spec §9.7). Every configuration failure rejects before any socket.
+// wait for the extension (spec §9.7) unless `requireExtension: false`. Every configuration failure
+// rejects before any socket.
 import { BridgeError, ErrorCodes } from "@bridge/shared";
 import { BridgeClient, onClientFailure, realTimers, type Timers } from "./client.js";
 import { knock, type KnockIo } from "./knock.js";
@@ -19,6 +20,14 @@ export interface ConnectOptions {
   name: string;
   /** How long to wait for the extension after the welcome. Default 15 000. */
   waitForExtensionMs?: number;
+  /**
+   * Default true: wait up to `waitForExtensionMs` for the extension, then reject with NOT_CONNECTED.
+   * False: resolve as soon as the daemon welcomes the client, whatever the extension's state;
+   * `waitForExtensionMs` is then unused, and calls fail with the daemon's own NOT_CONNECTED while the
+   * extension is down (`extensionConnected` follows it). The MCP uses false (decisions.md ·
+   * 2026-10-22 #27).
+   */
+  requireExtension?: boolean;
   /** Overrides `BRIDGE_PORT`. Every client on a machine must use the same port. */
   port?: number;
   /** Default `process.env`. */
@@ -45,7 +54,10 @@ export const realKnockIo: KnockIo = {
   now: () => performance.now(),
 };
 
-/** `BRIDGE_PORT`, validated exactly like `mcp/src/config.ts`. */
+/**
+ * The port: the `port` option, else `BRIDGE_PORT`, else 9234. Keeps the pre-Step-6 server's
+ * validation (an integer 1–65535) and its error text.
+ */
 function resolvePort(env: Record<string, string | undefined>, override: number | undefined): number {
   const raw = override !== undefined ? String(override) : (env.BRIDGE_PORT ?? String(DEFAULT_PORT));
   const port = Number(raw);
@@ -60,11 +72,15 @@ function asNotConnected(err: unknown): BridgeError {
   return new BridgeError(ErrorCodes.NOT_CONNECTED, err instanceof Error ? err.message : String(err));
 }
 
-/** Connects to the daemon (spawning or handing it over as needed) and waits for the extension. */
+/**
+ * Connects to the daemon (spawning or handing it over as needed) and, unless
+ * `requireExtension: false`, waits for the extension.
+ */
 export async function connect(options: ConnectOptions): Promise<BridgeClient> {
   const env = options.env ?? process.env;
   const timers = options.timers ?? realTimers;
   const waitMs = options.waitForExtensionMs ?? DEFAULT_WAIT_FOR_EXTENSION_MS;
+  const requireExtension = options.requireExtension ?? true;
 
   let token: string;
   let port: number;
@@ -90,7 +106,7 @@ export async function connect(options: ConnectOptions): Promise<BridgeClient> {
     throw asNotConnected(err);
   }
 
-  if (!client.extensionConnected) {
+  if (requireExtension && !client.extensionConnected) {
     try {
       // Resolves on an `extensionStatus {connected:true}` or on a 4002 reconnect whose welcome says
       // the extension is up; rejects at once with the client's own error if it fails meanwhile

@@ -10,3 +10,13 @@
 export function actorName(pid: number = process.pid): string {
   return `claude-code #${pid}`;
 }
+
+/**
+ * The MCP's `connect()` options. `requireExtension: false`: the MCP holds a daemon client even while
+ * Chrome is closed, so `browser_status` reports the extension down and tool calls get the daemon's
+ * own NOT_CONNECTED at once, instead of a 15 s wait and a fresh client every ~20 s (decisions.md ·
+ * 2026-10-22 #27).
+ */
+export function connectOptions(pid: number = process.pid): { name: string; requireExtension: false } {
+  return { name: actorName(pid), requireExtension: false };
+}

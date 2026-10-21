@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { connect } from "@bridge/sdk";
-import { actorName } from "./config.js";
+import { connectOptions } from "./config.js";
 import { BridgeLink } from "./link.js";
 import { registerTools } from "./tools/registry.js";
 import { installLifecycle, isProcessAlive } from "./lifecycle.js";
@@ -10,9 +10,10 @@ async function main(): Promise<void> {
   // Connect to the bridge daemon (connect() starts or hands it over as needed), but never let a
   // failure crash the MCP server: the tools are registered regardless, every tool error and
   // browser_status carry the reason, and the link retries every 5 s — also after an established
-  // connection closes with a code other than 4002 (decisions.md · 2026-10-22 #15).
+  // connection closes with a code other than 4002 (decisions.md · 2026-10-22 #15). The client is held
+  // whether or not the extension is up (`requireExtension: false`, decision #27).
   const link = new BridgeLink({
-    connect: () => connect({ name: actorName() }),
+    connect: () => connect(connectOptions()),
     onChange: (reason) => {
       if (reason === null) console.error("[chrome-bridge] connected to the bridge daemon");
       else console.error(`[chrome-bridge] bridge daemon unavailable (retrying every 5 s): ${reason}`);

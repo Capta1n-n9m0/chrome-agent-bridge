@@ -5,6 +5,8 @@
 // client and rejects at once with the stored failure on one whose connection closed with a code other
 // than 4002 (decision #15). The SDK exports no failure event, so the probe is how the MCP notices.
 // A tool call that rejects with NOT_CONNECTED probes too, so a dead client is dropped right away.
+// The MCP's `connect()` does not wait for the extension (`requireExtension: false`, decision #27), so
+// a NOT_CONNECTED reply while Chrome is closed probes an open client: it stays, nothing reconnects.
 import { BridgeError, ErrorCodes, type BridgeClient, type CallOptions } from "@bridge/sdk";
 
 export const RETRY_MS = 5000;

@@ -281,11 +281,13 @@ when Chrome exits or the extension is reloaded.
 - **"Extension not connected"** from a tool: make sure Chrome is open, the extension is
   enabled, and the Options token/port match the bridge token (`BRIDGE_TOKEN` or `bridge.token`) and `BRIDGE_PORT` the daemon uses.
   Check the service-worker console for `connection: up`.
-- **`Daemon: not connected` with `Problem: Extension not connected — … (waited 15000 ms on port 9234)`**
-  even though the daemon runs: the MCP started (or lost its client) while Chrome was closed. Its
-  connect waits 15 s for the extension, gives up, and tries again about every 20 s; for the first
-  ~15 s tools say `connecting to the bridge daemon…`. Open Chrome and the next attempt connects —
-  nothing needs restarting.
+- **Chrome is closed**: `browser_status` shows `Daemon: connected …` and `Extension: not
+  connected — …`, and every other tool fails at once with `Extension not connected — is Chrome open
+  and the Chrome Agent Bridge extension enabled?`. Open Chrome and the next call works — nothing
+  restarts. (*Superseded 2026-10-22: was "`Daemon: not connected` with `Problem: Extension not
+  connected — … (waited 15000 ms on port 9234)`", with tools saying `connecting to the bridge
+  daemon…` for ~15 s and a new attempt about every 20 s, because the MCP now connects to the daemon
+  without waiting for the extension (decisions.md · 2026-10-22 #27).*)
 - **Chrome was killed / crashed while connected**: the daemon pings the extension every 30 s and
   drops a socket that misses a pong, so within ~60 s tools report "not connected" instead of
   timing out for 30 s each. Relaunch Chrome and it reconnects by itself.

@@ -233,3 +233,56 @@ describe("connect()", () => {
     expect(err.code).toBe(ErrorCodes.VERSION);
   });
 });
+
+describe("connect({ requireExtension: false }) — Step 6 D5b (decisions.md · 2026-10-22 #27)", () => {
+  it("resolves on a welcome with extensionConnected:false without registering a wait timer; the client stays open", async () => {
+    const conn = fakeDaemon({ build: "NEW", extensionConnected: false });
+    const io = makeIo(() => conn);
+    const ft = fakeTimers();
+    let resolved = false;
+    const p = connect({
+      name: "t",
+      env: { BRIDGE_TOKEN: TOKEN },
+      startDir,
+      io,
+      timers: ft.timers,
+      requireExtension: false,
+    }).then((c) => {
+      resolved = true;
+      return c;
+    });
+    await flush();
+    // Resolved with no time advanced and no wait timer ever registered.
+    expect(resolved).toBe(true);
+    expect(ft.list).toEqual([]);
+    expect(io.sleep).not.toHaveBeenCalled();
+    const client = await p;
+    expect(client.extensionConnected).toBe(false);
+    expect(client.welcome?.extensionConnected).toBe(false);
+    expect(conn.closeCalls).toEqual([]);
+    // The same client follows the extension coming up.
+    conn.emit({ event: "extensionStatus", params: { connected: true } });
+    expect(client.extensionConnected).toBe(true);
+    expect(conn.closeCalls).toEqual([]);
+    client.close();
+  });
+
+  it("ignores waitForExtensionMs when requireExtension is false", async () => {
+    const conn = fakeDaemon({ build: "NEW", extensionConnected: false });
+    const io = makeIo(() => conn);
+    const ft = fakeTimers();
+    const client = await connect({
+      name: "t",
+      env: { BRIDGE_TOKEN: TOKEN },
+      startDir,
+      io,
+      timers: ft.timers,
+      requireExtension: false,
+      waitForExtensionMs: 500,
+    });
+    expect(ft.list).toEqual([]);
+    expect(client.extensionConnected).toBe(false);
+    expect(conn.closeCalls).toEqual([]);
+    client.close();
+  });
+});
