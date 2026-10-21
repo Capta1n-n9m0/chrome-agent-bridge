@@ -15,7 +15,7 @@ WebSocket, and a Chrome extension (loaded into your real profile) that connects 
 npm install
 npm run build
 ```
-This produces `server/dist/index.js` and the extension bundles in `extension/dist/`.
+This produces `mcp/dist/index.js` and the extension bundles in `extension/dist/`.
 
 ## 2. Choose a shared token
 
@@ -33,7 +33,7 @@ token and the absolute path to this repo:
   "mcpServers": {
     "chrome-agent-bridge": {
       "command": "node",
-      "args": ["<absolute-path-to-repo>/server/dist/index.js"],
+      "args": ["<absolute-path-to-repo>/mcp/dist/index.js"],
       "env": { "BRIDGE_TOKEN": "<your-token>", "BRIDGE_PORT": "9234" }
     }
   }
@@ -43,7 +43,7 @@ token and the absolute path to this repo:
 To try it without an MCP client, use the inspector:
 ```bash
 # PowerShell
-$env:BRIDGE_TOKEN="<your-token>"; npx @modelcontextprotocol/inspector node server/dist/index.js
+$env:BRIDGE_TOKEN="<your-token>"; npx @modelcontextprotocol/inspector node mcp/dist/index.js
 ```
 
 ## 4. Load the extension into your real profile
@@ -259,7 +259,7 @@ when Chrome exits or the extension is reloaded.
   busy), the extension (not connected), or neither (then look at the active tab it reports).
 - **"WebSocket port 9234 is busy (EADDRINUSE)"** from `browser_status` or any tool: a previous
   Claude session left an orphaned bridge server holding the port. Find it with (PowerShell)
-  `Get-NetTCPConnection -LocalPort 9234 -State Listen` and kill the stale `node …/server/dist/index.js`
+  `Get-NetTCPConnection -LocalPort 9234 -State Listen` and kill the stale `node …/mcp/dist/index.js`
   process (`Stop-Process -Id <pid> -Force`). Nothing else to do: the server retries the bind every
   5 s and the extension reconnects on its own, so tools start working within ~15 s of the port
   freeing up. The MCP connection itself never crashes on a busy port. Only run one Claude session

@@ -1,0 +1,19 @@
+{
+  "name": "@bridge/daemon",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "chrome-bridge-daemon": "dist/index.js" },
+  "exports": {
+    "./bridge": "./src/bridge.ts",
+    "./connection": "./src/connection.ts",
+    "./wsHost": "./src/wsHost.ts",
+    "./startup": "./src/startup.ts"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.0"
+  }
+}

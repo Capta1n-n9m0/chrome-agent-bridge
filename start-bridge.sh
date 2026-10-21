@@ -17,4 +17,4 @@ fi
 export BRIDGE_TOKEN="$(<"$token_file")"
 export BRIDGE_PORT="${BRIDGE_PORT:-9234}"
 
-exec /opt/homebrew/opt/node@20/bin/node "$bridge_dir/server/dist/index.js"
+exec /opt/homebrew/opt/node@20/bin/node "$bridge_dir/mcp/dist/index.js"

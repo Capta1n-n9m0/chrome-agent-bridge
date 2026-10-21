@@ -1,9 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadConfig } from "./config.js";
-import { Bridge } from "./bridge.js";
-import { WsHost } from "./wsHost.js";
-import { startWsHost } from "./startup.js";
+import { Bridge } from "@bridge/daemon/bridge";
+import { WsHost } from "@bridge/daemon/wsHost";
+import { startWsHost } from "@bridge/daemon/startup";
 import { registerTools } from "./tools/registry.js";
 import { installLifecycle, isProcessAlive } from "./lifecycle.js";
 

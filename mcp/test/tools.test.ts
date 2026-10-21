@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerTools } from "../src/tools/registry.js";
-import { Bridge } from "../src/bridge.js";
+import { Bridge } from "@bridge/daemon/bridge";
 
 function fakeBridge(handler: (method: string, params?: Record<string, unknown>) => Promise<unknown>): Bridge {
   const bridge = new Bridge();
@@ -232,7 +232,7 @@ describe("browser_status", () => {
       };
     });
     bridge.hostState = { listening: true, port: 9234 };
-    bridge.setConnection(new (await import("../src/connection.js")).ExtensionConnection(() => {}));
+    bridge.setConnection(new (await import("@bridge/daemon/connection")).ExtensionConnection(() => {}));
     const res = await statusTool(bridge).handler({}, {});
     const out = res.content[0].text as string;
     expect(out).toMatch(/extension: connected/i);

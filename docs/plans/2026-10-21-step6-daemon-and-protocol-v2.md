@@ -216,6 +216,12 @@ preserved for a moved file; `npm test` count equals the baseline (301 per `CLAUD
 the baseline commit) — a pure move loses no test; the three root scripts cover all five workspaces;
 `docs/setup.md` no longer mentions `server/dist/index.js` (today at lines 18, 36, 46 and 262).
 **Needs the user's keyboard:** yes — see human gate G6-1 (the MCP config path changes).
+*Corrected 2026-10-22 (D1): the "before" count is 322 in 25 files on `818a884` (301 + D0's 21
+tests), not 301. As built, `@bridge/daemon` exports four TS-source subpaths for the interim `mcp`
+consumer — `./bridge`, `./wsHost`, `./startup` and `./connection` (the move map named three;
+`mcp/test/tools.test.ts:235` dynamically imports `connection`). `sdk` exports `./download` only.
+The root `build` is `npm run build --workspaces --if-present`, so the scriptless `daemon` is skipped
+until D3 adds its build script. See `…-steps/D1.md`.*
 
 ### Stage D2 — Daemon: roles, registry, routing (TDD over real `ws` sockets, as `wsHost.test.ts` does)
 

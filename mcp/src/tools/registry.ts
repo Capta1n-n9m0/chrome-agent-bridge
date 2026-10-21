@@ -1,8 +1,8 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { Bridge } from "../bridge.js";
+import type { Bridge } from "@bridge/daemon/bridge";
 import type { EvalEnvelope, NetworkRequestsResult } from "@bridge/shared";
-import { downloadToFile } from "../download.js";
+import { downloadToFile } from "@bridge/sdk/download";
 
 const DEFAULT_EVAL_TIMEOUT_MS = 10_000;
 /** The extension races its own timer at `timeoutMs`; give the server a little more before it gives up. */

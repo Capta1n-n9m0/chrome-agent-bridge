@@ -1,0 +1,16 @@
+{
+  "name": "@bridge/sdk",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    "./download": "./src/download.ts"
+  },
+  "dependencies": {
+    "@bridge/shared": "*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.0"
+  }
+}

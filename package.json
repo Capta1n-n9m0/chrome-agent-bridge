@@ -4,16 +4,17 @@
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
-  "workspaces": ["shared", "server", "extension"],
+  "workspaces": ["shared", "daemon", "sdk", "mcp", "extension"],
   "scripts": {
-    "typecheck": "tsc -p shared/tsconfig.json && tsc -p server/tsconfig.json && tsc -p extension/tsconfig.json",
+    "typecheck": "tsc -p shared/tsconfig.json && tsc -p daemon/tsconfig.json && tsc -p sdk/tsconfig.json && tsc -p mcp/tsconfig.json && tsc -p extension/tsconfig.json",
     "test": "vitest run",
-    "build": "npm run build -w server && npm run build -w extension"
+    "build": "npm run build --workspaces --if-present"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "esbuild": "^0.24.0",
     "jsdom": "^25.0.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.0",
     "vitest": "^2.1.0"
   }
