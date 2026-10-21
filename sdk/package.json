@@ -4,6 +4,8 @@
   "license": "MIT",
   "type": "module",
   "exports": {
+    ".": "./src/index.ts",
+    "./token": "./src/token.ts",
     "./download": "./src/download.ts"
   },
   "dependencies": {

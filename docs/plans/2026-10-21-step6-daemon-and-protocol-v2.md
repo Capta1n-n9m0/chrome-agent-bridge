@@ -308,6 +308,16 @@ call (it has no stdio); `EADDRINUSE` exits 0 without retrying (the bind is the l
       arrives — add in D2) or fail `NOT_CONNECTED` with the usual "is Chrome open…" text.
 - [ ] `index.ts` exports: `connect`, `BridgeClient`, `BridgeError`, `ErrorCodes`, `downloadToFile`.
 
+*As built 2026-10-22 (D4, see `…-steps/D4.md`): the knock's 10 s budget runs per spawn cycle and restarts at
+the client's own handover (a `connect()` that hands over may take ~20 s); it spawns once per cycle; each
+`tryConnect` gets the remaining budget (floor 100 ms) as a handshake timeout; after its own handover an
+old-build daemon answering before our spawn counts as draining, and a matching build is accepted. A reconnect
+after 4002 runs the knock with the handover disabled (mismatch → `VERSION` naming both builds), and an old build
+still answering at the deadline after our handover → `VERSION` — both keep decision #10's purpose across
+clients. Pre-socket failures (token, daemon path, port), the 10 s give-up and close 4001 reject
+`NOT_CONNECTED`. `BridgeClient` also exposes `welcome`, `extensionConnected` and `on("reconnected")` (the
+#11 cursor hook). Proposed decisions in D4.md.*
+
 **Lane:** `sdk/src/`, `sdk/test/`. **Parallel with:** D2 and D3. **Verifier focus:** the knock state
 machine with a `sleep` that never advances real time (the 10 s give-up is measured by the injected
 clock, not by waiting); a close code other than 4002 rejects the script rather than reconnecting;

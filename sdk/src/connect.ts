@@ -1,0 +1,133 @@
+// connect(): the SDK entry point. Token → port → daemon path → hash → knock → BridgeClient, then
+// wait for the extension (spec §9.7). Every configuration failure rejects before any socket.
+import { BridgeError, ErrorCodes } from "@bridge/shared";
+import { BridgeClient, onClientFailure, realTimers, type Timers } from "./client.js";
+import { knock, type KnockIo } from "./knock.js";
+import { resolveDaemonPath } from "./paths.js";
+import { hashDaemon, spawnDaemon } from "./spawn.js";
+import { resolveToken } from "./token.js";
+import { tryConnect } from "./transport.js";
+
+export const DEFAULT_PORT = 9234;
+export const DEFAULT_WAIT_FOR_EXTENSION_MS = 15_000;
+/** Today's text from the MCP's `Bridge` (daemon/src/bridge.ts), kept as the exact prefix. */
+export const EXTENSION_NOT_CONNECTED =
+  "Extension not connected — is Chrome open and the Chrome Agent Bridge extension enabled?";
+
+export interface ConnectOptions {
+  /** The actor name the daemon logs and lists (e.g. "export-grades.ts", "claude-code #1234"). */
+  name: string;
+  /** How long to wait for the extension after the welcome. Default 15 000. */
+  waitForExtensionMs?: number;
+  /** Overrides `BRIDGE_PORT`. Every client on a machine must use the same port. */
+  port?: number;
+  /** Default `process.env`. */
+  env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
+  /** Where the workspace-root walk starts. Default: the SDK module's own directory. */
+  startDir?: string;
+  /** Test seams. */
+  io?: Partial<KnockIo>;
+  timers?: Timers;
+}
+
+function realSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener("abort", () => clearTimeout(timer), { once: true });
+  });
+}
+
+export const realKnockIo: KnockIo = {
+  tryConnect,
+  spawnDaemon: (opts) => spawnDaemon(opts),
+  hashDaemon,
+  sleep: realSleep,
+  now: () => performance.now(),
+};
+
+/** `BRIDGE_PORT`, validated exactly like `mcp/src/config.ts`. */
+function resolvePort(env: Record<string, string | undefined>, override: number | undefined): number {
+  const raw = override !== undefined ? String(override) : (env.BRIDGE_PORT ?? String(DEFAULT_PORT));
+  const port = Number(raw);
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+    throw new Error(`BRIDGE_PORT must be a valid port number, got: "${raw}"`);
+  }
+  return port;
+}
+
+function asNotConnected(err: unknown): BridgeError {
+  if (err instanceof BridgeError) return err;
+  return new BridgeError(ErrorCodes.NOT_CONNECTED, err instanceof Error ? err.message : String(err));
+}
+
+/** Connects to the daemon (spawning or handing it over as needed) and waits for the extension. */
+export async function connect(options: ConnectOptions): Promise<BridgeClient> {
+  const env = options.env ?? process.env;
+  const timers = options.timers ?? realTimers;
+  const waitMs = options.waitForExtensionMs ?? DEFAULT_WAIT_FOR_EXTENSION_MS;
+
+  let token: string;
+  let port: number;
+  let daemonPath: string;
+  try {
+    token = resolveToken({ env, startDir: options.startDir });
+    port = resolvePort(env, options.port);
+    daemonPath = resolveDaemonPath({ env, startDir: options.startDir });
+  } catch (err) {
+    throw asNotConnected(err);
+  }
+
+  const io: KnockIo = { ...realKnockIo, ...options.io };
+  const client = new BridgeClient({
+    // A reconnect after 4002 never hands the daemon over (decision #10's purpose; see knock.ts).
+    knock: ({ reconnect }) =>
+      knock({ port, token, name: options.name, daemonPath, io, allowHandover: !reconnect }),
+    timers,
+  });
+  try {
+    await client.connect();
+  } catch (err) {
+    throw asNotConnected(err);
+  }
+
+  if (!client.extensionConnected) {
+    try {
+      // Resolves on an `extensionStatus {connected:true}` or on a 4002 reconnect whose welcome says
+      // the extension is up; rejects at once with the client's own error if it fails meanwhile
+      // (a non-4002 close or a failed reconnect), else after `waitMs` with today's text.
+      await new Promise<void>((resolve, reject) => {
+        const offs: (() => void)[] = [];
+        const done = () => {
+          timers.clearTimeout(timer);
+          for (const off of offs) off();
+        };
+        const timer = timers.setTimeout(() => {
+          done();
+          reject(
+            new BridgeError(
+              ErrorCodes.NOT_CONNECTED,
+              `${EXTENSION_NOT_CONNECTED} (waited ${waitMs} ms on port ${port})`,
+            ),
+          );
+        }, waitMs);
+        const check = () => {
+          if (!client.extensionConnected) return;
+          done();
+          resolve();
+        };
+        offs.push(client.on("event", check));
+        offs.push(client.on("reconnected", check));
+        offs.push(
+          onClientFailure(client, (err) => {
+            done();
+            reject(err);
+          }),
+        );
+      });
+    } catch (err) {
+      client.close();
+      throw err;
+    }
+  }
+  return client;
+}
