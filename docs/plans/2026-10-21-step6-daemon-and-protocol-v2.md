@@ -383,6 +383,11 @@ the measurements are taken with the user.
 - [ ] **MUX-5** Handover: with a session connected, touch `daemon/dist/index.js` content (rebuild),
       start a script → the script reports "upgraded daemon", Claude's `browser_status` shows the new
       build after its auto-reconnect.
+      *Amended 2026-10-22 (D6, mechanical): the SDK has no "upgraded daemon" signal — `connect()`
+      returns a client whose `welcome` carries only `build/proto/clientId/extensionConnected`, and
+      `on("reconnected")` fires only on a 4002 reconnect, not for the client's own handover. The row
+      is judged on the recipe's printed `daemon build <new>` and `up 0s`/`1s`, the new daemon pid,
+      the old daemon's `exit 0 (shutdown 4002)` log line, and `browser_status` showing `build <new>`.*
 - [ ] **MUX-6** Race: start two scripts simultaneously with no daemon → exactly one daemon process;
       both scripts succeed.
 - [ ] **MUX-7** Parent death: kill Claude Code's process tree → daemon survives (detached); kill the

@@ -19,19 +19,115 @@ Record outcomes in the [Results template](#results-template). A run "passes" whe
    `mcp/dist/index.js`, `daemon/dist/index.js` and `extension/dist/{sw,options,offscreen,content}.js`
    exist. (*Amended 2026-10-22, Step 6 D5: was `server/dist/index.js`.*)
 3. **Token:** choose a secret, e.g. `openssl rand -hex 16`. Call it `<TOKEN>`.
+   *Note 2026-10-22 (Step 6 D6): for the Step 6 daemon wave (§4.12, §4.13), item 8 replaces this
+   item — the token is generated into `bridge.token` at the repo root.*
 4. **Register the MCP server** in your client (see `docs/setup.md` §3) with env
    `BRIDGE_TOKEN=<TOKEN>`, `BRIDGE_PORT=9234`. (Or run the inspector:
    `$env:BRIDGE_TOKEN="<TOKEN>"; npx @modelcontextprotocol/inspector node mcp/dist/index.js`.)
    The MCP starts the daemon (`daemon/dist/index.js`) on its first connect; it keeps running after
    the session ends.
+   *Note 2026-10-22 (Step 6 D6): for the Step 6 daemon wave, item 8 replaces the env part — the MCP
+   entry has **no** `BRIDGE_TOKEN` (the token comes from `bridge.token`) and points at
+   `mcp/dist/index.js`.*
 5. **Load the extension:** `chrome://extensions` → Developer mode → Load unpacked → select
    `extension/`.
 6. **Configure the extension:** open its Options, set Port `9234` + Token `<TOKEN>`, Save.
+   *Note 2026-10-22 (Step 6 D6): for the Step 6 daemon wave, item 8 replaces the token part — the
+   Options get the token from `bridge.token`.*
 7. **Serve the fixture** (for the deterministic cases) from the repo root:
    - `python -m http.server 8080 --directory test-fixtures` → fixture at
      `http://localhost:8080/e2e-playground.html`
    - or `npx http-server test-fixtures -p 8080`.
    Using `http://localhost` avoids the "allow file URLs" toggle and lets the extension inject.
+8. **Step 6 daemon wave (§4.12 MUX rows, §4.13 DL rows)** — *added 2026-10-22, Step 6 D6, before
+   any run; revised the same day by the D6 fixer.* Everything below runs in **Windows PowerShell
+   from the repo root**. If `node` / `npx` is not found there, first run
+   `$env:Path = "$env:LOCALAPPDATA\Author Software\nvm\.nodejs;$env:Path"`. Each step is tagged
+   **[UI]** / **[SH]** / **[USER]** (defined at the top of §4.12, with the automation cautions
+   A1–A10).
+   - **One token for everyone — `bridge.token`.** Generating it is **[SH]**; pasting it into the
+     Options and editing the Claude Code config are **[USER]** (A8). The daemon, the MCP and `recipes/hello.ts` all get
+     the token from `@bridge/sdk` (`sdk/src/token.ts`): a non-empty `BRIDGE_TOKEN` environment
+     variable wins (trimmed); otherwise `bridge.token` in the workspace root (the first folder above
+     the SDK's own code whose `package.json` has `"workspaces"`, i.e. the repo root), trimmed. A
+     daemon the SDK starts gets the starter's token through its environment (`sdk/src/spawn.ts`). So
+     the wave uses the file, and nobody sets `BRIDGE_TOKEN`:
+     ```powershell
+     git check-ignore bridge.token          # must print: bridge.token  (the file is never committed)
+     $b = New-Object byte[] 16
+     [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
+     [IO.File]::WriteAllText("$PWD\bridge.token", (($b | ForEach-Object { $_.ToString('x2') }) -join ''))
+     Remove-Variable b
+     Get-Content .\bridge.token -Raw | Set-Clipboard   # paste into the extension's Options → Token, Save
+     Set-Clipboard -Value 'cleared'
+     ```
+     Nothing above prints the token. `Set-Clipboard 'cleared'` replaces only the current clipboard
+     entry: with Windows **clipboard history** (Win+V) or **sync across devices** on (Settings →
+     System → Clipboard; `(Get-ItemProperty HKCU:\Software\Microsoft\Clipboard -ErrorAction SilentlyContinue).EnableClipboardHistory`
+     prints `1` when history is on), the token stays in the history, or leaves the machine. Then
+     either clear it there (Win+V → the entry's **…** → Delete, or Settings → Clipboard → **Clear**),
+     or skip the clipboard: run `notepad .\bridge.token` and type the token into the Options by hand
+     (**[USER]**), then close Notepad without saving. Then remove `BRIDGE_TOKEN` from the MCP server's `env` in the
+     Claude Code config (items 3–4) — if it stays, it wins over the file for the MCP and for the daemon
+     the MCP starts, and a recipe reading the file is refused (`close 4001`). Check the shell too:
+     `Test-Path Env:BRIDGE_TOKEN` must print `False`.
+   - **MCP path [USER]:** the Claude Code config points at `mcp/dist/index.js` (gate G6-2);
+     reconnect with `/mcp` after changing it.
+   - **Helpers [SH]** (paste once per PowerShell window; the first line makes `—` in a program's
+     output readable, A9):
+     ```powershell
+     [Console]::OutputEncoding = [Text.Encoding]::UTF8
+     $log = "$HOME\.chrome-agent-bridge\daemon.log"
+     function Get-BridgeLog([int]$n = 10) { Get-Content $log -Tail $n -Encoding UTF8 }
+     function Get-BridgeDaemon { Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match 'daemon[\\/]dist[\\/]index\.js' } | Select-Object ProcessId, ParentProcessId, CreationDate, CommandLine }
+     function Get-BridgeProcs { Get-CimInstance Win32_Process -Filter "Name='node.exe' OR Name='claude.exe'" | Select-Object ProcessId, ParentProcessId, Name, CommandLine | Format-Table -Wrap -AutoSize }
+     function Get-DaemonBuild { (Get-FileHash .\daemon\dist\index.js -Algorithm SHA256).Hash.ToLower() }
+     function Get-DriverChain { $ids = @(); $p = $PID; for ($i = 0; $p -and $i -lt 32; $i++) { $ids += $p; $p = (Get-CimInstance Win32_Process -Filter "ProcessId=$p").ParentProcessId }; $ids }
+     function Get-ProcTree([int]$Root) { $all = @(Get-CimInstance Win32_Process); $ids = @($Root); $i = 0; while ($i -lt $ids.Count) { $c = $ids[$i]; $ids += @($all | Where-Object { $_.ParentProcessId -eq $c -and $ids -notcontains $_.ProcessId } | ForEach-Object { $_.ProcessId }); $i++ }; $ids }
+     function Test-SafeToKill([int]$Root) { $chain = Get-DriverChain; $hit = @(Get-ProcTree $Root | Where-Object { $chain -contains $_ }); if ($hit.Count) { "UNSAFE: the tree of $Root contains driver PID(s) $($hit -join ', ')" } else { "safe: the tree of $Root does not contain the driver" } }
+     ```
+     `Get-BridgeDaemon` lists the daemon (its command line ends in `daemon\dist\index.js`); unrelated
+     `node.exe` processes (e.g. a codex `host-daemon.mjs`) do not match. `Get-DaemonBuild` is the
+     build the daemon reports (`build <sha256>`, the sha256 of `daemon/dist/index.js`).
+     `Get-BridgeLog <n>` prints the log's last `<n>` lines (read as UTF-8). `Get-DriverChain` lists
+     the PowerShell window's own pid and its ancestors — when a driver runs the shell steps, its own
+     processes (A2); `Get-ProcTree <pid>` lists a process and its descendants, as `taskkill /T`
+     walks them (by `ParentProcessId`); `Test-SafeToKill <pid>` prints `safe: …` or `UNSAFE: …`.
+   - **No daemon running** (a precondition of MUX-1, MUX-4, MUX-6, MUX-7): **[UI]** end every
+     Claude session that uses the bridge first (a live MCP starts a new daemon within ~5 s), then
+     **[SH]** `Get-BridgeDaemon | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }` and check
+     `Get-BridgeDaemon` prints nothing. A daemon stopped this way writes no `exit` line to the log.
+     (The filter matches only `daemon\dist\index.js` command lines, so it never hits a driver, A2.)
+   - **Recipe:** `npx tsx recipes/hello.ts [holdMs]` connects as `hello-recipe` (`RECIPE_NAME`
+     overrides the name, `HOLD_MS` or the first argument keeps it connected that many ms), calls
+     `listTabs`, prints one timestamped line per step, and exits 0, or prints
+     `… FAILED after <ms> ms — <code>: <message>` and exits 1 (`$LASTEXITCODE`). After a hold it calls
+     `daemon.status` again and prints `still connected after the hold — clients (<n>)`; if the
+     connection dropped during the hold, that call fails and the recipe prints `FAILED` and exits 1,
+     never `OK`. It never prints the token or a URL.
+   - **DL fixtures:** `test-fixtures/dl/hello.txt` (69 bytes, no line ending, so Git's `autocrlf`
+     cannot change it; sha256 `0a6b99ca15c2a72ad024d78d94d3980833b77efda41af17d0571d21fee2956ce`) is
+     served by the item-7 server. DL-2 also needs `test-fixtures/redirect_server.py 8081
+     http://localhost:8080/dl/hello.txt`: it binds `127.0.0.1:8081`, answers `GET /page` with a
+     small HTML page (200), and every other GET with `302` to that URL, with no CORS headers.
+   - **Fixture servers with log files [SH]** (instead of two visible windows, so a driver can read
+     their request logs; both servers write one line per request to stderr). This block **replaces**
+     item 7's server for the wave: do not also start item 7's server (or stop it first). Both use
+     port 8080: the second either fails to bind or binds beside the first and answers some of the
+     requests, and then `http8080.log` misses lines that DL-2 judges:
+     ```powershell
+     $out = "$env:TEMP\bridge-e2e"; New-Item -ItemType Directory -Force $out | Out-Null
+     $web = Start-Process -PassThru -WindowStyle Hidden -FilePath python -ArgumentList '-I', '-m', 'http.server', '8080', '--bind', '127.0.0.1', '--directory', 'test-fixtures' -RedirectStandardError "$out\http8080.log"
+     $redir = Start-Process -PassThru -WindowStyle Hidden -FilePath python -ArgumentList '-I', 'test-fixtures/redirect_server.py', '8081', 'http://localhost:8080/dl/hello.txt' -RedirectStandardError "$out\redirect8081.log"
+     Get-Content "$out\redirect8081.log" -Tail 5    # DL-2's fixture log; "$out\http8080.log" is the item-7 server's
+     Stop-Process -Id $web.Id, $redir.Id             # at the end of the wave
+     ```
+     `--bind 127.0.0.1` keeps the item-7 server off the LAN; `localhost:8080` still reaches it when
+     `localhost` resolves to `127.0.0.1` (if the playground does not load, drop `--bind`, as item 7
+     does).
+   - **Where to look:** Claude Code does not show the MCP's stderr, so the evidence is
+     `browser_status`, the recipe's output, the process listings and `daemon.log` (lines are
+     `<UTC time, whole seconds> <message>`).
 
 **Fixture reference:** `test-fixtures/e2e-playground.html` exposes a sticky `status:` line that
 updates on every interaction (so `browser_snapshot` / `browser_screenshot` can verify outcomes), a
@@ -235,6 +331,228 @@ giving the redirect case for free. Both are picked up without restarting the ser
 |---|---|---|---|
 | REAL-1 ★ | Drive a site you're already logged into | Navigate to a site where you're signed in (email, dashboard, etc.); `browser_snapshot`; read/act on something that requires your session | The page shows your **logged-in** state and the agent can perceive/act on it — proving the bridge drives the *real default profile*, not a fresh one. |
 | REAL-2 | Multi-step task | A short real task: navigate → snapshot → type into a search/field → click → wait_for → snapshot the result | Completes end to end without manual intervention. |
+
+### 4.12 Daemon multiplexing (Step 6: MUX-1…MUX-9, optional MUX-10)
+
+*Added 2026-10-22 by Step 6 stage D6, before any run (gate G6-2: the user's wave); revised the same
+day by the D6 fixer (verifier findings 1–11, and the user's note that the wave may be driven by UI
+automation). Setup: §1 item 8 (token file, helpers `$log` / `Get-BridgeLog` / `Get-BridgeDaemon` /
+`Get-BridgeProcs` / `Get-DaemonBuild` / `Get-DriverChain` / `Test-SafeToKill`, the recipe). Run the
+rows in order; the multi-line commands are in the block under the table, keyed by row. `<sha>` is
+`Get-DaemonBuild`'s output; `<ts>` a timestamp; `<…>` any value of that kind.*
+
+**Who does each step.** Every step carries one tag:
+
+- **[UI]** — UI automation can do it: desktop automation (computer use) or a browser driver (Claude
+  in Chrome style). Opening and closing Chrome, clicking in `chrome://extensions`, opening the
+  extension's service-worker console (`chrome://extensions` → the extension's **service worker**
+  link) and reading its lines, starting or ending a Claude Code window, typing a prompt into a
+  Claude session and reading the reply.
+- **[SH]** — a shell command an agent can run in Windows PowerShell from the repo root: process
+  listings, `Stop-Process` / `taskkill`, starting the recipe or a fixture server, reading
+  `daemon.log`.
+- **[USER]** — needs the user's own keyboard or judgement: the token, the Claude Code config, and
+  any step a caution below reserves.
+
+"[UI] `browser_status` in S1" means: in Claude session S1 type
+`Call browser_status once and show its output verbatim. Do nothing else.` and read the reply. Other
+tool calls are typed the same way, with the JSON given in the row. The judge compares the **tool
+output** (not the model's paraphrase of it) with Expected. Every Expected item is a literal text, a
+count, or a comparison of two values the steps print, so an automated run can mark PASS/FAIL from
+text or a screenshot.
+
+**Automation cautions** (cited per row as A1…A10):
+
+- **A1 — the driver must not be a bridge client.** A driver that is itself a Claude Code session
+  with the chrome-agent-bridge MCP configured is one more `claude-code #<pid>` client: it changes
+  every `Clients (<n>)` line and every `(<n> clients)` count in the log (MUX-1, MUX-2, MUX-3, MUX-5,
+  MUX-8), keeps the daemon from idling (MUX-4), and can spawn the daemon itself, becoming its parent
+  (MUX-1, MUX-4, MUX-6, MUX-7). Run the driver without the bridge MCP (its `/mcp` lists no
+  `chrome-agent-bridge`). Check before the wave **[SH]**: the command under "Driver check" below
+  prints nothing. If it cannot be avoided, record the driver's MCP pid as `<X>`, add
+  `claude-code #<X>` to every expected client list and count, and skip MUX-4, MUX-6 and MUX-7 (their
+  preconditions cannot hold).
+- **A2 — kills target identified PIDs only, never the driver.** PIDs come from command lines
+  (`mcp\dist\index.js`, `daemon\dist\index.js`), the parent chain, and the pid printed in
+  `claude-code #<M>`. Never kill by name (`taskkill /IM node.exe`, `Stop-Process -Name node`).
+  Before every `Stop-Process` / `taskkill` in MUX-7 run `Test-SafeToKill <pid>`; it must print
+  `safe: …`. `UNSAFE: …` means the target's tree contains the driver's own process
+  (`Get-DriverChain`): stop and ask the user. `Test-SafeToKill` checks only the driver's
+  **ancestor chain** (its shell, `claude.exe`, the hosting terminal): it does not see the driver's
+  descendants (its own MCP servers and their children) or sibling sessions (S1…S5, or any other
+  Claude session the user has open), so `safe: …` only means "this kill does not take down the
+  driver itself". It is not a check that the PID is the intended target: confirm that from the
+  `<M>` / `<P>` / `<D>` derivation (MUX-7), and make sure the user has no unrelated Claude session
+  open during MUX-7 (A1 already requires the driver to have no bridge MCP of its own).
+- **A3 — closing Chrome kills a driver that lives in it.** MUX-8 (and CONN-2 (b), CONN-6) close
+  Chrome; a browser driver running inside that Chrome dies with it. Do those steps with desktop
+  automation, or have the user do them.
+- **A4 — the active tab is part of the measurement.** The bridge acts on the active tab, and
+  `browser_status` / `listTabs` print it. A browser driver that opens, focuses or switches a tab in
+  the same Chrome between a row's steps changes what is measured. Sensitive rows: MUX-1
+  (`Active tab`), MUX-2 (both snapshots are of the same tab), MUX-3 (`listTabs` active id =
+  `browser_status`'s), MUX-9 (every action targets the playground tab), DL-1 (a) ("the active tab
+  does not change"), DL-2 (a) (`browser_evaluate` runs in the active tab). In these rows the driver
+  touches Chrome only to read the service-worker console (its own DevTools window, not a tab) or to
+  take a screenshot; a desktop driver does not click the tab strip.
+- **A5 — any client disturbs the idle timer.** In MUX-4, from the recipe's exit to the daemon's
+  exit nothing may connect to the daemon — no `browser_status`, no recipe, no driver status check
+  through the bridge (a connect cancels the idle timer, `daemon/src/idle.ts`). Observe only with
+  `daemon.log` and the process listing **[SH]**.
+- **A6 — DevTools on the page blocks the debugger.** The page's own DevTools is a debugger on that
+  tab; before Chrome 152, `browser_evaluate` and trusted clicks then fail with "Another debugger is
+  already attached…" (TRUST-3, EVAL-16). In MUX-9 and DL-2 (a), open the page console only after
+  the tool call has returned, and close it before the next call. The service-worker console does
+  not have this effect.
+- **A7 — timed checks are measured by the shell, not by eye.** Steps with a time bound (MUX-4,
+  MUX-7 (b), (c), (e)) are judged by the loops in the command block, which print elapsed seconds; a
+  UI driver's own latency (screenshots, typing) is not part of the measurement. MUX-8's time is
+  the recipe's own `<ms>`.
+- **A8 — the token never enters the driver.** Generating `bridge.token` is **[SH]** and prints
+  nothing; putting it into the extension's Options is **[USER]**. A driver never reads
+  `bridge.token`, the clipboard, or `$env:BRIDGE_TOKEN`. A screenshot of a terminal is safe only
+  because no command of this plan prints the token; D6.3 prints counts.
+- **A9 — Windows PowerShell 5.1 and `—`.** The recipe's lines and some log lines contain `—`
+  (U+2014). PowerShell 5.1 decodes a program's output with the console code page and reads a file
+  without a byte-order mark as ANSI, so `—` turns into `â€"` and the text no longer matches. §1
+  item 8's helpers set `[Console]::OutputEncoding` to UTF-8 and read files with `-Encoding UTF8`;
+  every command below does the same. Judge only text read that way.
+- **A10 — the debugging banner is transient.** It shows while a trusted click or `browser_evaluate`
+  runs and clears after. A desktop driver judges "banner appeared" from a screenshot of the Chrome
+  window taken while the call is in flight, and "cleared" / "no banner" from one taken ≥ 5 s after
+  the reply. If it cannot capture the window during the call, that sub-check is **[USER]**.
+
+| ID | Objective | Steps | Expected |
+|---|---|---|---|
+| MUX-1 ★ | The first knock starts the daemon | **[UI]** end every Claude session; **[SH]** no daemon running (§1 item 8). **[UI]** Chrome open with the extension enabled; **[SH]** the item-7 fixture served. **[UI]** start Claude Code (session S1) in the repo; **[UI]** `browser_status` in S1 (again after ~15 s if the extension line says not connected: with decision #27 the MCP reports the daemon at once and the extension once it has connected). **[SH]** `Get-BridgeDaemon`; `Get-BridgeProcs`; `Get-BridgeLog 8`. *Automation caution: A1 (the driver's own MCP would be client 1 and could be the daemon's parent), A4.* | `browser_status` prints four lines: `Daemon: connected on 127.0.0.1:9234 (build <sha>, up <n>s)`, `Clients (1): claude-code #<M>`, `Extension: connected`, `Active tab: [<id>] <title> — <url>`, where `<sha>` equals `Get-DaemonBuild`. `<M>` is the pid printed in `claude-code #<M>` — the MCP's own `node.exe`; its parent, the nvm shim, has the same `mcp\dist\index.js` command line, so the command line alone does not identify `<M>`. `Get-BridgeProcs` lists `<M>`. `Get-BridgeDaemon` lists **exactly one** process, `ParentProcessId` = `<M>`. The log's newest lines, in order: `start pid=<D>`, `config pid=<D> port=9234 idleMs=600000 build=<sha>`, `listening on 127.0.0.1:9234`, `client + "claude-code #<M>" (1 client)`, with `<D>` = the listed daemon pid. |
+| MUX-2 ★ | A second Claude session connects alongside | **[UI]** with S1 still open, start a second Claude Code session S2 in another terminal, in the repo. **[UI]** `browser_status` in S1 and S2; **[UI]** in S1, `browser_navigate {"url":"http://localhost:8080/e2e-playground.html"}`; **[UI]** `browser_snapshot` in S1, then in S2. **[SH]** `Get-BridgeDaemon`; `Get-BridgeLog 3`. *Automation caution: A1, A4 (nothing may switch the tab between the two snapshots).* | Both `browser_status` print the same `build <sha>` and `Clients (2): claude-code #<M1>, claude-code #<M2>` (the same order in both). Both snapshots contain `textbox "Email address" [ref=…]` and `button "Sign in" [ref=…]` — the same active tab (tab leases arrive in Step 7). `Get-BridgeDaemon`: exactly one process, the same `<D>` as MUX-1. Log: `client + "claude-code #<M2>" (2 clients)`; no `start` line after MUX-1's. |
+| MUX-3 ★ | A script works while Claude is connected | With S1 and S2 connected: **[SH]** run the MUX-3 commands below (the recipe in the background with a 60 s hold, output to `mux3.out`). **[SH]** wait until `mux3.out` contains `holding the connection`; then **[UI]** `browser_status` in S1. **[SH]** after the recipe exits: its exit code and output (the block prints them). **[UI]** `browser_status` in S1 again; **[SH]** `Get-BridgeLog 3`. *Automation caution: A1, A4.* | `mux3.out`, in order: `<ts> hello-recipe: connecting (pid <n>)`; `<ts> hello-recipe: connected in <ms> ms as client c<k> — daemon build <sha>, proto 2`; `<ts> hello-recipe: daemon.status — port 9234, up <n>s, extension connected, clients (3): claude-code #<M1>, claude-code #<M2>, hello-recipe`; `<ts> hello-recipe: listTabs — <n> tab(s); active: [<id>] <title>` (the same `<id>` as `browser_status`'s `Active tab`); `<ts> hello-recipe: holding the connection for 60000 ms — call browser_status now`; `<ts> hello-recipe: still connected after the hold — clients (3)`; `<ts> hello-recipe: closed after <ms> ms — OK`. `mux3.err` empty; exit code `0`. During the hold, `browser_status` prints `Clients (3): claude-code #<M1>, claude-code #<M2>, hello-recipe`; afterwards `Clients (2): claude-code #<M1>, claude-code #<M2>`. Log: `client + "hello-recipe" (3 clients)`, then `client - "hello-recipe" (2 clients)`; no new `start` line. (The recipe prints `FAILED` and exits 1 if its connection dropped during the hold.) |
+| MUX-4 | Idle exit after the last client leaves | **[UI]** end **every** Claude session (`/exit`). **[SH]** stop the daemon (§1 item 8; it was started with the default 600000 ms). **[UI]** open the service-worker console. **[SH]** run the MUX-4 commands below: the recipe starts a fresh daemon with `BRIDGE_DAEMON_IDLE_MS=20000` set in **the recipe's** environment (the SDK passes the starter's whole environment to the daemon it spawns, `sdk/src/spawn.ts`), takes `$t0` from the recipe's own `closed after … — OK` timestamp, and polls until the daemon process is gone (`$t1`); its last step waits until 30 s after `$t1` and runs `Get-BridgeDaemon` again. **[UI]** read the service-worker console after `$t1`. *Automation caution: A1, A5 (do not call `browser_status` or anything else that connects until the block has finished, i.e. printed its `… s after $t1` line), A7.* | The recipe's last line is `<ts> hello-recipe: closed after <ms> ms — OK`. Log, in order: `config pid=<D> port=9234 idleMs=20000 build=<sha>`, …, `client - "hello-recipe" (0 clients)` at **T0**, `idle for 20000 ms with no clients — shutting down` at **T1**, `exit 0 (shutdown 1001) clients=0 extensionEvents=<n> ignoredClientFrames=<n>`. **T1 − T0 = 19, 20 or 21 s** (log stamps are whole seconds; the timer is armed when the client count drops to 0, `daemon/src/idle.ts`). The block's `$t1 − $t0` (recipe close → process gone) is **19.5–22.0 s** (20 s, plus up to 1 s of close grace, plus the 250 ms poll). Service-worker console: a `[bridge] connection: down` line, then further `connection: down` lines as each reconnect attempt fails (backoff 0.5 s doubling to 10 s). `Get-BridgeDaemon` prints nothing when checked ≥ 30 s after `$t1` (nothing starts a daemon again): the block's last step prints `<s> s after $t1: Get-BridgeDaemon lists 0 process(es)` with `<s>` ≥ 30.0, and no process row after it. |
+| MUX-5 | Handover to a new build, MCP follows | **[UI]** one Claude session S1 connected to a running daemon; **[UI]** `browser_status` → note `build <old>` and `up <n>s`; **[SH]** `Get-BridgeDaemon` → pid `<D1>`. **[SH]** change the build: `Add-Content -Path .\daemon\dist\index.js -Value "// MUX-5 marker $(Get-Date -Format o)"`, then `Get-DaemonBuild` → `<new>`. **[SH]** `npx tsx recipes/hello.ts`. **[UI]** within 15 s, `browser_status` and then `browser_snapshot` in S1 (no `/mcp`). **[SH]** `Get-BridgeDaemon`; `Get-BridgeLog 15`. **[UI]** the service-worker console. **[SH] Undo:** `npm run build --workspace daemon` (regenerates the file; `Get-DaemonBuild` returns to `<old>`, and the next client hands over again). *Automation caution: A1 (a driver's MCP would be one more client the old daemon logs and the new daemon must accept).* | Recipe: `connected in <ms> ms as client c<k> — daemon build <new>, proto 2` with `<new>` ≠ `<old>`, then `daemon.status — port 9234, up 0s` or `up 1s` (a fresh daemon), and `… — OK`; exit 0. The SDK prints no "upgraded" message (none exists); the handover shows as `<new>`, the reset uptime, the new pid and the log. **Log** (lines from several processes interleave; only these constraints are judged): (1) the old daemon `<D1>` writes `client + "hello-recipe" (2 clients)`, then a `client - "…"` line for each of its clients, then `exit 0 (shutdown 4002) clients=0 extensionEvents=<n> ignoredClientFrames=<n>` — every old-daemon `client -` line comes before that `exit` line; (2) after it, one or two `start pid=…` / `config pid=… port=9234 idleMs=600000 build=<new>` pairs, possibly interleaved, the second starter's `start` possibly first; `<D2>` is the pid whose `config` line comes before `listening on 127.0.0.1:9234` and equals `Get-BridgeDaemon`'s pid; (3) exactly one `listening on 127.0.0.1:9234` after the `exit` line; (4) if there are two starters, the other one writes `port 9234 in use — another daemon owns it` and `exit 0 (port in use)` (the MCP's reconnect started one too and lost the bind); (5) `client + "hello-recipe" (…)` and `client + "claude-code #<M>" (…)` after `listening`, in either order. S1's `browser_status`: `Daemon: connected on 127.0.0.1:9234 (build <new>, up <n>s)`, its client still `claude-code #<M>` (the MCP reconnected on 4002 without `/mcp`); `browser_snapshot` returns a snapshot (no error). `Get-BridgeDaemon`: exactly one, pid `<D2>` ≠ `<D1>`. Service-worker console: `connection: down` then `connection: up`. *Informs decisions #22, #23, #24.* |
+| MUX-6 ★ | Two scripts race with no daemon | **[UI]** end every Claude session; **[SH]** stop the daemon; `Get-BridgeDaemon` prints nothing. **[SH]** run the MUX-6 commands below (two recipes started back to back with `Start-Process`, names `race-a` and `race-b`). *Automation caution: A1 (a driver's MCP would start the daemon first, and the race would not happen).* | **Judged by the process listing:** after both exit, `Get-BridgeDaemon` lists **exactly one** process. Both exit codes 0; each `.out` file ends with `<ts> race-a: closed after <ms> ms — OK` / `… race-b: …`; both `.err` files are empty. Log since the run: exactly one `listening on 127.0.0.1:9234`; one `start pid=…` (the second recipe found the first's daemon), or two, the loser writing `port 9234 in use — another daemon owns it` and `exit 0 (port in use)` (the race was exercised — record which); `client + "race-a" …` and `client + "race-b" …`. *Informs decision #25 (a lost bind race must not lose a log line).* |
+| MUX-7 | The daemon vs. the death of the session that spawned it | Four kill methods in this order, plus an optional fifth; commands below. PIDs per session S<i>, from **[SH]** `Get-BridgeProcs` and `Get-BridgeDaemon`: `<M>` = the pid printed in that session's `claude-code #<M>` (**[UI]** `browser_status`); `<P>` = `<M>`'s `ParentProcessId` (the nvm shim if it is a `node.exe` with the same command line; if it is `claude.exe` there is no shim — record that, skip (c), and use `<M>` for `<P>` in (a) and (d)); `<D>` = `Get-BridgeDaemon`, whose `ParentProcessId` names the MCP that spawned it. Before each kill, **[SH]** `Test-SafeToKill <pid>` prints `safe: …` (A2). **(b) normal end:** **[UI]** end every session; **[SH]** stop the daemon; **[UI]** start S1 (it spawns `<D>`, parent `<M1>`); **[UI]** `/exit` in S1, then at once **[SH]** the (b) poll, then `Get-Process -Id <P1> -ErrorAction SilentlyContinue`. **(c) shim alone:** **[UI]** start S2 (it connects to `<D>`, no spawn); **[SH]** `Stop-Process -Id <P2> -Force` and the (c) poll; then **[UI]** `/mcp` in S2 and `browser_status`. **(a) tree kill while the MCP lives:** **[UI]** end all sessions; **[SH]** stop the daemon; **[UI]** start S3 (it spawns `<D3>`, parent `<M3>`); **[SH]** `taskkill /PID <P3> /T /F`. **(d, contrast) tree kill of a session that did not spawn the daemon:** **[SH]** no daemon; **[UI]** start S4; **[SH]** wait until `Get-BridgeDaemon` lists `<D4>` with `ParentProcessId` = `<M4>` (only then); **[UI]** start S5; **[SH]** `taskkill /PID <P5> /T /F`. **(e, optional — informs decision #15) a daemon killed under a live session:** with S4 still open, **[SH]** `Stop-Process -Id <D4> -Force` and the (e) poll; **[UI]** ≥ 20 s later, `browser_status` in S4 (no `/mcp`). After each of (a)–(e): **[SH]** `Get-Process -Id <daemon pid> -ErrorAction SilentlyContinue`, `Get-BridgeLog 5`. *Automation caution: A1 (a driver's MCP would be a session in every tree and could own the daemon), A2 (exclude the driver: `Get-DriverChain` lists its own processes; `Test-SafeToKill` refuses a tree that contains one), A7.* | **(b)** The (b) poll ends (prints `(b) M1 alive: False; waited <s> s` with `<s>` ≤ 10.0: `<M1>` gone), and `Get-Process -Id <P1> -ErrorAction SilentlyContinue` prints nothing (`<P1>` gone too; with no shim, skip this check); **`<D>` is still alive** (`Get-Process -Id <D>` lists it); log: `client - "claude-code #<M1>" (0 clients)` and no `exit` line. **(c)** The (c) poll prints ≤ 4.5 s (`mcp/src/lifecycle.ts` polls its parent every 2 s); `<D>` alive; log `client - "claude-code #<M2>" (0 clients)`; after `/mcp`, S2's `browser_status` shows a new `claude-code #<pid>` connected to the same `<D>` (no new `start` line). **(a)** Per the Stage 0 measurement (`stage0-audit.md` F3: Windows keeps a detached child's `ParentProcessId`, so `taskkill /T` walks into it): `taskkill` prints a `SUCCESS: The process with PID <D3> (child process of PID <M3>) has been terminated.` line and **`<D3>` is gone**; no `exit` line in the log (a hard kill); service-worker console `connection: down`. This is the expected, measured behaviour, not a pass for "survives". **(d)** `taskkill`'s output names no `<D4>`; `<D4>` is **alive** (its parent is S4's MCP, not in S5's tree); S4's `browser_status` prints `Daemon: connected …` and `Extension: connected`. **(e)** The (e) poll lists a new daemon pid `<D5>` ≠ `<D4>` within ≤ 12.0 s (the MCP's 5 s retry, plus spawn and knock), `ParentProcessId` = `<M4>`; log: `start pid=<D5>` and `client + "claude-code #<M4>" (1 client)`, no `exit` line for `<D4>`; S4's `browser_status`: `Daemon: connected on 127.0.0.1:9234 (build <sha>, up <n>s)`, `Clients (1): claude-code #<M4>`, `Extension: connected` — without `/mcp`. *(b) and (a) inform open decision #14: if `<D>` dies in (b), Claude Code ends MCP servers with a tree kill, and the fallback (a double spawn through a short-lived launcher) is the user's call. (e) informs #15 (on a close other than 4002 the MCP reconnects on its 5 s retry).* |
+| MUX-8 ★ | No Chrome: a script fails clearly, then recovers | Daemon up (S4 from MUX-7 or any session started it). **[UI, desktop driver or USER]** close Chrome completely (A3); **[SH]** `Get-Process chrome -ErrorAction SilentlyContinue` prints nothing (if not, turn off "Continue running background apps" and close again). **[SH]** `npx tsx recipes/hello.ts`; `$LASTEXITCODE`. **[UI]** meanwhile, `browser_status` in the connected session. **[UI, desktop driver or USER]** open Chrome; **[UI]** wait for the service worker's `connection: up`; **[SH]** run the recipe again. *(Optional)* **[UI, desktop driver or USER]** close Chrome again; **[SH]** start the recipe; **[UI, desktop driver or USER]** open Chrome within ~10 s. *Automation caution: A3 (a browser driver dies with Chrome), A1.* | First run, after ~15 s: `<ts> hello-recipe: FAILED after <ms> ms — NOT_CONNECTED: Extension not connected — is Chrome open and the Chrome Agent Bridge extension enabled? (waited 15000 ms on port 9234)` with `<ms>` from 15000 to 16500; exit code 1 (the `NOT_CONNECTED` code: decision #21); log `client + "hello-recipe" (…)` and ~15 s later `client - "hello-recipe" (…)`. The connected session's `browser_status` meanwhile prints `Daemon: connected …` and `Extension: not connected — is Chrome open with the Chrome Agent Bridge extension enabled and its token/port set?` (decision #27: the MCP stays connected to the daemon while Chrome is closed). Second run: the MUX-3 lines without the hold lines (`connecting`, `connected in …`, `daemon.status — …`, `listTabs — …`, `closed after <ms> ms — OK`), exit 0. Optional run: `… — OK`, exit 0, `closed after <ms>` under 15000 ms. *Informs decisions #21 and #27.* |
+| MUX-9 ★ | Regression smoke through the daemon | In a session whose `browser_status` shows `Daemon: connected …` and `Extension: connected`: **[UI]** `browser_navigate {"url":"http://localhost:8080/e2e-playground.html"}` (a fresh load, so the counter starts at 0); `browser_snapshot` → refs. **ACT-1:** **[UI]** `browser_type {"ref":"<email ref>","text":"a@b.com"}`, then `browser_screenshot` (the `status:` line is not in a snapshot). **ACT-2:** **[UI]** `browser_click {"ref":"<counter ref>"}`, `browser_screenshot`. **TRUST-2:** **[UI]** `browser_click {"ref":"<trusted-only ref>","trusted":true}`, `browser_screenshot`; banner per A10. **EVAL-1:** **[UI]** `browser_evaluate {"expression":"document.title"}`; banner per A10. **NET-1** (written out as Run 6 ran it; §4.8's row omits the clear): **[UI]** `browser_network_clear {}`; `browser_navigate {"url":"http://localhost:8080/e2e-playground.html"}`; `browser_network_requests {}`; banner check per A10. Then **DL-1** (§4.13) — this **is** the DL-1 run: its evidence is recorded once, under DL-1, and DL-1 is not run again. *Automation caution: A4 (nothing may switch the tab during the row), A6, A10.* | Each matches its **last recorded run** (D6.4): **ACT-1** — `status: email = a@b.com` (Run 2, 2026-09-03; Run 3 marked it P without text). **ACT-2** — `status: counter = 1` (Run 6, NET-15). **TRUST-2** — `status: TRUSTED click received`, banner appeared and cleared (Run 6, NET-15). **EVAL-1** — `Agent Bridge E2E Playground` (text: Run 6, NET-15), banner appeared and cleared (banner: Run 5). **NET-1** — `Cleared <n> requests.`, then `Network — active tab: showing 1 of 1 (recording since <t> ago; 0 pending)` and `[<id>]  <t> ago   GET     200  document    <n>ms  12.9 KB  http://localhost:8080/e2e-playground.html`, no banner (Run 6; the fixture is still 12 914 bytes). **DL-1** — its own expected text (no earlier run). |
+| MUX-10 | *(Optional)* A pre-Step-6 server on the port: the SDK side | CONN-7 covers the MCP side; this is the recipe's. **[UI]** end every session; **[SH]** stop the daemon. **[SH]** in a second worktree of a pre-Step-6 commit: `git worktree add ..\bridge-v1 1a92d95`, then `npm install` and `npm run build` there. **[SH]** in a **separate** PowerShell window, in `..\bridge-v1`: `$env:BRIDGE_TOKEN = (Get-Content <repo>\bridge.token -Raw).Trim(); node server\dist\index.js` (same token, so the old server accepts the hello; nothing is printed; the variable lives only in that window). **[SH]** here: `npx tsx recipes/hello.ts`; `$LASTEXITCODE`; `Get-BridgeDaemon`. **[SH]** stop the old server (Ctrl-C in its window, or `Stop-Process` on the `node.exe` whose command line contains `bridge-v1\server\dist\index.js`, after `Test-SafeToKill`), close that window; run the recipe again. **[SH] Cleanup:** `git worktree remove ..\bridge-v1` (if it refuses because of build output, check `git -C ..\bridge-v1 status --short --untracked-files=no` prints nothing, then add `--force`); `git worktree list` no longer shows `bridge-v1`; `Test-Path Env:BRIDGE_TOKEN` here prints `False`. *Automation caution: A2, A8.* | ``<ts> hello-recipe: FAILED after <ms> ms — VERSION: No welcome from 127.0.0.1:9234 within 2 s after hello: a pre-Step-6 bridge server holds port 9234. End the old Claude session (or stop the old `node …/server/dist/index.js`) and try again.`` with `<ms>` from 2000 to 3000; exit code 1; `Get-BridgeDaemon` prints nothing (no spawn, no handover). After the old server stops, the rerun starts a daemon and ends `… — OK`, exit 0. *Informs decision #13.* |
+
+**Driver check** (before the wave, when a driver runs it — A1): prints nothing when the driver has
+no bridge MCP of its own.
+
+```powershell
+$chain = Get-DriverChain
+Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match '(mcp|server)[\\/]dist[\\/]index\.js' -and $chain -contains $_.ParentProcessId } | Select-Object ProcessId, ParentProcessId, CommandLine
+```
+
+**Commands** (PowerShell, repo root; helpers from §1 item 8):
+
+```powershell
+# MUX-3 — the recipe in the background, so browser_status can be called during its 60 s hold
+$out = "$env:TEMP\bridge-e2e"; New-Item -ItemType Directory -Force $out | Out-Null
+$p = Start-Process -PassThru -NoNewWindow -FilePath node -ArgumentList '--import', 'tsx', 'recipes/hello.ts', '60000' `
+  -RedirectStandardOutput "$out\mux3.out" -RedirectStandardError "$out\mux3.err"
+$null = $p.Handle   # keeps ExitCode readable after exit
+while (-not $p.HasExited -and -not (Select-String -Path "$out\mux3.out" -SimpleMatch -Pattern 'holding the connection' -Quiet)) { Start-Sleep -Milliseconds 500 }
+if ($p.HasExited) { 'MUX-3 FAIL: the recipe exited before its hold' } else { 'now call browser_status in S1' }
+$p | Wait-Process
+'exit code: {0}' -f $p.ExitCode
+Get-Content "$out\mux3.out" -Encoding UTF8; Get-Content "$out\mux3.err" -Encoding UTF8
+
+# MUX-4 — idle exit. No Claude session running; no daemon running.
+$t1 = $null                                        # no stale $t1 from an earlier run
+$env:BRIDGE_DAEMON_IDLE_MS = "20000"
+$o = npx tsx recipes/hello.ts
+Remove-Item Env:BRIDGE_DAEMON_IDLE_MS
+$o
+$closed = @($o | Where-Object { $_ -match 'closed after \d+ ms' })
+if ($closed.Count -ne 1) {
+  'MUX-4 FAIL: the recipe printed no "closed after" line'
+} else {
+  $t0 = [DateTimeOffset]::Parse(($closed[0] -split ' ')[0], [Globalization.CultureInfo]::InvariantCulture)
+  while (Get-BridgeDaemon) { Start-Sleep -Milliseconds 250 }
+  $t1 = [DateTimeOffset]::UtcNow
+  "{0:o}  ->  {1:o}  =  {2:N1} s" -f $t0.UtcDateTime, $t1.UtcDateTime, ($t1 - $t0).TotalSeconds
+}
+Get-BridgeLog 8
+# the last MUX-4 check: wait until 30 s after $t1, then no daemon may be running
+if ($t1) {
+  $left = 30 - ([DateTimeOffset]::UtcNow - $t1).TotalSeconds
+  if ($left -gt 0) { Start-Sleep -Milliseconds ([int]($left * 1000)) }
+  $late = @(Get-BridgeDaemon)
+  '{0:N1} s after $t1: Get-BridgeDaemon lists {1} process(es)' -f ([DateTimeOffset]::UtcNow - $t1).TotalSeconds, $late.Count   # expected: >= 30.0 s, 0
+  $late                                            # expected: nothing
+}
+
+# MUX-6 — race. No Claude session running; Get-BridgeDaemon prints nothing.
+$out = "$env:TEMP\bridge-e2e"; New-Item -ItemType Directory -Force $out | Out-Null
+$procs = foreach ($n in 'race-a', 'race-b') {
+  $env:RECIPE_NAME = $n
+  $p = Start-Process -PassThru -NoNewWindow -FilePath node -ArgumentList '--import', 'tsx', 'recipes/hello.ts' `
+    -RedirectStandardOutput "$out\$n.out" -RedirectStandardError "$out\$n.err"
+  $null = $p.Handle   # keeps ExitCode readable after exit
+  $p
+}
+Remove-Item Env:RECIPE_NAME
+$procs | Wait-Process
+$procs | Select-Object Id, ExitCode
+Get-BridgeDaemon                                   # the evidence: exactly one row
+Get-Content "$out\race-a.out", "$out\race-b.out" -Encoding UTF8; Get-Content "$out\race-a.err", "$out\race-b.err" -Encoding UTF8
+Get-BridgeLog 12
+
+# MUX-7 — PIDs and kills (fill in <…> from Get-BridgeProcs / Get-BridgeDaemon / browser_status)
+Get-BridgeProcs
+Get-BridgeDaemon
+Get-DriverChain                                    # the driver's own processes: never a target (A2)
+Test-SafeToKill <pid>                              # before every kill: must print "safe: ..."
+Get-Process -Id <D> -ErrorAction SilentlyContinue  # after each kill: listed = alive
+# (b) run right after typing /exit in S1
+$s = Get-Date; while ((Get-Process -Id <M1> -ErrorAction SilentlyContinue) -and ((Get-Date) - $s).TotalSeconds -lt 10) { Start-Sleep -Milliseconds 200 }
+'(b) M1 alive: {0}; waited {1:N1} s' -f [bool](Get-Process -Id <M1> -ErrorAction SilentlyContinue), ((Get-Date) - $s).TotalSeconds
+Get-Process -Id <P1> -ErrorAction SilentlyContinue # (b) the shim: expected no output (gone too)
+# (c) the nvm shim alone
+Stop-Process -Id <P2> -Force; $s = Get-Date
+while ((Get-Process -Id <M2> -ErrorAction SilentlyContinue) -and ((Get-Date) - $s).TotalSeconds -lt 10) { Start-Sleep -Milliseconds 200 }
+'(c) M2 alive: {0}; waited {1:N1} s' -f [bool](Get-Process -Id <M2> -ErrorAction SilentlyContinue), ((Get-Date) - $s).TotalSeconds
+# (a) the MCP's whole tree while the MCP lives
+taskkill /PID <P3> /T /F
+# (d) a tree that did not spawn the daemon (only after Get-BridgeDaemon shows <D4> with parent <M4>)
+taskkill /PID <P5> /T /F
+# (e, optional) the daemon killed under a live session; polls up to 15 s for a new one
+Stop-Process -Id <D4> -Force; $s = Get-Date
+do { Start-Sleep -Milliseconds 250; $d = @(Get-BridgeDaemon | Where-Object { $_.ProcessId -ne <D4> }) } until ($d.Count -ge 1 -or ((Get-Date) - $s).TotalSeconds -gt 15)
+'(e) waited {0:N1} s' -f ((Get-Date) - $s).TotalSeconds; $d
+```
+
+**Log hygiene before the log is attached (exit check D6.3).** All three steps are **[SH]**; the
+token is read into a variable and never printed (A8). At the end of the wave, copy the log and
+count — never print — the matches in the copy that becomes the evidence:
+
+```powershell
+$ev = "$env:TEMP\bridge-e2e\daemon-wave.log"; Copy-Item $log $ev
+(Select-String -Path $ev -SimpleMatch -Pattern '://' | Measure-Object).Count                  # expected 0
+$t = (Get-Content .\bridge.token -Raw).Trim()
+(Select-String -Path $ev -SimpleMatch -Pattern $t | Measure-Object).Count                     # expected 0
+Remove-Variable t
+(Select-String -Path $ev -SimpleMatch -Pattern '[line withheld:' | Measure-Object).Count      # expected 0
+```
+
+Expected: `0`, `0`, `0`. A non-zero first or second count fails D6.3 and the log is **not**
+attached. A withheld line (`[line withheld: contained a URL or the token]`) means the daemon tried
+to log one; record it as a finding, with the line before it.
+
+### 4.13 Download (`browser_download`: DL-1, DL-2)
+
+*Added 2026-10-22 by Step 6 stage D6, before any run (decisions.md · 2026-10-21 · Step 6 writes
+the DL rows for browser_download before its D6 wave); revised the same day by the D6 fixer. Fixtures:
+§1 items 7 and 8. Replace `<you>` with your Windows user name (**[SH]** `$env:TEMP` must print
+`C:\Users\<you>\AppData\Local\Temp`; if it prints another folder, use that folder in the `path`
+arguments, backslashes doubled in JSON). Tags as in §4.12. The tool's output format is
+`mcp/src/tools/registry.ts` (`browser_download`); the extension logs `[bridge] download held <n>
+bytes` and never the URL. DL-1 runs once, as the last step of MUX-9.*
+
+| ID | Objective | Steps | Expected |
+|---|---|---|---|
+| DL-1 ★ | A plain download is saved with its sha256 | (0) **[SH]** reset the target: `Remove-Item -Recurse -Force "$env:TEMP\bridge-e2e\dl1" -ErrorAction SilentlyContinue; Test-Path "$env:TEMP\bridge-e2e\dl1"`. (a) **[UI]** `browser_status` (before); **[UI]** `browser_download {"url":"http://localhost:8080/dl/hello.txt","path":"C:\\Users\\<you>\\AppData\\Local\\Temp\\bridge-e2e\\dl1\\"}`; **[UI]** `browser_status` (after); **[UI]** service-worker console; banner per A10. (b) **[SH]** `Get-FileHash "$env:TEMP\bridge-e2e\dl1\hello.txt" -Algorithm SHA256`; `Get-ChildItem "$env:TEMP\bridge-e2e\dl1" -Name`. (c) **[UI]** repeat (a) unchanged. (d) **[UI]** repeat (a) with `"overwrite":true`. *Automation caution: A4 (the active tab is judged in (a)), A10.* | (0) `False`. (a) Exactly two lines: `Saved C:\Users\<you>\AppData\Local\Temp\bridge-e2e\dl1\hello.txt` and `69 bytes · text/plain · sha256 0a6b99ca15c2a72ad024d78d94d3980833b77efda41af17d0571d21fee2956ce` — no `(followed redirects …)` line, no `Warning:` line; no debugging banner; both `browser_status` calls print the same line `Active tab: [<id>] Agent Bridge E2E Playground — http://localhost:8080/e2e-playground.html` (the MUX-9 playground tab, the same `<id>` before and after: the download opened no tab and switched none); service-worker console `[bridge] download held 69 bytes`. (b) Hash `0A6B99CA15C2A72AD024D78D94D3980833B77EFDA41AF17D0571D21FEE2956CE`; the listing is exactly `hello.txt` (no `hello.txt.part`). (c) The tool fails with `C:\Users\<you>\AppData\Local\Temp\bridge-e2e\dl1\hello.txt exists — pass overwrite:true to replace it`. (d) The two lines of (a) again. |
+| DL-2 ★ | A cross-origin redirect is followed by the service-worker fetch, which the page could not do | (0) **[SH]** reset the target: `Remove-Item -Recurse -Force "$env:TEMP\bridge-e2e\dl2" -ErrorAction SilentlyContinue; Test-Path "$env:TEMP\bridge-e2e\dl2"`. **[SH]** the redirect fixture runs (§1 item 8: `127.0.0.1:8081`; `/page` is a small same-origin HTML page, every other path a `302` to `http://localhost:8080/dl/hello.txt`, no CORS headers). (a) **[UI]** `browser_navigate {"url":"http://127.0.0.1:8081/page"}`; `browser_evaluate {"expression":"fetch('/page').then(r => r.status)"}`; `browser_evaluate {"expression":"fetch('/dl2').then(r => r.status)"}`; **[SH]** the fixture's log (§1 item 8). (b) **[UI]** `browser_download {"url":"http://127.0.0.1:8081/dl2","path":"C:\\Users\\<you>\\AppData\\Local\\Temp\\bridge-e2e\\dl2\\"}`. (c) **[SH]** `Get-FileHash "$env:TEMP\bridge-e2e\dl2\hello.txt" -Algorithm SHA256`. *Automation caution: A4, A6 (open the page console, if at all, only after (a)'s second evaluate has returned).* | (0) `False`. (a) The first evaluate returns `200`; the second returns a tool error containing `TypeError: Failed to fetch`; the fixture's log has a `"GET /dl2 HTTP/1.1" 302 -` line. **What the contrast proves:** the page can fetch from its own origin (`/page` → 200), and `/dl2` is a URL of that same origin, so the only thing that stops the page is the cross-origin `302` to `localhost:8080`, whose response carries no `Access-Control-Allow-Origin` — the Blackboard → signed-S3 shape `browser_download` exists for. (The item-7 server may also log a `GET /dl/hello.txt`: the browser followed the redirect, then refused the response to the page. Recorded, not judged.) (b) Three lines: `Saved C:\Users\<you>\AppData\Local\Temp\bridge-e2e\dl2\hello.txt`, `69 bytes · text/plain · sha256 0a6b99ca15c2a72ad024d78d94d3980833b77efda41af17d0571d21fee2956ce`, `(followed redirects to localhost:8080)`. The file is named `hello.txt`, not `dl2`: the name comes from the final URL's last segment (no `content-disposition`), which proves the redirect was followed. The fixture's log has another `"GET /dl2 HTTP/1.1" 302 -` line and the item-7 server's log a `"GET /dl/hello.txt HTTP/1.1" 200` line. (c) The hash of DL-1 (b). |
 
 ## 5. Results template
 
@@ -834,6 +1152,55 @@ Failures / notes:
   above.
 - `referer` / `origin` absent without `extraHeaders` (NET-10): the §0.4 follow-up flag is now
   evidence-backed.
+
+### Run 7 — waits for the D6 wave (Step 6 daemon: MUX-1…MUX-10, DL-1, DL-2)
+
+*Skeleton written 2026-10-22 by Step 6 stage D6, before any measurement. Nothing here has been run:
+the rows are the user's wave (gate G6-2), and exit checks D6.2–D6.4 are measured then, not now.
+Fill in each line with the command and the observed text, verbatim.* *Revised 2026-10-22 by the D6
+fixer, still before any measurement: the driver line, MUX-7 (e), DL-1 recorded once (MUX-9 runs it),
+DL-2's `/page` contrast, and decisions #15, #21, #27.*
+
+```
+Date: ____  Chrome version: ____  Node: ____  OS: ____  Commit: ____
+MCP config path: mcp/dist/index.js [ ]   bridge.token at the repo root [ ]   BRIDGE_TOKEN unset everywhere [ ]
+Daemon build at the start (Get-DaemonBuild): ____
+Driver: none (by hand) [ ]  desktop automation [ ]  browser driver [ ]   driver check printed nothing (A1) [ ]
+Steps done by the user ([USER], and any [UI] step the driver could not do): ____
+
+MUX-1 [ ] MUX-2 [ ] MUX-3 [ ] MUX-4 [ ] MUX-5 [ ] MUX-6 [ ]
+MUX-7 (a) [ ] (b) [ ] (c) [ ] (d) [ ] (e, optional) [ ]   MUX-8 [ ] MUX-9 [ ]   MUX-10 (optional) [ ]
+DL-1 [ ] DL-2 [ ]
+D6.3 log hygiene: '://' count ____  token count ____  withheld-line count ____
+```
+
+Evidence (command → observed text):
+- **MUX-1** — `browser_status`: … · `Get-BridgeDaemon`: … · log tail: …
+- **MUX-2** — both `browser_status`: … · both snapshots: … · log: …
+- **MUX-3** — `mux3.out` / `mux3.err` / exit code: … · `browser_status` during the hold: … ·
+  after: … · log: …
+- **MUX-4** — T0 (`client - "hello-recipe" (0 clients)`): … · T1 (`idle for 20000 ms …`): … ·
+  T1 − T0: … s · `$t1 − $t0`: … s · SW console: … · the `… s after $t1` line: …
+- **MUX-5** — `<old>` / `<new>`: … · recipe output: … · log: … · `browser_status` after: … ·
+  pids `<D1>` → `<D2>`: …
+- **MUX-6** — `Get-BridgeDaemon` (the evidence): … · exit codes: … · `.out` / `.err`: … · start
+  lines (one or two): …
+- **MUX-7** — PIDs `<M>`/`<P>`/`<D>` per session: … · (b) poll line and `Get-Process -Id <P1>`: … · (c): … · (a) `taskkill` output: … ·
+  (d): … · (e, optional) poll output, new pid and parent, `browser_status`: …
+- **MUX-8** — failing run: … · session `browser_status` meanwhile: … · recovering run: … ·
+  optional run: …
+- **MUX-9** — ACT-1: … · ACT-2: … · TRUST-2: … · EVAL-1: … · NET-1: … · DL-1: recorded under **DL-1** (MUX-9's DL-1 is the
+  only DL-1 run)
+- **MUX-10** — …
+- **DL-1** — (0) `Test-Path`: … · (a) `browser_status` `Active tab` before / after: … · (a)–(d): …
+- **DL-2** — (0) `Test-Path`: … · (a) `/page` status, `/dl2` error, fixture log: … · (b): … ·
+  (c): …
+
+Decisions this run informs: #14 (MUX-7 (a), (b)); #15 (MUX-7 (e), optional); #21 (MUX-8);
+#22, #23, #24 (MUX-5); #25 (MUX-4, MUX-6); #27 (MUX-8, MUX-1); #13 (MUX-10).
+
+Failures / notes:
+- …
 
 ## 6. Exit criteria
 
