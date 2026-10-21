@@ -9,9 +9,90 @@ as a dated entry and point back.
 
 ## Open decisions
 
-*(none)*
+For the user to review at the Step 6 gate (G6-2). Each was taken by the conservative rule of
+`long-run` §3 and does not block the run.
+
+- 2026-10-22 · A Step 6 client gives up with VERSION when no welcome arrives (#13)
+- 2026-10-22 · The detached daemon's survival depends on how the session's MCP is killed (#14)
+- 2026-10-22 · What clients do on a close code other than 4002 (#15)
 
 ## Log
+
+### 2026-10-22 · Stage order D0 → D1 → (D2 ∥ D4) → D3 → D5, and the Stage 0 builder resolutions (#17)
+**Decided:** D0 runs before D1 rather than beside it, and D4 lands before D3 so the daemon imports
+the real `sdk/src/token.ts` (behind a `./token` subpath export) instead of a stub. D1 moves
+`server/src/index.ts` to `mcp/src/index.ts` unchanged, with a temporary `mcp` → `@bridge/daemon`
+dependency removed in D5; `daemon/` has no entry or build until D3. `startup.ts` and its 5 tests
+are deleted in D5 as a documented removal. The SDK finds `daemon/dist/index.js` from the workspace
+root (the `bridge.token` walk-up), `BRIDGE_DAEMON` overrides it, and a missing file rejects before
+the knock. Timeouts: the daemon waits `clamp(timeoutMs ?? 30000) + 5000`, `BridgeClient` 1 s more,
+the MCP call sites unchanged. Any `daemon.*` method other than `status`/`shutdown` answers
+`UNKNOWN_METHOD`, never forwarded. The three `browser_status` tests are a planned output change,
+replaced one for one. New `shared` modules go through `shared/package.json` `exports`; `tsx`
+becomes a root devDependency in D1; every client must agree on `BRIDGE_PORT` (documented).
+**Why:** Each closes a gap the Stage 0 audit found a builder would otherwise fill alone
+(`stage0-audit.md` F2, F4–F7, F18–F20, F22–F24). D0 first keeps D1's "test count unchanged" check
+clean; D4 before D3 removes a stub D5 would have to unwire.
+**Instead of:** D0 ∥ D1 and D3 before D4 as the kickoff sketched; `../daemon/dist` relative to
+`import.meta.url` (wrong once bundled).
+**Revisit if:** A stage verifier finds one of these conflicts with the spec.
+**By:** Claude
+
+### 2026-10-22 · Stage 0's amendments A5–A12 applied to the phase doc (#16)
+**Decided:** The held amendments are applied with dated notes: D1 runs `npm install` (A5); D5.5
+names the `e2e-test-plan.md` lines and rows CONN-3/CONN-7 (A6); D7.1's grep adds the
+"one session" variants (A7); D0.4 covers only tests of new behaviour, reverted with
+`git stash push -u -- shared/` (A8); D5.1 becomes "≥ before − 5" for the deleted
+`startup.test.ts` (A9); D3.5's grep adds `startWsHost` (A10); the D7 `setup.md` item states the
+token precedence, env over file, closing the W0 item (A11); D5.4 expects an empty `lifecycle.ts`
+diff because the shutdown callback lives in `mcp/src/index.ts` (A12).
+**Why:** As written each check either could not hold or missed its target (evidence in
+`stage0-audit.md`). The test-count drop is a documented removal, which the integrity floor allows.
+None loosens a check: A12 is stricter, A7 and A10 widen greps.
+**Instead of:** Leaving the checks as written and tripping STOP rules mid-stage.
+**Revisit if:** —
+**By:** Claude
+
+### 2026-10-22 · What clients do on a close code other than 4002 (#15)
+**Decided:** `host.shutdown(code)` stops accepting, sends `close(code, reason)` to every socket,
+waits up to 1 s, then `terminate()`s. `BridgeClient` reconnects on 4002 only. When an established
+connection closes with any other code, the MCP stores the reason and calls a fresh `connect()` on
+its existing 5 s retry; a script gets an error.
+**Why:** Close codes are contract-level and the plan left the MCP's behaviour after a drop open
+(`stage0-audit.md` F8). Today's `WsHost.close()` terminates, which clients see as 1006. The MCP's
+no-crash rule already implies it keeps trying; scripts must not silently continue on another daemon.
+**Instead of:** Leaving the MCP after a drop unspecified; letting `BridgeClient` reconnect on more
+codes (a forbidden fix).
+**Revisit if:** Step 8's SDK surface adds reconnect.
+**By:** Claude (open, for user review)
+
+### 2026-10-22 · The detached daemon's survival depends on how the session's MCP is killed (#14)
+**Decided:** Keep decision 0.8's spawn as written. MUX-7 names the kill method and expected result
+for `taskkill /T /F` on a live MCP tree, a normal session end, and killing the nvm shim alone, and
+D6 adds "end the spawning session normally → the daemon is still alive". If the daemon dies on a
+normal end, the fallback is a double spawn through a short-lived launcher, the user's call. POSIX
+stays unverified.
+**Why:** Measured in Stage 0 (`stage0-audit.md` F3): on Windows a `detached` child keeps its
+`ParentProcessId`, so `taskkill /T` on a live spawner kills it; a child whose spawner already
+exited survives. Whether Claude Code ends MCP servers that way was not established. Changing 0.8
+now would change the design of record without evidence.
+**Instead of:** Switching to a double spawn now.
+**Revisit if:** D6 shows the daemon dying when the session that spawned it ends.
+**By:** Claude (open, for user review)
+
+### 2026-10-22 · A Step 6 client gives up with VERSION when no welcome arrives (#13)
+**Decided:** After `hello`, the SDK's knock waits at most 2 s for `welcome`. If none arrives it
+closes the socket and rejects with `VERSION`, naming the cause: a pre-Step-6 bridge server holds the
+port, end the old session. It never spawns or hands over in that case. `setup.md` says "end every
+pre-Step-6 session first".
+**Why:** Measured in Stage 0 on port 0 (`stage0-audit.md` F1): a v1 `WsHost` takes a v2 hello as
+the extension, replaces the real extension's slot, routes the old session's calls to the client and
+never answers. Without a bound `connect()` hangs. The old session is left broken either way, so the
+docs tell the user to end it; pre-Step-6 servers already exit with their session.
+**Instead of:** Leaving 0.7 without a "connected but no welcome" branch; probing without a hello
+(v1 and v2 both send nothing first, so a probe cannot tell them apart).
+**Revisit if:** v1 servers can no longer exist (after Step 8).
+**By:** Claude (open, for user review)
 
 ### 2026-10-21 · Step 6 agents run Opus 5.5 (#12)
 **Decided:** Every agent in the Step 6 run — session agent, step agents, builders, verifiers,

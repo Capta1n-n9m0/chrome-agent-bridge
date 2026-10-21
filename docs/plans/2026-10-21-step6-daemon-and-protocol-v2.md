@@ -200,7 +200,8 @@ passes the guards; new tests fail when the guard change is reverted; `npm run ty
 - [ ] Create `sdk/` (`@bridge/sdk`, depends on `@bridge/shared`, `ws`); move `download.ts` + its test.
 - [ ] Root: `workspaces: ["shared","daemon","sdk","mcp","extension"]`; `typecheck` and `build` scripts
       cover all; `vitest` picks up `*/test/**`.
-- [ ] `npm test`, `npm run typecheck`, `npm run build` green; `docs/setup.md` MCP path updated to
+- [ ] `npm install` (relinks `node_modules/@bridge/*`, rewrites `package-lock.json`; *added
+      2026-10-22, stage0-audit F13*), then `npm test`, `npm run typecheck`, `npm run build` green; `docs/setup.md` MCP path updated to
       `mcp/dist/index.js` (the old `server/dist/index.js` path is gone — say so in the commit).
 
 **Lane:** the whole repository — `server/` → `daemon/`, new `mcp/` and `sdk/`, root `package.json`,
@@ -225,6 +226,10 @@ the baseline commit) — a pure move loses no test; the three root scripts cover
       extensionConnected, clients:[{id,name,since}], port}`; `daemon.shutdown` → reply then
       `host.shutdown(4002)`; anything else → `bridge.call(method, params, {timeoutMs})`, errors mapped
       to `{code, message, data}` (`NOT_CONNECTED`, `TIMEOUT`, extension errors passed through).
+      *Added 2026-10-22 (stage0-audit F23, F7, F8):* any other `daemon.*` method answers
+      `UNKNOWN_METHOD` and is never forwarded; the daemon waits `clamp(timeoutMs ?? 30000) + 5000`;
+      `host.shutdown(code)` stops accepting, sends `close(code, reason)` to every socket, waits up to
+      1 s for the close events, then `terminate()`s the rest.
 - [ ] Extension events (`isEvent`) are accepted and ignored in this step (logged as a count), so a
       Step 7 extension against a Step 6 daemon does not spam errors.
 - [ ] Emit `extensionStatus {connected: true}` to every client when the extension hello arrives and
@@ -275,6 +280,12 @@ call (it has no stdio); `EADDRINUSE` exits 0 without retrying (the bind is the l
       10 s with a message naming the log file; **one handover per `connect()`** — a second build
       mismatch rejects with `VERSION` naming both builds (*added 2026-10-21*, decisions.md ·
       2026-10-21 · One daemon handover per connect(), then a VERSION error).
+      *Added 2026-10-22 (stage0-audit F1):* after `hello`, the knock waits at most 2 s for `welcome`;
+      none → close the socket and reject with `VERSION`, naming the cause (a pre-Step-6 bridge server
+      holds the port; end the old session) — never spawn or hand over in that case (test). The daemon
+      path resolves from the workspace root (the same walk-up as `bridge.token`), `BRIDGE_DAEMON`
+      overrides it, and a missing `daemon/dist/index.js` rejects before the knock (F2). The client's
+      own call timer is the daemon's wait plus 1 s (F7).
 - [ ] `spawn.ts`: the real `spawnDaemon` (§0.8). Not unit-tested; E2E.
 - [ ] `token.ts` (§0.9) + tests over a temp directory tree.
 - [ ] `connect({ name, waitForExtensionMs = 15000 })`: after welcome, if `!extensionConnected`, wait for
@@ -300,14 +311,20 @@ calls `unref()`. **Needs the user's keyboard:** no.
       `connect()` every 5 s. (`startup.ts`'s shape, reused for the SDK connection.)
 - [ ] `tools/registry.ts`: takes `BridgeClient`; `bridge.call` → `b.call`; `browser_status` prints
       `daemon.status` (build, clients by name, extension connected) and the active tab as today.
-- [ ] `lifecycle.ts` unchanged; its `shutdown` closes the SDK client instead of the WS host.
+- [ ] `lifecycle.ts` unchanged; the `shutdown` callback passed to it in `mcp/src/index.ts`
+      (today `server/src/index.ts:54-59`) closes the SDK client instead of the WS host. *Amended
+      2026-10-22 (stage0-audit F17, A12).*
+- [ ] After an established connection closes with any code but 4002, the MCP stores the reason and
+      calls a fresh `connect()` on its existing 5 s retry; `BridgeClient` itself never reconnects on
+      that code. *Added 2026-10-22 (stage0-audit F8; decisions.md · 2026-10-22 · What clients do on
+      a close code other than 4002).*
 - [ ] Tests: `tools.test.ts` with a fake `BridgeClient` (`_registeredTools[name].handler` quirk still
       applies); `browser_status` output includes client names.
 
 **Lane:** `mcp/src/`, `mcp/test/`; deletes `daemon/src/startup.ts` + its test if D3 left them (granted).
 **Parallel with:** sequential (needs D2 and D4). **Verifier focus:** the MCP starts and registers all
 21 tools with no daemon reachable, and every tool error carries the stored reason (the no-crash rule
-of `CLAUDE.md`); `lifecycle.ts` is byte-identical to the baseline apart from the shutdown call; the
+of `CLAUDE.md`); `lifecycle.ts` is byte-identical to the baseline (*amended 2026-10-22, A12*); the
 tool list and every tool schema are unchanged from the baseline (`git diff` on the tool definitions).
 **Needs the user's keyboard:** no for the unit work; the live check is D6.
 
@@ -332,6 +349,14 @@ the measurements are taken with the user.
       both scripts succeed.
 - [ ] **MUX-7** Parent death: kill Claude Code's process tree → daemon survives (detached); kill the
       nvm shim only (the `lifecycle.ts` case) → mcp exits, daemon survives.
+      *Amended 2026-10-22 (stage0-audit F3):* the row names the kill method and the expected result
+      for each of (a) `taskkill /T /F` on the MCP's process tree while the MCP is alive, (b) a normal
+      session end, (c) killing the nvm shim alone; and adds the measurement "end the session that
+      spawned the daemon normally → the daemon is still alive". On Windows a `detached` child keeps
+      its `ParentProcessId`, so `taskkill /T` on a live spawner kills it (measured in Stage 0). If
+      the daemon dies in (b), the fallback is a double spawn through a short-lived launcher — the
+      user's call (decisions.md · 2026-10-22 · The detached daemon's survival depends on how the
+      session's MCP is killed).
 - [ ] **MUX-8** No Chrome: daemon up, Chrome closed → `connect()` fails after 15 s with the
       "is Chrome open" message; open Chrome → next `connect()` succeeds.
 - [ ] **MUX-9** Regression smoke: ACT-1/2, TRUST-2, EVAL-1, NET-1, DL-1 through the daemon.
@@ -355,7 +380,9 @@ Claude sessions (MUX-2), killing process trees and the nvm shim (MUX-7), closing
       gotchas: *the daemon outlives the session on purpose; `daemon.status` prints its build; after
       `npm run build` the next client upgrades it; `~/.chrome-agent-bridge/daemon.log`*. Remove the
       "only one Claude session" rule.
-- [ ] `docs/setup.md`: MCP path, token file, daemon log, how to stop the daemon by hand.
+- [ ] `docs/setup.md`: MCP path, token file (`bridge.token` at the repo root, gitignored) and
+      its precedence (`BRIDGE_TOKEN` env wins over the file), daemon log, how to stop the daemon by hand,
+      "end every pre-Step-6 session first" (F1). *Amended 2026-10-22 (stage0-audit F21, A11).*
 - [ ] `docs/progress-and-roadmap.md`: Step 6 entry + E2E results.
 - [ ] Commits (one per Part; each green): `refactor: split server into daemon/sdk/mcp workspaces`,
       `feat(shared): protocol v2 — roles, welcome, error codes, events`, `feat(daemon): client
@@ -387,7 +414,12 @@ The baseline for the whole step is 301 tests (`CLAUDE.md`, `npm test`) and 21 to
   TIMEOUT UNKNOWN_METHOD BAD_PARAMS TAB_HELD TAB_GONE TAB_UNKNOWN LOCK_TIMEOUT VERSION`; extension:
   `REF_STALE LOCATOR_NOT_FOUND LOCATOR_AMBIGUOUS OFFSCREEN RESTRICTED_URL DEBUGGER_ATTACH
   DEBUGGER_CANCELLED DEBUGGER_DEVTOOLS PAGE_ERROR NAV_FAILED DOWNLOAD_HTTP WINDOW_MINIMIZED INTERNAL`).
-- D0.4 Each new test fails with the type/guard change reverted (verifier re-runs with a stash).
+- D0.4 Each new test that asserts new behaviour (`isWelcome`, `isEvent`, `fromWire`, a rejected
+  malformed v2 field) fails with the change reverted (the verifier reverts with
+  `git stash push -u -- shared/`, so new files are included). The "v1 and v2 hello accepted" test is a
+  regression guard: today's `isHello` already accepts a v2 hello. *Amended 2026-10-22: was "Each new
+  test fails with the type/guard change reverted (verifier re-runs with a stash)", because the hello
+  test cannot fail on revert (stage0-audit F15, A8).*
 
 **D1**
 - D1.1 `npm test` after == before (a pure move; the verifier re-derives "before" on the baseline
@@ -419,7 +451,8 @@ The baseline for the whole step is 301 tests (`CLAUDE.md`, `npm test`) and 21 to
   stable; the log truncates to the last 1 MB on start.
 - D3.3 `grep -n "console\." daemon/src/index.ts` returns nothing (the daemon has no stdio).
 - D3.4 `daemon/src/startup.ts` and its test are deleted, or a note says why they stay until D5.
-- D3.5 `grep -rn "retry\|setInterval" daemon/src/index.ts` shows no bind retry.
+- D3.5 `grep -rnE "retry|setInterval|startWsHost" daemon/src/index.ts` shows no bind retry —
+  `startWsHost` retries every 5 s by default. *Amended 2026-10-22 (stage0-audit F16, A10).*
 - D3.6 `git diff --stat -- extension/` is empty.
 
 **D4**
@@ -436,15 +469,23 @@ The baseline for the whole step is 301 tests (`CLAUDE.md`, `npm test`) and 21 to
 - D4.4 `grep -rn "console\." sdk/src` shows no line that prints a URL, token or header value.
 
 **D5**
-- D5.1 `npm test` after ≥ before (the moved `tools.test.ts` now drives a fake `BridgeClient`); typecheck
-  and build green.
+- D5.1 `npm test` after ≥ before − 5 (the deleted `startup.test.ts`, named in the stage report as a
+  documented removal) + the new D5 tests (the moved `tools.test.ts` now drives a fake `BridgeClient`);
+  typecheck and build green. *Amended 2026-10-22: was "after ≥ before", because D5 deletes
+  `startup.ts` and its 5 tests (stage0-audit F5, A9). If D3 deletes them instead, the "− 5" moves to
+  D3.1.*
 - D5.2 The MCP registers 21 tools (`grep -c "server.tool(" mcp/src/tools/registry.ts` → 21) with
   schemas unchanged from the baseline.
 - D5.3 Test: with `connect()` rejecting, the MCP still registers every tool and a tool call returns the
   stored reason; `browser_status` output includes the client names from a fake `daemon.status`.
-- D5.4 `git diff <before> -- mcp/src/lifecycle.ts` shows only the shutdown call changed.
+- D5.4 `git diff <before> -- mcp/src/lifecycle.ts` is empty (the shutdown callback lives in
+  `mcp/src/index.ts`). *Amended 2026-10-22: was "shows only the shutdown call changed" (stage0-audit
+  F17, A12).*
 - D5.5 `docs/setup.md` and `docs/e2e-test-plan.md` updated in this stage for anything the user must
-  do differently (the MCP path, the daemon).
+  do differently (the MCP path, the daemon) — at least `e2e-test-plan.md` lines 19 and 23
+  (`server/dist/index.js`), row CONN-3 (an MCP restart no longer restarts the host) and row CONN-7
+  (the busy-port self-heal is gone from the MCP); dated run records stay as written. *Amended
+  2026-10-22 (stage0-audit F14, A6).*
 
 **D6 (wave, with the user)**
 - D6.1 Rows MUX-1…9 and DL-1…2 exist in `docs/e2e-test-plan.md` with expected results written before
@@ -455,7 +496,8 @@ The baseline for the whole step is 301 tests (`CLAUDE.md`, `npm test`) and 21 to
 - D6.4 MUX-9's regression rows pass with the same expected text as their last recorded run.
 
 **D7**
-- D7.1 `grep -rn "one Claude session\|server/dist\|server/src" CLAUDE.md docs/setup.md` returns nothing
+- D7.1 `grep -rnE "one Claude session|one session at a time|2nd session|server/dist|server/src" CLAUDE.md docs/setup.md`
+  (*amended 2026-10-22, stage0-audit F14, A7*) returns nothing
   except dated superseded markers.
 - D7.2 Every path in the `CLAUDE.md` key-files list exists (`ls` each).
 - D7.3 One commit per stage in `git log`, each message from the D7 list, no `dist/` and no
