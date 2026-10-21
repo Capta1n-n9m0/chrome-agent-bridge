@@ -1,11 +1,38 @@
 # Step 8 — The SDK surface: locators, typed `Tab`, failure reports, MCP cursor, first recipes
 
-> **DRAFT — not yet started.** For agentic workers: TDD for the content-script `locate` (jsdom, same
-> fixtures as `snapshot.test.ts`), for the SDK's locator normalisation, `BridgeError` enrichment
-> (fake client), the cursor logic, and the MCP tools; the `node → ref` round trip and the recipes are
-> E2E. Each Part leaves `npm test` + `npm run typecheck` green. Prerequisites: Steps 6 and 7 complete
-> and E2E-passed — in particular the **BG-1/BG-2 findings** (trusted input into a background tab) decide
-> whether `trusted` actions in the SDK call `focus()` first. Design: spec §8.
+**Date:** 2026-10-21 · **Status:** Planned
+**Design of record:** docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md (§8) ·
+**As-built:** docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-asbuilt.md (does not exist yet;
+written at stage close) · **Steps dir:** docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/
+(does not exist yet; created at kickoff for ledgers, briefs, reports and evidence)
+
+**Prerequisites:** Steps 6 and 7 complete and E2E-passed — in particular the **BG-1/BG-2 findings**
+(trusted input into a background tab, Step 7's T5 wave) decide whether `trusted` actions in the SDK
+call `focus()` first. This step's **Stage-0 spec audit re-examines Step 7's as-built register by
+execution** — handles, leases, the lock, the `CODE:message` convention and the structured snapshot are
+exercised, not read, before S0 starts.
+
+## Outcome
+
+Targets at planning time; rewritten as results when the step closes.
+
+- Claude can write a working script against the SDK from its types alone, and fix a failing one from
+  the error alone (spec §8.2).
+- Locators (`{role, name}`, `{text}`, `{css}`) are resolved in the content script by the snapshot's own
+  rules, so what Claude saw in a snapshot is what a locator matches; `waitFor({locator})` exists;
+  an `evaluate` node result can be turned into a ref.
+- A typed `Tab` API with the actor's cursor; a `BridgeError` that carries a snapshot, a screenshot path
+  and the last 20 network entries, rendered by `error.report()`.
+- The MCP cursor does **not follow the human** unless told to (`browser_use_active_tab`); tool count
+  22 → 23 (baseline 22 at Step 7's close; 21 today per `server/src/tools/registry.ts`).
+- The first two recipes — a one-line `bb.js` boot and a read-only Blackboard grade export — run as the
+  dogfood; tests and typecheck green at every stage close, counts recorded per stage.
+
+Test-driven development applies to the content-script `locate` (jsdom, the same fixtures as
+`snapshot.test.ts`), to the SDK's locator normalisation, `BridgeError` enrichment (fake client), the
+cursor logic, and the MCP tools. The `node → ref` round trip and the recipes are E2E. Each stage leaves
+`npm test` and `npm run typecheck` green. Extension changes (S1, S2) are invisible until the user reloads
+the extension — an `unknown method` error means the loaded extension is stale (`CLAUDE.md` gotcha).
 
 **Goal:** Make the SDK something Claude can write a working script against from the types alone, and
 make its failures something Claude can fix from the error alone. Locators (`{role, name}`, `{text}`,
@@ -39,7 +66,15 @@ S4 needs S3. S5 needs S3+S4. S6 needs everything.
 
 ---
 
-## 0. Design decisions (local to this step)
+## Decisions
+
+The decisions below were taken in the design spec and in this plan on 2026-10-21 and are **not
+reopened** during the build: they are contract decisions in the sense of the `long-run` skill §3 (the
+SDK's public surface, the locator rules, MCP tool names and schemas, what the human sees). A new
+decision taken while building goes to `docs/decisions.md` (cited by date + title), never into this
+section; the run itself is governed by decisions.md · 2026-10-21 · Steps 6–8 run under the long-run
+contract. The one value this plan leaves to a measurement — the `trusted` → `focus()` policy of 0.4 —
+is set from Step 7's BG-1/BG-2 findings and recorded in `docs/decisions.md` at S3.
 
 ### 0.1 Locators are resolved by the snapshot's rules, in the content script
 
@@ -50,14 +85,15 @@ type Locator =
   | { css: string; nth?: number };
 ```
 `content/locate.ts` reuses `roleOf`, the accessible-name computation and the pruning/`hasLayout`
-gates from `snapshot.ts` (refactor them into `content/a11y.ts` so both import the same functions — the
-invariant is *what Claude saw in a snapshot is what a locator matches*). `name` matching: case-
-insensitive substring by default, `exact: true` for equality, `{regex}` for patterns. Result:
-`{ref, role, name}`; zero matches → `LOCATOR_NOT_FOUND {candidates}` where candidates are the up-to-5
-nearest same-role elements by name similarity (simple normalised Levenshtein / token overlap — pure,
-tested); more than one match without `nth` → `LOCATOR_AMBIGUOUS {matches: [{ref, name}…]}`. A `{css}`
-locator matches any element (not only interactive ones) and the ref is minted on the spot. `locate`
-does **not** reset the RefMap (it adds), so refs from the last snapshot stay valid.
+gates from `snapshot.ts` (today `roleOf` at `extension/src/content/snapshot.ts:50`, `hasLayout` at
+line 74; refactor them into `content/a11y.ts` so both import the same functions — the invariant is
+*what Claude saw in a snapshot is what a locator matches*). `name` matching: case-insensitive substring
+by default, `exact: true` for equality, `{regex}` for patterns. Result: `{ref, role, name}`; zero
+matches → `LOCATOR_NOT_FOUND {candidates}` where candidates are the up-to-5 nearest same-role elements
+by name similarity (simple normalised Levenshtein / token overlap — pure, tested); more than one match
+without `nth` → `LOCATOR_AMBIGUOUS {matches: [{ref, name}…]}`. A `{css}` locator matches any element
+(not only interactive ones) and the ref is minted on the spot. `locate` does **not** reset the RefMap
+(it adds), so refs from the last snapshot stay valid.
 
 ### 0.2 Actions take `ref | locator`
 
@@ -140,12 +176,24 @@ how it fails. `npm run recipe -- recipes/hello.ts` runs with `tsx`. The first tw
 
 ---
 
-## Part S0 — Types
+## Stages
+
+One stage per Part. **Lane** is the explicit grant a step agent needs under the `step-agent` ESCALATION
+list. **Parallel with** follows "Order of work". S1 and S3 may run concurrently: file-disjoint
+(`extension/src/content/` vs `sdk/`), both pure/jsdom, no port.
+
+### Stage S0 — Types
 
 - [ ] `shared`: `Locator`, `LocateResult`, `WaitForParams` (discriminated), `EvalEnvelope.ref?`,
       `SnapshotElement` reuse. Guards only where something crosses the wire untyped.
 
-## Part S1 — Content-script `locate` (TDD, jsdom)
+**Lane:** `shared/src/`, `shared/test/`. **Parallel with:** sequential, first. **Verifier focus:**
+`LOCATOR_NOT_FOUND` and `LOCATOR_AMBIGUOUS` are present in `shared/src/codes.ts` from Step 6 (the plan
+says "verify"); the `Locator` union matches 0.1 exactly (three variants, `nth` on all, `exact` on two);
+the `WaitForParams` discriminated union has the four arms of 0.4's `waitFor`.
+**Needs the user's keyboard:** no.
+
+### Stage S1 — Content-script `locate` (TDD, jsdom)
 
 - [ ] Refactor `roleOf`, name computation, pruning and `hasLayout` out of `snapshot.ts` into
       `content/a11y.ts`; `snapshot.test.ts` still green (byte-identical elements).
@@ -156,7 +204,16 @@ how it fails. `npm run recipe -- recipes/hello.ts` runs with `tsx`. The first tw
       a prior snapshot survive a `locate`.
 - [ ] `content/index.ts`: expose `locate`, `refOfMarked(mark)`.
 
-## Part S2 — Extension handlers: `ref | locator`, `waitFor({locator})`, node→ref
+**Lane:** `extension/src/content/`, `extension/test/`, `extension/build.mjs` only if the IIFE build
+needs the new file (granted). **Parallel with:** S3. **Verifier focus:** the `a11y.ts` refactor is
+behaviour-neutral — `snapshot.test.ts` unchanged and green, and `buildSnapshot`'s elements for every
+fixture are identical before and after (captured on the pre-S1 commit); `locate` never calls
+`RefMap.reset` (grep) and a ref from a prior snapshot still resolves after a `locate`; the zero-size
+filter stays gated on `hasLayout(doc)` (`CLAUDE.md`); the content bundle is still a classic IIFE with
+no `import`/`export` (`grep -c "^import\|^export" extension/dist/content.js` → 0 after build).
+**Needs the user's keyboard:** no (invisible until reload; the live check is S6).
+
+### Stage S2 — Extension handlers: `ref | locator`, `waitFor({locator})`, node→ref
 
 - [ ] `handlers/actions.ts`: `resolveTarget(tabId, p) → ref` (locator → `locate`); every action uses it.
 - [ ] `handlers/wait.ts`: `locator` + `state` branch (§0.2).
@@ -165,7 +222,19 @@ how it fails. `npm run recipe -- recipes/hello.ts` runs with `tsx`. The first tw
       `tabId` is missing.
 - [ ] `router.test.ts` / `actions.test.ts` cover the resolution path with a fake `locate`.
 
-## Part S3 — SDK: `Tab`, cursor, locator normalisation (TDD with a fake client)
+**Lane:** `extension/src/handlers/`, `extension/src/tabs.ts`, `extension/src/evaluate/`,
+`extension/src/content/index.ts`, `extension/test/`. **Parallel with:** sequential after S1 (and after
+S3's cursor shape is known, since the daemon always sends `tabId` after Step 7 T2 — no file overlap,
+but S2's `BAD_PARAMS` on a missing `tabId` must be matched by the daemon's resolution, verified by
+execution against Step 7's as-built). **Verifier focus:** `grep -n "activeTab" extension/src` returns
+nothing (the fallback is gone); every action handler goes through `resolveTarget`; `markScript` is
+closure-free and shipped as `String(fn)` (the `SERIALIZER_SRC` pattern, `CLAUDE.md`); the mark
+attribute is removed after the ref is minted (test on the pure part); `waitFor {locator, state:
+"hidden"}` resolves on `LOCATOR_NOT_FOUND` and on nothing else; `toSerializableArgs` still turns an
+undefined `locator` into null (`CLAUDE.md` gotcha). **Needs the user's keyboard:** no for the unit
+work; the extension must be reloaded before S6 (G8-2).
+
+### Stage S3 — SDK: `Tab`, cursor, locator normalisation (TDD with a fake client)
 
 - [ ] `sdk/src/locator.ts`: `normalizeTarget(target)` → `{ref}` | `{locator}`; validates shape;
       friendly messages for the common mistake (`{name}` without `role` → "use {text} or add role").
@@ -175,14 +244,28 @@ how it fails. `npm run recipe -- recipes/hello.ts` runs with `tsx`. The first tw
       semantics; `NO_CURSOR`; `trusted` → `focus()` first *iff* the BG flag says so (a constant in
       `sdk/src/policy.ts`, set from the Step 7 findings).
 
-## Part S4 — SDK failure reports (TDD)
+**Lane:** `sdk/src/`, `sdk/test/`. **Parallel with:** S1. **Verifier focus:** the `policy.ts` constant
+cites the Step 7 E2E rows (BG-1/BG-2) it was set from, in a comment and in the stage report — if the
+findings are absent, the stage stops at that item (G8-1); every `Tab` method in 0.4 has a test
+asserting the exact `{method, params}` sent, including `tab: handle`; `b.<method>()` without a cursor
+throws `NO_CURSOR` with the "call newTab() or claim() first" text; `normalizeTarget` rejects `{name}`
+alone with the friendly message. **Needs the user's keyboard:** no.
+
+### Stage S4 — SDK failure reports (TDD)
 
 - [ ] `sdk/src/error.ts`: `BridgeError` subclass with `snapshot?`, `screenshotPath?`, `network?`,
       `attachErrors`, `report()`; `attachContext(error, tab, opts)` best-effort with a 5 s budget.
 - [ ] Tests: the attach set per code; attach failures recorded not thrown; `report()` shape for
       `LOCATOR_NOT_FOUND` (candidates first, snapshot window around them); `failureReports: false`.
 
-## Part S5 — MCP: cursor + tools (TDD)
+**Lane:** `sdk/src/`, `sdk/test/`. **Parallel with:** sequential after S3. **Verifier focus:** the
+attach set is exactly the seven codes of 0.5 and excludes `TAB_HELD`, `TAB_GONE`, `NOT_CONNECTED`
+(test both lists); an attach call that hangs is cut at 5 s by an injected clock and lands in
+`attachErrors`; `report()` is capped at 60 snapshot lines; the screenshot path is under
+`BRIDGE_FAILURES_DIR` when set, else `~/.chrome-agent-bridge/failures/`; nothing in `sdk/src/error.ts`
+logs to the console. **Needs the user's keyboard:** no.
+
+### Stage S5 — MCP: cursor + tools (TDD)
 
 - [ ] `browser_use_active_tab`; status divergence line; `browser_new_tab` activation rule; actions
       accept locator fields; `browser_wait_for` accepts locator fields; `browser_evaluate` gets `asRef`.
@@ -191,7 +274,19 @@ how it fails. `npm run recipe -- recipes/hello.ts` runs with `tsx`. The first tw
 - [ ] `tools.test.ts`: cursor stays when the fake `listTabs` moves the human's active tab; the status
       line appears; `browser_use_active_tab` moves it.
 
-## Part S6 — Recipes + E2E (`docs/e2e-test-plan.md` SDK-1…8)
+**Lane:** `mcp/src/`, `mcp/test/`. **Parallel with:** sequential after S3 and S4. **Verifier focus:**
+tool count 23 by `grep -c "server.tool("`; the cursor does not move when the fake `listTabs` reports a
+different active tab (the core promise of 0.6); `browser_new_tab` sends `active: true` only when the
+cursor's tab is the human's active tab (test both branches); the image content block is present only
+for attach-eligible codes; `_registeredTools[name].handler` still holds the handler (`CLAUDE.md` MCP
+SDK quirk). **Needs the user's keyboard:** the schema changes need an MCP reconnect — part of G8-2.
+
+### Stage S6 — Recipes + E2E (`docs/e2e-test-plan.md` SDK-1…8)
+
+This stage is a **wave run with the user** after the autonomous phase closes (human gate G8-2). It
+opens with `npm run build` → `chrome://extensions` ↻ → `/mcp`; an `unknown method` error means the
+loaded extension is stale. The autonomous run writes the recipes, the README, the `tsx` script and the
+SDK rows with expected results beforehand; the measurements are taken with the user.
 
 - [ ] `recipes/README.md`, `recipes/hello.ts` (connect, newTab to the fixture, locate the login button,
       click, waitFor text, print, close).
@@ -210,7 +305,16 @@ how it fails. `npm run recipe -- recipes/hello.ts` runs with `tsx`. The first tw
       user says "use this tab" → Claude calls `browser_use_active_tab` → status shows the new cursor.
 - [ ] Regression smoke across Steps 6–8: MUX-2, LEASE-1, SCREEN-1, ACT-1…3, TRUST-2, EVAL-1, NET-1, DL-1.
 
-## Part S7 — Docs + commits
+**Lane:** `recipes/`, root `package.json` (`tsx`, `recipe` script), `docs/e2e-test-plan.md`,
+`.gitignore` (`exports/` — see Human gates). **Parallel with:** sequential, after S5. **Verifier focus
+(wave):** expected results written before the run; SDK-7's byte-compare is a `cmp`/hash of two files,
+both produced in the run; SDK-2's screenshot path and SDK-7's export are checked to be **outside the
+repo or gitignored** before anything is committed (they hold real-site content and student data);
+SDK-6/7 run only on the course the user names. **Needs the user's keyboard:** yes — all of it: the
+reload, a live Blackboard course tab in the logged-in profile (SDK-6, SDK-7), switching to Gmail and
+saying "use this tab" (SDK-8), a second session for MUX-2/LEASE-1.
+
+### Stage S7 — Docs + commits
 
 - [ ] `CLAUDE.md`: *locators are resolved by the snapshot's rules — change `a11y.ts`, not two places;
       `locate` adds refs, never resets; node→ref uses a `data-__bridge-mark` attribute across worlds;
@@ -226,6 +330,193 @@ how it fails. `npm run recipe -- recipes/hello.ts` runs with `tsx`. The first tw
       with snapshot, screenshot and network`, `feat(mcp): cursor that does not follow the human;
       browser_use_active_tab; locator fields`, `feat(recipes): hello, boot-bb, export-grades`,
       `docs: Step 8 E2E results`.
+
+**Lane:** `CLAUDE.md`, `docs/`; the `blackboard-ultra` skill lives **outside this repository** and is
+not in any lane without the user's grant (G8-3). The per-Part commits happen at each stage's close (one
+commit per stage, long-run bookkeeping invariant); S7's list is the record. **Parallel with:**
+sequential, last. **Verifier focus:** every `CLAUDE.md` gotcha added is a measured fact with its
+source; the setup doc's script section runs as written (the verifier executes the hello snippet's
+typecheck); the roadmap entry names the Phase F items by the roadmap's own wording (see Open items).
+**Needs the user's keyboard:** the E2E results wait for the S6 wave; the skill edit waits for G8-3.
+
+---
+
+## Exit checks (pre-registered)
+
+"Before" is the stage's starting commit, "after" its closing commit; counts come from `npm test`. The
+step's baseline is Step 7's closing test count (recorded in Step 7's as-built) and 22 tools.
+
+**S0**
+- S0.1 `npm test` after ≥ before; `npm run typecheck` green for all five packages.
+- S0.2 `grep -n "LOCATOR_NOT_FOUND\|LOCATOR_AMBIGUOUS" shared/src/codes.ts` → both present.
+- S0.3 The `Locator` type has the three variants of 0.1 and `WaitForParams` the four arms of 0.4.
+
+**S1**
+- S1.1 `npm test` after ≥ before + the `locate` tests; typecheck green.
+- S1.2 `snapshot.test.ts` is unchanged by the refactor (`git diff --stat` on it is empty or only the
+  import path) and green; `buildSnapshot` elements for every fixture equal the pre-S1 capture.
+- S1.3 Tests cover: role+name substring, `exact`, `{regex}`, `nth`, ambiguity → `LOCATOR_AMBIGUOUS`
+  with `matches`, not-found → `LOCATOR_NOT_FOUND` with up to 5 ranked candidates, `{text}` over visible
+  text, `{css}` minting a ref for a non-interactive element, open shadow root, same-origin frame, refs
+  from a prior snapshot surviving `locate`.
+- S1.4 `grep -n "reset" extension/src/content/locate.ts` returns nothing.
+- S1.5 After `npm run build`, `extension/dist/content.js` contains no `import`/`export` statement.
+
+**S2**
+- S2.1 `npm test` after ≥ before + the resolution-path tests; typecheck green.
+- S2.2 `grep -rn "activeTab" extension/src` returns nothing.
+- S2.3 Tests cover: each of `click/type/hover/scroll/selectOption/pressKey` with `ref` and with
+  `locator` through a fake `locate`; `waitFor {locator}` polling at 100 ms with the 10 s default and
+  `state: "hidden"` resolving on `LOCATOR_NOT_FOUND`; `markScript` output; `targetTab` → `BAD_PARAMS`
+  when `tabId` is missing.
+- S2.4 `grep -rnE "console\.(log|warn|error)\(.*(url|href)" extension/src` returns nothing.
+- S2.5 `unwrapResult` still treats null **or** undefined as failure (test unchanged and green).
+
+**S3**
+- S3.1 `npm test` after ≥ before + the `Tab`/cursor/locator tests; typecheck green.
+- S3.2 `sdk/src/policy.ts` exists, its constant's comment cites BG-1/BG-2 with their recorded result,
+  and `docs/decisions.md` has the dated entry (session agent writes it).
+- S3.3 Tests cover: every `Tab` method's exact `{method, params}` with `tab: handle`; `newTab` and
+  `claim` set the cursor; `tab()` without a cursor → `NO_CURSOR` with the stated text; `trusted` →
+  `focus()` first iff the policy constant says so; `normalizeTarget` rejects `{name}` alone with the
+  friendly message.
+- S3.4 `sdk/src/index.ts` exports `Tab`, `connect`, `BridgeClient`, `BridgeError`, `ErrorCodes`,
+  `downloadToFile`, `formatSnapshot`, `formatNetwork` (the Step 6 and Step 7 exports stay).
+
+**S4**
+- S4.1 `npm test` after ≥ before + the enrichment tests; typecheck green.
+- S4.2 Tests cover: attach happens for exactly `LOCATOR_NOT_FOUND LOCATOR_AMBIGUOUS REF_STALE OFFSCREEN
+  PAGE_ERROR NAV_FAILED TIMEOUT` and not for `TAB_HELD TAB_GONE NOT_CONNECTED`; an attach that rejects
+  or exceeds 5 s (injected clock) lands in `attachErrors` and the original error is still thrown;
+  `report()` for `LOCATOR_NOT_FOUND` puts candidates first and caps the snapshot at 60 lines;
+  `failureReports: false` attaches nothing.
+- S4.3 `grep -n "console\." sdk/src/error.ts` returns nothing.
+
+**S5**
+- S5.1 `npm test` after ≥ before + the cursor/tool tests; typecheck and build green.
+- S5.2 `grep -c "server.tool(" mcp/src/tools/registry.ts` → 23; the new tool is `browser_use_active_tab`.
+- S5.3 Tests cover: the cursor stays when the fake `listTabs` moves the human's active tab; the
+  `Human's active tab: …` status line appears only when it differs; `browser_use_active_tab` moves the
+  cursor; `browser_new_tab` activation rule, both branches; an action with locator fields sends a
+  `locator`; `browser_evaluate` with `asRef` returns the ref; an attach-eligible error renders
+  `report()` plus an image content block.
+- S5.4 `docs/setup.md` and `docs/e2e-test-plan.md` updated in this stage for the new tool and the
+  locator fields on actions.
+
+**S6 (wave, with the user)**
+- S6.1 Rows SDK-1…8 exist in `docs/e2e-test-plan.md` with expected results written before the run; the
+  reload and `/mcp` are the first recorded line.
+- S6.2 `npm run recipe -- recipes/hello.ts` is the command recorded for SDK-1, with its printed output.
+- S6.3 SDK-7's two JSON files are compared by hash; the hash is recorded, the files are not committed.
+- S6.4 `git status` after the wave shows no file under `exports/` or `~/.chrome-agent-bridge/` staged;
+  `.gitignore` covers `exports/`.
+- S6.5 The regression rows pass with the same expected text as their last recorded run.
+
+**S7**
+- S7.1 Every new `CLAUDE.md` gotcha cites its source; `grep -n "a11y.ts" CLAUDE.md` finds the
+  "change `a11y.ts`, not two places" rule.
+- S7.2 `docs/setup.md` has the "Writing a script" section and its snippet typechecks.
+- S7.3 One commit per stage in `git log` with the messages listed; no `dist/`, no token, no `exports/`.
+- S7.4 The `blackboard-ultra` skill edit is either done with the user's grant or listed under
+  "Needs the user's keyboard" in the as-built.
+
+---
+
+## Human gates
+
+- **G8-1 — start-of-phase input: the BG-1/BG-2 findings.** `sdk/src/policy.ts` (S3) and the `trusted`
+  branch of 0.4 cannot be set without Step 7's recorded results for BG-1 (trusted click into a
+  background tab) and BG-2 (trusted typing). The Stage-0 audit checks they exist in Step 7's as-built
+  or `docs/e2e-test-plan.md`. If they are missing, the run stops **before S3's `policy.ts` item** and
+  asks; it does not guess a default.
+- **G8-2 — S6 is a wave run with the user.** The S1/S2 extension changes are invisible until the user
+  reloads the extension; the S5 MCP schema changes need an MCP reconnect. The wave opens with the
+  reload sequence and the stale-extension check (`unknown method` ⇒ reload again). Rows needing the
+  user specifically: SDK-6 and SDK-7 (a live course tab in the logged-in Blackboard profile — the
+  user's own data; the user names the course), SDK-8 (switch to Gmail, say "use this tab"), MUX-2 and
+  LEASE-1 (a second Claude session). Failure screenshots (`~/.chrome-agent-bridge/failures/`) and
+  `./exports/*.json` contain real-site content and student data: they stay out of the repo and out of
+  the evidence folder (guide rule 8: the repo is public). `exports/` is added to `.gitignore` before
+  SDK-7 runs.
+- **G8-3 — editing the `blackboard-ultra` skill.** It lives in a separate repository
+  (`~/.claude/skills/blackboard-ultra`), outside this run's outputs; an edit there needs the user's
+  explicit grant in the kickoff or at S7, otherwise it is listed as needing the user's keyboard.
+- **Standing gates:** never push; a locator rule that would stop matching what the snapshot shows is a
+  contract change (0.1's invariant) — stop; nothing in the run touches the user's tabs outside the
+  rows the user runs.
+
+## STOP rules and forbidden fixes
+
+**Stops the gate:** a pre-registered exit check fails after 2 fix rounds; S1.2 (behaviour-neutral
+refactor) fails and the proposed fix touches `snapshot.test.ts`'s expectations; the BG findings are
+absent at S3 (G8-1); a `CLAUDE.md` runtime invariant would have to change (`unwrapResult`
+null-or-undefined, the IIFE content script, `toSerializableArgs`, never logging URLs); a
+security-boundary question; a recipe that would write or change anything on Blackboard (0.7: the first
+jobs are read-only).
+
+**Continues anyway, recorded:** a `nearest()` ranking that looks odd on a real page (report the
+candidates); a flash seen during a failure screenshot (0.5 accepts it); build decisions on the
+similarity metric's internals, test file placement, the `report()` wording.
+
+**Forbidden fixes for this step** (derived from 0.1–0.7 and `long-run` §3):
+- changing a locator rule (`roleOf`, the accessible-name computation, the pruning gates in `a11y.ts`)
+  to make a fixture or an E2E row match — the invariant is "what Claude saw in a snapshot is what a
+  locator matches"; a mismatch is a finding;
+- making `locate` reset the RefMap, or minting a ref without going through the RefMap;
+- raising the 5 s attach budget, or letting an attach failure throw, to make a report test pass;
+- making the cursor follow the human's active tab anywhere but `browser_use_active_tab` and the first
+  touch;
+- leaving the `data-__bridge-mark` attribute on the element, or using a non-unique mark, to simplify
+  the round trip;
+- restoring the `activeTab()` fallback in `targetTab` to make something work without a `tabId`;
+- committing `exports/`, failure screenshots, or any captured page content as evidence;
+- editing the `blackboard-ultra` skill without the grant of G8-3.
+
+## Open items
+
+Findings for the Stage-0 spec audit (which also re-examines Step 7's as-built register by execution),
+what the plan leaves open, who decides, revisit triggers, and the keyboard summary.
+
+**Findings for the Stage-0 audit**
+- SDK-4 names "the fixture's delayed button". `test-fixtures/e2e-playground.html` has no delayed
+  *button*: `#load-later` ("Load message in 1.5s", line 117) makes *text* appear 1.5 s after a click
+  (line 250). Either the fixture gains a delayed button (the fixture is not in this plan's Files touched)
+  or SDK-4 targets the delayed text with a `{text}` locator. The audit decides and assigns the stage.
+- The regression smoke cites `DL-1`; `docs/e2e-test-plan.md` has no `DL-*` rows (same finding as
+  Steps 6 and 7).
+- Actor name `claude-code #<ppid>` (0.6) vs `#<pid>` in spec §8.3 — carried from Step 6's audit.
+- S1 says "reuse the Step C fixtures": the fixtures are those of Phase C (`extension/test/snapshot.test.ts`,
+  shadow DOM and frame cases, line 111 onward). Naming only.
+- S7 cites roadmap "Phase F items … args-less evaluate data". `docs/progress-and-roadmap.md` (Phase F,
+  line 331 onward) lists "`args` for `browser_evaluate`" and "Return a `[ref=eN]` for a `kind:"node"`
+  result" and "`wait_for` variants (element-visible …)". The `args` item is not closed by this step as
+  written (nothing here adds `args` to `browser_evaluate`); the roadmap entry must name only what the
+  step closes.
+- SDK-5 and `hello.ts` cite fixture elements that exist: `#email` (line 31), the "Sign in" submit button
+  `#submit-btn` (line 49), the `isTrusted` reporter (lines 155–166).
+- `Tab.network({…} | {id})` mirrors `browser_network_requests`'s parameters including `id`
+  (`server/src/tools/registry.ts:247–252`) — consistent.
+- 0.4 lists `Tab.release()` and `close()`; the daemon's `tabs.release` and `closeTab` come from Step 7
+  T2 — verified by execution in the audit.
+- Handles are renumbered after a daemon restart (Step 7 0.2); `b.tab()` after a handover holds a dead
+  handle. The audit decides whether `BridgeClient` clears the cursor on reconnect (then `NO_CURSOR`
+  tells the script what to do) — a build decision if both options stay reachable.
+
+**Left open by design:** console capture, D3 upload as `Tab.upload`, a Python SDK, generation-stamped
+refs, `tabs.claim {wait:true}`, session recording (follow-ups).
+
+**Who decides:** the similarity metric, the `report()` layout, the recipes' file layout, `tsx` wiring →
+session agent (`By: Claude`); the `Locator` type, the `Tab` method set and signatures, tool names and
+schemas, the attach set, the cursor rule → contract: a pre-stated rule applies or the conservative rule
+of `long-run` §3 with the decision listed for the user; the `trusted` policy → the BG findings (G8-1).
+
+**Revisit triggers:** a real script breaks in a way the report does not explain (then self-healing is
+reconsidered — spec §2 non-goal); hand-writing a recipe proves slower than expected (session
+recording); a Python skill needs the bridge (Python SDK).
+
+**Needs the user's keyboard:** extension reload + `/mcp` at the start of the S6 wave; the whole S6
+wave, including a live Blackboard course tab and the Gmail switch; the `blackboard-ultra` skill edit
+(G8-3); any push.
 
 ## Follow-ups (not this step)
 
