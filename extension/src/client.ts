@@ -1,5 +1,14 @@
 type MessageHandler = (data: string) => void;
 
+/**
+ * The extension's first frame: a v2 hello saying `role:"extension", proto:2` (decisions.md ·
+ * 2026-10-22 · A stale extension is refused for tab calls, detected by its hello (#42)). A Step 6
+ * daemon accepts it as the extension (Stage 0 probe P1).
+ */
+export function helloFrame(token: string): string {
+  return JSON.stringify({ type: "hello", token, role: "extension", proto: 2 });
+}
+
 export interface ClientOptions {
   url: string;
   token: string;
@@ -38,7 +47,7 @@ export class ReconnectingClient {
     this.ws = ws;
     ws.onopen = () => {
       this.backoffMs = 500;
-      ws.send(JSON.stringify({ type: "hello", token: this.opts.token }));
+      ws.send(helloFrame(this.opts.token));
       this.opts.onStatus?.(true);
     };
     ws.onmessage = (ev) => this.opts.onMessage(String(ev.data));

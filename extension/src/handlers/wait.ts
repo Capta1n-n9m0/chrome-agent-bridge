@@ -1,4 +1,5 @@
-import { activeTab } from "../tabs.js";
+import { pageTab, targetTab } from "../tabs.js";
+import { BridgeError, ErrorCodes } from "../errors.js";
 import { callInPage } from "../inject.js";
 import { log, ready } from "../network-state.js";
 
@@ -18,8 +19,8 @@ export async function waitFor(p: Record<string, unknown>): Promise<{ ok: true; i
     return { ok: true };
   }
   const needle = String(p.text ?? "");
-  if (!needle) throw new Error("browser_wait_for requires one of text, seconds or networkIdle");
-  const tab = await activeTab();
+  if (!needle) throw new BridgeError(ErrorCodes.BAD_PARAMS, "browser_wait_for requires one of text, seconds or networkIdle");
+  const tab = await pageTab(p, "waitFor");
   // Poll the page (in its own context) for the text, up to 10s. The func is async;
   // chrome.scripting.executeScript awaits its returned promise. It always resolves to a
   // defined object so callInPage's "no result" guard never trips.
@@ -35,7 +36,7 @@ export async function waitFor(p: Record<string, unknown>): Promise<{ ok: true; i
     },
     [needle],
   );
-  if (!res.found) throw new Error(`Timed out waiting for text: "${needle}"`);
+  if (!res.found) throw new BridgeError(ErrorCodes.TIMEOUT, `Timed out waiting for text: "${needle}"`);
   return { ok: true };
 }
 
@@ -54,7 +55,7 @@ async function waitForNetworkIdle(p: Record<string, unknown>): Promise<{ ok: tru
   const idleMs = Number.isFinite(requested)
     ? Math.min(Math.max(requested, MIN_IDLE_MS), MAX_IDLE_MS)
     : DEFAULT_IDLE_MS;
-  const tab = await activeTab();
+  const tab = await targetTab(p, "waitFor");
   const startedAt = Date.now();
   const deadline = startedAt + WAIT_CEILING_MS;
   for (;;) {
@@ -62,7 +63,7 @@ async function waitForNetworkIdle(p: Record<string, unknown>): Promise<{ ok: tru
     const quietFor = last === 0 ? Infinity : Date.now() - last;
     if (quietFor >= idleMs) return { ok: true, idleAfterMs: Date.now() - startedAt };
     if (Date.now() >= deadline) {
-      throw new Error(`Timed out waiting for network idle: no ${idleMs}ms quiet period in 10s`);
+      throw new BridgeError(ErrorCodes.TIMEOUT, `Timed out waiting for network idle: no ${idleMs}ms quiet period in 10s`);
     }
     await new Promise((r) => setTimeout(r, POLL_MS));
   }

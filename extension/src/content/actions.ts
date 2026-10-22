@@ -1,8 +1,10 @@
 import { RefMap } from "./refmap.js";
+import { codedError } from "./guard.js";
+import { centerOf, isInViewport } from "./geometry.js";
 
 function resolve(refs: RefMap, ref: string): Element {
   const el = refs.get(ref);
-  if (!el) throw new Error(`ref ${ref} not found — call browser_snapshot to re-snapshot`);
+  if (!el) throw codedError("REF_STALE", `ref ${ref} not found — call browser_snapshot to re-snapshot`);
   return el;
 }
 
@@ -79,7 +81,31 @@ export function selectOptionRef(refs: RefMap, ref: string, values: string[]): { 
     opt.selected = on;
     if (on) matched = true;
   }
-  if (!matched) throw new Error(`no option matched ${JSON.stringify(values)}`);
+  if (!matched) throw codedError("BAD_PARAMS", `no option matched ${JSON.stringify(values)}`);
   el.dispatchEvent(new Event("change", { bubbles: true }));
   return { ok: true };
+}
+
+/**
+ * The aim point for trusted CDP input. Scrolls first: CDP dispatches at the coordinates given
+ * without clamping, so an off-screen point hit-tests the root element and the click silently does
+ * nothing (page zoom shrinks the visual viewport in CSS px, which is how this bites).
+ */
+export function centerForInputRef(
+  refs: RefMap,
+  ref: string,
+  viewport?: { width: number; height: number },
+): { x: number; y: number } {
+  const el = resolve(refs, ref);
+  (el as HTMLElement).scrollIntoView?.({ block: "center", inline: "center" });
+  const pt = centerOf(el);
+  const size = viewport ?? { width: window.innerWidth, height: window.innerHeight };
+  if (!isInViewport(pt, size)) {
+    throw codedError(
+      "OFFSCREEN",
+      `ref ${ref} is outside the viewport after scrolling (point ${pt.x},${pt.y} vs ` +
+        `${size.width}x${size.height}) — trusted input there would hit nothing`,
+    );
+  }
+  return pt;
 }

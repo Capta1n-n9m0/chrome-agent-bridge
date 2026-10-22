@@ -1,3 +1,21 @@
+import { BridgeError, ErrorCodes, splitCoded } from "./errors.js";
+
+/**
+ * The code for a rejected `chrome.scripting.executeScript`, from Chrome's raw message. Pure. The
+ * thrown message text itself is unchanged; only the code is chosen here.
+ */
+export function classifyInjectError(raw: string): string {
+  if (/no tab with id/i.test(raw)) return ErrorCodes.TAB_UNKNOWN;
+  if (/cannot access|chrome:\/\/|chrome-extension:\/\/|extensions gallery|cannot be scripted|devtools:\/\//i.test(raw)) {
+    return ErrorCodes.RESTRICTED_URL;
+  }
+  return ErrorCodes.INTERNAL;
+}
+
+function rawMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String((err as { message?: unknown } | null)?.message ?? err);
+}
+
 export async function ensureContent(tabId: number): Promise<void> {
   try {
     await chrome.scripting.executeScript({
@@ -5,8 +23,10 @@ export async function ensureContent(tabId: number): Promise<void> {
       files: ["dist/content.js"],
     });
   } catch (err) {
-    throw new Error(
-      `Could not inject into the active tab — it may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store) where extensions can't run. (${(err as Error).message})`,
+    const raw = (err as Error).message;
+    throw new BridgeError(
+      classifyInjectError(rawMessage(err)),
+      `Could not inject into the active tab — it may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store) where extensions can't run. (${raw})`,
     );
   }
 }
@@ -26,14 +46,25 @@ export function toSerializableArgs(args: unknown[]): unknown[] {
  * function THROWS (e.g. a stale/unknown ref), Chrome resolves the call with a
  * frame whose `result` is `null` (not a rejection), which would otherwise be
  * silently treated as success. None of our page functions return null/undefined
- * on success, so treat either as a failure and surface an actionable error.
+ * on success, so treat either (or a missing frame) as a failure: `REF_STALE`,
+ * with the restricted-URL clause kept (Stage 0 F30).
+ *
+ * The content script's guarded methods return `{__bridgeError: "CODE:message"}`
+ * instead of throwing (decisions.md · 2026-10-22 · #38); that becomes a
+ * `BridgeError` with the marker's code.
  */
 export function unwrapResult<T>(injection: { result?: unknown } | undefined): T {
   if (!injection || injection.result === undefined || injection.result === null) {
-    throw new Error(
+    throw new BridgeError(
+      ErrorCodes.REF_STALE,
       "The page action returned no result — the element ref may be stale (run browser_snapshot to refresh), " +
         "or the tab may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store).",
     );
+  }
+  const r = injection.result as { __bridgeError?: unknown };
+  if (typeof r === "object" && typeof r.__bridgeError === "string") {
+    const { code, message } = splitCoded(r.__bridgeError);
+    throw new BridgeError(code, message);
   }
   return injection.result as T;
 }
@@ -54,7 +85,8 @@ export async function callInPage<T>(
       world: "ISOLATED",
     });
   } catch (err) {
-    throw new Error(
+    throw new BridgeError(
+      classifyInjectError(rawMessage(err)),
       `Could not run script in the active tab — it may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store). (${(err as Error).message})`,
     );
   }

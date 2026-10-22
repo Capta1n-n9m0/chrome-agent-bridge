@@ -1,4 +1,5 @@
 import type { DownloadChunkResult, DownloadStartResult } from "@bridge/shared";
+import { BridgeError, ErrorCodes } from "../errors.js";
 import { DEFAULT_CHUNK_BYTES, DownloadStore, bareContentType, suggestedFilename, toBase64 } from "../download.js";
 
 const store = new DownloadStore();
@@ -15,7 +16,7 @@ const MAX_TIMEOUT_MS = 600_000;
  */
 export async function downloadStart(p: Record<string, unknown>): Promise<DownloadStartResult> {
   const url = typeof p.url === "string" ? p.url : "";
-  if (!/^https?:\/\//i.test(url)) throw new Error("browser_download requires an absolute http(s) URL");
+  if (!/^https?:\/\//i.test(url)) throw new BridgeError(ErrorCodes.BAD_PARAMS, "browser_download requires an absolute http(s) URL");
   const timeoutMs = Math.min(Math.max(Number(p.timeoutMs) || DEFAULT_TIMEOUT_MS, 1_000), MAX_TIMEOUT_MS);
 
   const ctrl = new AbortController();
@@ -24,10 +25,15 @@ export async function downloadStart(p: Record<string, unknown>): Promise<Downloa
   let bytes: Uint8Array;
   try {
     res = await fetch(url, { credentials: "include", redirect: "follow", cache: "no-store", signal: ctrl.signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
+    if (!res.ok) {
+      throw new BridgeError(ErrorCodes.DOWNLOAD_HTTP, `HTTP ${res.status} ${res.statusText}`.trim(), {
+        status: res.status,
+        contentType: bareContentType(res.headers.get("content-type")),
+      });
+    }
     bytes = new Uint8Array(await res.arrayBuffer());
   } catch (err) {
-    if (ctrl.signal.aborted) throw new Error(`Download timed out after ${timeoutMs} ms`);
+    if (ctrl.signal.aborted) throw new BridgeError(ErrorCodes.TIMEOUT, `Download timed out after ${timeoutMs} ms`);
     throw err instanceof Error ? err : new Error(String(err));
   } finally {
     clearTimeout(timer);

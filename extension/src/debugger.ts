@@ -1,6 +1,7 @@
 import type { EvalEnvelope } from "@bridge/shared";
 import { keyEventParams, type KeyEventParams } from "./keys.js";
 import { describeDebuggerError, isExecutionTerminated, timeoutMessage } from "./debugger-errors.js";
+import { BridgeError, ErrorCodes } from "./errors.js";
 import { SERIALIZER_SRC, type SerializeLimits } from "./evaluate/serialize.js";
 import { shapeEvaluateResult, pendingPromiseId, type CdpEvaluateResponse } from "./evaluate/result.js";
 
@@ -20,13 +21,13 @@ export async function withDebugger<T>(tabId: number, fn: () => Promise<T>, what 
     await chrome.debugger.attach({ tabId }, PROTOCOL);
   } catch (err) {
     // Chrome allows one debugger per tab: DevTools (or another extension) wins and attach throws.
-    throw new Error(describeDebuggerError(err, what));
+    throw debuggerError(err, what);
   }
   try {
     return await fn();
   } catch (err) {
     // A cancelled session (banner ✕) surfaces here as a failed sendCommand.
-    throw new Error(describeDebuggerError(err, what));
+    throw debuggerError(err, what);
   } finally {
     try {
       await chrome.debugger.detach({ tabId });
@@ -34,6 +35,12 @@ export async function withDebugger<T>(tabId: number, fn: () => Promise<T>, what 
       /* already detached */
     }
   }
+}
+
+/** `describeDebuggerError`'s code + unchanged message (+ an own BridgeError's data) as a BridgeError. */
+function debuggerError(err: unknown, what: string): BridgeError {
+  const d = describeDebuggerError(err, what);
+  return new BridgeError(d.code, d.message, d.data);
 }
 
 export async function trustedClick(tabId: number, x: number, y: number): Promise<void> {
@@ -93,7 +100,7 @@ export function raceTimeout<T>(p: Promise<T>, ms: number, message = timeoutMessa
   p.catch(() => {});
   let timer: ReturnType<typeof setTimeout>;
   const expired = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(message)), ms);
+    timer = setTimeout(() => reject(new BridgeError(ErrorCodes.TIMEOUT, message)), ms);
   });
   expired.catch(() => {});
   return Promise.race([p, expired]).finally(() => clearTimeout(timer)) as Promise<T>;
@@ -177,7 +184,7 @@ export async function evaluateInPage(
     );
   } catch (err) {
     // Whichever branch it came through, a CDP-terminated script reads as a timeout to the agent.
-    if (isExecutionTerminated(err)) throw new Error(timeoutMessage(timeoutMs));
+    if (isExecutionTerminated(err)) throw new BridgeError(ErrorCodes.TIMEOUT, timeoutMessage(timeoutMs));
     throw err;
   }
 }

@@ -1,3 +1,5 @@
+import { ErrorCodes, toWireError } from "./errors.js";
+
 export type Handler = (params: Record<string, unknown>) => Promise<unknown>;
 
 export class Router {
@@ -7,7 +9,10 @@ export class Router {
     this.handlers.set(method, handler);
   }
 
-  /** Returns the JSON string to send back, or null if the message was not a request. */
+  /**
+   * Returns the JSON string to send back, or null if the message was not a request (bad JSON, or a
+   * frame without `id`/`method`, such as an `{event, params}` frame).
+   */
   async handle(data: string): Promise<string | null> {
     let msg: { id?: string; method?: string; params?: Record<string, unknown> };
     try {
@@ -15,19 +20,19 @@ export class Router {
     } catch {
       return null;
     }
-    if (!msg.id || !msg.method) return null;
+    if (!msg || !msg.id || !msg.method) return null;
     const handler = this.handlers.get(msg.method);
     if (!handler) {
-      return JSON.stringify({ id: msg.id, error: { message: `unknown method: ${msg.method}` } });
+      return JSON.stringify({
+        id: msg.id,
+        error: { code: ErrorCodes.UNKNOWN_METHOD, message: `unknown method: ${msg.method}` },
+      });
     }
     try {
       const result = await handler(msg.params ?? {});
       return JSON.stringify({ id: msg.id, result: result ?? { ok: true } });
     } catch (err) {
-      return JSON.stringify({
-        id: msg.id,
-        error: { message: err instanceof Error ? err.message : String(err) },
-      });
+      return JSON.stringify({ id: msg.id, error: toWireError(err) });
     }
   }
 }

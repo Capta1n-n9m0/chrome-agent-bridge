@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
-import { shapeEvaluateResult, formatException, pendingPromiseId, type CdpEvaluateResponse } from "../src/evaluate/result.js";
+import { shapeEvaluateResult, formatException, pendingPromiseId, pageError, type CdpEvaluateResponse } from "../src/evaluate/result.js";
 import { DEFAULT_LIMITS } from "../src/evaluate/serialize.js";
+import { BridgeError } from "../src/errors.js";
 import type { EvalEnvelope } from "@bridge/shared";
 
 const limits = DEFAULT_LIMITS;
@@ -175,5 +176,42 @@ describe("pendingPromiseId", () => {
       exceptionDetails: { text: "Uncaught" },
     };
     expect(pendingPromiseId(raw)).toBeUndefined();
+  });
+});
+
+describe("page exceptions → PAGE_ERROR (Step 7 0.6)", () => {
+  const thrown = async (raw: CdpEvaluateResponse): Promise<BridgeError> => {
+    try {
+      await shape(raw);
+    } catch (e) {
+      return e as BridgeError;
+    }
+    throw new Error("expected a rejection");
+  };
+
+  it("carries {name, stack} with the unchanged formatted message", async () => {
+    const details = {
+      text: "Uncaught",
+      exception: { type: "object", subtype: "error", className: "TypeError", description: "TypeError: Failed to fetch\n    at <anonymous>:1:1" },
+    };
+    const e = await thrown({ result: { type: "object" }, exceptionDetails: details });
+    expect(e).toBeInstanceOf(BridgeError);
+    expect(e.code).toBe("PAGE_ERROR");
+    expect(e.message).toBe(formatException(details));
+    expect(e.data).toEqual({ name: "TypeError", stack: "TypeError: Failed to fetch\n    at <anonymous>:1:1" });
+  });
+
+  it("omits stack for a one-line description and defaults name to Error", async () => {
+    const e = await thrown({ result: { type: "undefined" }, exceptionDetails: { text: "Uncaught", exception: { type: "string", value: "x" } } });
+    expect(e.code).toBe("PAGE_ERROR");
+    expect(e.message).toBe("Uncaught x");
+    expect(e.data).toEqual({ name: "Error" });
+    expect(JSON.stringify(e.data)).not.toContain("null");
+  });
+
+  it("omits stack when only text + position exist (SyntaxError)", () => {
+    const e = pageError({ text: "Uncaught SyntaxError: Unexpected token", lineNumber: 0, columnNumber: 4 });
+    expect(e.data).toEqual({ name: "Error" });
+    expect(e.message).toBe("Uncaught SyntaxError: Unexpected token (line 1, col 5)");
   });
 });

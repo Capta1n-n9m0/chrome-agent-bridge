@@ -1,5 +1,6 @@
 import type { EvalEnvelope } from "@bridge/shared";
 import type { SerializeLimits } from "./serialize.js";
+import { BridgeError, ErrorCodes } from "../errors.js";
 
 /** The bits of a CDP `Runtime.RemoteObject` this module reads. */
 export interface CdpRemoteObject {
@@ -72,6 +73,23 @@ export function formatException(details: CdpExceptionDetails): string {
   return message;
 }
 
+/**
+ * A page-side throw as `PAGE_ERROR {name, stack?}` (Step 7 plan 0.6), with `formatException`'s text
+ * unchanged as the message. `name` is the exception's class (`"Error"` when CDP gives none, e.g. a
+ * thrown string); `stack` is the formatted description, set only when it spans more than one line
+ * (never `null`).
+ */
+export function pageError(details: CdpExceptionDetails): BridgeError {
+  const message = formatException(details);
+  const ex = details.exception;
+  const data: { name: string; stack?: string } = {
+    name: typeof ex?.className === "string" && ex.className ? ex.className : "Error",
+  };
+  const hasDescription = typeof ex?.description === "string" && ex.description !== "";
+  if (hasDescription && message.includes("\n")) data.stack = message;
+  return new BridgeError(ErrorCodes.PAGE_ERROR, message, data);
+}
+
 function cap(env: EvalEnvelope, maxChars: number): EvalEnvelope {
   if (env.description.length <= maxChars) return env;
   const over = env.description.length - maxChars;
@@ -101,7 +119,7 @@ export function pendingPromiseId(raw: CdpEvaluateResponse): string | undefined {
  * never touches `chrome.*`.
  */
 export async function shapeEvaluateResult(raw: CdpEvaluateResponse, opts: ShapeOptions): Promise<EvalEnvelope> {
-  if (raw.exceptionDetails) throw new Error(formatException(raw.exceptionDetails));
+  if (raw.exceptionDetails) throw pageError(raw.exceptionDetails);
 
   const maxChars = opts.maxChars ?? DEFAULT_MAX_CHARS;
   const r = raw.result ?? { type: "undefined" };

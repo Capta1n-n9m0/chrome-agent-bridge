@@ -11,6 +11,7 @@ import { downloadStart, downloadChunk, downloadEnd } from "./handlers/download.j
 import { log as networkLog, ownPort, scheduleFlush, setOwnPort } from "./network-state.js";
 import { isOwnTraffic } from "./network-log.js";
 import type { WebRequestDetails, WebRequestEvent } from "./network-log.js";
+import { TabInfoCache, eventFrame, tabCreatedParams, tabRemovedParams, tabReplacedParams } from "./tab-events.js";
 
 const DEFAULT_PORT = 9234;
 const router = new Router();
@@ -87,6 +88,39 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   scheduleFlush();
 });
 
+// --- Tab lifecycle events → the daemon (spec §6.2, §10) -------------------------------------------
+// Registered at the top level, synchronously, like the webRequest observers: the event that woke the
+// worker must find its listener. Each event goes out through the offscreen document's existing
+// "send" relay as an id-less `{event, params}` frame. If no socket is open the frame is dropped
+// (Stage 0 F15 gives the daemon a `listTabs` resync on reconnect for that; T2's side). Nothing here is logged: the cache
+// holds URLs and titles, which go on the wire only.
+
+const tabInfo = new TabInfoCache();
+
+function sendEvent(frame: string): void {
+  chrome.runtime.sendMessage({ target: "offscreen", type: "send", data: frame }).catch(() => {});
+}
+
+chrome.tabs.onCreated.addListener((created) => {
+  const params = tabCreatedParams(created);
+  if (!params) return;
+  tabInfo.update(params.tabId, {}, created);
+  sendEvent(eventFrame("tabCreated", params));
+});
+chrome.tabs.onUpdated.addListener((tabId, change, updated) => {
+  tabInfo.update(tabId, change, updated);
+});
+chrome.tabs.onRemoved.addListener((tabId) => {
+  sendEvent(eventFrame("tabRemoved", tabRemovedParams(tabId, tabInfo.take(tabId))));
+});
+chrome.tabs.onReplaced.addListener((addedTabId, removedTabId) => {
+  sendEvent(eventFrame("tabReplaced", tabReplacedParams(addedTabId, removedTabId)));
+  tabInfo.move(removedTabId, addedTabId);
+});
+
+// Refill the cache after a worker restart (Stage 0 F16). Not awaited: no top-level `await` here.
+chrome.tabs.query({}).then((all) => tabInfo.fill(all)).catch(() => {});
+
 let connecting = false;
 
 async function getConfig(): Promise<{ port: number; token: string }> {
@@ -141,7 +175,7 @@ chrome.runtime.onMessage.addListener((msg) => {
 // Diagnostic only: explains a mid-action trusted-input failure in the SW console when the user
 // clicks the debugging banner's Cancel (reason "canceled_by_user") or DevTools takes the tab over.
 chrome.debugger.onDetach.addListener((source, reason) => {
-  console.warn("[bridge] debugger detached from tab", source.tabId, "reason:", reason);
+  console.warn("[bridge] debugger detached, tabId", source.tabId, "reason:", reason);
 });
 
 chrome.runtime.onInstalled.addListener(() => void connect());

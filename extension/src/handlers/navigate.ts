@@ -1,11 +1,19 @@
-import { activeTab, waitForLoad } from "../tabs.js";
+import { targetTab, waitForLoad } from "../tabs.js";
+import { BridgeError, ErrorCodes } from "../errors.js";
 
 export async function navigate(params: Record<string, unknown>): Promise<{ ok: true; url: string }> {
   const url = String(params.url ?? "");
-  if (!url) throw new Error("navigate requires a url");
-  const tab = await activeTab();
+  if (!url) throw new BridgeError(ErrorCodes.BAD_PARAMS, "navigate requires a url");
+  const tab = await targetTab(params, "navigate");
   const loaded = waitForLoad(tab.id!); // arm the listener BEFORE navigating
-  await chrome.tabs.update(tab.id!, { url });
-  await loaded;
+  loaded.catch(() => {}); // a failed update below must not leave this rejection unhandled
+  try {
+    await chrome.tabs.update(tab.id!, { url });
+    await loaded;
+  } catch (err) {
+    // The text is Chrome's (or the load timeout's), unchanged; `data.error` repeats it.
+    const message = err instanceof Error ? err.message : String(err);
+    throw new BridgeError(ErrorCodes.NAV_FAILED, message, { error: message });
+  }
   return { ok: true, url };
 }

@@ -1,15 +1,21 @@
-import { activeTab } from "../tabs.js";
+import { pageTab } from "../tabs.js";
 import { ensureContent, callInPage } from "../inject.js";
 import { withDebugger, trustedClick, trustedType, trustedPressKey } from "../debugger.js";
+import { codeOf } from "../errors.js";
 
-async function inActiveTab<T>(fn: (...args: unknown[]) => T, args: unknown[]): Promise<T> {
-  const tab = await activeTab();
+async function inTargetTab<T>(
+  p: Record<string, unknown>,
+  method: string,
+  fn: (...args: unknown[]) => T,
+  args: unknown[],
+): Promise<T> {
+  const tab = await pageTab(p, method);
   await ensureContent(tab.id!);
   return callInPage(tab.id!, fn, args);
 }
 
 export async function click(p: Record<string, unknown>): Promise<{ ok: true }> {
-  const tab = await activeTab();
+  const tab = await pageTab(p, "click");
   await ensureContent(tab.id!);
   const trusted = p.trusted === true;
   if (!trusted) {
@@ -17,7 +23,8 @@ export async function click(p: Record<string, unknown>): Promise<{ ok: true }> {
       await callInPage(tab.id!, (ref) => window.__agentBridge!.click(ref as string), [p.ref]);
       return { ok: true };
     } catch (err) {
-      console.warn("[bridge] content-script click failed; escalating to CDP trusted input:", err);
+      // The code only: Chrome's raw message can carry a URL.
+      console.warn("[bridge] content-script click failed; escalating to CDP trusted input:", codeOf(err));
       // fall through to trusted input
     }
   }
@@ -36,7 +43,7 @@ export async function click(p: Record<string, unknown>): Promise<{ ok: true }> {
  * still tried first when untrusted, and a throw there (stale ref) falls through to the trusted path.
  */
 export async function type(p: Record<string, unknown>): Promise<{ ok: true }> {
-  const tab = await activeTab();
+  const tab = await pageTab(p, "type");
   await ensureContent(tab.id!);
   const ref = p.ref as string;
   const value = p.text as string;
@@ -51,7 +58,8 @@ export async function type(p: Record<string, unknown>): Promise<{ ok: true }> {
       );
       return { ok: true };
     } catch (err) {
-      console.warn("[bridge] content-script type failed; escalating to CDP trusted input:", err);
+      // The code only: Chrome's raw message can carry a URL.
+      console.warn("[bridge] content-script type failed; escalating to CDP trusted input:", codeOf(err));
       // fall through to trusted input
     }
   }
@@ -65,16 +73,20 @@ export async function type(p: Record<string, unknown>): Promise<{ ok: true }> {
 }
 
 export const scroll = (p: Record<string, unknown>) =>
-  inActiveTab(
+  inTargetTab(
+    p,
+    "scroll",
     (ref, dir) => window.__agentBridge!.scroll(ref as string | undefined, dir as string),
     [p.ref, p.direction ?? "down"],
   );
 
 export const hover = (p: Record<string, unknown>) =>
-  inActiveTab((ref) => window.__agentBridge!.hover(ref as string), [p.ref]);
+  inTargetTab(p, "hover", (ref) => window.__agentBridge!.hover(ref as string), [p.ref]);
 
 export const selectOption = (p: Record<string, unknown>) =>
-  inActiveTab(
+  inTargetTab(
+    p,
+    "selectOption",
     (ref, values) => window.__agentBridge!.selectOption(ref as string, values as string[]),
     [p.ref, p.values],
   );
@@ -82,11 +94,11 @@ export const selectOption = (p: Record<string, unknown>) =>
 export async function pressKey(p: Record<string, unknown>): Promise<{ ok: true }> {
   const key = p.key as string;
   if (p.trusted === true) {
-    const tab = await activeTab();
+    const tab = await pageTab(p, "pressKey");
     await withDebugger(tab.id!, () => trustedPressKey(tab.id!, key));
     return { ok: true };
   }
-  return inActiveTab((k) => {
+  return inTargetTab(p, "pressKey", (k) => {
     const el = (document.activeElement ?? document.body) as HTMLElement;
     for (const t of ["keydown", "keyup"]) el.dispatchEvent(new KeyboardEvent(t, { key: k as string, bubbles: true }));
     return { ok: true };
