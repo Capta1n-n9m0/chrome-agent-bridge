@@ -21,6 +21,7 @@ interface Tab {
   title: string;
   url: string;
   active: boolean;
+  current?: boolean;
 }
 
 interface DaemonStatus {
@@ -71,7 +72,10 @@ async function main(): Promise<void> {
     );
 
     const { tabs } = (await client.call("listTabs")) as { tabs: Tab[] };
-    const active = tabs.find((t) => t.active);
+    // The human's tab: `current` (Step 7, decisions.md #43/#55), the tab browser_status names; a
+    // Step 6 extension has no `current`, so fall back to the first tab active in its window.
+    // (Changed 2026-10-22, Step 7 T5, before any run: was the first `active` tab of any window.)
+    const active = tabs.find((t) => t.current === true) ?? tabs.find((t) => t.active);
     console.log(
       `${stamp()} ${name}: listTabs — ${tabs.length} tab(s); active: ` +
         (active ? `[${active.id}] ${active.title}` : "none"),

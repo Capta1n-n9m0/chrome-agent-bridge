@@ -1,5 +1,5 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": { "types": ["node"] },
-  "include": ["hello.ts"]
+  "include": ["hello.ts", "t5.ts", "t5-lib.ts", "t5-png.ts", "t5-actor.ts"]
 }
