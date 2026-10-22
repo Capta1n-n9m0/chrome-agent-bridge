@@ -281,3 +281,43 @@ The other findings were not part of this fix round and stand as written above: V
 (open, for the session agent), and V6, V7 and V9 (NITs).
 
 ### Final verdict: **PASS-with-notes**
+
+## Re-check: networkClear all (#40 stricter) (2026-10-22)
+
+I re-checked one item. HEAD is `e409706`, the T2 commit. The fix is uncommitted in the main tree. I
+made a fresh worktree at `e409706`, copied in only `daemon/src/intercept.ts` and
+`daemon/test/tabs.test.ts`, and ran `npm ci` (exit 0). The worktree is now removed.
+
+The rule being checked: `networkClear {tab:"all"}` is refused with `TAB_HELD {owner, since}` when
+any other client holds any tab at the moment of the check. There is no per-tab probe and no await.
+Otherwise the call is forwarded as `{scope:"all"}`.
+
+### Checks
+
+| Check | Command / evidence | Result |
+|---|---|---|
+| typecheck · full suite · build | `npm run typecheck`; `npm test`; `npm run build` | exit 0 · `Test Files 52 passed (52)`, `Tests 748 passed (748)` (746 + 2) · exit 0 |
+| daemon ×3 | `npx vitest run daemon/` | `Tests 209 passed (209)` on all 3 runs |
+| The old race case is refused | test "#40 (stricter): … refused whenever another client holds any tab, even one with no entries" | `TAB_HELD` naming A, data `{owner:"A", since}`, `networkClear` never forwarded. PASS |
+| Own leases only still clears | test "#40 (stricter): … only the caller's own leases and unheld tabs is forwarded as {scope:'all'}" | forwarded `{extra:1, scope:"all"}` with no `tab` key. PASS |
+| No probe | all three new tests assert `ext.reqs("networkRequests")` has length 0 | PASS |
+| No await between the check and the forward | read `intercept.ts` `networkClearAll`: a plain (not `async`) function; `leases.entries().find(...)`, then `checkLease` (sync, rejected via `Promise.reject`), then `forward`. Its caller `request()` reaches it through only sync steps (`prune`, `classify`, `isConnected`, `isProto`) | PASS. The third new test holds every `listTabs`/`networkRequests` reply and still gets `TAB_HELD` within its 2 s budget |
+| Mutated back | `scratchpad/mutate2.mjs` over `daemon/` (209 tests) | **P_probe** (the old async per-tab probe): 2 failed. **A_await_listTabs** (an await before the check): 1 failed ("the check runs before any await"). **N_no_check**: 2 failed. **L_live_only** (only `opened` leases count): 1 failed. All caught |
+| No other file edited | `git diff e409706 --stat` in the worktree | `daemon/src/intercept.ts \| 24`, `daemon/test/tabs.test.ts \| 85`, 2 files only |
+
+### Note on the edited test file
+
+Inside `tabs.test.ts`, the fix removes two tests (+4, −2):
+- the V8 fail-closed probe test, whose code path no longer exists;
+- the old "networkClear … TAB_HELD when a foreign-held tab has entries, else {scope:'all'}" test.
+
+Their remaining assertions moved: the foreign-tab `TAB_HELD` and the own/human-tab `{tabId}` cases
+now sit in the "networkClear on a foreign tab …" test. The rule is stricter than the one those tests
+pinned, so nothing is loosened.
+
+In the main tree, `git diff e409706 --stat` also lists `docs/` and `extension/` files. Those belong
+to other stages; in `daemon/`, `mcp/`, `shared/` and `sdk/` the only changes are these 2 files.
+
+### Verdict: **PASS**
+
+This item is fixed. T2 overall stays **PASS-with-notes** (V4, V5, V11 open; V6, V7, V9 NITs).

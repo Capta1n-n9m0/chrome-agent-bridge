@@ -923,32 +923,7 @@ describe("Step 7 tab layer over a real WsHost", () => {
     expect(st.tabs.map((t) => t.tabId)).toEqual([1]);
   });
 
-  it("V8: networkClear {tab:'all'} fails closed — a foreign-held tab's probe with a non-number total, or a failing probe, → TAB_HELD", async () => {
-    const { port } = await start();
-    const ext = await extension(port);
-    const a = await client(port, "A");
-    const b = await client(port, "B");
-    const ta = await newTab(a);
-
-    const orig = ext.auto.bind(ext);
-    ext.auto = (req) =>
-      req.method === "networkRequests" ? { entries: [], total: "lots", pending: 0, recordingSince: 0 } : orig(req);
-    expect(errOf(await call(b, "networkClear", { tab: "all" })).message).toMatch(HELD(ta.tab, "A"));
-
-    ext.auto = orig;
-    ext.hold.add("networkRequests");
-    const id = send(b, "networkClear", { tab: "all" });
-    const probe = await ext.waitReq("networkRequests", 2); // the first probe was answered above
-    expect(probe.params).toEqual({ tabId: ta.id, limit: 1 });
-    ext.peer.send({ id: probe.id, error: { code: "INTERNAL", message: "probe failed" } });
-    const r = await b.frame(response(id));
-    expect(errOf(r).code).toBe("TAB_HELD");
-    expect(errOf(r).message).toMatch(HELD(ta.tab, "A"));
-    expect(errOf(r).data).toEqual({ owner: "A", since: expect.any(Number) });
-    expect(ext.reqs("networkClear")).toHaveLength(0);
-  });
-
-  it("networkClear: a foreign tab → TAB_HELD; {tab:'all'} → TAB_HELD when a foreign-held tab has entries, else {scope:'all'}", async () => {
+  it("networkClear on a foreign tab → TAB_HELD; own tab and the human's tab are forwarded with tabId", async () => {
     const { port } = await start();
     const ext = await extension(port);
     const a = await client(port, "A");
@@ -957,23 +932,63 @@ describe("Step 7 tab layer over a real WsHost", () => {
 
     const held = await call(b, "networkClear", { tab: ta.tab });
     expect(errOf(held).message).toMatch(HELD(ta.tab, "A"));
-
-    // A's tab has no entries: "all" is forwarded as a scope, with no tab key.
-    expect((await call(b, "networkClear", { tab: "all" })).result).toEqual({ ok: true, method: "networkClear" });
-    expect(ext.reqs("networkClear")[0].params).toEqual({ scope: "all" });
-    expect(ext.reqs("networkRequests").at(-1)!.params).toEqual({ tabId: 101, limit: 1 });
-
-    ext.network.set(101, 4);
-    const refused = await call(b, "networkClear", { tab: "all" });
-    expect(errOf(refused).message).toMatch(HELD(ta.tab, "A"));
-    expect(ext.reqs("networkClear")).toHaveLength(1);
-    // The holder itself may clear everything.
-    await call(a, "networkClear", { tab: "all" });
-    expect(ext.reqs("networkClear")).toHaveLength(2);
-    // Own tab / the human's tab.
+    expect(ext.reqs("networkClear")).toHaveLength(0);
     await call(a, "networkClear", { tab: ta.tab });
     await call(b, "networkClear", {});
-    expect(ext.reqs("networkClear").slice(2).map((r) => r.params)).toEqual([{ tabId: 101 }, { tabId: 1 }]);
+    expect(ext.reqs("networkClear").map((r) => r.params)).toEqual([{ tabId: 101 }, { tabId: 1 }]);
+  });
+
+  it("#40 (stricter): networkClear {tab:'all'} is refused whenever another client holds any tab, even one with no entries — nothing is forwarded", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    const b = await client(port, "B");
+    const ta = await newTab(a); // A's tab has no network entries (the old check→clear race case)
+
+    const refused = await call(b, "networkClear", { tab: "all" });
+    expect(errOf(refused).code).toBe("TAB_HELD");
+    expect(errOf(refused).message).toMatch(HELD(ta.tab, "A"));
+    expect(errOf(refused).data).toEqual({ owner: "A", since: expect.any(Number) });
+    expect(ext.reqs("networkRequests")).toHaveLength(0); // no probe
+    expect(ext.reqs("networkClear")).toHaveLength(0);
+  });
+
+  it("#40 (stricter): networkClear {tab:'all'} with only the caller's own leases and unheld tabs is forwarded as {scope:'all'}", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    await client(port, "B"); // connected, holds nothing
+    await newTab(a);
+    await call(a, "tabs.claim", { tab: "T1" });
+    expect((await call(a, "networkClear", { tab: "all", extra: 1 })).result).toEqual({ ok: true, method: "networkClear" });
+    expect(ext.reqs("networkClear").map((r) => r.params)).toEqual([{ extra: 1, scope: "all" }]);
+    expect(ext.reqs("networkRequests")).toHaveLength(0);
+  });
+
+  it("#40 (stricter): the check runs before any await — the answer needs nothing from the extension, and no probe is sent", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    const b = await client(port, "B");
+    // The extension answers nothing from here on: any await on it would stall the call.
+    ext.hold.add("networkRequests");
+    ext.hold.add("listTabs");
+    await call(a, "tabs.claim", { tab: "T2" });
+    const r = await call(b, "networkClear", { tab: "all" }, 2000);
+    expect(errOf(r).message).toMatch(HELD("T2", "A"));
+    // A lease granted right behind the clear (same TCP read order) cannot slip in before the check:
+    // B's clear, sent before C's claim, is forwarded; C's claim lands afterwards.
+    await call(a, "tabs.release", { tab: "T2" });
+    ext.hold.add("networkClear");
+    const c = await client(port, "C");
+    const ib = send(b, "networkClear", { tab: "all" });
+    const ic = send(c, "tabs.claim", { tab: "T2" });
+    const fwd = await ext.waitReq("networkClear");
+    expect(fwd.params).toEqual({ scope: "all" });
+    expect((await c.frame(response(ic))).result).toEqual({ tab: "T2" });
+    ext.answer(fwd, { ok: true });
+    expect((await b.frame(response(ib))).result).toEqual({ ok: true });
+    expect(ext.reqs("networkRequests")).toHaveLength(0);
   });
 
   it("T2.3: every tab-carrying method reaches the extension with a numeric tabId and no tab key", async () => {

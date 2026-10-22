@@ -478,23 +478,19 @@ export class TabLayer {
   }
 
   /**
-   * `networkClear {tab:"all"}` (#40): refused while another client holds a tab that has entries. Fails
-   * closed (verifier V8): a probe that throws or returns a non-number `total` counts as "has entries".
+   * `networkClear {tab:"all"}` (#40 as amended, stricter): refused with `TAB_HELD` whenever another
+   * client holds any tab. Checked synchronously, then forwarded at once — no probe and no await between
+   * the check and the forward, so no lease can be granted in between and a held tab's entries are
+   * never cleared by someone else.
    */
-  private async networkClearAll(caller: Caller, p: Params, deadline: number): Promise<unknown> {
-    for (const lease of this.leases.entries()) {
-      if (lease.clientId === caller.clientId) continue;
-      const r = this.handles.resolve(lease.handle);
-      if (r.kind !== "live") continue;
-      let hasEntries = true;
+  private networkClearAll(caller: Caller, p: Params, deadline: number): Promise<unknown> {
+    const foreign = this.leases.entries().find((l) => l.clientId !== caller.clientId);
+    if (foreign) {
       try {
-        const res = await this.forward("networkRequests", { tabId: r.tabId, limit: 1 }, deadline);
-        const total = (res as { total?: unknown } | null)?.total;
-        hasEntries = !(typeof total === "number" && total <= 0);
-      } catch {
-        // fail closed: unknown counts as "has entries"
+        this.checkLease(foreign.handle, caller); // throws TAB_HELD {owner, since}
+      } catch (err) {
+        return Promise.reject(err);
       }
-      if (hasEntries) this.checkLease(lease.handle, caller);
     }
     return this.forward("networkClear", { ...without(p, "tab"), scope: "all" }, deadline);
   }
