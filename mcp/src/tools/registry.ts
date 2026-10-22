@@ -279,7 +279,7 @@ export function registerTools(server: McpServer, bridge: ToolBridge): void {
     },
     async (params) => {
       const { text: out } = (await bridge.call("networkRequests", params)) as NetworkRequestsResult;
-      return text(out);
+      return text(out ?? "");
     },
   );
 

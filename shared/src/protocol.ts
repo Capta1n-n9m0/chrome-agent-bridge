@@ -1,5 +1,10 @@
 import type { WireError } from "./error.js";
 
+// Who raises a code (Stage 0 audit F21): `codes.ts` groups codes by who *mainly* raises them, not
+// who may. The extension also raises three it lists as daemon codes — `TAB_UNKNOWN` (Step 7 decision
+// 0.1: `chrome.tabs.get` "No tab with id" when no handle was involved), `TAB_GONE` (the daemon
+// resolved a valid handle but the tab closed in between) and `TIMEOUT` (0.6: `describeDebuggerError`).
+// `ErrorCode` is one union, so this compiles; read the grouping as a hint, not a restriction.
 export * from "./codes.js";
 export * from "./error.js";
 
@@ -62,6 +67,62 @@ export interface ExtensionStatusParams {
   connected: boolean;
 }
 
+/** Events the extension sends the daemon (spec §10). */
+export type ExtensionEventName = "tabCreated" | "tabRemoved" | "tabReplaced";
+
+/** Events the daemon sends a client (spec §10). */
+export type DaemonEventName = "tabGone" | "leaseGranted" | "extensionStatus";
+
+/**
+ * Params of the extension → daemon `tabCreated` event (spec §10; Stage 0 audit F13), from
+ * `chrome.tabs.onCreated`. `url` is `pendingUrl ?? url ?? ""`, so it may be "".
+ */
+export interface TabCreatedParams {
+  tabId: number;
+  openerTabId?: number;
+  url: string;
+}
+
+/**
+ * Params of the extension → daemon `tabRemoved` event (spec §10; F13), from `chrome.tabs.onRemoved`.
+ * `lastUrl`/`lastTitle` are what the extension last saw, when it saw anything; never log them.
+ */
+export interface TabRemovedParams {
+  tabId: number;
+  lastUrl?: string;
+  lastTitle?: string;
+}
+
+/**
+ * Params of the extension → daemon `tabReplaced` event (spec §10; F13), from
+ * `chrome.tabs.onReplaced`: the daemon remaps the handle to `addedTabId`. Spec §6.2 names a Memory-Saver
+ * discard as a cause; not measured (Chrome documents prerender/instant; row LEASE-6 measures it, #45).
+ */
+export interface TabReplacedParams {
+  addedTabId: number;
+  removedTabId: number;
+}
+
+/**
+ * Params of the daemon → client `tabGone` event (spec §10; F13): a tab the client leased closed.
+ * `tab` is the daemon's handle ("T3"), never a Chrome tab id; never log `lastUrl`/`lastTitle`.
+ */
+export interface TabGoneParams {
+  tab: string;
+  lastUrl?: string;
+  lastTitle?: string;
+}
+
+/**
+ * Params of the daemon → client `leaseGranted` event (spec §10; F13): a tab opened from a tab the
+ * client holds (`openerTabId`) is leased to it too. `url` is `tabCreated`'s, so it may be "".
+ */
+export interface LeaseGrantedParams {
+  tab: string;
+  reason: "opener";
+  url: string;
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -103,6 +164,95 @@ export function isEvent(value: unknown): value is EventMessage {
   if (!isObject(value)) return false;
   const v = value;
   return typeof v.event === "string" && !("id" in v) && isObject(v.params);
+}
+
+/** An `isEvent` frame named `name`, or null. */
+function eventParams(value: unknown, name: ExtensionEventName | DaemonEventName): Record<string, unknown> | null {
+  if (!isEvent(value) || value.event !== name) return null;
+  return value.params as Record<string, unknown>;
+}
+
+function isTabId(v: unknown): v is number {
+  return Number.isInteger(v);
+}
+
+/**
+ * Absent (or `undefined`, which JSON drops anyway, so an in-process frame and its wire form agree), or a
+ * value `check` accepts. `null` is not absent: it is mistyped.
+ */
+function optional(p: Record<string, unknown>, key: string, check: (v: unknown) => boolean): boolean {
+  return p[key] === undefined || check(p[key]);
+}
+
+const isString = (v: unknown): v is string => typeof v === "string";
+
+// The five guards below check the exact event name, then each field's type: required fields present,
+// optional ones (when present) of the right type, unknown fields accepted (forward-compatible, as
+// `isHello` is).
+
+export function isTabCreatedEvent(value: unknown): value is EventMessage<TabCreatedParams> {
+  const p = eventParams(value, "tabCreated");
+  return p !== null && isTabId(p.tabId) && isString(p.url) && optional(p, "openerTabId", isTabId);
+}
+
+export function isTabRemovedEvent(value: unknown): value is EventMessage<TabRemovedParams> {
+  const p = eventParams(value, "tabRemoved");
+  return (
+    p !== null && isTabId(p.tabId) && optional(p, "lastUrl", isString) && optional(p, "lastTitle", isString)
+  );
+}
+
+export function isTabReplacedEvent(value: unknown): value is EventMessage<TabReplacedParams> {
+  const p = eventParams(value, "tabReplaced");
+  return p !== null && isTabId(p.addedTabId) && isTabId(p.removedTabId);
+}
+
+export function isTabGoneEvent(value: unknown): value is EventMessage<TabGoneParams> {
+  const p = eventParams(value, "tabGone");
+  return p !== null && isString(p.tab) && optional(p, "lastUrl", isString) && optional(p, "lastTitle", isString);
+}
+
+export function isLeaseGrantedEvent(value: unknown): value is EventMessage<LeaseGrantedParams> {
+  const p = eventParams(value, "leaseGranted");
+  return p !== null && isString(p.tab) && p.reason === "opener" && isString(p.url);
+}
+
+/**
+ * How `screenshot` captures (spec §7). `"switch"` (the default) activates the tab under the daemon's
+ * visibility lock and uses `captureVisibleTab`; `"cdp"` uses `Page.captureScreenshot` through the
+ * debugger: no lock, no tab switch, but the "extension is debugging this browser" banner.
+ */
+export type ScreenshotMode = "switch" | "cdp";
+
+/**
+ * One element of a structured snapshot (Step 7 decision 0.7). `ref` is the RefMap ref ("e12") that
+ * actions take; `depth` (nesting) and `frame` (which same-origin frame, absent for the top document)
+ * are what T3 fills. The SDK formatter (T4) must render a `SnapshotResult` to today's snapshot text
+ * byte-identically.
+ */
+export interface SnapshotElement {
+  ref: string;
+  role: string;
+  name: string;
+  value?: string;
+  checked?: boolean;
+  disabled?: boolean;
+  expanded?: boolean;
+  selected?: boolean;
+  href?: string;
+  depth: number;
+  frame?: number;
+}
+
+/**
+ * The value of a `snapshot` call. Types only — like `EvalEnvelope`, it is the `result` of a
+ * response, so no runtime guard is needed. `truncated` is set when the 800-element cap was hit.
+ */
+export interface SnapshotResult {
+  url: string;
+  title: string;
+  elements: SnapshotElement[];
+  truncated: boolean;
 }
 
 /**
@@ -200,6 +350,10 @@ export interface NetworkRequestsResult {
   pending: number;
   /** Epoch ms — when this log started (extension load / last clear of "all"). */
   recordingSince: number;
-  /** What the tool prints; rendered in the extension like `snapshot`. */
-  text: string;
+  /**
+   * What the tool prints; rendered in the extension like `snapshot`.
+   * @deprecated Step 7 (decisions.md #49): T3 stops producing it and T4 removes it, once the MCP
+   * formats `entries` itself. Optional meanwhile so every commit stays typecheck-green.
+   */
+  text?: string;
 }

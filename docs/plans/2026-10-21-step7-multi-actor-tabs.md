@@ -227,6 +227,10 @@ tests are jsdom/pure.
 - [ ] `shared/src/protocol.ts`: `SnapshotElement`, `SnapshotResult`, `TabCreatedParams`,
       `TabRemovedParams`, `TabReplacedParams`, `TabGoneParams`, `LeaseGrantedParams`,
       `ScreenshotMode = "switch" | "cdp"`; `NetworkRequestsResult` loses `text`.
+      *Superseded 2026-10-22: was "loses `text`" in T0, because removing it leaves every commit from
+      T0 to T4 typecheck-red; as built `text` is optional and `@deprecated`, T4 removes it, and T0's
+      lane gained `mcp/src/tools/registry.ts:282` → `text(out ?? "")` — decisions.md · 2026-10-22 ·
+      `NetworkRequestsResult.text` is deprecated in T0 and removed in T4.*
 - [ ] Tests for any new guard (events have a `params` object).
 
 *Corrected 2026-10-22: as built `WireError.code` is optional and `fromWire` maps a missing, non-string
