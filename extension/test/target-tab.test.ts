@@ -368,13 +368,25 @@ describe("screenshot modes (T3)", () => {
     return dbg;
   }
 
+  // T5b fix 2 (decisions.md · 2026-10-23 · #62): was tab 12, a background tab, which CDP was measured
+  // to hang on in Run 8 (SCREEN-2) and which is now refused; tab 21 is active in a window that is not
+  // the human's, so "on the tab itself, no switch" is still what this pins.
   it("mode cdp → Page.captureScreenshot of the viewport on the tab itself: no switch, no captureVisibleTab", async () => {
     const c = fakeChrome();
     const dbg = withDebuggerFake(c);
-    expect(await screenshot({ tabId: 12, mode: "cdp" })).toEqual({ dataUrl: "data:image/png;base64,CDP" });
-    expect(dbg.attach).toHaveBeenCalledWith({ tabId: 12 }, "1.3");
-    expect(dbg.sendCommand).toHaveBeenCalledWith({ tabId: 12 }, "Page.captureScreenshot", { format: "png" });
-    expect(dbg.detach).toHaveBeenCalledWith({ tabId: 12 });
+    expect(await screenshot({ tabId: 21, mode: "cdp" })).toEqual({ dataUrl: "data:image/png;base64,CDP" });
+    expect(dbg.attach).toHaveBeenCalledWith({ tabId: 21 }, "1.3");
+    expect(dbg.sendCommand).toHaveBeenCalledWith({ tabId: 21 }, "Page.captureScreenshot", { format: "png" });
+    expect(dbg.detach).toHaveBeenCalledWith({ tabId: 21 });
+    expect(c.tabs.update).not.toHaveBeenCalled();
+    expect(c.tabs.captureVisibleTab).not.toHaveBeenCalled();
+  });
+
+  it("mode cdp on a background tab → OFFSCREEN, no switch, no debugger (T5b fix 2)", async () => {
+    const c = fakeChrome();
+    const dbg = withDebuggerFake(c);
+    await expect(screenshot({ tabId: 12, mode: "cdp" })).rejects.toMatchObject({ code: "OFFSCREEN" });
+    expect(dbg.attach).not.toHaveBeenCalled();
     expect(c.tabs.update).not.toHaveBeenCalled();
     expect(c.tabs.captureVisibleTab).not.toHaveBeenCalled();
   });

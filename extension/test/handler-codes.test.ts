@@ -5,6 +5,8 @@ import { downloadStart } from "../src/handlers/download.js";
 import { evaluate } from "../src/handlers/evaluate.js";
 import { waitFor } from "../src/handlers/wait.js";
 import { BridgeError } from "../src/errors.js";
+import { screenshot } from "../src/handlers/perceive.js";
+import { CDP_HIDDEN_MESSAGE, CDP_MINIMIZED_MESSAGE, cdpCaptureRefusal } from "../src/tabs.js";
 
 async function rejection(p: Promise<unknown>): Promise<BridgeError> {
   try {
@@ -61,6 +63,83 @@ describe("evaluate: empty expression → BAD_PARAMS", () => {
       expect(e.code).toBe("BAD_PARAMS");
       expect(e.message).toBe('browser_evaluate requires a non-empty "expression" string');
     }
+  });
+});
+
+describe("cdpCaptureRefusal (T5b fix 2: refuse what CDP was measured to hang on)", () => {
+  it("a minimized window → WINDOW_MINIMIZED, whether or not the tab is active", () => {
+    for (const active of [true, false, undefined]) {
+      const e = cdpCaptureRefusal({ active }, "minimized");
+      expect(e).toBeInstanceOf(BridgeError);
+      expect(e!.code).toBe("WINDOW_MINIMIZED");
+      expect(e!.message).toBe(CDP_MINIMIZED_MESSAGE);
+    }
+  });
+
+  it("a tab in the background of its window → OFFSCREEN", () => {
+    for (const state of ["normal", "maximized", "fullscreen", undefined]) {
+      for (const active of [false, undefined]) {
+        const e = cdpCaptureRefusal({ active }, state);
+        expect(e).toBeInstanceOf(BridgeError);
+        expect(e!.code).toBe("OFFSCREEN");
+        expect(e!.message).toBe(CDP_HIDDEN_MESSAGE);
+      }
+    }
+  });
+
+  it("the active tab of a visible window → no refusal", () => {
+    for (const state of ["normal", "maximized", "fullscreen", undefined]) expect(cdpCaptureRefusal({ active: true }, state)).toBeNull();
+  });
+
+  it("the messages say what to do", () => {
+    expect(CDP_MINIMIZED_MESSAGE).toMatch(/restore the window/);
+    expect(CDP_MINIMIZED_MESSAGE).toMatch(/focusTab/);
+    expect(CDP_HIDDEN_MESSAGE).toMatch(/default mode/);
+    expect(CDP_HIDDEN_MESSAGE).toMatch(/focusTab/);
+  });
+});
+
+describe("screenshot {mode:\"cdp\"}: a hidden or minimized tab is refused before the debugger attaches", () => {
+  function fakeChrome(tab: { id: number; windowId: number; active: boolean }, state: string) {
+    const chrome = {
+      tabs: { get: vi.fn(async () => ({ ...tab })) },
+      windows: { get: vi.fn(async (id: number) => ({ id, state })) },
+      debugger: {
+        attach: vi.fn(async () => {}),
+        detach: vi.fn(async () => {}),
+        sendCommand: vi.fn(async () => ({ data: "AAAA" })),
+      },
+    };
+    vi.stubGlobal("chrome", chrome);
+    return chrome;
+  }
+
+  it("minimized → WINDOW_MINIMIZED, no attach", async () => {
+    const chrome = fakeChrome({ id: 7, windowId: 3, active: true }, "minimized");
+    const e = await rejection(screenshot({ tabId: 7, mode: "cdp" }));
+    expect(e.code).toBe("WINDOW_MINIMIZED");
+    expect(chrome.windows.get).toHaveBeenCalledWith(3);
+    expect(chrome.debugger.attach).not.toHaveBeenCalled();
+  });
+
+  it("a background tab → OFFSCREEN, no attach", async () => {
+    const chrome = fakeChrome({ id: 7, windowId: 3, active: false }, "normal");
+    const e = await rejection(screenshot({ tabId: 7, mode: "cdp" }));
+    expect(e.code).toBe("OFFSCREEN");
+    expect(chrome.debugger.attach).not.toHaveBeenCalled();
+  });
+
+  it("the active tab of a visible window is captured through CDP as before", async () => {
+    const chrome = fakeChrome({ id: 7, windowId: 3, active: true }, "normal");
+    expect(await screenshot({ tabId: 7, mode: "cdp" })).toEqual({ dataUrl: "data:image/png;base64,AAAA" });
+    expect(chrome.debugger.attach).toHaveBeenCalledTimes(1);
+    expect(chrome.debugger.detach).toHaveBeenCalledTimes(1);
+  });
+
+  it("fullPage is not refused (unmeasured; left as it was)", async () => {
+    const chrome = fakeChrome({ id: 7, windowId: 3, active: false }, "normal");
+    expect(await screenshot({ tabId: 7, mode: "cdp", fullPage: true })).toEqual({ dataUrl: "data:image/png;base64,AAAA" });
+    expect(chrome.windows.get).not.toHaveBeenCalled();
   });
 });
 

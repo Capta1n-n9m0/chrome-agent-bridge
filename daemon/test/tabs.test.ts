@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { WebSocket } from "ws";
 import { Bridge } from "../src/bridge.js";
-import { WsHost } from "../src/wsHost.js";
+import { WsHost, type WsHostOptions } from "../src/wsHost.js";
 import { TAB_METHODS } from "../src/methods.js";
 
 /**
@@ -209,9 +209,9 @@ describe("Step 7 tab layer over a real WsHost", () => {
     logs = [];
   });
 
-  async function start() {
+  async function start(extra: Partial<WsHostOptions> = {}) {
     const bridge = new Bridge();
-    host = new WsHost(bridge, { port: 0, token: TOKEN, build: BUILD, log: (m) => logs.push(m) });
+    host = new WsHost(bridge, { port: 0, token: TOKEN, build: BUILD, log: (m) => logs.push(m), ...extra });
     const port = await host.listen();
     return { port, host, bridge };
   }
@@ -460,6 +460,223 @@ describe("Step 7 tab layer over a real WsHost", () => {
     expect(events(b, "leaseGranted")).toEqual([]);
     expect(events(c, "leaseGranted")).toEqual([]);
     expect((await call(c, "tabs.claim", { tab: popup.tab as string })).result).toEqual({ tab: popup.tab });
+  });
+
+  // ---------------------------------------------------------------- T5b fix 3: the popup's url
+
+  const statusRow = async (p: Peer, tabId: number) =>
+    ((await call(p, "daemon.status")).result as { tabs: Array<Record<string, unknown>> }).tabs.find((x) => x.tabId === tabId)!;
+
+  it("fix 3: a known url → leaseGranted at once, with no listTabs call", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    await newTab(a); // 101
+    const before = ext.reqs("listTabs").length;
+    ext.emit("tabCreated", { tabId: 300, openerTabId: 101, url: "http://fixture.test/popup" });
+    const lg = await a.frame((f) => f.event === "leaseGranted");
+    expect((lg.params as { url: string }).url).toBe("http://fixture.test/popup");
+    await quiet(250);
+    expect(ext.reqs("listTabs")).toHaveLength(before);
+  });
+
+  it("fix 3: a '' url is filled from a later listTabs; the grant holds at once, before the event", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    const b = await client(port, "B");
+    await newTab(a); // 101
+    const n = ext.reqs("listTabs").length;
+    ext.hold.add("listTabs");
+    ext.tabs.push({ id: 300, title: "", url: "", active: false });
+    ext.emit("tabCreated", { tabId: 300, openerTabId: 101, url: "" });
+
+    const first = await ext.waitReq("listTabs", n + 1);
+    expect(first.params ?? {}).toEqual({});
+    const row = await statusRow(b, 300);
+    expect(row.owner).toBe("A");
+    expect(errOf(await call(b, "click", { tab: row.tab as string, ref: "e1" })).message).toMatch(HELD(row.tab as string, "A"));
+    expect(ext.reqs("click")).toHaveLength(0);
+    expect(events(a, "leaseGranted")).toEqual([]);
+
+    ext.answer(first, ext.auto(first)); // still ""
+    const second = await ext.waitReq("listTabs", n + 2);
+    expect(events(a, "leaseGranted")).toEqual([]);
+    ext.tabs.find((t) => t.id === 300)!.url = "http://fixture.test/popup";
+    ext.answer(second, ext.auto(second));
+    const lg = await a.frame((f) => f.event === "leaseGranted");
+    expect(lg.params).toEqual({ tab: row.tab, reason: "opener", url: "http://fixture.test/popup" });
+    expect((await statusRow(b, 300)).url).toBe("http://fixture.test/popup");
+    await quiet(250);
+    expect(events(a, "leaseGranted")).toHaveLength(1);
+    expect(events(b, "leaseGranted")).toHaveLength(0);
+    expect(ext.reqs("listTabs")).toHaveLength(n + 2);
+  });
+
+  it("fix 3: at the 2 s bound the event is sent with the best url seen ('' here), polling every 100 ms", async () => {
+    let t = 1_800_000_000_000;
+    const { port } = await start({ now: () => t, sleep: async (ms) => void (t += ms) });
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    await newTab(a); // 101
+    const n = ext.reqs("listTabs").length;
+    ext.tabs.push({ id: 300, title: "", url: "", active: false });
+    const emittedAt = t;
+    ext.emit("tabCreated", { tabId: 300, openerTabId: 101, url: "" });
+    const lg = await a.frame((f) => f.event === "leaseGranted");
+    expect((lg.params as { url: string }).url).toBe("");
+    expect(t - emittedAt).toBe(2000);
+    expect(ext.reqs("listTabs")).toHaveLength(n + 21); // at 0, 100, …, 2000 ms
+  });
+
+  it("fix 3: a later about:blank is the best url seen at the bound", async () => {
+    let t = 1_800_000_000_000;
+    const { port } = await start({ now: () => t, sleep: async (ms) => void (t += ms) });
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    await newTab(a);
+    ext.tabs.push({ id: 300, title: "", url: "about:blank", active: false });
+    ext.emit("tabCreated", { tabId: 300, openerTabId: 101, url: "" });
+    const lg = await a.frame((f) => f.event === "leaseGranted");
+    expect((lg.params as { url: string }).url).toBe("about:blank");
+  });
+
+  it("fix 3: the grant released during the fill → no event", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    await newTab(a);
+    const n = ext.reqs("listTabs").length;
+    ext.hold.add("listTabs");
+    ext.tabs.push({ id: 300, title: "", url: "", active: false });
+    ext.emit("tabCreated", { tabId: 300, openerTabId: 101, url: "" });
+    const fill = await ext.waitReq("listTabs", n + 1);
+    const row = await statusRow(a, 300);
+    expect((await call(a, "tabs.release", { tab: row.tab as string })).result).toEqual({ ok: true });
+    ext.tabs.find((x) => x.id === 300)!.url = "http://fixture.test/popup";
+    ext.answer(fill, ext.auto(fill));
+    await quiet(300);
+    expect(events(a, "leaseGranted")).toEqual([]);
+  });
+
+  it("fix 3: the grant overridden by a newTab that settles after the fill → no event", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    const b = await client(port, "B");
+    await newTab(a);
+    const n = ext.reqs("listTabs").length;
+    ext.hold.add("listTabs");
+    ext.hold.add("newTab");
+    ext.tabs.push({ id: 300, title: "", url: "", active: false });
+    ext.emit("tabCreated", { tabId: 300, openerTabId: 101, url: "" });
+    const fill = await ext.waitReq("listTabs", n + 1);
+    const id = send(b, "newTab", { url: "http://fixture.test/b" });
+    const req = await ext.waitReq("newTab", 2);
+    ext.tabs.find((x) => x.id === 300)!.url = "http://fixture.test/b";
+    ext.answer(fill, ext.auto(fill)); // the fill ends while B's newTab is in flight → held back
+    await quiet(80);
+    expect(events(a, "leaseGranted")).toEqual([]);
+    ext.answer(req, { id: 300 });
+    const res = (await b.frame(response(id))).result as { tab: string };
+    await quiet(80);
+    expect(events(a, "leaseGranted")).toEqual([]);
+    expect(errOf(await call(a, "click", { tab: res.tab, ref: "e1" })).message).toMatch(HELD(res.tab, "B"));
+  });
+
+  it("fix 3: the grant's holder disconnecting during the fill → no event, the tab is free", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    const c = await client(port, "C");
+    await newTab(a);
+    const n = ext.reqs("listTabs").length;
+    ext.hold.add("listTabs");
+    ext.tabs.push({ id: 300, title: "", url: "", active: false });
+    ext.emit("tabCreated", { tabId: 300, openerTabId: 101, url: "" });
+    const fill = await ext.waitReq("listTabs", n + 1);
+    const row = await statusRow(c, 300);
+    a.ws.close();
+    await a.whenClosed();
+    await waitUntil(() => host!.registry.count() === 1);
+    ext.tabs.find((x) => x.id === 300)!.url = "http://fixture.test/popup";
+    ext.answer(fill, ext.auto(fill));
+    await quiet(300);
+    expect(events(a, "leaseGranted")).toEqual([]);
+    expect(events(c, "leaseGranted")).toEqual([]);
+    expect((await call(c, "tabs.claim", { tab: row.tab as string })).result).toEqual({ tab: row.tab });
+  });
+
+  it("fix 3 (F5/M17): the extension socket changes mid-fill → polling stops; the old socket's answer is ignored and the event carries the best url seen before ('')", async () => {
+    const { port } = await start();
+    const ext1 = await extension(port);
+    const a = await client(port, "A");
+    await newTab(a); // 101
+    const n = ext1.reqs("listTabs").length;
+    ext1.hold.add("listTabs");
+    ext1.tabs.push({ id: 300, title: "", url: "", active: false });
+    ext1.emit("tabCreated", { tabId: 300, openerTabId: 101, url: "" });
+    const fill = await ext1.waitReq("listTabs", n + 1);
+
+    // A new extension socket takes over (the old one stays open); its resync lists tab 300.
+    const ext2 = await extension(port, (e) => {
+      e.tabs = ext1.tabs.map((t) => ({ ...t, url: t.id === 300 ? "http://fixture.test/popup" : t.url }));
+    });
+    expect(events(a, "leaseGranted")).toEqual([]);
+    ext1.tabs.find((t) => t.id === 300)!.url = "http://fixture.test/old-socket";
+    ext1.answer(fill, ext1.auto(fill)); // answered on the old socket, after the change
+    const lg = await a.frame((f) => f.event === "leaseGranted");
+    const row = await statusRow(a, 300);
+    expect(lg.params).toEqual({ tab: row.tab, reason: "opener", url: "" });
+    expect(row.owner).toBe("A"); // the lease survived the resync
+    await quiet(300);
+    expect(ext1.reqs("listTabs")).toHaveLength(n + 1); // no further poll on the old socket
+    expect(ext2.reqs("listTabs")).toHaveLength(1); // only the resync on the new one
+    expect(events(a, "leaseGranted")).toHaveLength(1);
+  });
+
+  it("fix 3 (F5/M18): the tab is no longer listed → polling stops; the event is sent with the best url seen (about:blank) while the grant stands", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    await newTab(a); // 101
+    const n = ext.reqs("listTabs").length;
+    ext.hold.add("listTabs");
+    ext.tabs.push({ id: 300, title: "", url: "about:blank", active: false });
+    ext.emit("tabCreated", { tabId: 300, openerTabId: 101, url: "" });
+    const first = await ext.waitReq("listTabs", n + 1);
+    ext.answer(first, ext.auto(first)); // about:blank: not known yet, keep polling
+    const second = await ext.waitReq("listTabs", n + 2);
+    expect(events(a, "leaseGranted")).toEqual([]);
+    ext.tabs = ext.tabs.filter((t) => t.id !== 300);
+    ext.answer(second, ext.auto(second)); // tab 300 is gone from the list
+    const lg = await a.frame((f) => f.event === "leaseGranted");
+    expect((lg.params as { url: string; reason: string }).url).toBe("about:blank");
+    expect((lg.params as { reason: string }).reason).toBe("opener");
+    await quiet(300);
+    expect(ext.reqs("listTabs")).toHaveLength(n + 2);
+    expect(events(a, "leaseGranted")).toHaveLength(1);
+  });
+
+  it("fix 3 (F5/M19): a tabCreated whose url is about:blank triggers the fill — not sent at once", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    await newTab(a); // 101
+    const n = ext.reqs("listTabs").length;
+    ext.hold.add("listTabs");
+    ext.tabs.push({ id: 300, title: "", url: "about:blank", active: false });
+    ext.emit("tabCreated", { tabId: 300, openerTabId: 101, url: "about:blank" });
+    const fill = await ext.waitReq("listTabs", n + 1);
+    await quiet(150);
+    expect(events(a, "leaseGranted")).toEqual([]);
+    ext.tabs.find((t) => t.id === 300)!.url = "http://fixture.test/popup";
+    ext.answer(fill, ext.auto(fill));
+    const lg = await a.frame((f) => f.event === "leaseGranted");
+    expect((lg.params as { url: string }).url).toBe("http://fixture.test/popup");
+    await quiet(250);
+    expect(ext.reqs("listTabs")).toHaveLength(n + 1);
+    expect(events(a, "leaseGranted")).toHaveLength(1);
   });
 
   it("closeTab by the holder: forwarded {tabId}, the handle is gone, the lease dropped, no tabGone to the closer", async () => {

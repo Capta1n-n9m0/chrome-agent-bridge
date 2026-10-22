@@ -386,6 +386,13 @@ sessions as the actors, scripts through the SDK, Chrome windows it opens itself 
 window captures for banner and flash checks). The user's keyboard is needed only for the extension
 reload after `npm run build`; `/mcp` is not needed for the headless actor sessions, which load the
 current `mcp/dist/index.js` when they start.*
+*Note 2026-10-23: after Run 8 the user added a fix stage **T5b** before Run 9 (decisions.md · 2026-10-23 ·
+The user rules on Run 8: fix stage T5b, then Run 9 (#62)). It fixes three defects. First, a switch
+capture now restores the previous tab when it fails or hangs, at the 30 s chain bound at the latest,
+unless the window moved on or `focusTab` touched it. Second, `screenshot {mode:"cdp"}` now refuses
+a minimized window with `WINDOW_MINIMIZED` and a background tab with `OFFSCREEN`. Third, the daemon
+fills `leaseGranted.url` by polling `listTabs` for up to 2 s, while the grant itself still takes
+effect at once. Report: `2026-10-21-step7-multi-actor-tabs-steps/T5b.md`.*
 *Corrected 2026-10-22: since Step 6, `npm run build` also changes the daemon's build: the first client
 to connect hands the running daemon over, and every other client reconnects on 4002 without a
 handover; every Claude session in the wave needs `/mcp` (T4 changes the MCP bundle) — see as-built

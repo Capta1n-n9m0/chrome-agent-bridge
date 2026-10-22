@@ -90,6 +90,22 @@ export function resetFallbackWarnings(): void {
   warned.clear();
 }
 
+export const CDP_MINIMIZED_MESSAGE =
+  "Chrome's window is minimized, so CDP cannot capture the tab — restore the window, or call focusTab first";
+export const CDP_HIDDEN_MESSAGE =
+  "The tab is in the background of its window, and CDP cannot capture a hidden tab — use the default mode (it shows the tab briefly) or call focusTab first";
+
+/**
+ * `screenshot {mode:"cdp"}` refuses what Run 8 measured to hang until the call timed out (T5b fix 2;
+ * SCREEN-2 a background tab, SCREEN-4 a minimized window): a minimized window → `WINDOW_MINIMIZED`,
+ * else a tab that is not active in its window → `OFFSCREEN`. Null → go ahead. Pure.
+ */
+export function cdpCaptureRefusal(tab: { active?: boolean }, windowState: string | undefined): BridgeError | null {
+  if (windowState === "minimized") return new BridgeError(ErrorCodes.WINDOW_MINIMIZED, CDP_MINIMIZED_MESSAGE);
+  if (tab.active !== true) return new BridgeError(ErrorCodes.OFFSCREEN, CDP_HIDDEN_MESSAGE);
+  return null;
+}
+
 /** How long to wait for `onActivated` after switching to the target tab (plan 0.5). Never lower. */
 const ACTIVATION_WAIT_MS = 1000;
 /** One frame + paint after the activation, before capturing (plan 0.5). Never lower. */
@@ -102,13 +118,15 @@ const QUOTA_RE = /MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND/;
 /**
  * The longest one link holds its window's capture chain, counted from when the link started: the
  * daemon's default call timeout. A hung Chrome call must not wedge a window for the worker's
- * lifetime (spec §6.4: "a hung screenshot cannot wedge everyone"). Frees the chain only; the
- * caller's own promise and the restore are untouched.
+ * lifetime (spec §6.4: "a hung screenshot cannot wedge everyone"). If the link has switched tabs
+ * by then, the restore runs first (T5b fix 1); the caller's own promise is untouched.
  */
 const CHAIN_RELEASE_MAX_MS = 30_000;
 
 /** Per window: the tail of the capture chain (F19). Each link resolves once its restore settled. */
 const captureChains = new Map<number, Promise<void>>();
+/** Per window: how many `focusTab` calls touched it (T3 V4). A capture's restore compares it. */
+const focusEpoch = new Map<number, number>();
 /** The last reserved capture slot (epoch ms), across all windows (F10). */
 let lastSlot = Number.NEGATIVE_INFINITY;
 
@@ -138,15 +156,40 @@ export function activateForCapture(tab: chrome.tabs.Tab): Promise<string> {
   return prior.then(() => captureOnce(tab, release));
 }
 
+/**
+ * One link of the chain. The restore of the previous tab runs at most once, on whichever comes
+ * first: the capture settling (success or failure) after a switch, or `CHAIN_RELEASE_MAX_MS` expiring
+ * while switched (T5b fix 1: a capture hung by an occluded window no longer leaves the target tab in
+ * front). The chain is ALWAYS released no later than `CHAIN_RELEASE_MAX_MS` after the link started
+ * (spec §6.4), restore pending or not (T5b fixer F1): when the capture settles first, the chain is
+ * released once the restore settled (at once when none is due) or when the bound fires, whichever is
+ * first; when the bound fires first, it starts the restore if one is due and releases the chain at
+ * once, without waiting on it. The caller's promise is the capture's own outcome either way; the data
+ * URL never waits for the restore.
+ */
 async function captureOnce(tab: chrome.tabs.Tab, releaseChain: () => void): Promise<string> {
-  const bound = setTimeout(releaseChain, CHAIN_RELEASE_MAX_MS);
+  const windowId = tab.windowId;
+  let restore: (() => Promise<void>) | undefined;
+  let restoring: Promise<void> | undefined;
+  let released = false;
+  /** Starts the restore at most once; resolves when it settled (at once when none is due). */
+  const startRestore = (): Promise<void> => {
+    if (restore && !restoring) restoring = restore();
+    return restoring ?? Promise.resolve();
+  };
+  // Armed until the chain is released, so a hung restore cannot hold the chain past it (F1).
+  const bound = setTimeout(() => {
+    void startRestore();
+    release();
+  }, CHAIN_RELEASE_MAX_MS);
   const release = (): void => {
+    if (released) return;
+    released = true;
     clearTimeout(bound);
     releaseChain();
   };
-  let restored: Promise<unknown> = Promise.resolve();
   try {
-    const win = await chrome.windows.get(tab.windowId);
+    const win = await chrome.windows.get(windowId);
     if (win.state === "minimized") {
       throw new BridgeError(
         ErrorCodes.WINDOW_MINIMIZED,
@@ -154,17 +197,34 @@ async function captureOnce(tab: chrome.tabs.Tab, releaseChain: () => void): Prom
       );
     }
     await reserveCaptureSlot();
-    const [prev] = await chrome.tabs.query({ active: true, windowId: tab.windowId });
+    const [prev] = await chrome.tabs.query({ active: true, windowId });
     const switching = prev?.id !== tab.id;
-    try {
-      if (switching) await showTab(tab.id!);
-      return await captureWithRetry(tab.windowId);
-    } finally {
-      // Not awaited for the result; errors swallowed (the previous tab may have closed meanwhile).
-      if (switching && prev?.id !== undefined) restored = chrome.tabs.update(prev.id, { active: true }).catch(() => {});
+    if (switching && prev?.id !== undefined) {
+      const prevId = prev.id;
+      const epoch = focusEpoch.get(windowId) ?? 0;
+      restore = () => restorePrevious(windowId, tab.id!, prevId, epoch);
     }
+    if (switching) await showTab(tab.id!);
+    return await captureWithRetry(windowId);
   } finally {
-    void restored.then(release, release);
+    void startRestore().then(release);
+  }
+}
+
+/**
+ * Re-activates `prevId`, but only while the switch is still what the window shows (T3 V4): the
+ * window's active tab, read fresh, is still `targetId`, and no `focusTab` touched the window since
+ * the switch (`noteFocus`). Never rejects: the previous tab may have closed meanwhile.
+ */
+async function restorePrevious(windowId: number, targetId: number, prevId: number, epoch: number): Promise<void> {
+  const untouched = (): boolean => (focusEpoch.get(windowId) ?? 0) === epoch;
+  try {
+    if (!untouched()) return;
+    const [now] = await chrome.tabs.query({ active: true, windowId });
+    if (now?.id !== targetId || !untouched()) return;
+    await chrome.tabs.update(prevId, { active: true });
+  } catch {
+    // swallowed
   }
 }
 
@@ -212,9 +272,18 @@ async function captureWithRetry(windowId: number): Promise<string> {
   }
 }
 
-/** Test hook: forget the capture chains and the last capture slot. */
+/**
+ * `focusTab` calls this for the window it focuses, before it changes anything: a capture that switched
+ * that window earlier then leaves the human's (or the actor's) choice alone instead of restoring.
+ */
+export function noteFocus(windowId: number): void {
+  focusEpoch.set(windowId, (focusEpoch.get(windowId) ?? 0) + 1);
+}
+
+/** Test hook: forget the capture chains, the last capture slot and the focus counters. */
 export function resetCaptureState(): void {
   captureChains.clear();
+  focusEpoch.clear();
   lastSlot = Number.NEGATIVE_INFINITY;
 }
 

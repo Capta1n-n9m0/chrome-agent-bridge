@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { activateForCapture, resetCaptureState } from "../src/tabs.js";
+import { activateForCapture, noteFocus, resetCaptureState } from "../src/tabs.js";
+import { focusTab } from "../src/handlers/tabs.js";
 import { BridgeError } from "../src/errors.js";
 
 type Tab = { id: number; windowId: number; active: boolean };
@@ -328,5 +329,222 @@ describe("activateForCapture (plan 0.5, F10, F19)", () => {
     await vi.advanceTimersByTimeAsync(5000); // not runAllTimers, which would fire the 30 s bound itself
     await p;
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe("activateForCapture: the restore of a capture that fails or hangs (T5b fix 1; T3 V4)", () => {
+  const updates = (log: string[], id: number) => log.filter((l) => l.startsWith(`update ${id} `));
+
+  it("a hung capture re-activates the previous tab at the 30 s bound, and the caller's promise stays pending", async () => {
+    const { log, tabs } = fakeChrome({ capture: () => new Promise<string>(() => {}) });
+    const start = Date.now();
+    const a = activateForCapture(tab(12, 1));
+    let aSettled = false;
+    void a.then(() => (aSettled = true), () => (aSettled = true));
+    await vi.advanceTimersByTimeAsync(29_999);
+    expect(updates(log, 11)).toHaveLength(0);
+    expect(tabs.find((t) => t.id === 12)!.active).toBe(true);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(updates(log, 11)).toHaveLength(1);
+    expect(timeOf(log, "update 11") - start).toBe(30_000);
+    expect(tabs.find((t) => t.id === 11)!.active).toBe(true);
+    expect(aSettled).toBe(false);
+  });
+
+  it("the hung capture's restore runs once, even when the capture resolves later", async () => {
+    let resolveCapture!: (v: string) => void;
+    const { log } = fakeChrome({ capture: () => new Promise<string>((r) => (resolveCapture = r)) });
+    const a = activateForCapture(tab(12, 1));
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(updates(log, 11)).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(10_000);
+    resolveCapture("data:image/png;base64,late");
+    expect(await a).toBe("data:image/png;base64,late");
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(updates(log, 11)).toHaveLength(1);
+  });
+
+  it("when the bound fires first it starts the restore and releases the chain at once, not after the restore (F1)", async () => {
+    let n = 0;
+    const { chrome, log } = fakeChrome({
+      capture: () => {
+        n += 1;
+        return n === 1 ? new Promise<string>(() => {}) : Promise.resolve("data:image/png;base64,next");
+      },
+    });
+    const real = chrome.tabs.update.getMockImplementation()!;
+    chrome.tabs.update.mockImplementation(async (id: number, props: { active?: boolean }) => {
+      if (id === 11) await new Promise((r) => setTimeout(r, 3000)); // the restore is slow
+      return real(id, props);
+    });
+    const start = Date.now();
+    void activateForCapture(tab(12, 1));
+    const b = activateForCapture(tab(13, 1));
+    await vi.advanceTimersByTimeAsync(29_999);
+    expect(log.filter((l) => l.startsWith("windows.get"))).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(log.filter((l) => l.startsWith("windows.get"))).toHaveLength(2);
+    expect(timeOf(log, "windows.get", 1) - start).toBe(30_000); // and did not hold the chain
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(timeOf(log, "update 11") - start).toBe(33_000); // the slow restore started at the bound, landed 3 s later
+    expect(await b).toBe("data:image/png;base64,next");
+  });
+
+  it("V-WEDGE: a capture that settled, then a restore whose tabs.update hangs, frees the chain 30 s after the link started (F1)", async () => {
+    const { chrome, log } = fakeChrome();
+    const real = chrome.tabs.update.getMockImplementation()!;
+    chrome.tabs.update.mockImplementation(async (id: number, props: { active?: boolean }) => {
+      if (id === 11) {
+        log.push(`update 11 @${Date.now()}`);
+        return new Promise(() => {}); // the restore hangs forever
+      }
+      return real(id, props);
+    });
+    const start = Date.now();
+    const a = activateForCapture(tab(12, 1));
+    const b = activateForCapture(tab(13, 1));
+    let bDone = false;
+    void b.then(() => (bDone = true), () => (bDone = true));
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(await a).toBe("data:image/png;base64,12");
+    expect(log.filter((l) => l.startsWith("windows.get"))).toHaveLength(1); // still held by the restore
+    await vi.advanceTimersByTimeAsync(24_999);
+    expect(log.filter((l) => l.startsWith("windows.get"))).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(log.filter((l) => l.startsWith("windows.get"))).toHaveLength(2);
+    expect(timeOf(log, "windows.get", 1) - start).toBe(30_000);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(bDone).toBe(true);
+    expect(updates(log, 11)).toHaveLength(1); // the bound does not start the settled link's restore again
+  });
+
+  it("V-WEDGE-Q: a restore whose fresh tabs.query hangs still frees the chain at 30 s (F1)", async () => {
+    const { chrome, log } = fakeChrome();
+    const real = chrome.tabs.query.getMockImplementation()!;
+    let n = 0;
+    chrome.tabs.query.mockImplementation(async (q: { active?: boolean; windowId?: number }) => {
+      n += 1;
+      if (n === 2) return new Promise(() => {}); // the first link's restore re-read hangs
+      return real(q);
+    });
+    const start = Date.now();
+    const a = activateForCapture(tab(12, 1));
+    const b = activateForCapture(tab(13, 1));
+    let bDone = false;
+    void b.then(() => (bDone = true), () => (bDone = true));
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(await a).toBe("data:image/png;base64,12");
+    await vi.advanceTimersByTimeAsync(25_000);
+    expect(log.filter((l) => l.startsWith("windows.get"))).toHaveLength(2);
+    expect(timeOf(log, "windows.get", 1) - start).toBe(30_000);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(bDone).toBe(true);
+  });
+
+  it("a hung capture whose bound-started restore also hangs: the next capture still starts at 30 s (F1)", async () => {
+    let n = 0;
+    const { chrome, log } = fakeChrome({
+      capture: () => {
+        n += 1;
+        return n === 1 ? new Promise<string>(() => {}) : Promise.resolve("data:image/png;base64,next");
+      },
+    });
+    const real = chrome.tabs.update.getMockImplementation()!;
+    let restoreCalls = 0;
+    chrome.tabs.update.mockImplementation(async (id: number, props: { active?: boolean }) => {
+      if (id === 11 && ++restoreCalls === 1) {
+        log.push(`update 11 @${Date.now()}`);
+        return new Promise(() => {}); // the first link's restore hangs forever
+      }
+      return real(id, props);
+    });
+    const start = Date.now();
+    const a = activateForCapture(tab(12, 1));
+    let aSettled = false;
+    void a.then(() => (aSettled = true), () => (aSettled = true));
+    const b = activateForCapture(tab(13, 1));
+    await vi.advanceTimersByTimeAsync(29_999);
+    expect(log.filter((l) => l.startsWith("windows.get"))).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(timeOf(log, "update 11") - start).toBe(30_000);
+    expect(log.filter((l) => l.startsWith("windows.get"))).toHaveLength(2);
+    expect(timeOf(log, "windows.get", 1) - start).toBe(30_000);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(await b).toBe("data:image/png;base64,next");
+    expect(aSettled).toBe(false);
+  });
+
+  it("a capture that fails after the switch restores the previous tab", async () => {
+    const { log, tabs } = fakeChrome({ capture: async () => Promise.reject(new Error("Cannot access contents of the page")) });
+    const a = activateForCapture(tab(12, 1));
+    a.catch(() => {});
+    await vi.advanceTimersByTimeAsync(5000);
+    await expect(a).rejects.toThrow("Cannot access contents of the page");
+    expect(updates(log, 11)).toHaveLength(1);
+    expect(tabs.find((t) => t.id === 11)!.active).toBe(true);
+  });
+
+  it("no restore when the window's active tab changed meanwhile (the human picked another tab)", async () => {
+    const f = fakeChrome({
+      capture: async () => {
+        for (const t of f.tabs) if (t.windowId === 1) t.active = t.id === 13;
+        return "data:image/png;base64,12";
+      },
+    });
+    const a = activateForCapture(tab(12, 1));
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(await a).toBe("data:image/png;base64,12");
+    expect(updates(f.log, 11)).toHaveLength(0);
+    expect(f.tabs.find((t) => t.id === 13)!.active).toBe(true);
+  });
+
+  it("no restore at the bound when the active tab changed during a hung capture", async () => {
+    const f = fakeChrome({ capture: () => new Promise<string>(() => {}) });
+    void activateForCapture(tab(12, 1));
+    await vi.advanceTimersByTimeAsync(10_000);
+    for (const t of f.tabs) if (t.windowId === 1) t.active = t.id === 13;
+    await vi.advanceTimersByTimeAsync(25_000);
+    expect(updates(f.log, 11)).toHaveLength(0);
+    expect(f.tabs.find((t) => t.id === 13)!.active).toBe(true);
+  });
+
+  it("no restore when noteFocus touched the window since the switch, even if the target is still active", async () => {
+    const f = fakeChrome({
+      capture: async () => {
+        noteFocus(1); // focusTab on the target tab itself: the active tab is unchanged
+        return "data:image/png;base64,12";
+      },
+    });
+    const a = activateForCapture(tab(12, 1));
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(await a).toBe("data:image/png;base64,12");
+    expect(updates(f.log, 11)).toHaveLength(0);
+    expect(f.tabs.find((t) => t.id === 12)!.active).toBe(true);
+  });
+
+  it("noteFocus on another window, or before the switch, does not cancel the restore", async () => {
+    noteFocus(1); // before this capture switched
+    const f = fakeChrome({
+      capture: async () => {
+        noteFocus(2);
+        return "data:image/png;base64,12";
+      },
+    });
+    const a = activateForCapture(tab(12, 1));
+    await vi.advanceTimersByTimeAsync(5000);
+    await a;
+    expect(updates(f.log, 11)).toHaveLength(1);
+  });
+
+  it("focusTab on the target during a hung capture: the bound does not undo the focus (V4)", async () => {
+    const f = fakeChrome({ capture: () => new Promise<string>(() => {}) });
+    (f.chrome.tabs as Record<string, unknown>).get = vi.fn(async (id: number) => f.tabs.find((t) => t.id === id)!);
+    void activateForCapture(tab(12, 1));
+    await vi.advanceTimersByTimeAsync(10_000);
+    await focusTab({ tabId: 12 });
+    expect(f.chrome.windows.update).toHaveBeenCalledWith(1, { focused: true });
+    await vi.advanceTimersByTimeAsync(25_000);
+    expect(updates(f.log, 11)).toHaveLength(0);
+    expect(f.tabs.find((t) => t.id === 12)!.active).toBe(true);
   });
 });

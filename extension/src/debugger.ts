@@ -90,7 +90,10 @@ export async function fullPageScreenshot(tabId: number): Promise<string> {
   }, "Full-page screenshot");
 }
 
-/** The viewport of a tab through CDP (`mode:"cdp"`): works on a background tab, shows the banner. */
+/**
+ * The viewport of a tab through CDP (`mode:"cdp"`), shows the banner. Run 8 measured it hang on a
+ * background tab and on a minimized window, so the handler refuses those first (`cdpCaptureRefusal`).
+ */
 export async function viewportScreenshot(tabId: number): Promise<string> {
   return withDebugger(tabId, async () => {
     const result = (await send(tabId, "Page.captureScreenshot", { format: "png" })) as { data: string };

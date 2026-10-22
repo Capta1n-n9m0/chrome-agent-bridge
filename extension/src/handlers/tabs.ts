@@ -1,4 +1,4 @@
-import { asTabUnknown, humansTab, requireTabId, waitForLoad } from "../tabs.js";
+import { asTabUnknown, humansTab, noteFocus, requireTabId, waitForLoad } from "../tabs.js";
 import { BridgeError, ErrorCodes } from "../errors.js";
 
 interface ListedTab {
@@ -56,6 +56,8 @@ export async function focusTab(p: Record<string, unknown>): Promise<{ ok: true }
   const id = explicitTabId(p, "focusTab");
   try {
     const tab = await chrome.tabs.get(id);
+    // Before anything changes: a capture that switched this window must not undo the focus (T3 V4).
+    noteFocus(tab.windowId);
     if (tab.windowId >= 0) await chrome.windows.update(tab.windowId, { focused: true });
     await chrome.tabs.update(id, { active: true });
   } catch (err) {

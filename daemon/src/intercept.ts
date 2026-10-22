@@ -45,6 +45,8 @@ export interface TabLayerDeps {
   sendTo: (clientId: string, frame: EventMessage<object>) => void;
   log?: (msg: string) => void;
   now?: () => number;
+  /** The wait between url-fill polls (T5b fix 3). Default: `setTimeout`. */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 export interface StatusTab {
@@ -63,6 +65,24 @@ interface ListedTab {
 }
 
 type Params = Record<string, unknown>;
+
+/** An opener grant waiting for its `leaseGranted` event. `url` may be filled in later (T5b fix 3). */
+interface Grant {
+  handle: string;
+  clientId: string;
+  url: string;
+}
+
+/** T5b fix 3: how often, and for how long after `tabCreated`, the daemon polls a popup's url. */
+export const URL_FILL_POLL_MS = 100;
+export const URL_FILL_MAX_MS = 2000;
+/** One url-fill `listTabs` call's timeout. */
+const URL_FILL_CALL_MS = 1000;
+
+/** A url worth reporting: Chrome's `tabs.onCreated` gives a popup `""` or `about:blank` first. */
+function urlKnown(url: string): boolean {
+  return url !== "" && url !== "about:blank";
+}
 
 function clampTimeout(timeoutMs: number | undefined): number {
   return Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS, timeoutMs ?? DEFAULT_TIMEOUT_MS));
@@ -95,12 +115,14 @@ export class TabLayer {
    * turns out to have created the tab overrides the lease, and the held-back event is dropped.
    */
   private newTabsInFlight = 0;
-  private heldBackGrants: Array<{ handle: string; clientId: string; url: string }> = [];
+  private heldBackGrants: Grant[] = [];
+  private readonly sleep: (ms: number) => Promise<void>;
   /** tabId → client closing it (no `tabGone` to the closer). */
   private readonly closing = new Map<number, string>();
 
   constructor(private readonly deps: TabLayerDeps) {
     this.now = deps.now ?? Date.now;
+    this.sleep = deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.handles = new HandleTable({ now: this.now });
     this.lock = new VisibilityLock({ nameOf: (id) => this.name(id), now: this.now });
   }
@@ -154,10 +176,10 @@ export class TabLayer {
       this.handles.mint(p.tabId);
       this.handles.note(p.tabId, { url: p.url });
       if (p.openerTabId === undefined) return;
-      const grant = this.applyOpener(p);
+      const grant = this.applyOpener(p); // takes effect now (F20); only the event may wait
       if (!grant) return;
-      if (this.newTabsInFlight > 0) this.heldBackGrants.push(grant);
-      else this.sendLeaseGranted(grant);
+      if (urlKnown(grant.url)) this.deliverGrant(grant);
+      else void this.fillUrl(conn, p.tabId, grant).then(() => this.deliverGrant(grant));
     } else if (isTabRemovedEvent(frame)) {
       const p = frame.params;
       const last: { lastUrl?: string; lastTitle?: string } = {};
@@ -176,7 +198,7 @@ export class TabLayer {
    * The opener rule (0.3): a tab opened from a leased tab is granted to that tab's holder at once,
    * unless already leased. Returns the grant (for the `leaseGranted` event), or undefined.
    */
-  private applyOpener(p: TabCreatedParams): { handle: string; clientId: string; url: string } | undefined {
+  private applyOpener(p: TabCreatedParams): Grant | undefined {
     if (p.openerTabId === undefined) return undefined;
     const handle = this.handles.handleOf(p.tabId);
     if (!handle || this.leases.ownerOf(handle)) return undefined;
@@ -187,7 +209,55 @@ export class TabLayer {
     return { handle, clientId: owner.clientId, url: p.url };
   }
 
-  private sendLeaseGranted(g: { handle: string; clientId: string; url: string }): void {
+  /**
+   * T5b fix 3 (Run 8 LEASE-3; Stage 0 F33): Chrome's `tabs.onCreated` fires before a popup's url is
+   * set, and no event tells the daemon the url later. So poll the extension's `listTabs` — at once,
+   * then every `URL_FILL_POLL_MS` — until the tab's url is known or `URL_FILL_MAX_MS` passed since the
+   * event, and put the best url seen into `g.url` (a later non-empty value, else what the event had).
+   * Stops early when the extension socket changed, the tab is no longer listed, or the grant no longer
+   * stands. Never rejects. The handle cache learns the url through `record`.
+   */
+  private async fillUrl(conn: ExtensionConnection, tabId: number, g: Grant): Promise<void> {
+    const deadline = this.now() + URL_FILL_MAX_MS;
+    for (;;) {
+      if (this.deps.bridge.currentConnection() !== conn || !this.grantStands(g)) return;
+      let result: unknown;
+      let ok = true;
+      try {
+        result = await conn.call("listTabs", undefined, { timeoutMs: URL_FILL_CALL_MS });
+      } catch {
+        ok = false;
+      }
+      if (this.deps.bridge.currentConnection() !== conn) return;
+      if (ok) {
+        const tab = this.record(result).find((t) => t.id === tabId);
+        if (!tab) return; // gone (its tabRemoved drops the lease)
+        if (typeof tab.url === "string" && tab.url !== "") g.url = tab.url;
+        if (urlKnown(g.url)) return;
+      }
+      const left = deadline - this.now();
+      if (left <= 0) return;
+      await this.sleep(Math.min(URL_FILL_POLL_MS, left));
+    }
+  }
+
+  /** Send the grant's event now, or hold it back while a `newTab` is in flight (F20). */
+  private deliverGrant(g: Grant): void {
+    if (this.newTabsInFlight > 0) this.heldBackGrants.push(g);
+    else if (this.grantStands(g)) this.sendLeaseGranted(g);
+  }
+
+  /**
+   * The opener grant still stands: not overridden by a `newTab`, not released, and its holder still
+   * connected (a disconnect already dropped the lease).
+   */
+  private grantStands(g: Grant): boolean {
+    const owner = this.leases.ownerOf(g.handle);
+    if (!owner || owner.clientId !== g.clientId || owner.reason !== "opener") return false;
+    return this.deps.nameOf(g.clientId) !== undefined;
+  }
+
+  private sendLeaseGranted(g: Grant): void {
     const frame: EventMessage<LeaseGrantedParams> = { event: "leaseGranted", params: { tab: g.handle, reason: "opener", url: g.url } };
     this.deps.sendTo(g.clientId, frame);
   }
@@ -441,14 +511,7 @@ export class TabLayer {
       if (this.newTabsInFlight === 0) {
         const held = this.heldBackGrants;
         this.heldBackGrants = [];
-        for (const g of held) {
-          // Sent only if the opener grant still stands: not overridden by a newTab, not released,
-          // and its holder still connected (a disconnect already dropped the lease).
-          const owner = this.leases.ownerOf(g.handle);
-          if (!owner || owner.clientId !== g.clientId || owner.reason !== "opener") continue;
-          if (this.deps.nameOf(g.clientId) === undefined) continue;
-          this.sendLeaseGranted(g);
-        }
+        for (const g of held) if (this.grantStands(g)) this.sendLeaseGranted(g);
       }
     }
   }

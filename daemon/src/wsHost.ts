@@ -42,6 +42,8 @@ export interface WsHostOptions {
    * counts only — never a URL, title, header value, body or the token. Default: no log.
    */
   log?: (msg: string) => void;
+  /** The tab layer's wait between url-fill polls (T5b fix 3). Default `setTimeout`; tests inject one. */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 /** Counters for the daemon log (counts only — never URLs, header values, bodies or the token). */
@@ -138,6 +140,7 @@ export class WsHost implements RouteHost {
       },
       log: options.log,
       now: this.now,
+      sleep: options.sleep,
     });
   }
 
