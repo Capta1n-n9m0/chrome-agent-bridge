@@ -274,3 +274,20 @@ One section per stage, appended at stage close, never rewritten; corrections are
 ### Open decisions for the user
 - None new. Docs owed by T6/the propagator: spec §7 *Superseded* note on the cdp mode; stale comments
   on `ScreenshotMode` and `LeaseGrantedParams.url` in `shared/src/protocol.ts`.
+
+## RELOAD-AUTO, Run 9, BG-FLAGS (Run 10) · 2026-10-23
+
+- **RELOAD-AUTO** (15320a6, verifier PASS-with-notes): `recipes/reload-extension.ps1` reloads only the
+  Chrome Agent Bridge card by UI Automation in the driver's own window and verifies it (#64, #65).
+  Five reloads during the stage, every one the right button. Documented in `docs/e2e-test-plan.md` §1
+  item 9 and `docs/setup.md` §4.
+- **Run 9** (pre-registered b4ea752, results c99709a, verifier PASS-with-notes): PASS R9-RELOAD-1,
+  R9-SCREEN-4 (`WINDOW_MINIMIZED` 3 ms), R9-LEASE-3 (url after 45 ms; `TAB_HELD` 44 ms after the
+  click), R9-RESTORE (`TIMEOUT` 35 119 ms, previous tab back at +30 026 ms), R9-SCREEN-1 (flash
+  1588 / 1557 / 1556 ms, median 1557 ms), R9-SCREEN-3 (a)(b), R9-SCREEN-5, R9-RESOLVER-1. FAIL as
+  written (substance met; for the user): R9-SCREEN-2 (the positive control's cyan reads R = 151 > the
+  100 bound; the `OFFSCREEN` refusal itself 3 ms, no banner), R9-NET-1 (`12.8 KB`, `from cache: no`,
+  but `showing 2 of 2` — the hard reload re-fetched `favicon.ico`). The corrected SCREEN hue
+  thresholds were chosen knowing Run 8's readings (disclosed in the rows).
+- **BG-FLAGS / Run 10** (00249de, c2234d4): the anti-throttling flags do not change BG-1/BG-2 (#66);
+  Chrome quit by `chrome://quit` twice, session counts restored, final Chrome without flags.

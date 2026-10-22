@@ -41,6 +41,52 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-23 · Chrome's anti-throttling flags do not fix background input; Step 8 takes it from there (#66)
+**Decided:** Recorded as Step 8 input: with `--disable-renderer-backgrounding
+--disable-backgrounding-occluded-windows --disable-background-timer-throttling`, a trusted click and
+trusted typing into a background tab still answer `ok` in 12–15 ms and do nothing (Run 10, BGF-1/2
+FAIL, one trial each; BGF-3/4 controls PASS; both work after `focusTab`). Background throttling alone
+is not the cause; Step 8 measures focus emulation (#62 (4)) and sets its policy. The restart helpers
+(`recipes/bgf-*.ps1`) may be reused in a later wave only on a fresh user grant — #64 (2) covered this
+test only.
+**Why:** BG-FLAGS (commits 00249de, c2234d4); Chrome ended without the flags, session counts
+restored (1 window / 1 tab).
+**Instead of:** shipping the flags as a workaround.
+**Revisit if:** Step 8's focus-emulation measurement also fails.
+**By:** Claude
+
+### 2026-10-23 · Later extension reloads use `recipes/reload-extension.ps1` (#65)
+**Decided:** From now on a wave reloads the extension with `recipes/reload-extension.ps1` (its own
+`about:blank` window, `chrome://extensions` typed into its address bar, only the Chrome Agent Bridge
+card's `dev-reload-button` invoked by UI Automation, verified by the card's worker restart and a new
+`extension resync` line in `daemon.log`, window closed; exit 2 = pressed nothing on doubt), followed
+by the stale-extension check. The user's keyboard is needed for a reload only when the script exits
+non-zero.
+**Why:** RELOAD-AUTO (commit 15320a6) proved it: every scripted reload was followed by `CHECK PASS`
+and T5b's `OFFSCREEN` refusal in 2–3 ms; an independent verifier re-ran it; nothing else was pressed.
+Granted by the user (#64).
+**Instead of:** asking the user for every reload; a `chrome.runtime.reload()` bridge method (an
+extension change — a Step 8 candidate, useful only once the loaded extension already has it).
+**Revisit if:** Chrome changes the extensions page's accessibility tree, or the script ever exits 0
+without the check passing.
+**By:** Claude (on the user's grant #64)
+
+### 2026-10-23 · The driver may reload the extension by UI automation, and restart Chrome with flags for the background-input test (#64)
+**Decided:** The user grants two things that #33 kept with them: (1) the driver reloads Chrome Agent
+Bridge itself by UI automation — in a `chrome://extensions` window the driver opens, it presses only
+the reload button of the Chrome Agent Bridge card (no toggle, no remove, no Options, no token, no
+other extension), then proves the reload with the stale-extension check; the procedure is worked out
+by a dedicated step agent and written down as a reusable script and doc section; (2) Chrome may be
+restarted with command-line flags to test focus emulation for background input (BG-1/BG-2), closed
+gracefully (never killed) so the session restores, after Run 9.
+**Why:** the user (2026-10-23): "I won't be available to reload, please figure out how to do it using
+UI automation … It will be extremely valuable to figure out that procedure. Also to test cdp
+emulation we may restart chrome with proper flags."
+**Instead of:** stopping at G7-2 until the user can reload.
+**Revisit if:** the automation ever presses anything but the one reload button, or a restart loses
+the user's tabs.
+**By:** user
+
 ### 2026-10-23 · T5b's three fixes (#63)
 **Decided:** (1) A switch capture restores the window's previous tab at most once, when the capture
 settles or at the 30 s chain bound, unless the window's active tab is no longer the target or
