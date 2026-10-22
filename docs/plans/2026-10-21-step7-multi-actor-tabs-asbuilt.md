@@ -42,3 +42,37 @@ One section per stage, appended at stage close, never rewritten; corrections are
 
 ### Open decisions for the user
 - #37, #40, #41, #42, #46 (also under Open decisions in `docs/decisions.md`).
+
+## Stage T0 — types · 2026-10-22 · verifier: PASS-with-notes · commit 18520f9
+
+### Contracts (binding forward)
+- `shared/src/protocol.ts`: `TabCreatedParams {tabId, openerTabId?, url}`, `TabRemovedParams {tabId,
+  lastUrl?, lastTitle?}`, `TabReplacedParams {addedTabId, removedTabId}`, `TabGoneParams {tab,
+  lastUrl?, lastTitle?}`, `LeaseGrantedParams {tab, reason:"opener", url}`; guards
+  `isTabCreatedEvent` … `isLeaseGrantedEvent` on the unchanged `isEvent`; `ScreenshotMode`,
+  `SnapshotElement`, `SnapshotResult`; `ExtensionEventName`, `DaemonEventName`. Proof:
+  `shared/test/protocol-step7.test.ts` (58 tests; 48 fail with `protocol.ts` at HEAD).
+- `NetworkRequestsResult.text?` is optional and deprecated until T4 removes it (#49);
+  `mcp/src/tools/registry.ts:282` reads `out ?? ""` meanwhile.
+- `codes.ts`, `error.ts`, `isHello`, `fromWire` byte-identical; the #42 hello already passes `isHello`.
+- Daemon and extension bundles byte-identical to HEAD's: no build-id handover from T0.
+
+### Decisions taken
+- #49 (with its update: the one-line mcp grant), #50 guard rules, #51 `code` stays optional (open).
+
+### Deviations from the phase doc
+- `text` deprecated, not removed (#49; *Superseded* note on T0's checkbox).
+- The step agent did fix round 1 and the commit itself rather than through a fixer/builder (small,
+  mutation-checked, re-verified). Accepted; later briefs repeat that level-2 agents do the work.
+
+### Estimates vs actuals
+| Item | Estimate | Actual | Source |
+|---|---|---|---|
+| Wall time | 0.5 h (audit: ~10 min) | ~28 min incl. one escalation | agent runs |
+| Tests | ≥ 542 | 600 passed, 43 files | `npm test`, verifier clean worktree |
+
+### Needs the user's keyboard
+- Nothing.
+
+### Open decisions for the user
+- #51.

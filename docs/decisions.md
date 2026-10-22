@@ -29,6 +29,7 @@ Step 7 (2026-10-22 on):
    lease" (#41).
 4. "A stale extension is refused for tab calls, detected by its hello" (#42).
 5. "The formatters reach the MCP through a `@bridge/sdk/format` subpath" (#46).
+6. "v2 peers do not yet require `code`" (#51).
 
 Items 2–5 are contract-level, taken by the conservative rule from the Stage 0 audit
 (`docs/plans/2026-10-21-step7-multi-actor-tabs-steps/stage0-audit.md`); the run continues on them.
@@ -38,6 +39,40 @@ Items 2–5 are contract-level, taken by the conservative rule from the Stage 0 
 decisions" below.*
 
 ## Log
+
+### 2026-10-22 · v2 peers do not yet require `code` (#51)
+**Decided:** `WireError.code` stays optional and `fromWire` still maps a missing, non-string or empty
+code to `INTERNAL` — the D0 revisit ("Step 7 teaches the extension codes") answered with no change.
+**Why:** no pre-stated rule tightens it; a stale extension's v1 `{message}` must still arrive (Stage 0
+F22), and #42 already refuses such an extension for tab calls.
+**Instead of:** rejecting a v2 error without `code`.
+**Revisit if:** Step 8 removes the v1 and `activeTab()` fallbacks.
+**By:** Claude (contract-level, conservative rule; open for the user)
+
+### 2026-10-22 · T0's guard rules: strict on field types, lenient on extra fields (#50)
+**Decided:** The five Step 7 event guards (`shared/src/protocol.ts`) require their fields present and
+typed (tab ids by `Number.isInteger`), accept an absent or `undefined` optional field, reject `null`
+or a wrong type, and accept unknown fields. No `isScreenshotMode` guard: the daemon locks unless
+`mode === "cdp"` (or `fullPage`), so an unknown mode falls on the locking side. The content script's
+`{__bridgeError}` shape (#38) stays inside `extension/`, not in `shared/`.
+**Why:** the senders are our own code, so strictness surfaces bugs; JSON drops `undefined`, so
+in-process frames and wire frames agree; extra fields are accepted as `isHello` does.
+**Instead of:** `null` as absent; a mode guard; a shared error-marker type.
+**Revisit if:** T1 must send `null`, or an unknown `mode` must be `BAD_PARAMS`.
+**By:** Claude
+
+### 2026-10-22 · `NetworkRequestsResult.text` is deprecated in T0 and removed in T4 (#49)
+**Decided:** T0 makes `NetworkRequestsResult.text` optional and `@deprecated` instead of removing it;
+T4 removes it once T3 stops producing it and the MCP formats the entries.
+**Why:** removing it in T0 leaves every commit from T0 to T4 typecheck-red in `extension/` and
+`mcp/`, which empties T1's and T2's "typecheck green" checks (T0.1 permits the red, T1.1 does not).
+The end state is the plan's.
+**Instead of:** removing `text` in T0 and reading later checks as "green except the T0 consumers".
+**Revisit if:** a stage needs `text` gone earlier.
+**By:** Claude
+*Updated 2026-10-22: the optional field broke one line, `mcp/src/tools/registry.ts:282`; T0's lane
+was extended by that one line, `return text(out ?? "");` (behaviour identical, T4 deletes it),
+instead of keeping `text` required (T3 would hit the same line) or leaving typecheck red.*
 
 ### 2026-10-22 · Stage 0's check sharpenings and T5 PASS rules (#48)
 **Decided:** The Stage 0 audit's F25 rewrites are added to the pre-registered exit checks as
