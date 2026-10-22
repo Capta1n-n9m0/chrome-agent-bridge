@@ -76,3 +76,44 @@ One section per stage, appended at stage close, never rewritten; corrections are
 
 ### Open decisions for the user
 - #51.
+
+## Stage T1 — extension: `tabId`, codes, events · 2026-10-22 · verifier: PASS-with-notes · commit 0240c7c
+
+### Contracts (binding forward)
+- Every handler targets `targetTab(p, method)`: integer `tabId` → that tab; non-integer → `BAD_PARAMS`;
+  "No tab with id" → `TAB_UNKNOWN`; absent → one warning per method (method name only), then the
+  human's tab (`humansTab()` = `windows.getLastFocused({windowTypes:["normal"]})` → active tab, #43;
+  no normal window → `NO_NORMAL_WINDOW` text naming DevTools/popup). `closeTab`/`selectTab` read
+  `tabId ?? id` and never fall back. `grep -rn "activeTab()" extension/src/handlers` is empty.
+- Errors: `{code, message, data?}` from `router.ts`; page functions return
+  `{__bridgeError:"CODE:message"}` (`content/guard.ts`), `unwrapResult` keeps null/undefined →
+  `REF_STALE` (#38); `describeDebuggerError` → `{code, message}`, every message byte-identical.
+- Events `tabCreated`/`tabRemoved`/`tabReplaced` (T0 shapes, no `null`) from listeners at column 1 in
+  `sw.ts`, through the offscreen relay; `TabInfoCache` refilled by a non-awaited `tabs.query({})`
+  (no `storage.session`, F16).
+- Hello `{type:"hello", token, role:"extension", proto:2}` — accepted by the Step 6 daemon's
+  `parseHello` (verifier).
+- `listTabs` adds `current: true` on the human's tab only. Network scope: `tabId` → `scope:"all"` →
+  legacy `tab` → fallback (#52, #54).
+- Fixture: `<a id="open-popup" … target="_blank">`; 13 106 bytes, LF.
+
+### Decisions taken
+- #52 (extension half), #54, #55, #56.
+
+### Deviations from the phase doc
+- T1.6 / G7-1 deferred to T5 (user away); also deferred: the offscreen relay's live event frame, the
+  DevTools-focused resolver check, ACT-8's text, whether a synthetic click on the popup link sets
+  `openerTabId` (LEASE-3 should try `trusted:true`).
+- T3.3 sharpened (#55); NET-1 expected text moves to `12.8 KB` (#56, T5 writes the note).
+
+### Estimates vs actuals
+| Item | Estimate | Actual | Source |
+|---|---|---|---|
+| Wall time | 2.5 h (audit ~60 min) | ~45 min | agent run |
+| Tests | ≥ 600 + new | 671 / 46 files (verifier worktree), then +5 in fix round 1 → 676 / 47 | T1 report |
+
+### Needs the user's keyboard
+- The extension reload (G7-1), deferred to the T5 wave.
+
+### Open decisions for the user
+- None new (#54 listed under T2's stage when it closes).

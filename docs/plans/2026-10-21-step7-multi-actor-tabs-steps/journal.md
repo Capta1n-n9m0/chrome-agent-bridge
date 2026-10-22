@@ -16,3 +16,6 @@ Times are UTC from `date -u`.
 - 2026-10-22T12:57:34Z · T0 dispatched (HEAD 546e2f1). Ruling #49 in its brief (`text` deprecated, removed in T4).
 - 2026-10-22T13:04:48Z · T0 escalated: #49 made mcp/src/tools/registry.ts:282 red. Ruled option (a): one-line `?? ""` lane grant (#49 updated). T0 resumed for verify + commit.
 - 2026-10-22T13:19:13Z · T0 closed: DONE, PASS-with-notes, 18520f9, 600 tests / 43 files. Decisions #50, #51 (#51 open). Deviation accepted: step agent fixed and committed itself. T1 ∥ T2 next.
+- 2026-10-22T13:19:59Z · T1 (extension) and T2 (daemon) dispatched in parallel (HEAD 9322f24). Parallel-stage rules and the no-main-tree-build rule (#41 (B)) added to briefs/common.md. G7-1 recorded as deferred to T5 in T1's brief (user away).
+- 2026-10-22T13:26:21Z · T2 escalated before building (3 items). Ruled #52 (scope:"all" to the extension, sent to T1 in flight; two Step 6 test fakes speak proto:2, one-file mcp/test grant), #53 (selectTab takes the lock), #54 (amends #40: bare number = legacy id). T2 resumed.
+- 2026-10-22T14:05:07Z · T1 closed: DONE, PASS-with-notes, 0240c7c, 676 tests / 47 files (extension suite re-run after fix round 1; full suite to be re-measured by T2's verifier). G7-1 deferred to T5. Decisions #55, #56; T3.3 sharpened. T2 informed of T1's facts; still running.

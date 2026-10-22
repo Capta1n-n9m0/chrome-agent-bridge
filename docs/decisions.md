@@ -30,6 +30,7 @@ Step 7 (2026-10-22 on):
 4. "A stale extension is refused for tab calls, detected by its hello" (#42).
 5. "The formatters reach the MCP through a `@bridge/sdk/format` subpath" (#46).
 6. "v2 peers do not yet require `code`" (#51).
+7. "A bare number in a network `tab` is a legacy Chrome id, not `BAD_PARAMS`" (#54).
 
 Items 2–5 are contract-level, taken by the conservative rule from the Stage 0 audit
 (`docs/plans/2026-10-21-step7-multi-actor-tabs-steps/stage0-audit.md`); the run continues on them.
@@ -39,6 +40,65 @@ Items 2–5 are contract-level, taken by the conservative rule from the Stage 0 
 decisions" below.*
 
 ## Log
+
+### 2026-10-22 · NET-1's expected size follows the fixture to `12.8 KB` (#56)
+**Decided:** T1's popup link grew `test-fixtures/e2e-playground.html` from 12 914 to 13 106 bytes, so
+NET-1's expected `12.6 KB` becomes `12.8 KB` (13 106 / 1024 = 12.80). T5 writes the dated note in
+`docs/e2e-test-plan.md` before the run.
+**Why:** the size is the served `Content-Length` (#35); the fixture change was decided ("Step 7 T1
+adds the fixture's "open popup" button"). Corrected from the byte count before any run, not from a
+result.
+**Instead of:** keeping `12.6 KB` and failing T5.3 on a planned fixture change.
+**Revisit if:** the fixture changes again before T5.
+**By:** Claude
+
+### 2026-10-22 · T1's extension details (#55)
+**Decided:** "No tab with id" from the extension is `TAB_UNKNOWN` (phase-doc 0.1); the daemon answers
+`TAB_GONE` from its handle table. `listTabs` marks the human's tab with `current: true` (omitted
+elsewhere); `active` keeps its per-window meaning. An unknown method gets `UNKNOWN_METHOD`
+(message unchanged). Until T3, a viewport screenshot of an explicit background `tabId` is refused
+rather than capturing another tab's pixels. `PAGE_ERROR.data` is `{name, stack?}` with `stack` capped
+at 8 lines / 2000 characters. `describeDebuggerError` recognises our errors by `name ===
+"BridgeError"` and a string `code`. The no-normal-window message lives in `errors.ts`, and T3.3 gains
+`grep -nE "focused\s*:" extension/src/tabs.ts extension/src/errors.ts` → nothing (dated note).
+**Why:** T1's report; each is additive or stricter, and every existing message text is unchanged.
+**Instead of:** `TAB_GONE` from the extension; redefining `active`; `INTERNAL` for unknown methods;
+capturing the visible tab for a background `tabId`.
+**Revisit if:** T3 lands `activateForCapture` (removes the screenshot refusal); T4 wants
+`current:false` on every tab.
+**By:** Claude
+
+### 2026-10-22 · A bare number in a network `tab` is a legacy Chrome id, not `BAD_PARAMS` (#54)
+**Decided:** Amends #40. On the network methods a numeric `tab` (a Step 6 client's form) is resolved
+to its handle and lease-checked exactly like `closeTab`/`selectTab` with an `id` under #41, forwarded
+as numeric `tabId`, logged once per client with no URL; an unknown id → `TAB_UNKNOWN`. Step 8 S2
+removes it with the rest of the legacy path.
+**Why:** read literally, #40 would break a running Step 6 MCP's numeric network form, which #41
+exists to prevent; the lease check keeps it as strict (T2 escalation item 4).
+**Instead of:** `BAD_PARAMS` for any number.
+**Revisit if:** Step 8 S2 lands.
+**By:** Claude (contract-level, conservative rule; open for the user)
+
+### 2026-10-22 · `selectTab` takes the visibility lock, like `focusTab` (#53)
+**Decided:** The daemon puts `selectTab` in the same lock class as `focusTab`.
+**Why:** it is an alias of `focusTab` for one release ("selectTab stays as an alias of focusTab for
+one release"); outside the lock it would change the screen under a capture. The stricter choice.
+**Instead of:** leaving it out of the lock list because 0.4 names only `screenshot` and `focusTab`.
+**Revisit if:** the alias is removed (Step 8 S2).
+**By:** Claude
+
+### 2026-10-22 · The daemon sends the network "all" scope as `scope`, and two Step 6 test fakes speak the new hello (#52)
+**Decided:** (1) Because the daemon never forwards a `tab` key (T2.3), it sends the network "all" scope
+as `{scope:"all"}`; T1's `resolveScope` reads it and still accepts the old `tab:"all"` from a Step 6
+daemon. (2) Under #42 two Step 6 tests' fake extensions say v1: `daemon/test/multiplex.test.ts`'s
+in-flight test sends a method outside the table instead of `snapshot` (assertions byte-identical,
+dated note), and `mcp/test/extension-down.test.ts`'s fake (one-file grant to T2) sends
+`role:"extension", proto:2` and answers `listTabs`; new tests pin `VERSION` for a v1 extension.
+**Why:** T2's escalation: no stage owned the extension half of F3, and #42 (correctly) refuses the
+fakes' v1 hello. The tests' intent and asserted text are unchanged.
+**Instead of:** forwarding legacy calls on a v1 extension without resolving them (loosens a lease).
+**Revisit if:** another Step 6 test needs an edit beyond its fake's hello.
+**By:** Claude
 
 ### 2026-10-22 · v2 peers do not yet require `code` (#51)
 **Decided:** `WireError.code` stays optional and `fromWire` still maps a missing, non-string or empty

@@ -529,6 +529,10 @@ step's baseline is Step 6's closing test count (recorded in Step 6's as-built) a
   absent — the walk does not enter closed roots (`snapshot.ts`).*
 - T3.3 `grep -n "focused" extension/src/tabs.ts` returns nothing; `grep -n "focused" extension/src/handlers/tabs.ts`
   appears only in `focusTab`.
+  *Sharpened 2026-10-22 (T1, decisions.md · 2026-10-22 · T1's extension details (#55)): T1 put the
+  no-normal-window error text, which contains the word "focused", in `extension/src/errors.ts`; in
+  addition `grep -nE "focused\s*:" extension/src/tabs.ts extension/src/errors.ts` returns nothing (no
+  focus key outside `focusTab`).*
 - T3.4 `grep -n "active: true" extension/src/handlers/tabs.ts` appears only in `focusTab` (and
   `newTab` only when `p.active` is true).
 - T3.5 `sw.ts` registers `focusTab`, and `selectTab` resolves to the same handler (alias). *Settled
