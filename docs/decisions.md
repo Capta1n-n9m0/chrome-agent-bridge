@@ -41,6 +41,17 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-22 · BG-1/BG-2's focus-emulation retry cannot run in this wave; T5.2 reports it unmet if they fail (#61)
+**Decided:** No bridge method sends `Emulation.setFocusEmulationEnabled`, and a wave may not change
+the extension. If BG-1 or BG-2 fails, the row records its text and "focus-emulation retry: not run",
+and T5.2's retry clause is reported as NOT met in the gate checklist — not re-tuned, not waived. The
+retry returns as a proposed decision for Step 8 (a CDP pass-through or a `focusEmulation` option for
+trusted input). If both pass, nothing is affected.
+**Why:** T5.2 is pre-registered; the honest record is "unmet", decided before the run.
+**Instead of:** adding a method mid-wave, or dropping the clause.
+**Revisit if:** Step 8 adds the option.
+**By:** Claude
+
 ### 2026-10-22 · Which rows T5.3 counts as regression rows (#60)
 **Decided:** T5.3 ("the regression rows pass with the same expected text as their last recorded
 run") applies to rows whose behaviour Step 7 does not change by design. Rows whose expected text T4
