@@ -162,3 +162,40 @@ One section per stage, appended at stage close, never rewritten; corrections are
 ### Open decisions for the user
 - #54. Follow-up proposal (not decided): a session marker in the extension's hello so the daemon can
   retire handles when Chrome restarts and reuses tab ids (T2 verifier V4).
+
+## Stage T3 — extension: data not text, screenshot modes, `focusTab` · 2026-10-22 · verifier: PASS-with-notes · commit 43c0a53
+
+### Contracts (binding forward)
+- `buildSnapshot` → `SnapshotResult {url, title, elements, truncated}` (field meanings: #58); the
+  `hasLayout` gate kept; no password value on the wire. `networkRequests` returns no `text`.
+- `screenshot {mode}`: default switch mode via `activateForCapture` (minimized → `WINDOW_MINIMIZED`
+  before any switch; no window focus; 1000 ms activation wait and 50 ms frame wait unchanged; 500 ms
+  capture spacing; one quota retry; per-window chain bounded at 30 s); `mode:"cdp"`; `fullPage` read
+  as truthy, matching the daemon's lock decision.
+- `newTab` opens in the background unless `active:true`; `focusTab` is the only call that focuses a
+  window; `selectTab` is the same handler. `listTabs` adds `windowId` and `openerTabId`.
+- T4.2's baseline: capture in a worktree of `51de800` (T3's parent).
+
+### Decisions taken
+- #58.
+
+### Deviations from the phase doc
+- No test deleted: 38 snapshot text assertions became element assertions; their list is handed to T4
+  (T3 report) for the formatter tests. T1's background-screenshot refusal test replaced one for one.
+- Pre-existing, left unchanged for the baseline: frames nested inside a same-origin frame are never
+  entered.
+
+### Estimates vs actuals
+| Item | Estimate | Actual | Source |
+|---|---|---|---|
+| Wall time | 2.5 h (audit ~40 min) | ~44 min of agent time over the pause | agent runs |
+| Tests | ≥ 748 | 793 passed / 53 files | verifier clean worktree |
+
+### Needs the user's keyboard
+- The extension reload, at T5. Until T4 lands and the reload, `browser_snapshot` would print
+  `undefined` and the network tool an empty string — nothing is built in the main tree, so no live
+  session sees it.
+
+### Open decisions for the user
+- None new. Open NIT/MINOR: T3 verifier V4 (a timed-out capture's restore can undo a later
+  `focusTab`) — a T5 watch item.

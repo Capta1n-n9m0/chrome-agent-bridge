@@ -41,6 +41,26 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-22 · T3's snapshot fields and capture rules (#58)
+**Decided:** Snapshot elements (0.7): `depth` counts listed ancestors across open shadow roots and
+frames; `frame` is the 1-based order of entered same-origin frames (absent at top level); `disabled`
+only as `true`; `checked` for checkbox/radio/switch/menuitemcheckbox/menuitemradio; `expanded` from
+`aria-expanded` or `<details open>`; `selected` from `<option>`/`aria-selected`; `href` resolved;
+`value` for text inputs, textareas, spinbutton, slider and `<select>`, capped at 120 characters,
+never for a password input; kinds tested by tag name. `activateForCapture`: the minimized check
+first; the 500 ms capture slot reserved before the switch; one retry on Chrome's capture-quota error;
+a per-window chain released when the restore settles or 30 s after it started; `fullPage` read as
+truthy, exactly as the daemon's `takesLock` reads it (verifier V1: `fullPage: 1` switched tabs
+without the lock). `selectTab` is the same handler as `focusTab`.
+**Why:** T3's report; 0.7 named the fields but not their meaning; a password must not go on the
+wire; Stage 0 F10/F19.
+**Instead of:** DOM depth; a 0-based frame index; spacing measured between captures; an unbounded
+chain; `fullPage === true`.
+**Revisit if:** T4.2's byte-identical test needs another field meaning; SCREEN-3 sees a quota error
+the retry cannot absorb; T3 verifier V4 (a timed-out capture's restore undoing a later `focusTab`)
+shows up live.
+**By:** Claude
+
 ### 2026-10-22 · T2's daemon details (#57)
 **Decided:** The fourteen proposals of T2's report (`…-steps/T2.md` § Proposed decisions), in short:
 `tabReplaced` onto a handled tab keeps the leased handle; `closeTab`/`selectTab`/`focusTab` with
