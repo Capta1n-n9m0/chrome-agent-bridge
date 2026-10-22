@@ -253,6 +253,9 @@ log and exit codes (§ D3); `browser_status` lines (§ D5, D5b). Step 7 re-exami
 
 ## Open decisions (for the user at G6-2)
 
+*Ratified 2026-10-22 (decisions.md · 2026-10-22 · The user rules on the seven Step 6 open decisions): all seven as built; if MUX-7 fails, the
+double spawn is a Step 7 prerequisite.*
+
 decisions.md · 2026-10-22: #13 no welcome → `VERSION`; #14 the detached daemon vs `taskkill /T`
 (MUX-7 measures it); #15 non-4002 close handling; #21 configuration failures as `NOT_CONNECTED`;
 #22 no handover on a 4002 reconnect; #24 `BridgeClient` getters and `on("reconnected")`;
@@ -297,4 +300,5 @@ decisions.md · 2026-10-22: #13 no welcome → `VERSION`; #14 the detached daemo
 `mcp/dist/index.js` and `npm run build` was run; other machines follow `docs/setup.md` §3 "Upgrading
 a machine that ran the bridge before Step 6". Item 3, the D6 wave, is **deferred by the user to a
 later session** (wave W1 in `docs/plans/handoffs.md`). Item 4, the push, is done. The open decisions
-are written up for review in `docs/plans/2026-10-22-step6-open-decisions-review.md`.
+are written up for review in `docs/plans/2026-10-22-step6-open-decisions-review.md`, and the user
+ratified all seven the same day (decisions.md · 2026-10-22 · The user rules on the seven Step 6 open decisions).

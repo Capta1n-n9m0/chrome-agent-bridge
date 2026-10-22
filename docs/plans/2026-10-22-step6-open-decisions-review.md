@@ -1,7 +1,15 @@
 # Step 6 — open decisions for review
 
 **Written:** 2026-10-22, at the close of Step 6's autonomous part · **For:** the user · **Status:**
-awaiting review. Nothing here blocks the code: each decision is already built in its proposed form
+reviewed 2026-10-22 — all seven ratified (decisions.md · 2026-10-22 · The user rules on the seven Step 6 open decisions).
+*Superseded 2026-10-22: was "awaiting review".*
+
+**Outcome.** The user kept every proposed option. Two rulings add to it: for #1, no work goes into
+coexisting with a pre-Step-6 bridge — every machine is upgraded, and the revisit rule stands; for #2,
+if MUX-7 fails, option B (the double spawn) is built as a Step 7 prerequisite. The decisions taken
+under delegated authority are ratified too.
+
+**Before the review:** Nothing here blocks the code: each decision is already built in its proposed form
 under the conservative rule of the `long-run` contract (security at least as strict, every existing
 tool behaves as before, undoable). The review ratifies it or picks another option.
 

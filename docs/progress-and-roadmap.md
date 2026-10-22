@@ -207,9 +207,10 @@ Phase doc `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`; contracts and
 
   D5's net +10 includes the documented removal of `startup.test.ts` (−5 tests) with `startup.ts`.
 - **Not done:** the live E2E (the D6 MUX and DL rows in `docs/e2e-test-plan.md`), deferred by the
-  user to a later session (2026-10-22); the review of the seven open decisions
-  (`docs/plans/2026-10-22-step6-open-decisions-review.md`). Done 2026-10-22: the D7 docs commit and
-  this machine's MCP config change (other machines: `docs/setup.md` §3). POSIX behaviour (the MCP's parent check, the detached
+  user to a later session (2026-10-22). Done 2026-10-22: the D7 docs commit,
+  this machine's MCP config change, and the user's ratification of the seven open decisions
+  (decisions.md · 2026-10-22 · The user rules on the seven Step 6 open decisions; if MUX-7 fails,
+  the double spawn is a Step 7 prerequisite) (other machines: `docs/setup.md` §3). POSIX behaviour (the MCP's parent check, the detached
   daemon) is unverified.
 
 **E2E results — waits for the D6 wave** (with the user, gate G6-2 in the phase doc). Nothing is

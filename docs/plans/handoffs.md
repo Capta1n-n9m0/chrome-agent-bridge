@@ -33,7 +33,7 @@ READ FIRST, in this order:
    text, the §5 "Run 7" skeleton you fill in.
 4. docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md — what was built, the contracts,
    "Open decisions", "Needs the user's keyboard", the gate checklist.
-5. docs/decisions.md — Open decisions at the top (2026-10-22 #13, #14, #15, #21, #22, #24, #27) and
+5. docs/decisions.md — the user's ruling (2026-10-22 #31) on #13, #14, #15, #21, #22, #24, #27, and
    #30 (the wave's set-up). Rows MUX-7 → #14, MUX-8 → #21 and #27, MUX-10 → #13 measure them.
 6. docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md — exit checks D6.1–D6.4, STOP rules.
 
@@ -46,11 +46,11 @@ SCOPE:
    §5 "Run 7" record: the command, the observed text, PASS/FAIL against the pre-written expectation.
    MUX-6 evidence is a process listing; MUX-4 evidence is two timestamps.
 3. MUX-9 (regression smoke) passes with the same expected text as each row's last recorded run.
-4. For each open decision a row measured, put it to me as an option question with a
-   recommendation and the measurement; record my ruling in docs/decisions.md (move it out of
-   Open decisions). FLAGGED DEFAULT (execute unless I object): if MUX-7 shows the daemon surviving a
-   normal session end, #14 is ratified as is; if it dies, the fallback (a double spawn) becomes a
-   Step 7 prerequisite item, not a fix in this wave.
+4. The open decisions were ratified on 2026-10-22 (decisions.md · 2026-10-22 · The user rules on the seven Step 6 open decisions); the
+   rows confirm them. RULED: if MUX-7 passes, #14 stands; if it fails ((b), (c) or (d) not as
+   expected), the double spawn becomes a Step 7 prerequisite item, not a fix in this wave — record
+   the result and add the item to the Step 7 plan. Any other row that contradicts a ratified
+   decision: put it to me as an option question with the measurement.
 
 STANDING CONSTRAINTS: the 127.0.0.1 bind and the token gate are unchanged; the token is never
 committed, printed or pasted (grep for it by count only); nothing is pushed, tagged or published; the

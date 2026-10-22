@@ -15,13 +15,12 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
   `browser_download`. Public on GitHub (MIT).
 - **Step 6 — daemon + protocol v2: code complete, E2E pending.** Stages D0–D5b, the D6 rows and the
   D7 docs are done (`npm test` → 542 passed, 42 files, at `033b1bc`). As-built:
-  `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md`; decisions 2026-10-22 #13–#30, of
-  which #13, #14, #15, #21, #22, #24, #27 are open for the user.
+  `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md`; decisions 2026-10-22 #13–#31, all
+  ratified by the user (#31: if MUX-7 fails, a double-spawn launcher becomes a Step 7 prerequisite).
 - **Done 2026-10-22:** the D7 docs commit; this machine's MCP config now points at
   `<repo>/mcp/dist/index.js` (other machines: `docs/setup.md` §3 "Upgrading a machine that ran the
   bridge before Step 6"); pushed.
-- **Next, deferred by the user to a later session:** (1) review the seven open decisions —
-  `docs/plans/2026-10-22-step6-open-decisions-review.md`; (2) the **D6 wave** (MUX-1…10, DL-1/2 in
+- **Next, deferred by the user to a later session:** the **D6 wave** (MUX-1…10, DL-1/2 in
   `docs/e2e-test-plan.md`, wave sheet in `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-steps/D6.md`;
   paste wave W1 from `docs/plans/handoffs.md`; may use UI automation). After the wave: Step 7
   (multi-actor tabs), then Step 8 (SDK surface + MCP cursor).

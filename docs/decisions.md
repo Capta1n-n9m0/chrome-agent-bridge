@@ -9,19 +9,30 @@ as a dated entry and point back.
 
 ## Open decisions
 
-For the user to review at the Step 6 gate (G6-2). Each was taken by the conservative rule of
-`long-run` §3 and does not block the run. Why each is needed, the options, and the proposed option
-with its reasons: `docs/plans/2026-10-22-step6-open-decisions-review.md`.
-
-- 2026-10-22 · A Step 6 client gives up with VERSION when no welcome arrives (#13)
-- 2026-10-22 · The detached daemon's survival depends on how the session's MCP is killed (#14)
-- 2026-10-22 · What clients do on a close code other than 4002 (#15)
-- 2026-10-22 · The SDK reports configuration and connection failures as NOT_CONNECTED (#21)
-- 2026-10-22 · A reconnect after 4002 never hands the daemon over (#22)
-- 2026-10-22 · BridgeClient exposes welcome, extensionConnected and on("reconnected") in Step 6 (#24)
-- 2026-10-22 · The MCP connects without waiting for the extension, so Chrome closed reads as today (#27)
+None. *Updated 2026-10-22: the seven Step 6 decisions listed here (#13, #14, #15, #21, #22, #24,
+#27) were ratified by the user — see "The user rules on the seven Step 6 open decisions" below.*
 
 ## Log
+
+### 2026-10-22 · The user rules on the seven Step 6 open decisions (#31)
+**Decided:** Every decision proposed in `docs/plans/2026-10-22-step6-open-decisions-review.md` is
+ratified as built: #13 option A, #15 A, #21 A, #22 A, #24 A, #27 A, each with its revisit rule.
+Two rulings add to the proposal:
+- **#13 (no welcome → `VERSION`):** no work goes into coexisting with a pre-Step-6 bridge. Every
+  machine is upgraded (`docs/setup.md` §3 "Upgrading a machine that ran the bridge before Step 6"),
+  and the 2 s welcome timeout is dropped when its revisit rule fires (after Step 8).
+- **#14 (the detached daemon):** keep the spawn (A) and measure it in MUX-7. If MUX-7 fails — the
+  daemon dies in a case where the row expects it alive ((b) a normal session end, (c) the shim
+  killed alone, (d) a tree kill of a session that did not spawn it) — the double spawn through a
+  short-lived launcher (B) is built, as a prerequisite item of Step 7. It is no longer left to the
+  user's call.
+
+The user also ratifies every decision Claude took under delegated authority on 2026-10-22 (#16–#20,
+#23, #25, #26, #28–#30).
+**Why:** The user's review of the open decisions, 2026-10-22.
+**Instead of:** The other options in the review doc.
+**Revisit if:** As in each entry; #14 when the D6 wave runs MUX-7.
+**By:** user
 
 ### 2026-10-22 · The D6 wave's set-up: token from `bridge.token`, a quiet recipe, a dist-comment rebuild, a local redirect fixture, tagged steps (#30)
 **Decided:** The wave provides the token only through a `bridge.token` file created by a command
@@ -39,7 +50,7 @@ discriminating set-ups (`D6.md`, `D6-verifier.md`).
 host.
 **Revisit if:** Chrome's Local Network Access prompts on the request to `127.0.0.1:8081`, or the
 fixture's `text/plain` type differs in real Chrome (both unmeasured until the wave).
-**By:** Claude
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · setup.md documents stopping the daemon by killing its process, with no stop script (#29)
 **Decided:** `setup.md` documents the idle exit and the OS commands that stop the daemon (Windows:
@@ -50,7 +61,7 @@ stop the process listening on 9234; Linux/macOS: `pkill -f daemon/dist/index.js`
 treat as "reconnect", so it may spawn a new daemon at once (`D7.md`).
 **Instead of:** An untested tsx snippet calling `daemon.shutdown`.
 **Revisit if:** Step 8 adds a stop command to the SDK.
-**By:** Claude
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · D5b's shape: `requireExtension: false`, a `connectOptions()` helper, a test-only daemon import (#28)
 **Decided:** The option of decision #27 is `connect({ requireExtension?: boolean })`, default
@@ -66,7 +77,7 @@ no daemon code.
 succeeds on the same client (`D5b-verifier.md`, real `ws` on port 0).
 **Instead of:** `waitForExtensionMs: 0`; inline options in `index.ts`; a fake copy of the daemon.
 **Revisit if:** Step 8's SDK surface review (the option is listed under #27 for user review).
-**By:** Claude
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · The MCP connects without waiting for the extension, so Chrome closed reads as today (#27)
 **Decided:** A follow-up stage D5b adds a `connect()` option that returns the client even when
@@ -82,7 +93,7 @@ additive and undoable.
 **Instead of:** Accepting the churn for Step 6 (D5's proposal); a shorter wait (the SDK closes the
 client when any wait expires).
 **Revisit if:** Step 8's SDK surface review settles the option's final name or shape.
-**By:** Claude (open, for user review: an SDK surface addition)
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · D5's MCP link: a `client.connect()` health check, a thin config, interim exports gone (#26)
 **Decided:** `mcp/src/link.ts` (`BridgeLink`) checks the client it holds with `client.connect()`
@@ -98,7 +109,7 @@ reconnect left the client in place (`D5-verifier.md`).
 **Instead of:** Exporting the SDK's internal `onClientFailure`; polling with `status()` (a message
 every 5 s); keeping the interim daemon exports.
 **Revisit if:** Step 8 adds a public close or failure event, or reconnect.
-**By:** Claude
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · D3's daemon lifecycle: idle armed at start, every shutdown exits 0, bad env values, the log policy (#25)
 **Decided:** The idle timer is armed at start (zero clients) and counts clients only. Signals
@@ -116,7 +127,7 @@ stdio, so it cannot report a log failure anywhere else.
 redacting inside a line rather than withholding it.
 **Revisit if:** A lost bind race is seen to drop a log line (the loser truncates before it binds);
 D6 shows the daemon idling out under a spawn that never connected.
-**By:** Claude
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · BridgeClient exposes welcome, extensionConnected and on("reconnected") in Step 6 (#24)
 **Decided:** Beyond the D4 checkbox, `BridgeClient` has read-only `welcome` and `extensionConnected`
@@ -127,7 +138,7 @@ D4.3 values.
 surface.
 **Instead of:** Package-internal accessors that D5 and Step 7 would have to reach into.
 **Revisit if:** Step 8's SDK surface review.
-**By:** Claude (open, for user review)
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · The knock's 10 s budget runs per spawn cycle, with a handshake timeout per attempt (#23)
 **Decided:** The 10 s limit restarts at the client's own handover; the knock spawns once per cycle;
@@ -138,7 +149,7 @@ race; a port holder that accepts TCP and never upgrades kept `connect()` pending
 the handshake timeout existed (`D4-verifier.md`). The 10 s limit itself is unchanged.
 **Instead of:** One 10 s budget for the whole `connect()`; a spawn per refusal; no handshake timeout.
 **Revisit if:** D6 sees a handover take longer than 10 s, or a spawned daemon dying silently.
-**By:** Claude
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · A reconnect after 4002 never hands the daemon over (#22)
 **Decided:** `BridgeClient`'s 4002 reconnect runs the knock with the handover disabled: a build
@@ -151,7 +162,7 @@ simulated two handovers. Failing beats looping (`handover-race.test.ts` pins ≤
 **Instead of:** Letting each reconnect hand over once — the letter of #10, not its purpose.
 **Revisit if:** D6 shows a legitimate upgrade that needs a reconnecting client to hand over (a
 long-running MCP after `npm run build` with the old daemon still alive).
-**By:** Claude (open, for user review)
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · The SDK reports configuration and connection failures as NOT_CONNECTED (#21)
 **Decided:** A missing token, a missing daemon build, a bad `BRIDGE_PORT`, the 10 s give-up and a
@@ -161,7 +172,7 @@ is kept for build or protocol mismatches and the missing welcome.
 change. `NOT_CONNECTED` is what the MCP's 5 s retry already treats as "not reachable yet".
 **Instead of:** `BAD_PARAMS` (meant for a method's params); `VERSION` for 4001; a new code.
 **Revisit if:** Step 8 adds an authentication or configuration code to spec §10.
-**By:** Claude (open, for user review)
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · D2's daemon details: parseHello beside validateHello, BAD_PARAMS for bad ids, no forwarded timeoutMs, interim defaults (#20)
 **Decided:** `parseHello(data, token)` returns `{ok, role, name?, build?}` or `{ok:false, reason}`;
@@ -179,7 +190,7 @@ routing dumb and the v1 extension ignores the field; D3 owns the hash. Evidence:
 the forwarded request; the generic "expected hello handshake" for an unknown role.
 **Revisit if:** D5 removes the last `validateHello` caller; the SDK ever sends numeric ids; Step 7's
 extension wants the envelope timeout; a real daemon ever reports build `"dev"`.
-**By:** Claude
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · D1's interim wiring: daemon skipped by the build until D3, a `./connection` export, a hand-edited lockfile (#19)
 **Decided:** The root build is `npm run build --workspaces --if-present`, so `daemon/` (no build
@@ -193,7 +204,7 @@ inventing a daemon entry before D3 designs it.
 **Instead of:** A placeholder daemon build; importing the connection by relative path across
 packages; regenerating the whole lockfile.
 **Revisit if:** D5 leaves any of the interim exports or the `mcp` → `daemon` dependency in place.
-**By:** Claude
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · D0's protocol shapes: optional wire code, strict v2 hello fields, events without id (#18)
 **Decided:** The wire error is `WireError {code?, message, data?}`; `fromWire` maps a missing,
@@ -210,7 +221,7 @@ Evidence: `D0.md`, `D0-verifier.md` (322 tests, extension bundle byte-identical)
 optional event `params`; subpath-only exports.
 **Revisit if:** Step 7 teaches the extension codes (then v2 peers may require `code`); a bundle
 holds two copies of `BridgeError` and `instanceof` breaks.
-**By:** Claude
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · Stage order D0 → D1 → (D2 ∥ D4) → D3 → D5, and the Stage 0 builder resolutions (#17)
 **Decided:** D0 runs before D1 rather than beside it, and D4 lands before D3 so the daemon imports
@@ -230,7 +241,7 @@ clean; D4 before D3 removes a stub D5 would have to unwire.
 **Instead of:** D0 ∥ D1 and D3 before D4 as the kickoff sketched; `../daemon/dist` relative to
 `import.meta.url` (wrong once bundled).
 **Revisit if:** A stage verifier finds one of these conflicts with the spec.
-**By:** Claude
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · Stage 0's amendments A5–A12 applied to the phase doc (#16)
 **Decided:** The held amendments are applied with dated notes: D1 runs `npm install` (A5); D5.5
@@ -245,7 +256,7 @@ diff because the shutdown callback lives in `mcp/src/index.ts` (A12).
 None loosens a check: A12 is stricter, A7 and A10 widen greps.
 **Instead of:** Leaving the checks as written and tripping STOP rules mid-stage.
 **Revisit if:** —
-**By:** Claude
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · What clients do on a close code other than 4002 (#15)
 **Decided:** `host.shutdown(code)` stops accepting, sends `close(code, reason)` to every socket,
@@ -258,21 +269,22 @@ no-crash rule already implies it keeps trying; scripts must not silently continu
 **Instead of:** Leaving the MCP after a drop unspecified; letting `BridgeClient` reconnect on more
 codes (a forbidden fix).
 **Revisit if:** Step 8's SDK surface adds reconnect.
-**By:** Claude (open, for user review)
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · The detached daemon's survival depends on how the session's MCP is killed (#14)
 **Decided:** Keep decision 0.8's spawn as written. MUX-7 names the kill method and expected result
 for `taskkill /T /F` on a live MCP tree, a normal session end, and killing the nvm shim alone, and
 D6 adds "end the spawning session normally → the daemon is still alive". If the daemon dies on a
 normal end, the fallback is a double spawn through a short-lived launcher, the user's call. POSIX
-stays unverified.
+stays unverified. *Superseded 2026-10-22 ("the user's call"): if MUX-7 fails, the double spawn is
+built as a Step 7 prerequisite (decisions.md · 2026-10-22 · The user rules on the seven Step 6 open decisions).*
 **Why:** Measured in Stage 0 (`stage0-audit.md` F3): on Windows a `detached` child keeps its
 `ParentProcessId`, so `taskkill /T` on a live spawner kills it; a child whose spawner already
 exited survives. Whether Claude Code ends MCP servers that way was not established. Changing 0.8
 now would change the design of record without evidence.
 **Instead of:** Switching to a double spawn now.
 **Revisit if:** D6 shows the daemon dying when the session that spawned it ends.
-**By:** Claude (open, for user review)
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-22 · A Step 6 client gives up with VERSION when no welcome arrives (#13)
 **Decided:** After `hello`, the SDK's knock waits at most 2 s for `welcome`. If none arrives it
@@ -285,8 +297,9 @@ never answers. Without a bound `connect()` hangs. The old session is left broken
 docs tell the user to end it; pre-Step-6 servers already exit with their session.
 **Instead of:** Leaving 0.7 without a "connected but no welcome" branch; probing without a hello
 (v1 and v2 both send nothing first, so a probe cannot tell them apart).
-**Revisit if:** v1 servers can no longer exist (after Step 8).
-**By:** Claude (open, for user review)
+**Revisit if:** v1 servers can no longer exist (after Step 8). *Added 2026-10-22: the user rules
+that no work goes into coexisting with a pre-Step-6 bridge; every machine is upgraded (decisions.md · 2026-10-22 · The user rules on the seven Step 6 open decisions).*
+**By:** Claude (ratified 2026-10-22)
 
 ### 2026-10-21 · Step 6 agents run Opus 5.5 (#12)
 **Decided:** Every agent in the Step 6 run — session agent, step agents, builders, verifiers,
