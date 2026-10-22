@@ -10,6 +10,8 @@ import {
   centerForInputRef,
 } from "./actions.js";
 import { guard } from "./guard.js";
+// Type-only (erased): the content script is an IIFE and must contain no import/export at runtime.
+import type { SnapshotResult } from "@bridge/shared";
 
 // Every method below may instead return `{__bridgeError: "CODE:message"}` (see guard.ts); the
 // handlers only read results through `unwrapResult`, which throws a coded `BridgeError` for it.
@@ -17,7 +19,7 @@ declare global {
   interface Window {
     __agentBridge?: {
       refs: RefMap;
-      snapshot: () => { text: string; count: number };
+      snapshot: () => SnapshotResult;
       click: (ref: string) => { ok: true };
       type: (ref: string, value: string, submit: boolean) => { ok: true };
       focusForTyping: (ref: string) => { ok: true };

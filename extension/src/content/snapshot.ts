@@ -1,3 +1,5 @@
+// Type-only: erased by esbuild, so the IIFE content script still contains no import/export.
+import type { SnapshotElement, SnapshotResult } from "@bridge/shared";
 import { RefMap } from "./refmap.js";
 
 /** Cap on listed elements, so a huge page can't blow the agent's token budget. */
@@ -81,9 +83,12 @@ function isZeroSize(el: Element): boolean {
   return rect.width === 0 && rect.height === 0;
 }
 
+function cap(text: string): string {
+  return text.length > MAX_NAME ? `${text.slice(0, MAX_NAME - 1)}…` : text;
+}
+
 function trim(text: string | null | undefined): string {
-  const name = (text ?? "").replace(/\s+/g, " ").trim();
-  return name.length > MAX_NAME ? `${name.slice(0, MAX_NAME - 1)}…` : name;
+  return cap((text ?? "").replace(/\s+/g, " ").trim());
 }
 
 function accessibleName(el: Element): string {
@@ -132,46 +137,134 @@ function frameDocument(el: Element): Document | null {
   }
 }
 
-function walk(el: Element, refs: RefMap, lines: string[], layout: Map<Document, boolean>): void {
-  if (lines.length >= MAX_LINES) return;
+/** "true"/"false" → boolean; anything else (absent, "mixed", junk) → undefined. */
+function ariaBool(el: Element, attr: string): boolean | undefined {
+  const v = el.getAttribute(attr);
+  return v === "true" ? true : v === "false" ? false : undefined;
+}
+
+const CHECKABLE = new Set(["checkbox", "radio", "switch", "menuitemcheckbox", "menuitemradio"]);
+const VALUED = new Set(["textbox", "spinbutton", "slider", "combobox", "listbox"]);
+
+// Element kinds are tested by tag name, not `instanceof`: an element of a same-origin frame comes
+// from that frame's realm, so the top window's `HTMLInputElement` does not match it.
+const tag = (el: Element): string => el.tagName.toUpperCase();
+
+function checkedOf(el: Element, role: string): boolean | undefined {
+  if (!CHECKABLE.has(role)) return undefined;
+  if (tag(el) === "INPUT") return (el as HTMLInputElement).checked;
+  return ariaBool(el, "aria-checked");
+}
+
+function expandedOf(el: Element): boolean | undefined {
+  const aria = ariaBool(el, "aria-expanded");
+  if (aria !== undefined) return aria;
+  const parent = el.parentElement;
+  if (tag(el) === "SUMMARY" && parent && tag(parent) === "DETAILS") return (parent as HTMLDetailsElement).open;
+  return undefined;
+}
+
+function selectedOf(el: Element): boolean | undefined {
+  if (tag(el) === "OPTION") return (el as HTMLOptionElement).selected;
+  return ariaBool(el, "aria-selected");
+}
+
+function hrefOf(el: Element, role: string): string | undefined {
+  if (role !== "link" || tag(el) !== "A" || !el.hasAttribute("href")) return undefined;
+  return (el as HTMLAnchorElement).href;
+}
+
+/**
+ * A form control's current value, capped like a name (no whitespace collapsing). A password input's
+ * value is never read: it must not go on the wire. A contenteditable "textbox" has no `.value`.
+ */
+function valueOf(el: Element, role: string): string | undefined {
+  if (!VALUED.has(role)) return undefined;
+  const t = tag(el);
+  if (t === "INPUT") {
+    const input = el as HTMLInputElement;
+    return input.type.toLowerCase() === "password" ? undefined : cap(input.value);
+  }
+  if (t === "TEXTAREA" || t === "SELECT") return cap((el as HTMLTextAreaElement | HTMLSelectElement).value);
+  return undefined;
+}
+
+function toElement(el: Element, role: string, ref: string, depth: number, frame: number | undefined): SnapshotElement {
+  const out: SnapshotElement = { ref, role, name: accessibleName(el), depth };
+  const value = valueOf(el, role);
+  if (value !== undefined) out.value = value;
+  const checked = checkedOf(el, role);
+  if (checked !== undefined) out.checked = checked;
+  if (isDisabled(el)) out.disabled = true;
+  const expanded = expandedOf(el);
+  if (expanded !== undefined) out.expanded = expanded;
+  const selected = selectedOf(el);
+  if (selected !== undefined) out.selected = selected;
+  const href = hrefOf(el, role);
+  if (href !== undefined) out.href = href;
+  if (frame !== undefined) out.frame = frame;
+  return out;
+}
+
+interface WalkState {
+  refs: RefMap;
+  elements: SnapshotElement[];
+  layout: Map<Document, boolean>;
+  /** Same-origin frames entered so far; the next one gets `frames + 1`. */
+  frames: number;
+}
+
+/**
+ * `depth` counts the *listed* ancestors of `el` (across shadow roots and frames); `frame` is the
+ * 1-based index of the same-origin frame `el` lives in, in the order the walk entered frames, or
+ * undefined for the top document.
+ */
+function walk(el: Element, st: WalkState, depth: number, frame: number | undefined): void {
+  if (st.elements.length >= MAX_LINES) return;
   if (hidesSubtree(el)) return;
 
   const doc = el.ownerDocument;
-  let checkSize = layout.get(doc);
+  let checkSize = st.layout.get(doc);
   if (checkSize === undefined) {
     checkSize = hasLayout(doc);
-    layout.set(doc, checkSize);
+    st.layout.set(doc, checkSize);
   }
 
   const role = roleOf(el);
+  let childDepth = depth;
   // A zero-size element can still contain laid-out children (`display:contents`), so skip only
   // this element rather than pruning the subtree.
   if (role && !(checkSize && isZeroSize(el))) {
-    const ref = refs.add(el);
-    lines.push(`- ${role} "${accessibleName(el)}" [ref=${ref}]${isDisabled(el) ? " [disabled]" : ""}`);
+    const ref = st.refs.add(el);
+    st.elements.push(toElement(el, role, ref, depth, frame));
+    childDepth = depth + 1;
   }
 
   // Open shadow roots only — a closed root is deliberately sealed and `shadowRoot` reads null.
   const shadow = (el as HTMLElement).shadowRoot;
-  if (shadow) for (const child of Array.from(shadow.children)) walk(child, refs, lines, layout);
+  if (shadow) for (const child of Array.from(shadow.children)) walk(child, st, childDepth, frame);
 
   const frameDoc = frameDocument(el);
-  if (frameDoc?.body) for (const child of Array.from(frameDoc.body.children)) walk(child, refs, lines, layout);
+  if (frameDoc?.body) {
+    const index = ++st.frames;
+    for (const child of Array.from(frameDoc.body.children)) walk(child, st, childDepth, index);
+  }
 
-  for (const child of Array.from(el.children)) walk(child, refs, lines, layout);
+  for (const child of Array.from(el.children)) walk(child, st, childDepth, frame);
 }
 
-export interface Snapshot {
-  text: string;
-  count: number;
-}
-
-export function buildSnapshot(doc: Document, refs: RefMap): Snapshot {
+/**
+ * The page's interactive elements as data (Step 7 decision 0.7). The text a model reads is built
+ * by the SDK's formatter (T4), not here. `truncated` is set when the 800-element cap was hit.
+ */
+export function buildSnapshot(doc: Document, refs: RefMap): SnapshotResult {
   refs.reset();
-  const lines: string[] = [];
-  if (doc.body) for (const child of Array.from(doc.body.children)) walk(child, refs, lines, new Map());
-  const header = `url: ${doc.location?.href ?? ""}   title: ${JSON.stringify(doc.title)}`;
-  const footer =
-    lines.length >= MAX_LINES ? `\n- ... truncated at ${MAX_LINES} elements; scroll or narrow the page to see more` : "";
-  return { text: `${header}\n${lines.join("\n")}${footer}`, count: lines.length };
+  const st: WalkState = { refs, elements: [], layout: new Map(), frames: 0 };
+  if (doc.body) for (const child of Array.from(doc.body.children)) walk(child, st, 0, undefined);
+  return {
+    url: doc.location?.href ?? "",
+    title: doc.title,
+    elements: st.elements,
+    truncated: st.elements.length >= MAX_LINES,
+  };
 }

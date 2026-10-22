@@ -90,6 +90,134 @@ export function resetFallbackWarnings(): void {
   warned.clear();
 }
 
+/** How long to wait for `onActivated` after switching to the target tab (plan 0.5). Never lower. */
+const ACTIVATION_WAIT_MS = 1000;
+/** One frame + paint after the activation, before capturing (plan 0.5). Never lower. */
+const FRAME_WAIT_MS = 50;
+/** Chrome allows 2 `captureVisibleTab` calls per second (Stage 0 F10): space captures this far. */
+const CAPTURE_SPACING_MS = 500;
+/** The wait before the one retry after Chrome's capture quota error (F10). */
+const QUOTA_RETRY_MS = 500;
+const QUOTA_RE = /MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND/;
+/**
+ * The longest one link holds its window's capture chain, counted from when the link started: the
+ * daemon's default call timeout. A hung Chrome call must not wedge a window for the worker's
+ * lifetime (spec §6.4: "a hung screenshot cannot wedge everyone"). Frees the chain only; the
+ * caller's own promise and the restore are untouched.
+ */
+const CHAIN_RELEASE_MAX_MS = 30_000;
+
+/** Per window: the tail of the capture chain (F19). Each link resolves once its restore settled. */
+const captureChains = new Map<number, Promise<void>>();
+/** The last reserved capture slot (epoch ms), across all windows (F10). */
+let lastSlot = Number.NEGATIVE_INFINITY;
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The `switch` screenshot mode (plan 0.5; spec §7): show `tab` in its own window, capture it with
+ * `captureVisibleTab`, put the window's previous tab back. The window is never brought to the front
+ * (decision 0.5: `captureVisibleTab` needs the window visible, not in front, and taking the human's
+ * window is what this avoids). A minimized window is refused before anything is switched.
+ *
+ * Calls for one window run strictly one after another, and the next starts only after the previous
+ * one's restore settled (F19), so two switches never interleave even after the daemon stopped
+ * waiting for one — or, if a Chrome call hangs, `CHAIN_RELEASE_MAX_MS` after the link started. The
+ * data URL is returned without waiting for the restore.
+ */
+export function activateForCapture(tab: chrome.tabs.Tab): Promise<string> {
+  const windowId = tab.windowId;
+  const prior = captureChains.get(windowId) ?? Promise.resolve();
+  let release!: () => void;
+  const settled = new Promise<void>((resolve) => (release = resolve));
+  const link = prior.then(() => settled);
+  captureChains.set(windowId, link);
+  void link.then(() => {
+    if (captureChains.get(windowId) === link) captureChains.delete(windowId);
+  });
+  return prior.then(() => captureOnce(tab, release));
+}
+
+async function captureOnce(tab: chrome.tabs.Tab, releaseChain: () => void): Promise<string> {
+  const bound = setTimeout(releaseChain, CHAIN_RELEASE_MAX_MS);
+  const release = (): void => {
+    clearTimeout(bound);
+    releaseChain();
+  };
+  let restored: Promise<unknown> = Promise.resolve();
+  try {
+    const win = await chrome.windows.get(tab.windowId);
+    if (win.state === "minimized") {
+      throw new BridgeError(
+        ErrorCodes.WINDOW_MINIMIZED,
+        `Chrome's window is minimized, so the tab cannot be captured — restore the window, or pass mode:"cdp"`,
+      );
+    }
+    await reserveCaptureSlot();
+    const [prev] = await chrome.tabs.query({ active: true, windowId: tab.windowId });
+    const switching = prev?.id !== tab.id;
+    try {
+      if (switching) await showTab(tab.id!);
+      return await captureWithRetry(tab.windowId);
+    } finally {
+      // Not awaited for the result; errors swallowed (the previous tab may have closed meanwhile).
+      if (switching && prev?.id !== undefined) restored = chrome.tabs.update(prev.id, { active: true }).catch(() => {});
+    }
+  } finally {
+    void restored.then(release, release);
+  }
+}
+
+/** Takes the next capture slot ≥ 500 ms after the last one (all windows), and waits for it. */
+async function reserveCaptureSlot(): Promise<void> {
+  const now = Date.now();
+  const slot = Math.max(now, lastSlot + CAPTURE_SPACING_MS);
+  lastSlot = slot;
+  if (slot > now) await sleep(slot - now);
+}
+
+/** Activates `tabId` and waits for `onActivated` (at most 1 s either way), then one frame. */
+async function showTab(tabId: number): Promise<void> {
+  const listener = (info: chrome.tabs.OnActivatedInfo): void => {
+    if (info.tabId === tabId) {
+      chrome.tabs.onActivated.removeListener(listener);
+      done();
+    }
+  };
+  let done!: () => void;
+  const activated = new Promise<void>((resolve) => (done = resolve));
+  chrome.tabs.onActivated.addListener(listener);
+  const timer = setTimeout(() => done(), ACTIVATION_WAIT_MS);
+  try {
+    try {
+      await chrome.tabs.update(tabId, { active: true });
+    } catch (err) {
+      throw asTabUnknown(err);
+    }
+    await activated;
+  } finally {
+    clearTimeout(timer);
+    chrome.tabs.onActivated.removeListener(listener);
+  }
+  await sleep(FRAME_WAIT_MS);
+}
+
+async function captureWithRetry(windowId: number): Promise<string> {
+  try {
+    return await chrome.tabs.captureVisibleTab(windowId, { format: "png" });
+  } catch (err) {
+    if (!QUOTA_RE.test(err instanceof Error ? err.message : String(err))) throw err;
+    await sleep(QUOTA_RETRY_MS);
+    return await chrome.tabs.captureVisibleTab(windowId, { format: "png" });
+  }
+}
+
+/** Test hook: forget the capture chains and the last capture slot. */
+export function resetCaptureState(): void {
+  captureChains.clear();
+  lastSlot = Number.NEGATIVE_INFINITY;
+}
+
 export function waitForLoad(tabId: number, timeoutMs = 30_000): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {

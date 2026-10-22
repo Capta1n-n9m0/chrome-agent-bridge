@@ -101,7 +101,10 @@ describe("window.__agentBridge is guarded", () => {
 
   it("the snapshot still returns its result", () => {
     const out = window.__agentBridge!.snapshot();
-    expect(out).toHaveProperty("text");
+    // T3 (0.7): the result is data — `{url, title, elements, truncated}`, no `text`.
+    expect(out).toHaveProperty("elements");
+    expect(out).toHaveProperty("truncated");
+    expect(out).not.toHaveProperty("text");
     expect(out).not.toHaveProperty("__bridgeError");
   });
 });

@@ -1,26 +1,30 @@
-import { pageTab, targetTab } from "../tabs.js";
+import type { SnapshotResult } from "@bridge/shared";
+import { activateForCapture, pageTab, targetTab } from "../tabs.js";
 import { ensureContent, callInPage } from "../inject.js";
-import { fullPageScreenshot } from "../debugger.js";
+import { fullPageScreenshot, viewportScreenshot } from "../debugger.js";
 
-export async function snapshot(p: Record<string, unknown>): Promise<{ text: string; count: number }> {
+export async function snapshot(p: Record<string, unknown>): Promise<SnapshotResult> {
   const tab = await pageTab(p, "snapshot");
   await ensureContent(tab.id!);
   return callInPage(tab.id!, () => window.__agentBridge!.snapshot());
 }
 
+/**
+ * `fullPage` → CDP beyond the viewport, as before (whatever `mode` says). `mode:"cdp"` → CDP of the
+ * viewport: no tab switch, the debugger banner. Anything else is the `switch` mode (#50): the tab is
+ * shown in its window just long enough for `captureVisibleTab`, then the previous tab comes back.
+ */
 export async function screenshot(params: Record<string, unknown>): Promise<{ dataUrl: string }> {
-  if (params.fullPage === true) {
+  // Truthy, exactly the daemon's rule (`takesLock` in daemon/src/methods.ts): the extension switches
+  // tabs only in the cases the daemon takes the visibility lock for (T3 verifier V1).
+  if (params.fullPage) {
     const tab = await pageTab(params, "screenshot");
     return { dataUrl: await fullPageScreenshot(tab.id!) };
   }
-  const tab = await targetTab(params, "screenshot");
-  // `captureVisibleTab` captures whatever its window shows. Until T3's capture switch exists, an
-  // explicit background tab is refused rather than silently answered with another tab's pixels.
-  if (params.tabId !== undefined && !tab.active) {
-    throw new Error(
-      "a viewport screenshot of a background tab needs the Step 7 capture switch — pass fullPage:true for now",
-    );
+  if (params.mode === "cdp") {
+    const tab = await pageTab(params, "screenshot");
+    return { dataUrl: await viewportScreenshot(tab.id!) };
   }
-  const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
-  return { dataUrl };
+  const tab = await targetTab(params, "screenshot");
+  return { dataUrl: await activateForCapture(tab) };
 }

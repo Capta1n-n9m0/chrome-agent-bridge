@@ -90,6 +90,14 @@ export async function fullPageScreenshot(tabId: number): Promise<string> {
   }, "Full-page screenshot");
 }
 
+/** The viewport of a tab through CDP (`mode:"cdp"`): works on a background tab, shows the banner. */
+export async function viewportScreenshot(tabId: number): Promise<string> {
+  return withDebugger(tabId, async () => {
+    const result = (await send(tabId, "Page.captureScreenshot", { format: "png" })) as { data: string };
+    return `data:image/png;base64,${result.data}`;
+  }, "Screenshot");
+}
+
 /**
  * Races `p` against a timer. CDP's own `Runtime.evaluate.timeout` only terminates *synchronous*
  * execution — a script parked on an `await` is not "executing", so an idle promise would hang until

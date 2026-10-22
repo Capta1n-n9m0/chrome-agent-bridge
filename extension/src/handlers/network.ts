@@ -1,6 +1,5 @@
 import { targetTab } from "../tabs.js";
 import { flushNow, log, ready } from "../network-state.js";
-import { formatEntries, formatEntry } from "../network-log.js";
 import { resolveNetworkScope } from "../network-scope.js";
 import { BridgeError, ErrorCodes } from "../errors.js";
 import type { NetworkRequestsResult } from "@bridge/shared";
@@ -24,8 +23,8 @@ export async function networkRequests(p: Record<string, unknown>): Promise<Netwo
   const id = p.id === undefined || p.id === null ? undefined : p.id;
   if (id !== undefined && typeof id !== "string") throw new BridgeError(ErrorCodes.BAD_PARAMS, "id must be a string");
   // An id lookup is global, so it must not fail merely because there is no active tab.
-  const { scope, label } = id !== undefined
-    ? { scope: "all" as Scope, label: "all" as const }
+  const { scope } = id !== undefined
+    ? { scope: "all" as Scope }
     : await resolveNetworkScope(p, fallbackTab("networkRequests"));
 
   let types: string[] | undefined;
@@ -35,7 +34,8 @@ export async function networkRequests(p: Record<string, unknown>): Promise<Netwo
     }
     types = p.types as string[];
   }
-  const result = log.query({
+  // Data only: the text a model reads is built by the SDK formatter (T4; decisions.md #49).
+  return log.query({
     tabId: scope,
     filter: p.filter === undefined || p.filter === null ? undefined : String(p.filter),
     types,
@@ -44,12 +44,6 @@ export async function networkRequests(p: Record<string, unknown>): Promise<Netwo
     includeHeaders: p.includeHeaders === true,
     id,
   });
-
-  const now = Date.now();
-  const text = id !== undefined
-    ? formatEntry(result.entries[0]!, { now })
-    : formatEntries(result, { now, scope: label });
-  return { ...result, text };
 }
 
 export async function networkClear(p: Record<string, unknown>): Promise<{ cleared: number }> {

@@ -6,6 +6,9 @@ interface ListedTab {
   title: string;
   url: string;
   active: boolean;
+  windowId: number;
+  /** Only when Chrome reports one. */
+  openerTabId?: number;
   /** Set (true) on exactly the human's tab (#43); absent on the others. */
   current?: true;
 }
@@ -21,7 +24,14 @@ export async function listTabs(): Promise<{ tabs: ListedTab[] }> {
     tabs: tabs
       .filter((t) => t.id !== undefined)
       .map((t) => {
-        const out: ListedTab = { id: t.id!, title: t.title ?? "", url: t.url ?? "", active: t.active ?? false };
+        const out: ListedTab = {
+          id: t.id!,
+          title: t.title ?? "",
+          url: t.url ?? "",
+          active: t.active ?? false,
+          windowId: t.windowId,
+        };
+        if (t.openerTabId !== undefined) out.openerTabId = t.openerTabId;
         if (human?.id !== undefined && t.id === human.id) out.current = true;
         return out;
       }),
@@ -38,8 +48,12 @@ export function explicitTabId(p: Record<string, unknown>, method: string): numbe
   return requireTabId(raw);
 }
 
-export async function selectTab(p: Record<string, unknown>): Promise<{ ok: true }> {
-  const id = explicitTabId(p, "selectTab");
+/**
+ * Brings the tab's window to the front and activates the tab, and does not restore anything
+ * (plan 0.5's one exception). The only place in the extension that focuses a window.
+ */
+export async function focusTab(p: Record<string, unknown>): Promise<{ ok: true }> {
+  const id = explicitTabId(p, "focusTab");
   try {
     const tab = await chrome.tabs.get(id);
     if (tab.windowId >= 0) await chrome.windows.update(tab.windowId, { focused: true });
@@ -50,9 +64,13 @@ export async function selectTab(p: Record<string, unknown>): Promise<{ ok: true 
   return { ok: true };
 }
 
+/** The Step 6 name of `focusTab`, kept for one release (decisions.md · 2026-10-21); Step 8 S2 removes it. */
+export const selectTab = focusTab;
+
+/** Opens a tab in the background unless `active === true` is passed (plan 0.8). */
 export async function newTab(p: Record<string, unknown>): Promise<{ id: number }> {
   const url = p.url ? String(p.url) : undefined;
-  const tab = await chrome.tabs.create({ url, active: true });
+  const tab = await chrome.tabs.create({ url, active: p.active === true });
   if (url) await waitForLoad(tab.id!);
   return { id: tab.id! };
 }
