@@ -1328,6 +1328,57 @@ Failures / notes:
   differ; a daemon spawned through `Start-Process -NoNewWindow` kept the caller's output pipe open
   until it exited; five wave-sheet nits. All in the run record § Findings.
 
+### Run 8 — 2026-10-22 (Step 7 multi-actor tabs, wave T5: RELOAD-1, RESOLVER-1, LEASE-1…7, SCREEN-1…5, BG-1…4, regression and designed-change rows)
+
+*Rows and expected text written before the run (commit `e7e56ff`, §4.14); run the same day by the
+driver with headless actors (decisions.md · 2026-10-22 · Live E2E waves are run by Claude end to end
+(#33)). Full evidence, row by row (every command and the text it printed):
+[`T5-run-record.md`](plans/2026-10-21-step7-multi-actor-tabs-steps/T5-run-record.md); the daemon log of
+the wave: [`T5-daemon-log.txt`](plans/2026-10-21-step7-multi-actor-tabs-steps/T5-daemon-log.txt).*
+
+```
+Date: 2026-10-22  Chrome version: 156.0.8078.48  Node: v25.2.1  OS: Windows 11 Pro 10.0.26300  Commit: 19e8971 (rows at e7e56ff)
+Daemon build (Get-DaemonBuild): ee86adea97f873f43d0001dcbae60f3b10717ffd327dbcdccbf8395fbca2c5c5
+First line: the user's "I reloaded the extention." (19:36:39Z); no /mcp — every actor a fresh headless session
+Driver: headless actors (t5-actor.ts, Sonnet) + SDK scripts (recipes/t5.ts) + window helpers (t5-win.ps1); driver check printed nothing (A1)
+
+RELOAD-1 [P]  RESOLVER-1 [F as written: instrument — the stricter title sub-check; the Stage 0 rule met]
+LEASE-1 [P] LEASE-2 [P] LEASE-3 [F: url sub-check only] LEASE-4 [P] LEASE-5 [P] LEASE-6 [P (b)] LEASE-7 [P]
+SCREEN-1 [F as written: instrument] (flash 1509 / 1486 / 1493 ms, median 1493 ms; page-side visibilitychange)
+SCREEN-2 [F: mode:"cdp" on a hidden tab → TIMEOUT 35 s]  SCREEN-3 (a) [F as written: instrument; serialised] (b) [F as written: instrument]
+SCREEN-4 [P-as-designed] (cdp: TIMEOUT 25 s)  SCREEN-5 [F as written: instrument; capture worked unfocused]
+BG-1 [F] BG-2 [F] (focus-emulation retry not run, #61)  BG-3 [P] BG-4 [P]
+Regression (T5.3): PERC-1 [P] PERC-2 [P] PERC-3 [P] PERC-4 [P] ACT-1 [P] ACT-2 [P] ACT-3 [P] TRUST-2 [P] EVAL-1 [P] NET-1 [F: 12.6 KB from Chrome's cache]
+Designed changes (#60): MUX-1 [P] STAT-1 [P] TAB-1 [P] TAB-2 [P] TAB-3 [P] TAB-4 [P] TAB-5 [P] MUX-3 [P] NET-12 [P] DL-1 [P; SW-console line not observed]
+G7-1 deferrals: ACT-8 [P]; offscreen relay's event frame [P] (LEASE-3, LEASE-5)
+Log hygiene: '://' count 0  token count 0  withheld-line count 0   (200 lines)
+```
+
+Evidence in short (the run record has every line):
+- **RELOAD-1** — `CHECK PASS — the extension answers with handles, windowId, snapshot elements and focusTab`; build `ee86adea…`.
+- **LEASE-1** — B: `tab T7 is held by "claude-code #15352" since 19:50:38 — use browser_new_tab, or browser_list_tabs to pick a free tab`; B `Opened tab T8`; parallel clicks → each `button "Click counter: 1"` on its own URL; list `T7  [claude-code #15352] …?t5=lease1`, `T8* [claude-code #25152] …?t5=lease1-b`.
+- **LEASE-2** — `30/30 type calls ok, 43.8 s`; `final value "lease2abcdefghijklmnopqrstuvwx"`; C's three snapshots inside the typing window, all `url: …?t5=lease2-claude`.
+- **LEASE-3** — `leaseGranted {"tab":"T15","reason":"opener"}` after 31 ms from a *synthetic* click (opener id set); owner `t5-lease3` in both listings; the event's `url` is `""` where the row expected the popup URL.
+- **LEASE-4** — refusal, then `client - "claude-code #15352" (1 client)`, then `Selected tab T7 …` and `[claude-code #25152]`.
+- **LEASE-5** — `event tabGone {"tab":"T17","lastUrl":"http://localhost:8080/e2e-playground.html?t5=lease5","lastTitle":"T5 LEASE5 target"}`; `TAB_GONE: tab T17 was closed — call listTabs to pick another tab · data {…same…}`.
+- **LEASE-6** — `PASS (b) — new chrome id 1108126396 (was 1108126391), the same handle: tabReplaced was applied`; while discarded: `INTERNAL: The tab was discarded by Chrome's Memory Saver — call browser_navigate or focus it to reload`.
+- **LEASE-7** — `T10* Agent Bridge E2E Playground — …?t5=lease7-human` (no holder) → `Selected tab T10 …` → `T10* [claude-code #25152] …`.
+- **SCREEN-1** — three runs: the human's tab hidden +5–6 ms and visible again +1491–1514 ms; flash 1509 / 1486 / 1493 ms; human active and current after, target background after. The image check as written failed: the probe pixel (20,20) is on the bar's label (`#6b0000`), and the capture is colour-managed (`#dd00fa` off the label). The viewed image is the target.
+- **SCREEN-2** — `screenshot T23 mode:"cdp" → TIMEOUT: Timed out after 35000ms calling screenshot`; the banner was up from the set-up evaluates before the call to the end of the capture loop (20:00:48.8, 23 s into the call); then `DEBUGGER_DEVTOOLS` on the human's tab, clear about 20 s later.
+- **SCREEN-3** — (a) all three succeeded, no quota error; the human's tab hidden/visible 3× alternating, each target inside its own span (serialised); colour check as SCREEN-1 (informational: red / lime / blue each its own). (b) both actors got images; colours as (a).
+- **SCREEN-4** — `WINDOW_MINIMIZED: Chrome's window is minimized, so the tab cannot be captured — restore the window, or pass mode:"cdp"`; window still minimized; `mode:"cdp"` → `TIMEOUT … 25000ms`.
+- **SCREEN-5** — capture of a background tab in the unfocused window in 1546 ms; front restored, human's tab current, OS foreground unchanged (the human's window); colour check as SCREEN-1. First attempt (window covered, set-up fault): `TIMEOUT` and the target left active ≥ 49 s.
+- **BG-1/BG-2** — `click e7 trusted → ok (5 ms)` / `type e11 "bg2typed" trusted → ok (10 ms)`, status `status: idle`; both work after `focusTab` (informational).
+- **BG-3** — `[chrome.debugger] NotAllowedError: Failed to execute 'writeText' on 'Clipboard': Document is not focused.` → `Focused tab T40` → `ok`.
+- **BG-4** — `waitFor {text} → ok after 3746 ms`; `waitFor {networkIdle} → ok after 552 ms`.
+- **RESOLVER-1** — with this extension's service-worker DevTools window in front: `Active tab: [T41] … ?t5=resolver` and the snapshot `url: …?t5=resolver` — the Stage 0 rule (#48) is met. The row's stricter sub-check expected `Get-T5Foreground` to print `DevTools - chrome-extension://…`; Chrome titles the window `DevTools`, so it printed `<DevTools window>` (the foreground was confirmed by window handle). Judged as written: FAIL (instrument), like the SCREEN image checks; for the user's ruling.
+- **NET-1** — `[2985]  1.6s ago   GET     200  document    3ms  12.6 KB  http://localhost:8080/e2e-playground.html` (expected `12.8 KB`); its detail: `from cache: yes`, `content-length: 12914`, `date: … 09:04:00 GMT` — W1's copy from Chrome's HTTP cache; the request never reached the server.
+- The rest — as their rows (TAB-2: `Selected tab T3 (now this session's tab; not brought on screen — browser_focus_tab shows it)`, the screen unchanged; MUX-3: the recipe's `[1108126308]` = `browser_status`'s `[T3]`; ACT-8: `ref e6 not found — call browser_snapshot to re-snapshot`; DL-1: `Saved …\dl1\hello.txt` / `69 bytes · text/plain · sha256 0a6b99ca…2956ce`, no banner).
+
+Exit checks: **T5.1** met (rows before the run; the reload as the first line). **T5.2** — every row recorded with its text; SCREEN-1's flash is a measured number with its method; BG-1 and BG-2 FAIL, and their `setFocusEmulationEnabled` retry is **not met** (#61: no method sends it). **T5.3 not met:** NET-1 failed (Chrome's cache); the other regression rows passed. **T5.4** met (no committed evidence shows a real site; no images committed).
+
+Failures / notes: the four SCREEN image-check FAILs and RESOLVER-1's title sub-check are an instrument fault in the pre-written check, not observed misbehaviour, and are proposed for a re-run with a corrected probe; the real failures are SCREEN-2 (`cdp` hangs on a hidden tab), BG-1/BG-2 (silent no-op), LEASE-3's empty `url`, and NET-1 (cache). Set-up fixes during the wave (helpers only) and the findings are in the run record.
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.

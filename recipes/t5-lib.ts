@@ -108,7 +108,11 @@ export async function connectAs(name: string): Promise<BridgeClient> {
 
 /** `evaluate` on `tab`, returning the JSON value (the expression must produce JSON-able data). */
 export async function evalJson<T = unknown>(client: BridgeClient, tab: string, expression: string, timeoutMs = 10_000): Promise<T> {
-  const env = (await client.call("evaluate", { expression, timeoutMs, tab }, { timeoutMs: timeoutMs + 5_000 })) as {
+  // Set-up fix 2026-10-22 (T5 wave, LEASE-5's first attempt): the extension wraps any expression that
+  // contains `return` in an async function body (EVAL-4's form), so an IIFE with an inner `return` came
+  // back `undefined`. Sending `return (<expr>);` makes the value the body's return value in every case.
+  const wrapped = `return (${expression});`;
+  const env = (await client.call("evaluate", { expression: wrapped, timeoutMs, tab }, { timeoutMs: timeoutMs + 5_000 })) as {
     kind: string;
     value?: unknown;
     description: string;

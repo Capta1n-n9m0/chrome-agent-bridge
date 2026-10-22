@@ -117,6 +117,9 @@ function Set-T5Topmost([long]$H, [switch]$Off) {
 }
 
 function Move-T5Window([long]$H, [int]$X, [int]$Y, [int]$W, [int]$Hgt) {
+  # Set-up fix 2026-10-22 (T5 wave, SCREEN-5's first attempt): a maximized window ignores SetWindowPos,
+  # so un-maximize it first (SW_SHOWNOACTIVATE restores the normal size without activating it).
+  [void][T5Win]::ShowWindow([IntPtr]$H, 4); Start-Sleep -Milliseconds 300
   [void][T5Win]::SetWindowPos([IntPtr]$H, [IntPtr]::Zero, $X, $Y, $W, $Hgt, 0x0014)  # NOZORDER|NOACTIVATE
 }
 
