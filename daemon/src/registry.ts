@@ -55,6 +55,11 @@ export class ClientRegistry<C> {
     return this.entries.get(id)?.conn;
   }
 
+  /** A registered client's name (Step 7: lease owners and lock holders are named). */
+  nameOf(id: string): string | undefined {
+    return this.entries.get(id)?.name;
+  }
+
   count(): number {
     return this.entries.size;
   }

@@ -189,8 +189,9 @@ describe("WsHost v2 — roles, routing, daemon methods", () => {
     const a = track(await client(port, "A"));
     const b = track(await client(port, "B"));
 
-    a.send({ id: "a1", method: "snapshot" });
-    b.send({ id: "b1", method: "snapshot" });
+    // 2026-10-22 (decisions.md #52, applying #42): was "snapshot" — a no-proto extension now gets VERSION for tab methods
+    a.send({ id: "a1", method: "slow" });
+    b.send({ id: "b1", method: "slow" });
     await ext.until(() => requests(ext).length === 2);
     ext.ws.close();
 

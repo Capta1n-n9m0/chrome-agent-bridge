@@ -71,18 +71,25 @@ function tool(server: McpServer, name: string): Handler {
 }
 const textOf = (res: unknown) => (res as { content: Array<{ text: string }> }).content[0].text;
 
-/** A fake v1 extension: hello without a role; answers `snapshot` with a fixed text. */
+/**
+ * A fake extension; answers `snapshot` with a fixed text.
+ * 2026-10-22 (decisions.md #52, applying #42/#41): was a v1 hello (no role) answering only `snapshot` —
+ * a no-proto extension now gets VERSION for tab methods, and a Step 7 daemon resolves a call with no
+ * `tab` through `listTabs` (and resyncs from it on hello), so the fake says proto:2 and answers it.
+ */
 function fakeExtension(port: number): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://127.0.0.1:${port}`);
     ws.on("message", (raw) => {
       const f = JSON.parse(raw.toString()) as Record<string, unknown>;
       if (f.type === "welcome") resolve(ws);
-      else if (typeof f.id === "string" && f.method === "snapshot") {
+      else if (typeof f.id === "string" && f.method === "listTabs") {
+        ws.send(JSON.stringify({ id: f.id, result: { tabs: [{ id: 1, title: "t", url: "", active: true, current: true }] } }));
+      } else if (typeof f.id === "string" && f.method === "snapshot") {
         ws.send(JSON.stringify({ id: f.id, result: { text: '- button "Go" [ref=e1]', count: 1 } }));
       }
     });
-    ws.on("open", () => ws.send(JSON.stringify({ type: "hello", token: TOKEN })));
+    ws.on("open", () => ws.send(JSON.stringify({ type: "hello", token: TOKEN, role: "extension", proto: 2 })));
     ws.on("error", reject);
   });
 }

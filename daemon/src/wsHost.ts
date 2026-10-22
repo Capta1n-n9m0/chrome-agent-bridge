@@ -4,7 +4,8 @@ import { isEvent, type EventMessage, type ExtensionStatusParams, type WelcomeMes
 import { Bridge } from "./bridge.js";
 import { ExtensionConnection } from "./connection.js";
 import { parseHello } from "./handshake.js";
-import { ClientRegistry } from "./registry.js";
+import { TabLayer } from "./intercept.js";
+import { ClientRegistry, DEFAULT_CLIENT_NAME } from "./registry.js";
 import { route, CLOSE_UPGRADING, type RouteContext, type RouteHost } from "./route.js";
 
 /** Protocol generation spoken by this host (spec §10). */
@@ -36,12 +37,17 @@ export interface WsHostOptions {
    * exits the process here (D3). An exception it throws is swallowed.
    */
   onShutdown?: (code: number) => void;
+  /**
+   * The daemon log (Step 7: `main.ts` wires `logger.log`). Lines carry handles, client names and
+   * counts only — never a URL, title, header value, body or the token. Default: no log.
+   */
+  log?: (msg: string) => void;
 }
 
 /** Counters for the daemon log (counts only — never URLs, header values, bodies or the token). */
 export interface HostStats {
   clients: number;
-  /** `{event, params}` frames from the extension, accepted and ignored in this step. */
+  /** `{event, params}` frames from the extension (all counted, valid or not; Step 7 acts on the valid ones). */
   extensionEvents: number;
   /** Client frames that could not be answered (unparseable, or without a usable id). */
   ignoredClientFrames: number;
@@ -113,6 +119,8 @@ export class WsHost implements RouteHost {
   /** The connected clients (role `"client"`); the extension is never in here. */
   readonly registry: ClientRegistry<ClientConnection>;
   readonly build: string;
+  /** Step 7: handles, leases, the visibility lock (applied to every client request). */
+  readonly tabs: TabLayer;
 
   constructor(
     private readonly bridge: Bridge,
@@ -122,6 +130,15 @@ export class WsHost implements RouteHost {
     this.startedAt = this.now();
     this.build = options.build ?? DEFAULT_BUILD;
     this.registry = new ClientRegistry<ClientConnection>({ now: this.now });
+    this.tabs = new TabLayer({
+      bridge,
+      nameOf: (id) => this.registry.nameOf(id),
+      sendTo: (id, frame) => {
+        this.registry.get(id)?.send(frame);
+      },
+      log: options.log,
+      now: this.now,
+    });
   }
 
   get port(): number | null {
@@ -155,8 +172,9 @@ export class WsHost implements RouteHost {
     });
   }
 
+  /** A client connection's context: always with the tab layer; `caller` is set once registered. */
   private routeContext(): RouteContext {
-    return { bridge: this.bridge, registry: this.registry, host: this };
+    return { bridge: this.bridge, registry: this.registry, host: this, tabs: this.tabs };
   }
 
   private broadcast<P extends object>(frame: EventMessage<P>): void {
@@ -207,9 +225,14 @@ export class WsHost implements RouteHost {
           this.bridge.setConnection(connection);
           this.sendWelcome(ws, "extension");
           this.broadcastExtensionStatus(true);
+          // #42: a hello without `proto` is a stale extension (tab methods get VERSION). Read here,
+          // not from parseHello, whose result shape Step 6 tests pin.
+          this.tabs.extensionConnected(connection, helloProto(data) >= 2);
         } else {
-          client = new ClientConnection(ws, this.routeContext(), () => this.ignoredClientFrames++);
+          const ctx = this.routeContext();
+          client = new ClientConnection(ws, ctx, () => this.ignoredClientFrames++);
           clientId = this.registry.add(client, { name: hello.name });
+          ctx.caller = { clientId, name: hello.name ?? DEFAULT_CLIENT_NAME };
           this.sendWelcome(ws, clientId);
         }
         return;
@@ -229,7 +252,10 @@ export class WsHost implements RouteHost {
           this.broadcastExtensionStatus(false);
         }
       }
-      if (clientId) this.registry.remove(clientId);
+      if (clientId) {
+        this.registry.remove(clientId);
+        this.tabs.clientGone(clientId); // F14: leases and the lock go with the connection
+      }
     });
   }
 
@@ -251,9 +277,10 @@ export class WsHost implements RouteHost {
     } catch {
       return;
     }
-    // Step 7 extensions push tab events; this step accepts and counts them, nothing more.
+    // Step 7 extensions push tab events: every one is counted; valid ones update the tab layer.
     if (isEvent(parsed)) {
       this.extensionEvents++;
+      this.tabs.extensionEvent(connection, parsed);
       return;
     }
     connection.handleMessage(data);
@@ -312,5 +339,15 @@ export class WsHost implements RouteHost {
       this.wss.close(() => resolve());
       for (const client of this.wss.clients) client.terminate();
     });
+  }
+}
+
+/** The `proto` of an (already validated) hello frame, 0 when absent. */
+function helloProto(data: string): number {
+  try {
+    const proto = (JSON.parse(data) as { proto?: unknown }).proto;
+    return typeof proto === "number" ? proto : 0;
+  } catch {
+    return 0;
   }
 }

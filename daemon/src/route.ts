@@ -1,5 +1,6 @@
 import { BridgeError, ErrorCodes, type ResponseMessage, type WireError } from "@bridge/shared";
 import type { Bridge } from "./bridge.js";
+import type { Caller, TabLayer } from "./intercept.js";
 import type { ClientRegistry } from "./registry.js";
 
 /** Bounds of a client's `timeoutMs` (decision 0.3 / decisions.md #17). */
@@ -30,6 +31,12 @@ export interface RouteContext {
   bridge: Bridge;
   registry: ClientRegistry<unknown>;
   host: RouteHost;
+  /**
+   * Step 7: the tab layer and the calling client. `WsHost` always sets both for a client connection;
+   * without them `route` keeps its Step 6 behaviour (forward everything that is not `daemon.*`).
+   */
+  tabs?: TabLayer;
+  caller?: Caller;
 }
 
 /**
@@ -82,6 +89,20 @@ export async function route(frame: unknown, ctx: RouteContext): Promise<RouteOut
 
   if (method.startsWith("daemon.")) return daemonMethod(id, method, ctx);
 
+  if (ctx.tabs && ctx.caller) {
+    try {
+      const result = await ctx.tabs.request(
+        ctx.caller,
+        method,
+        params as Record<string, unknown> | undefined,
+        timeoutMs as number | undefined,
+      );
+      return { response: { id, result: result === undefined ? null : result } };
+    } catch (err) {
+      return errorResponse(id, toWireError(err));
+    }
+  }
+
   try {
     const result = await ctx.bridge.call(method, params as Record<string, unknown> | undefined, {
       timeoutMs: daemonWaitMs(timeoutMs as number | undefined),
@@ -105,6 +126,7 @@ function daemonMethod(id: string, method: string, ctx: RouteContext): RouteOutco
             extensionConnected: ctx.bridge.isConnected(),
             clients: ctx.registry.list(),
             port: ctx.host.port,
+            ...(ctx.tabs ? ctx.tabs.status() : {}),
           },
         },
       };

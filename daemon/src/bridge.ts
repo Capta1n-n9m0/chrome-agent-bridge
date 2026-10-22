@@ -41,8 +41,13 @@ export class Bridge {
     return this.reason;
   }
 
+  /** The NOT_CONNECTED error a call gets when no extension is connected (Step 6 text). */
+  notConnectedError(): BridgeError {
+    return new BridgeError(ErrorCodes.NOT_CONNECTED, this.reason ?? NOT_CONNECTED);
+  }
+
   async call(method: string, params?: Record<string, unknown>, options?: CallOptions): Promise<unknown> {
-    if (!this.connection) throw new BridgeError(ErrorCodes.NOT_CONNECTED, this.reason ?? NOT_CONNECTED);
+    if (!this.connection) throw this.notConnectedError();
     return this.connection.call(method, params, options);
   }
 }

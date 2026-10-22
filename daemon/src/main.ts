@@ -152,6 +152,8 @@ export async function runDaemon(deps: DaemonDeps): Promise<void> {
     build,
     // Every shutdown — a signal, the idle timer, or a client's `daemon.shutdown` (4002) — ends here.
     onShutdown: (code) => exitOnce(0, `shutdown ${code}`),
+    // Step 7: legacy-client and resync lines (handles, names, counts — never a URL or title).
+    log: (msg) => logger.log(msg),
   };
   host = (deps.createHost ?? ((o) => new WsHost(new Bridge(), o)))(options);
   const live = host;
