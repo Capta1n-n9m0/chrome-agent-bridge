@@ -1605,6 +1605,36 @@ Failures / notes: two FAILs as written, both in the pre-registered checks themse
 substance met (R9-SCREEN-2's positive control; R9-NET-1's request count), for the user's ruling. The
 T5b fixes hold live (the record's finding 1). The flash is still ~1.5 s.
 
+### Run 10 (BG-FLAGS) — 2026-10-23 (Step 7: background input with Chrome restarted under flags, §4.16)
+
+*Rows, flag set and restart/restore procedure committed before Chrome was touched (`00249de`); run by
+the driver, the user not present (decisions.md · 2026-10-23 · The driver may reload the extension by UI
+automation, and restart Chrome with flags for the background-input test (#64) (2)). Full evidence:
+[`BG-FLAGS-run-record.md`](plans/2026-10-21-step7-multi-actor-tabs-steps/BG-FLAGS-run-record.md); daemon
+log: [`BG-FLAGS-daemon-log.txt`](plans/2026-10-21-step7-multi-actor-tabs-steps/BG-FLAGS-daemon-log.txt).
+Runs 8 and 9 above are unchanged.*
+
+```
+Date: 2026-10-23 (UTC 2026-10-22 23:25–23:31)  Chrome 156.0.8078.48  Node v25.2.1  Windows 11 Pro 10.0.26300  Commit: 00249de
+Daemon build: 490f1c60e04464b7e184fcb150699484cc5ca176d7041c726f8a2a4d0507d974 (T5b, 12ecb65)  No product code changed; no extension reload needed
+Flags (restart 1): --disable-renderer-backgrounding --disable-backgrounding-occluded-windows --disable-background-timer-throttling
+Counts (windows / tabs / per window): first 1 / 1 / [1]; after restart 1 1 / 1 / [1] (+ the quit window, closed); after restart 2 1 / 1 / [1] (+ the quit window, closed); final 1 / 1 / [1], switches [--restore-last-session]
+
+BGF-0 (no flags) BG-1 [F] BG-2 [F]   BGF-1 ★ [F]   BGF-2 ★ [F]   BGF-3 [P]   BGF-4 [P] (2065 ms / 543 ms)   BGF-5 (no flags) BG-1 [F] BG-2 [F]
+Restore: restart 1 PASS, restart 2 PASS (chrome://quit, 0.5 s each; never killed)   t5.ts check: PASS before, after restart 1, after restart 2
+Log hygiene: '://' count 0  token count 0  withheld-line count 0   (66 lines)
+```
+
+Evidence in short (the record has every line):
+- **BGF-1** (flags) — `click e7 trusted → ok (15 ms)`; `target status "status: idle"; field value ""; target visibilityState hidden`; `BG-1 FAIL — …`; after `focusTab` → `status: TRUSTED click received`.
+- **BGF-2** (flags) — `type e11 "bg2typed" trusted → ok (12 ms)`; `status: idle`, field `""`; `BG-2 FAIL — …`; after `focusTab` → `bg2typed`.
+- **BGF-0 / BGF-5** (no flags, before / after) — the same FAILs (`ok` in 5 / 9 ms and 13 / 12 ms).
+- **BGF-3** — `NotAllowedError: … Document is not focused.` → `Focused tab T14` → `ok`. **BGF-4** — `waitFor {text} → ok after 2065 ms` (Run 8: 3746 ms), `networkIdle` after 543 ms.
+
+Result (§4.16 reading rule): **the flags alone do not change the outcome** — trusted input into a
+background tab is still a silent no-op with renderer backgrounding and background throttling disabled;
+focus emulation stays Step 8's question (#62 (4)). Chrome ended as it started (1 window, 1 tab, no flags).
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.
