@@ -12,21 +12,61 @@ as a dated entry and point back.
 Six proposals from the Step 6 E2E wave (W1, 2026-10-22), with options, a recommendation and the
 measurement, in `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md` § "W1 as-built" →
 "Proposed decisions — for the user":
-1. **MUX-5 is accepted on its re-measurement** — recommended A (accept; the snapshot failure was a
-   focused DevTools window, and the re-measurement got a snapshot).
-2. **NET-1's expected size is corrected to `12.6 KB`** — recommended A (the row's `12.9 KB` came
-   from a different copy of the fixture — a CRLF copy fits).
-3. **Step 7 makes `browser_status` and the actions agree on the active tab** — recommended A (a
-   Step 7 Stage 0 item).
-4. **Step 8 checks which handles the spawned daemon inherits** — recommended A (a Step 8 item).
-5. **DL-1's service-worker log line is accepted as not observed** — recommended A.
-6. **Step 6 closes (gate G6-2) once 1 and 2 are accepted** — recommended A.
+1. ~~MUX-5 is accepted on its re-measurement~~ — *ruled by the user 2026-10-22, see "MUX-5 is
+   accepted; its slowness is a later item" (#34) below.*
+2. ~~NET-1's expected size is corrected to `12.6 KB`~~ — *investigated (#35), then ruled (#36).*
+3. ~~Step 7 makes `browser_status` and the actions agree on the active tab~~ — *ruled (#36).*
+4. ~~Step 8 checks which handles the spawned daemon inherits~~ — *ruled (#36).*
+5. ~~DL-1's service-worker log line is accepted as not observed~~ — *ruled (#36).*
+6. ~~Step 6 closes (gate G6-2) once 1 and 2 are accepted~~ — *ruled (#36): Step 6 is closed.*
+
+None open now. *Updated 2026-10-22: all six W1 proposals are ruled.*
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-22 · The user rules on the W1 proposals (#36)
+**Decided:** The remaining W1 proposals are accepted as recommended. NET-1's expected text becomes
+`12.6 KB` (dated correction in the MUX-9 row and a note under Run 6), and `.gitattributes` pins
+`test-fixtures/*.html` to LF so a checkout cannot change the size again. Step 7's Stage 0 makes
+`browser_status`, `listTabs`' `active` flag and the action tools agree on the active tab, with an
+error that names the cause. Step 8 checks which handles a spawned daemon inherits (a pipe test, then
+spawn with nothing inherited if confirmed). DL-1's `[bridge] download held 69 bytes` is accepted as
+not observed. With MUX-5 (#34) this meets every exit check: **Step 6 is closed (gate G6-2).**
+**Why:** the NET-1 cause was proven by measurement (#35); the other three are small, owned by later
+steps, and do not touch what Step 6 delivers.
+**Instead of:** re-running NET-1 on a CRLF checkout; keeping Step 6 open.
+**Revisit if:** a later run shows a size that differs from the response's `Content-Length`.
+**By:** user
+
+### 2026-10-22 · NET-1's `12.9 KB` came from a CRLF copy of the fixture, proven by a live probe (#35)
+**Decided:** The size gap is explained, not a bridge fault. The same playground served twice through
+the bridge on 2026-10-22 gave `12.6 KB` for the LF file (12 914 bytes, `Content-Length 12914`) and
+`12.9 KB` for a CRLF copy (13 168 bytes, `Content-Length 13168`); the network log prints the
+server's `Content-Length` (`extension/src/network-log.ts`). No committed version of the fixture fits
+`12.9 KB` in LF (the earlier ones are 10–10.7 KB), so Run 6 was served a CRLF working copy
+(`core.autocrlf=true` writes CRLF on checkout). Nothing was partial: W1's loads were complete and
+its downloads hash-exact. The correction and an LF pin for the fixtures were then accepted
+(#36).
+**Why:** the user asked for the cause before accepting a changed expectation ("partial downloads
+sounds like something that will bring trouble").
+**Instead of:** correcting the row on a cause that only fitted the numbers.
+**Revisit if:** the fixture changes or a size differs from `Content-Length` again.
+**By:** Claude (measured; the investigation was the user's ruling)
+
+### 2026-10-22 · MUX-5 is accepted; its slowness is a later item (#34)
+**Decided:** MUX-5 (handover to a new build, the MCP follows) passes on its re-measurement. Its
+first run's snapshot failed on a focused DevTools window; the re-measurement got a snapshot 16.9 s
+after the handover against the row's 15 s. Investigating that latency (and the active-tab
+mismatch behind the first failure) is a future improvement item, not a priority now.
+**Why:** the user's priority is getting the new system running; the behaviour MUX-5 measures
+(#22, #23, #24) worked in every run.
+**Instead of:** re-running MUX-5 by hand before Step 7.
+**Revisit if:** an action fails right after a 4002 reconnect in real use.
+**By:** user
 
 ### 2026-10-22 · Live E2E waves are run by Claude end to end (#33)
 **Decided:** From now on Claude runs live E2E waves autonomously: it starts and prompts its own

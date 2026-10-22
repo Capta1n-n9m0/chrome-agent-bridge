@@ -3,3 +3,9 @@
 # is developed on Windows with core.autocrlf=true, which would otherwise flip
 # them on checkout.
 *.sh text eol=lf
+
+# HTML test fixtures must keep LF endings too: the network log prints a page's
+# Content-Length, so a CRLF checkout of e2e-playground.html (12 914 -> 13 168
+# bytes) turns the NET-1 row's "12.6 KB" into "12.9 KB" (wave W1 probe,
+# 2026-10-22; decisions.md · NET-1's 12.9 KB came from a CRLF copy of the fixture).
+test-fixtures/**/*.html text eol=lf

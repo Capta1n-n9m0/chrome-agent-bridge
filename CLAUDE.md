@@ -13,14 +13,15 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
 
 - **Shipped:** Steps 1–5 (21 tools, live E2E passes recorded in `docs/e2e-test-plan.md` §5);
   `browser_download`. Public on GitHub (MIT).
-- **Step 6 — daemon + protocol v2: built and E2E-tested (wave W1, 2026-10-22).** Code D0–D5b
+- **Step 6 — daemon + protocol v2: closed 2026-10-22** (built, E2E-tested in wave W1). Code D0–D5b
   (`npm test` → 542 passed, 42 files); every live row passes but MUX-5, whose snapshot sub-check
   failed on a focused DevTools window and passed on re-measurement; MUX-7 confirmed #14, so Step 7
   has no launcher prerequisite. Run 7 in `docs/e2e-test-plan.md`; as-built (§ "W1 as-built")
   `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md`.
-- **Waiting on the user:** six W1 proposals in `docs/decisions.md` → Open decisions; Step 6 closes
-  when #1 (MUX-5) and #2 (NET-1's size text) are accepted. This machine's MCP entry has no `env`;
-  the token lives in `bridge.token` (decisions.md · 2026-10-22 · W1's set-up).
+- **W1 rulings** (decisions.md 2026-10-22 #34–#36): MUX-5 accepted (its latency a later item);
+  NET-1 corrected to `12.6 KB` and `test-fixtures/*.html` pinned to LF; Step 7 Stage 0 makes status
+  and actions agree on the active tab; Step 8 checks the daemon's inherited handles. This machine's
+  MCP entry has no `env`; the token lives in `bridge.token` (decisions.md · 2026-10-22 · W1's set-up).
 - **Next:** Step 7 (multi-actor tabs) from `docs/plans/next-session-prompt.md`, then Step 8 (SDK
   surface + MCP cursor). Live waves run autonomously (decisions.md · 2026-10-22 · Live E2E waves are
   run by Claude end to end).

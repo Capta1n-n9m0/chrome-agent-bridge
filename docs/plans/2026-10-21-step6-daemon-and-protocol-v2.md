@@ -1,7 +1,8 @@
 # Step 6 — The daemon, protocol v2, and the `daemon/ sdk/ mcp/` split
 
-**Date:** 2026-10-21 · **Status:** Built, and E2E-tested live on 2026-10-22 (wave W1); gate G6-2 closes when the
-user accepts two W1 proposals (MUX-5 on its re-measurement, NET-1's expected size) — `docs/decisions.md` → Open decisions.
+**Date:** 2026-10-21 · **Status:** **Closed 2026-10-22** — built, E2E-tested live in wave W1, and gate G6-2 passed on the
+user's rulings (decisions.md · 2026-10-22 · MUX-5 is accepted; its slowness is a later item; decisions.md · 2026-10-22 · The user rules on the W1 proposals).
+*Superseded 2026-10-22: was "gate G6-2 closes when the user accepts two W1 proposals".*
 *Superseded 2026-10-22 (W1): was "Autonomous part closed 2026-10-22 (D0–D5b, D6 rows, D7 docs); stopped at
 human gate G6-2 — the D6 wave with the user and the D7 docs commit are pending".*
 **Design of record:** docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md (§4, §5, §9, §10, §11) ·

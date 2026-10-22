@@ -372,6 +372,13 @@ verifier: [`W1-verifier.md`](2026-10-21-step6-daemon-and-protocol-v2-steps/W1-ve
 
 ### Proposed decisions — for the user (surfaced, not decided)
 
+*Ratification 2026-10-22: the user accepted MUX-5, with its latency as a later, non-priority item
+(decisions.md · 2026-10-22 · MUX-5 is accepted; its slowness is a later item). For NET-1 the user
+asked for the cause first; a live probe proved it (decisions.md · 2026-10-22 · NET-1's `12.9 KB` came
+from a CRLF copy of the fixture, proven by a live probe; evidence in `W1-run-record.md` § Follow-up);
+the user then accepted the correction with an LF pin for `test-fixtures/*.html`, and the other four
+as recommended (decisions.md · 2026-10-22 · The user rules on the W1 proposals). Step 6 is closed.*
+
 ### 2026-10-22 · MUX-5 is accepted on its re-measurement
 **Options:** A — accept MUX-5: the handover, the 4002 reconnect without `/mcp` and every log
 constraint passed in all three runs; the first run's snapshot failed only because a DevTools window

@@ -199,3 +199,19 @@ Headless session `3d618657`, one prompt per group:
 1. **`browser_status`'s active tab and the action tools' active tab can differ** (MUX-5): `listTabs` marks the first active tab of any window, `activeTab()` asks for the last-focused window. With a DevTools window focused, status names a tab and every action fails with `No active tab in the last-focused window`.
 2. **A daemon spawned through `Start-Process -NoNewWindow` kept the driver's output pipe open** (MUX-6): the tool call that ran the block returned only when the driver stopped that daemon (measured by correlation). A foreground `npx tsx recipes/hello.ts` whose daemon kept running returned at once (MUX-10's rerun). So the spawned daemon can inherit a handle a caller marked inheritable.
 3. **Wave-sheet nits:** MUX-6's block prints `Get-BridgeDaemon` as an empty row under the `Id, ExitCode` table (add `| Format-List`); MUX-10's stop-by-command-line pattern does not match the relative `server\dist\index.js`; MUX-10's worktree removal needs `--force` and a `Remove-Item` after `npm install`; `python` may not be on PowerShell's PATH; `Start-Process -ArgumentList '-Command', '<string with spaces>'` is split by PowerShell 5.1 (use `-File`).
+
+## Follow-up — NET-1 size probe (2026-10-22, after the wave, at the user's request)
+- No committed fixture fits `12.9 KB` in LF: `git cat-file -s` per version → ac469da 12 914 B
+  (254 lines; CRLF 13 168 B), 1e9e0ee 10 692 B, c2ceec5 10 153 B, 4400a21 9 942 B.
+- Two copies of today's fixture served by `python -m http.server 8090 --bind 127.0.0.1` from a temp
+  folder: `lf.html -> HTTP 200, Content-Length 12914, body 12914 bytes`;
+  `crlf.html -> HTTP 200, Content-Length 13168, body 13168 bytes`.
+- A headless session (12:00:05–12:00:42Z): `browser_network_clear` → `Cleared 7 requests.`; navigate
+  both; `browser_network_requests` →
+  `[255]   6.3s ago   GET     200  document    5ms  12.6 KB  http://127.0.0.1:8090/lf.html` /
+  `[256]   6.2s ago   GET     404  image       5ms  460 B   http://127.0.0.1:8090/favicon.ico` /
+  `[257]   3.8s ago   GET     200  document    6ms  12.9 KB  http://127.0.0.1:8090/crlf.html`.
+- So the displayed size is the response's `Content-Length`, and Run 6's `12.9 KB` was a CRLF working
+  copy. `git ls-files --eol test-fixtures/e2e-playground.html` → `i/lf w/lf` today. Nothing was cut
+  short (decisions.md · 2026-10-22 · NET-1's `12.9 KB` came from a CRLF copy of the fixture, proven by
+  a live probe).

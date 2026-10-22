@@ -69,6 +69,12 @@ me is the integrity floor (§6): the `long-run` §4 list plus this phase's gates
 - **Standing:** never push; never commit `bridge.token`, `.env` or `dist/`; any loosening of the lease
   or lock semantics that lets one actor act on another's tab is a contract change — stop.
 
+*Update 2026-10-22, before this prompt was first used: the user ruled all six — accepted as recommended,
+with NET-1 corrected to `12.6 KB` and `test-fixtures/*.html` pinned to LF (decisions.md · 2026-10-22 ·
+MUX-5 is accepted; its slowness is a later item; decisions.md · 2026-10-22 · The user rules on the W1 proposals). Step 6 is closed;
+proposal 3 is a Stage 0 audit item with a stage owner. The precondition below is met — apply the
+rulings, do not ask again.*
+
 **Before Stage 0: the six W1 proposals (precondition).** `docs/decisions.md` → "Open decisions" lists
 six proposals from wave W1, each with options and a recommendation in the Step 6 as-built (§ "W1
 as-built" → "Proposed decisions — for the user"):
