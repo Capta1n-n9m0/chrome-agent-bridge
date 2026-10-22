@@ -41,6 +41,29 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-22 · T2's daemon details (#57)
+**Decided:** The fourteen proposals of T2's report (`…-steps/T2.md` § Proposed decisions), in short:
+`tabReplaced` onto a handled tab keeps the leased handle; `closeTab`/`selectTab`/`focusTab` with
+neither `tab` nor `id` → `BAD_PARAMS "tab is required"` (no destructive default on the human's tab,
+Stage 0 F4 — matches T1's extension); a no-proto extension gets `listTabs`/`newTab` and the free
+methods forwarded as in Step 6 with no handles; the lease is re-checked and the handle re-resolved
+after the lock wait; no `tabGone` to the client that closed the tab; network-scope details (explicit
+`"active"` is not legacy; other strings are handles); F12's entry `tab` from `lastHandleOf`; the
+`TAB_GONE`/`TAB_UNKNOWN`/`TAB_HELD {owner, since}`/`LOCK_TIMEOUT` texts with no URL in any message;
+`tabs.claim` → `{tab}`, `tabs.release` → `{ok:true}`, `newTab`/`listTabs` keep the Chrome `id` beside
+`tab` for the release; a replaced extension socket's events are ignored; a client gone during
+`newTab`/`claim` is granted nothing; a deadline already passed → `TIMEOUT` without forwarding; the
+F20 opener grant takes effect at once while only `leaseGranted` waits for in-flight `newTab` calls;
+`networkClear` all fails closed on doubt.
+**Why:** each is stricter or keeps Step 6 behaviour; T2's verifier passed them.
+**Instead of:** the alternatives listed per item in T2's report.
+**Revisit if:** the per-item triggers in T2's report; Step 8 S2 for the legacy forms.
+**By:** Claude
+*Updated 2026-10-22: #40 is amended — `networkClear` with the "all" scope is refused with
+`TAB_HELD` whenever any other client holds any tab at the check, instead of only when that tab has
+entries, because the probe-then-clear sequence could clear a held tab's entries in a race (T2 known
+gap).*
+
 ### 2026-10-22 · NET-1's expected size follows the fixture to `12.8 KB` (#56)
 **Decided:** T1's popup link grew `test-fixtures/e2e-playground.html` from 12 914 to 13 106 bytes, so
 NET-1's expected `12.6 KB` becomes `12.8 KB` (13 106 / 1024 = 12.80). T5 writes the dated note in
@@ -78,6 +101,9 @@ exists to prevent; the lease check keeps it as strict (T2 escalation item 4).
 **Instead of:** `BAD_PARAMS` for any number.
 **Revisit if:** Step 8 S2 lands.
 **By:** Claude (contract-level, conservative rule; open for the user)
+*Updated 2026-10-22 (T2 verifier V5): "lease-checked" applies to `networkClear` only;
+`networkRequests` stays free for every client, as spec §6.3 says, with the numeric id resolved the
+same way.*
 
 ### 2026-10-22 · `selectTab` takes the visibility lock, like `focusTab` (#53)
 **Decided:** The daemon puts `selectTab` in the same lock class as `focusTab`.
@@ -235,6 +261,8 @@ keeps today's tools identical, and the `"all"` refusal keeps the lease strict.
 **Instead of:** reading every `tab` as a handle, or renaming the scope parameter.
 **Revisit if:** Step 8 redesigns the network tools.
 **By:** Claude (contract-level, conservative rule; open for the user)
+*Updated 2026-10-22: amended twice — a bare number is a legacy Chrome id (#54), and `networkClear`
+"all" is refused while any other client holds any tab (#57's update).*
 
 ### 2026-10-22 · The daemon's method classes are one table, and the download methods are free (#39)
 **Decided:** `route.ts` keeps every method in one table of classes (free, tab-carrying, intercepted,

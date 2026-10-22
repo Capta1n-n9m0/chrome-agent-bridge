@@ -227,3 +227,12 @@ never re-tuned.
 
 - 2026-10-22T12:14:55Z: nothing running from this run. Port 9234 free. Unrelated `node.exe` PID
   22152 (codex `host-daemon.mjs`) — not ours, never kill it.
+- 2026-10-22 (T1 ∥ T2 dispatch, HEAD 9322f24, 600 tests / 43 files): nothing running from this run.
+  **Parallel-stage rules while T1 and T2 share the working tree:** each stage touches only its lane;
+  builders run tests scoped to their own package (`npx vitest run <pkg>/`) plus `npm run typecheck`;
+  the full-suite count is taken by the verifier in its own clean worktree (`git worktree add` at HEAD,
+  then apply the stage's lane diff, `npm ci`), never in the main tree. Commit with an explicit
+  pathspec of the stage's own files only. **No `npm run build` in the main tree from now until T4's
+  commit** (decisions.md · 2026-10-22 · A Step 6 client keeps working against a Step 7 daemon for one
+  release (#41) (B)); builds run in the verifier's worktree. Level-2 agents (builder/fixer) do the
+  code and commit work; the step agent reads and decides.

@@ -117,3 +117,48 @@ One section per stage, appended at stage close, never rewritten; corrections are
 
 ### Open decisions for the user
 - None new (#54 listed under T2's stage when it closes).
+
+## Stage T2 — daemon: handles, leases, lock, intercept · 2026-10-22 · verifier: PASS-with-notes · commits e409706, cd346ed
+
+### Contracts (binding forward)
+- Pure modules `daemon/src/{handles,leases,lock,methods}.ts` and the tab layer `intercept.ts`:
+  handles `T<n>` monotonic, `mint` idempotent, dead handles pruned after 1 h / 1 000; one lease per
+  tab (`TAB_HELD {owner, since}`); FIFO `VisibilityLock` around default-mode `screenshot` (not
+  `mode:"cdp"`, not `fullPage`), `focusTab` and `selectTab` (#53), released once per acquisition, on
+  completion, deadline (`LOCK_TIMEOUT {holder}`) or disconnect; one deadline per call (#44); lease
+  re-checked after the lock wait.
+- The extension never receives `tab`: every tab method is forwarded with numeric `tabId`; the network
+  "all" scope as `{scope:"all"}` (#52).
+- Legacy path for Step 6 clients (#41, #54): no `tab` → the human's tab (`listTabs` `current:true`),
+  a Chrome `id`/number → its handle; lease-checked, lock class unchanged, no lease granted, logged
+  once per client without a URL. `closeTab`/`selectTab`/`focusTab` with neither → `BAD_PARAMS`.
+- A no-proto extension: tab methods → `VERSION` + reload hint (#42); `listTabs`/`newTab`/free
+  methods forwarded as in Step 6.
+- `networkClear` "all" → `TAB_HELD` whenever another client holds any tab, checked synchronously
+  (cd346ed; #57 update). `networkRequests` is free in every scope (spec §6.3).
+- Events out: `leaseGranted {tab, reason:"opener", url}`, `tabGone {tab, lastUrl?, lastTitle?}`;
+  resync from `listTabs` on every proto:2 extension hello (F15). `daemon.status` adds
+  `tabs:[{tab, tabId, owner?, url?}]` and `lock:{holder?}`. `tabs.claim {tab | active:true}` →
+  `{tab}`; `newTab` → `{id, tab}`; `listTabs` entries carry `tab`, `owner?`, `current?`.
+- No URL, title or token in any new log line.
+
+### Decisions taken
+- #52 (daemon half, two Step 6 test fakes), #53, #54 (+ V5 note), #57 (with the networkClear update).
+
+### Deviations from the phase doc
+- T2.4 as superseded by #41 (legacy path instead of `BAD_PARAMS "tab is required"`).
+- Two Step 6 tests' fakes edited (#52), assertions unchanged.
+- Follow-up commit cd346ed: the networkClear "all" race closed (session agent's ruling).
+
+### Estimates vs actuals
+| Item | Estimate | Actual | Source |
+|---|---|---|---|
+| Wall time | 3 h (audit ~80 min) | ~70 min of agent time over the pause | agent runs |
+| Tests | ≥ 676 + new | 748 passed / 52 files (daemon 137 → 209) | verifier clean worktree at e409706 + fix |
+
+### Needs the user's keyboard
+- Nothing.
+
+### Open decisions for the user
+- #54. Follow-up proposal (not decided): a session marker in the extension's hello so the daemon can
+  retire handles when Chrome restarts and reuses tab ids (T2 verifier V4).
