@@ -1153,54 +1153,64 @@ Failures / notes:
 - `referer` / `origin` absent without `extraHeaders` (NET-10): the §0.4 follow-up flag is now
   evidence-backed.
 
-### Run 7 — waits for the D6 wave (Step 6 daemon: MUX-1…MUX-10, DL-1, DL-2)
+### Run 7 — 2026-10-22 (Step 6 daemon, wave W1: MUX-1…MUX-10, DL-1, DL-2)
 
-*Skeleton written 2026-10-22 by Step 6 stage D6, before any measurement. Nothing here has been run:
-the rows are the user's wave (gate G6-2), and exit checks D6.2–D6.4 are measured then, not now.
-Fill in each line with the command and the observed text, verbatim.* *Revised 2026-10-22 by the D6
-fixer, still before any measurement: the driver line, MUX-7 (e), DL-1 recorded once (MUX-9 runs it),
-DL-2's `/page` contrast, and decisions #15, #21, #27.*
+*Skeleton written 2026-10-22 by Step 6 stage D6, before any measurement; filled the same day by
+wave W1 (gate G6-2). Full evidence, row by row (every command and the text it printed):
+[`W1-run-record.md`](plans/2026-10-21-step6-daemon-and-protocol-v2-steps/W1-run-record.md); the
+daemon log of the whole wave: [`W1-daemon-log.txt`](plans/2026-10-21-step6-daemon-and-protocol-v2-steps/W1-daemon-log.txt).*
 
 ```
-Date: ____  Chrome version: ____  Node: ____  OS: ____  Commit: ____
-MCP config path: mcp/dist/index.js [ ]   bridge.token at the repo root [ ]   BRIDGE_TOKEN unset everywhere [ ]
-Daemon build at the start (Get-DaemonBuild): ____
-Driver: none (by hand) [ ]  desktop automation [ ]  browser driver [ ]   driver check printed nothing (A1) [ ]
-Steps done by the user ([USER], and any [UI] step the driver could not do): ____
+Date: 2026-10-22  Chrome version: 156.0.8078.48  Node: v25.2.1  OS: Windows 11 Pro 10.0.26300  Commit: fef70ff
+MCP config path: mcp/dist/index.js [x]   bridge.token at the repo root [x]   BRIDGE_TOKEN unset everywhere [x]
+Daemon build at the start (Get-DaemonBuild): 795fb769aeae5dbd2345c51a39b26f352bfaedc169ef97c0e157e20400a337bd
+Driver: none (by hand) [x] MUX-1…8   desktop automation [ ]  browser driver [ ]   headless Claude sessions + window capture [x] MUX-9…10, DL, MUX-5 re-measurements
+        driver check printed nothing (A1) [x]  (after the driver session was relaunched with no bridge MCP)
+Steps done by the user ([USER], and any [UI] step the driver could not do): every [UI] step of MUX-1…MUX-8
+        (sessions S1…S5, /exit, /mcp, closing and reopening Chrome, the service-worker console)
 
-MUX-1 [ ] MUX-2 [ ] MUX-3 [ ] MUX-4 [ ] MUX-5 [ ] MUX-6 [ ]
-MUX-7 (a) [ ] (b) [ ] (c) [ ] (d) [ ] (e, optional) [ ]   MUX-8 [ ] MUX-9 [ ]   MUX-10 (optional) [ ]
-DL-1 [ ] DL-2 [ ]
-D6.3 log hygiene: '://' count ____  token count ____  withheld-line count ____
+MUX-1 [P] MUX-2 [P] MUX-3 [P] MUX-4 [P] MUX-5 [F: snapshot sub-check; re-measured, see below] MUX-6 [P]
+MUX-7 (a) [as Stage 0] (b) [P] (c) [P, 2nd attempt] (d) [P] (e, optional) [P]   MUX-8 [P] MUX-9 [P*]   MUX-10 (optional) [P]
+DL-1 [P; SW-console line not observed] DL-2 [P]
+D6.3 log hygiene: '://' count 0  token count 0  withheld-line count 0   (148 lines)
 ```
+*P\* — NET-1 printed `12.6 KB` where the row expects `12.9 KB`; the expectation is wrong (below).*
 
-Evidence (command → observed text):
-- **MUX-1** — `browser_status`: … · `Get-BridgeDaemon`: … · log tail: …
-- **MUX-2** — both `browser_status`: … · both snapshots: … · log: …
-- **MUX-3** — `mux3.out` / `mux3.err` / exit code: … · `browser_status` during the hold: … ·
-  after: … · log: …
-- **MUX-4** — T0 (`client - "hello-recipe" (0 clients)`): … · T1 (`idle for 20000 ms …`): … ·
-  T1 − T0: … s · `$t1 − $t0`: … s · SW console: … · the `… s after $t1` line: …
-- **MUX-5** — `<old>` / `<new>`: … · recipe output: … · log: … · `browser_status` after: … ·
-  pids `<D1>` → `<D2>`: …
-- **MUX-6** — `Get-BridgeDaemon` (the evidence): … · exit codes: … · `.out` / `.err`: … · start
-  lines (one or two): …
-- **MUX-7** — PIDs `<M>`/`<P>`/`<D>` per session: … · (b) poll line and `Get-Process -Id <P1>`: … · (c): … · (a) `taskkill` output: … ·
-  (d): … · (e, optional) poll output, new pid and parent, `browser_status`: …
-- **MUX-8** — failing run: … · session `browser_status` meanwhile: … · recovering run: … ·
-  optional run: …
-- **MUX-9** — ACT-1: … · ACT-2: … · TRUST-2: … · EVAL-1: … · NET-1: … · DL-1: recorded under **DL-1** (MUX-9's DL-1 is the
-  only DL-1 run)
-- **MUX-10** — …
-- **DL-1** — (0) `Test-Path`: … · (a) `browser_status` `Active tab` before / after: … · (a)–(d): …
-- **DL-2** — (0) `Test-Path`: … · (a) `/page` status, `/dl2` error, fixture log: … · (b): … ·
-  (c): …
+Evidence (command → observed text; the run record has every line):
+- **MUX-1** — `browser_status`: `Daemon: connected on 127.0.0.1:9234 (build 795fb769…, up 15s)` / `Clients (1): claude-code #14996` / `Extension: connected` / `Active tab: [1108125907] New Tab — chrome://newtab/` · `Get-BridgeDaemon`: one row, 21144, parent 14996 · log tail: `start pid=21144`, `config pid=21144 port=9234 idleMs=600000 build=795fb769…`, `listening on 127.0.0.1:9234`, `client + "claude-code #14996" (1 client)`
+- **MUX-2** — both `browser_status`: `Clients (2): claude-code #14996, claude-code #17384`, same build · both snapshots: `textbox "Email address" [ref=e1]`, `button "Sign in" [ref=e5]` on `http://localhost:8080/e2e-playground.html` · log: `client + "claude-code #17384" (2 clients)`, no new `start`
+- **MUX-3** — `mux3.out`: the seven lines in order, ending `still connected after the hold — clients (3)` and `closed after 60027 ms — OK`; `mux3.err` empty; exit code 0 · during the hold: `Clients (3): claude-code #14996, claude-code #17384, hello-recipe`, active `[1108125907]` = `listTabs`'s · after: `Clients (2): …` · log: `client + "hello-recipe" (3 clients)`, `client - "hello-recipe" (2 clients)`
+- **MUX-4** — T0 `09:10:57Z client - "hello-recipe" (0 clients)` · T1 `09:11:17Z idle for 20000 ms with no clients — shutting down`, then `exit 0 (shutdown 1001) clients=0 extensionEvents=0 ignoredClientFrames=0` · T1 − T0: 20 s · `$t1 − $t0`: 20.2 s · SW console: `connection: down` repeated (55× after the exit) · `30.1 s after $t1: Get-BridgeDaemon lists 0 process(es)`
+- **MUX-5** — `<old>` 795fb769… / `<new>` d74f5913… · recipe: `daemon build d74f5913…`, `up 0s`, `— OK`, exit 0 · log constraints (1)–(5) hold (old daemon `exit 0 (shutdown 4002)`, two starters, the loser `port 9234 in use`) · `browser_status` after: `build d74f5913…`, `claude-code #21044` (no `/mcp`) · **`browser_snapshot`: `No active tab in the last-focused window` — FAIL**: Chrome's last-focused window was the service-worker DevTools window opened for MUX-4 (`activeTab()` asks for the last-focused window, `extension/src/tabs.ts:2`). pids `<D1>` 10964 → `<D2>` 31944. SW console `down`, `up`. Re-measured twice by the driver on a headless session; the last one (R3): status before `build 795fb769…`, recipe `build 8db1207d…`, `up 0s`; status after `build 8db1207d…`, same `claude-code #11268`; snapshot returned (no error), 16.9 s after the recipe (the row says within 15 s)
+- **MUX-6** — `Get-BridgeDaemon` (the evidence): one process, 2456, parent 22364 · exit codes: 0, 0 · `.out`: `race-a: closed after 302 ms — OK` / `race-b: closed after 289 ms — OK`; `.err` empty · start lines: two (2456, 23260); the loser wrote `port 9234 in use — another daemon owns it` and `exit 0 (port in use)`
+- **MUX-7** — PIDs: S1 M 21408 / P 11584 / D 6872; S2 M 21864 / P 34584; S2′ M 16492 / P 14996 / D 31436; S3 M 28880 / P 4856 / D3 2576; S4 M 31352 / P 25696 / D4 30296; S5 M 10872 / P 16460 · (b): `(b) M1 alive: False; waited 0.0 s`, `Get-Process -Id 11584` nothing, D alive, `client - "claude-code #21408" (0 clients)`, no `exit` · (c): `(c) M2 alive: False; waited 0.2 s`; the first attempt's `/mcp` came after D had idled out (10 min), so it was repeated: `/mcp` → `Clients (1): claude-code #19796` on the same daemon, no `start` · (a): `SUCCESS: The process with PID 2576 (child process of PID 28880) has been terminated.`, D3 gone, no `exit` line · (d): `taskkill` names 19040, 10872, 16460 only; D4 alive; S4 `Daemon: connected …`, `Extension: connected` · (e): `(e) waited 3.3 s`, new 20360, parent 31352; S4 `Clients (1): claude-code #31352`, `Extension: connected`, no `/mcp`
+- **MUX-8** — failing run: `FAILED after 15029 ms — NOT_CONNECTED: Extension not connected — is Chrome open and the Chrome Agent Bridge extension enabled? (waited 15000 ms on port 9234)`, exit 1 · session meanwhile: `Daemon: connected …`, `Extension: not connected — is Chrome open with the Chrome Agent Bridge extension enabled and its token/port set?` · recovering run: `closed after 19 ms — OK`, exit 0 · optional run: `closed after 3672 ms — OK`, exit 0
+- **MUX-9** — ACT-1: `status: email = a@b.com` · ACT-2: `status: counter = 1` · TRUST-2: `status: TRUSTED click received`, banner captured during the call and gone 6 s after · EVAL-1: `Agent Bridge E2E Playground`, banner during, gone after · NET-1: `Cleared 15 requests.`, `Network — active tab: showing 1 of 1 (recording since 59m55s ago; 0 pending)`, `[47]    1.5s ago   GET     200  document    4ms  12.6 KB  http://localhost:8080/e2e-playground.html`, no banner · DL-1: recorded under **DL-1**
+- **MUX-10** — `FAILED after 2016 ms — VERSION: No welcome from 127.0.0.1:9234 within 2 s after hello: a pre-Step-6 bridge server holds port 9234. …`, exit 1, `Get-BridgeDaemon` empty; after the old server stopped: `closed after 340 ms — OK`, exit 0; worktree removed
+- **DL-1** — (0) `False` · (a) `Active tab: [1108126126] Agent Bridge E2E Playground — http://localhost:8080/e2e-playground.html` before and after; `Saved C:\Users\aliev\AppData\Local\Temp\bridge-e2e\dl1\hello.txt` / `69 bytes · text/plain · sha256 0a6b99ca15c2a72ad024d78d94d3980833b77efda41af17d0571d21fee2956ce`; no banner; SW console not observed · (b) `0A6B99CA…2956CE`, `hello.txt` · (c) `…\dl1\hello.txt exists — pass overwrite:true to replace it` · (d) the two lines again
+- **DL-2** — (0) `False` · (a) `/page` → `200`; `/dl2` → tool error `[chrome.debugger] TypeError: Failed to fetch`; fixture log `"GET /dl2 HTTP/1.1" 302 -` · (b) `Saved …\dl2\hello.txt` / `69 bytes · text/plain · sha256 0a6b99ca…` / `(followed redirects to localhost:8080)`; 8080 log `"GET /dl/hello.txt HTTP/1.1" 200 -` · (c) the hash of DL-1 (b)
 
-Decisions this run informs: #14 (MUX-7 (a), (b)); #15 (MUX-7 (e), optional); #21 (MUX-8);
-#22, #23, #24 (MUX-5); #25 (MUX-4, MUX-6); #27 (MUX-8, MUX-1); #13 (MUX-10).
+Decisions this run informs: #14 (MUX-7 (a), (b)) — **stands**: the daemon survives a normal end, a
+shim kill and a tree kill of a session that did not spawn it, and dies only in a tree kill of its own
+spawner's tree (as Stage 0 measured), so no launcher is built (decisions.md · 2026-10-22 · The user
+rules on the seven Step 6 open decisions); #15 (MUX-7 (e)) — confirmed, twice; #21 (MUX-8) —
+confirmed; #22, #23, #24 (MUX-5) — the handover, the 4002 reconnect and the losing starter behave as
+built; #25 (MUX-4, MUX-6) — no log line lost in the bind race; #27 (MUX-8, MUX-1) — confirmed; #13
+(MUX-10) — confirmed.
 
 Failures / notes:
-- …
+- **MUX-5's snapshot sub-check failed** (test set-up: a DevTools window had focus); re-measured, see
+  above. Proposed for the user's ruling in the as-built (wave W1 section).
+- **NET-1's expected `12.9 KB` is an error in the row.** The fixture is 12 914 bytes with LF line
+  ends; the formatter divides by 1024 (`extension/src/network-log.ts:259`), so `12.6 KB` is right, and
+  Run 6's own later line `[374] … 12.6 KB` shows the same page. Run 6's NET-1 `12.9 KB` fits a CRLF copy
+  (13 168 bytes → 12.86 KB) under `core.autocrlf=true`, or a version of the fixture edited during Run 6
+  (the W1 verifier's note; not proven either way).
+- **DL-1's `[bridge] download held 69 bytes`** was not observed: the service-worker console was not open
+  in the autonomous part (opening it moves the last-focused window, see MUX-5).
+- Findings (no code changed): `browser_status`'s active tab and the action tools' active tab can
+  differ; a daemon spawned through `Start-Process -NoNewWindow` kept the caller's output pipe open
+  until it exited; five wave-sheet nits. All in the run record § Findings.
 
 ## 6. Exit criteria
 

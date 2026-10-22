@@ -2,7 +2,7 @@
 
 - **Date:** 2026-10-22
 - **Branch:** `main` (merged from `feat/agent-bridge`; public on GitHub, MIT, since 2026-09-03)
-- **Status:** **Step 6 (daemon + SDK + MCP as an SDK client) code complete, live E2E pending** — the D6 wave with the user ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)); **21 tools, 542 unit tests green** (`npm test` → 542 passed, 42 files, at D5b commit `033b1bc`, 2026-10-22). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
+- **Status:** **Step 6 (daemon + SDK + MCP as an SDK client) built and E2E-tested live (wave W1, 2026-10-22); it closes when the user accepts two W1 proposals** (MUX-5, NET-1 text: `docs/decisions.md` → Open decisions) ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)); **21 tools, 542 unit tests green** (`npm test` → 542 passed, 42 files, at D5b commit `033b1bc`, 2026-10-22). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
 
 ---
 
@@ -163,7 +163,7 @@ out of.
 | B | Robustness: port-busy surfaced through tools + bind retry; `browser_status`; WS heartbeat; actionable `chrome.debugger` errors; CONN-5 soak | ✅ Done (E2E-verified 2026-09-03) |
 | Step 4 | `browser_evaluate`: CDP `Runtime.evaluate` in the page context + in-page serialiser + per-call server timeout | ✅ Done (E2E-verified 2026-09-07) |
 | Step 5 | Network inspection: always-on `chrome.webRequest` capture into a bounded per-tab `NetworkLog` with `storage.session` write-through; `browser_network_requests` + `browser_network_clear` | ✅ Done (E2E-verified 2026-09-07), including Part N6 `browser_wait_for { networkIdle: true }` (NET-16) |
-| Step 6 | Daemon + protocol v2: `daemon/ sdk/ mcp/` split, a shared detached daemon (roles, welcome, error codes, build-hash handover, idle exit, log), the SDK's `connect()`, the MCP as an SDK client | 🟡 Code complete 2026-10-22 (542 tests); live E2E waits for the D6 wave |
+| Step 6 | Daemon + protocol v2: `daemon/ sdk/ mcp/` split, a shared detached daemon (roles, welcome, error codes, build-hash handover, idle exit, log), the SDK's `connect()`, the MCP as an SDK client | 🟢 Built and E2E-tested 2026-10-22 (wave W1: every row passes but MUX-5, which passed on re-measurement; closes on two pending rulings) |
 
 **Quality state:** 542 unit tests pass in 42 files (`npm test` at D5b commit `033b1bc`,
 2026-10-22); `tsc` typecheck clean across all five packages (`shared daemon sdk mcp extension`);
@@ -182,7 +182,7 @@ verified the end-to-end protocol contract and that esbuild does not break page-i
 ### Step 6 — daemon, SDK and the MCP as an SDK client (2026-10-22)
 
 Phase doc `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`; contracts and deviations in
-`…-asbuilt.md`; decisions in `docs/decisions.md` 2026-10-22 #13–#30.
+`…-asbuilt.md`; decisions in `docs/decisions.md` 2026-10-22 #13–#33.
 
 - **What exists:** five workspaces (`shared daemon sdk mcp extension`); one detached daemon per
   machine on `127.0.0.1:9234` that every client shares (welcome, 22 error codes, build-hash handover,
@@ -206,15 +206,30 @@ Phase doc `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`; contracts and
 | D5b — connect without waiting for the extension | `033b1bc` | 542 | 42 |
 
   D5's net +10 includes the documented removal of `startup.test.ts` (−5 tests) with `startup.ts`.
-- **Not done:** the live E2E (the D6 MUX and DL rows in `docs/e2e-test-plan.md`), deferred by the
-  user to a later session (2026-10-22). Done 2026-10-22: the D7 docs commit,
+- **Live E2E:** run 2026-10-22 as wave W1 (results below). *Superseded 2026-10-22: was "Not done:
+  the live E2E …, deferred by the user to a later session".* Done 2026-10-22: the D7 docs commit,
   this machine's MCP config change, and the user's ratification of the seven open decisions
   (decisions.md · 2026-10-22 · The user rules on the seven Step 6 open decisions; if MUX-7 fails,
   the double spawn is a Step 7 prerequisite) (other machines: `docs/setup.md` §3). POSIX behaviour (the MCP's parent check, the detached
   daemon) is unverified.
 
-**E2E results — waits for the D6 wave** (with the user, gate G6-2 in the phase doc). Nothing is
-measured live yet.
+**E2E results — wave W1, 2026-10-22** (Run 7 in `docs/e2e-test-plan.md`; evidence
+`docs/plans/2026-10-21-step6-daemon-and-protocol-v2-steps/W1-run-record.md`; verifier `W1-verifier.md`
+in the same folder). *Superseded 2026-10-22: was "waits for the D6 wave … Nothing is measured live yet".*
+- **Pass:** MUX-1 (first knock spawns the daemon), MUX-2 (two Claude sessions share it), MUX-3 (a
+  script beside them), MUX-4 (idle exit 20 s after the last client), MUX-6 (two scripts race: one
+  daemon), MUX-8 (no Chrome: `NOT_CONNECTED` after 15029 ms, then recovery), MUX-9 (regression
+  smoke), MUX-10 (a pre-Step-6 server: `VERSION` after 2016 ms), DL-1, DL-2 (cross-origin redirect).
+- **MUX-7:** the daemon survives a normal `/exit`, a shim kill and a tree kill of another session,
+  and dies only in a tree kill of its own spawner — so decision #14 stands and Step 7 needs no
+  launcher. A killed daemon is respawned by a live MCP in 3.3 s (#15).
+- **MUX-5:** the build handover and the 4002 reconnect passed; the snapshot sub-check failed because
+  a DevTools window had focus, and passed on re-measurement — proposed for acceptance.
+- **D6.3:** the wave's daemon log has no URL and no token (counts 0 and 0). NET-1's `12.6 KB`
+  against the row's `12.9 KB` is an error in the row (Run 6's figure fits a CRLF copy of the fixture; not proven).
+- **Found (no code changed):** `browser_status` and the action tools can disagree on the active tab
+  when a DevTools window is focused (→ Step 7); a daemon spawned through `Start-Process -NoNewWindow`
+  kept the caller's output pipe open (→ Step 8).
 
 ## 2. Architecture at a glance
 
@@ -349,8 +364,10 @@ by D2; DL rows for `browser_download` written by Step 6; the popup button in Ste
 `{text}` locator; one daemon handover per `connect()` then `VERSION`; the cursor cleared on a 4002
 reconnect; Opus 5.5 for every Step 6 agent). The Step 6 kickoff is `docs/plans/next-session-prompt.md`.
 Step 6's code is built (stages D0–D5b, 542 tests; [§1 Step 6
-block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)); its live E2E waits for the D6
-wave with the user. Next after that: Step 7, then Step 8. *Superseded 2026-10-22: was "Step 6 starts
+block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)); its live E2E ran on
+2026-10-22 (wave W1) and Step 6 closes when the user accepts two W1 proposals. Next: Step 7 (its
+kickoff is `docs/plans/next-session-prompt.md`), then Step 8. *Superseded 2026-10-22 (W1): was "its
+live E2E waits for the D6 wave with the user. Next after that: Step 7, then Step 8".* *Superseded 2026-10-22: was "Step 6 starts
 by pasting it into a fresh session that does not use the bridge MCP. Nothing is built.", because
 Step 6's code stages D0–D5b landed.*
 

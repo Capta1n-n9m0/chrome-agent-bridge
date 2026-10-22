@@ -1,7 +1,9 @@
 # Step 6 — The daemon, protocol v2, and the `daemon/ sdk/ mcp/` split
 
-**Date:** 2026-10-21 · **Status:** Autonomous part closed 2026-10-22 (D0–D5b, D6 rows, D7 docs); stopped at
-human gate G6-2 — the D6 wave with the user and the D7 docs commit are pending
+**Date:** 2026-10-21 · **Status:** Built, and E2E-tested live on 2026-10-22 (wave W1); gate G6-2 closes when the
+user accepts two W1 proposals (MUX-5 on its re-measurement, NET-1's expected size) — `docs/decisions.md` → Open decisions.
+*Superseded 2026-10-22 (W1): was "Autonomous part closed 2026-10-22 (D0–D5b, D6 rows, D7 docs); stopped at
+human gate G6-2 — the D6 wave with the user and the D7 docs commit are pending".*
 **Design of record:** docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md (§4, §5, §9, §10, §11) ·
 **As-built:** docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md (does not exist yet; written
 at stage close) · **Steps dir:** docs/plans/2026-10-21-step6-daemon-and-protocol-v2-steps/ (created at kickoff 2026-10-21 for ledgers, briefs, reports and evidence; *amended 2026-10-21 (Stage 0)*)
@@ -31,8 +33,23 @@ the as-built register; counts from `npm test` in the verifiers' clean worktrees.
 - 21 tools, names and schemas unchanged from `1a92d95` apart from `browser_status`'s description
   and body (`grep -c "server.tool(" mcp/src/tools/registry.ts` → 21).
 - `git diff 1a92d95..HEAD -- extension/` is empty: the extension was not modified.
-- The live targets below (second session, script beside Claude, idle exit, handover) are **not yet
-  measured**: they are the D6 wave (gate G6-2).
+- The live targets below were measured on 2026-10-22 in wave W1. *Superseded 2026-10-22: was "are
+  **not yet measured**: they are the D6 wave (gate G6-2)".*
+
+**Results of the D6 wave (W1, 2026-10-22)** — source: Run 7 in `docs/e2e-test-plan.md`, evidence
+`…-steps/W1-run-record.md`, daemon log `…-steps/W1-daemon-log.txt`, verifier `…-steps/W1-verifier.md`.
+- A second Claude session and a script share one daemon (MUX-2, MUX-3); two scripts racing with no
+  daemon leave exactly one (MUX-6); the daemon exits 20 s after its last client with a 20 s idle
+  setting (MUX-4); a build change is handed over and the MCP follows on its own (MUX-5, whose
+  snapshot sub-check failed on a focused DevTools window and passed on re-measurement).
+- MUX-7: the daemon survives a normal session end, a shim kill and a tree kill of another session,
+  and dies only in a tree kill of its spawner — decision #14 stands, no launcher for Step 7.
+- No Chrome: `NOT_CONNECTED` after 15029 ms, the session keeps `Daemon: connected` (MUX-8); a
+  pre-Step-6 server: `VERSION` after 2016 ms, no spawn (MUX-10); the regression smoke and both
+  download rows pass (MUX-9, DL-1, DL-2).
+- Exit checks: D6.2 met; D6.3 met (0 URLs, 0 token in 148 log lines); D6.4 met except NET-1's size,
+  where the row's `12.9 KB` is wrong (`12.6 KB` is right for the 12 914-byte fixture) — proposed
+  for correction; `git diff -- extension/` empty; `npm test` 542 passed.
 
 Targets at planning time (kept for comparison):
 

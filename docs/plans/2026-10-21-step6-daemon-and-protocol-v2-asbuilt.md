@@ -302,3 +302,116 @@ a machine that ran the bridge before Step 6". Item 3, the D6 wave, is **deferred
 later session** (wave W1 in `docs/plans/handoffs.md`). Item 4, the push, is done. The open decisions
 are written up for review in `docs/plans/2026-10-22-step6-open-decisions-review.md`, and the user
 ratified all seven the same day (decisions.md · 2026-10-22 · The user rules on the seven Step 6 open decisions).
+
+## W1 as-built — the Step 6 live E2E wave: MUX and DL rows (2026-10-22)
+
+*Added 2026-10-22 by the wave-W1 session (Claude Opus 5.5). Rows MUX-1…MUX-8 were run with the user
+at the keyboard; from MUX-9 on, at the user's instruction, the driver session ran everything itself
+(headless Claude sessions, window captures, launching Chrome). Run record: `docs/e2e-test-plan.md` §5
+Run 7; full evidence: [`W1-run-record.md`](2026-10-21-step6-daemon-and-protocol-v2-steps/W1-run-record.md);
+daemon log: [`W1-daemon-log.txt`](2026-10-21-step6-daemon-and-protocol-v2-steps/W1-daemon-log.txt);
+verifier: [`W1-verifier.md`](2026-10-21-step6-daemon-and-protocol-v2-steps/W1-verifier.md).*
+
+### What changed, by scope item
+1. **Preconditions.** D7's docs were committed and the tree was clean; `npm run build` exit 0; the
+   MCP entry pointed at `mcp/dist/index.js` but still carried `BRIDGE_TOKEN`/`BRIDGE_PORT` in its
+   `env`, and `bridge.token` did not exist. The user chose to move the config's token into
+   `bridge.token` by a script that printed only its length, and to drop the `env` block by script;
+   the extension's Options already matched. The driver session was itself a bridge client (caution
+   A1, user-scope MCP entry), so the user relaunched it with `--strict-mcp-config` and an empty
+   config; the driver check then printed nothing. 9234 was held only by our daemon.
+2. **Rows.** MUX-1, 2, 3, 4, 6, 8, 9, 10 and DL-1, DL-2 pass; MUX-7 (b), (c), (d), (e) are as
+   expected and (a) as Stage 0 measured. MUX-5's handover passed on every log constraint, but its
+   `browser_snapshot` sub-check failed with `No active tab in the last-focused window` because the
+   service-worker DevTools window had focus; two later re-measurements on a headless session got a
+   snapshot (the last at 16.9 s against the row's 15 s). NET-1 (in MUX-9) printed `12.6 KB` where the
+   row expects `12.9 KB`, which is an error in the expectation. DL-1's service-worker console line was
+   not observed.
+3. **Evidence files:** `W1-run-record.md`, `W1-daemon-log.txt` (the log is gitignored as `*.log`, so
+   it is attached as `.txt`), `W1-verifier.md`; Run 7 filled in `docs/e2e-test-plan.md`.
+4. **Nothing else changed:** no code, protocol or extension change; no reload; nothing pushed.
+
+### Every behaviour or number that moved
+| Item | Was | Now | Source |
+|---|---|---|---|
+| Decision #14 (detached daemon vs `taskkill /T`) | measured on test processes only (Stage 0 F3) | measured with Claude Code: survives `/exit` (b), a shim kill (c) and a tree kill of another session (d); dies only in its spawner's tree kill (a) | Run 7 MUX-7 |
+| Decision #15 (non-4002 close → 5 s retry) | unit tests | a killed daemon was respawned by the live MCP in 3.3 s, parent = that MCP; seen twice | MUX-7 (e), MUX-7 (a) set-up |
+| Idle exit | unit tests | 20 s after the last client left (`BRIDGE_DAEMON_IDLE_MS=20000`), and 600 000 ms in a real gap (MUX-7 (c), first attempt) | MUX-4, W1-daemon-log.txt 09:52:45Z |
+| Handover race | unit tests | the MCP's reconnect and the recipe both spawned; one listened, the other logged `port 9234 in use` and `exit 0 (port in use)`, in all three MUX-5 runs | MUX-5 runs 1–3 |
+| `NOT_CONNECTED` wait | 15 000 ms (code) | `FAILED after 15029 ms` | MUX-8 |
+| `VERSION` on a pre-Step-6 server | 2 s (code) | `FAILED after 2016 ms` (and 2015 ms) | MUX-10 |
+| NET-1 size text | `12.9 KB` (Run 6, NET-1) | `12.6 KB` — same 12 914-byte fixture; Run 6's figure fits a CRLF copy (not proven) | MUX-9 |
+
+### Builds and checks
+- (a) **D6.2:** every row has its command and observed text (Run 7 and the run record); MUX-6 is
+  judged by `Get-BridgeDaemon` (one process, 2456); MUX-4 by T0 `09:10:57Z` and T1 `09:11:17Z`
+  (20 s), `$t1 − $t0` = 20.2 s.
+- (b) **D6.3:** the wave's `daemon.log` copy (148 lines) has 0 `://`, 0 token, 0 withheld lines.
+- (c) **D6.4:** ACT-1, ACT-2, TRUST-2, EVAL-1 match their last runs word for word, banners
+  included; NET-1 matches except the size (`12.6 KB` vs `12.9 KB`), which is the expectation's error
+  — met if the user accepts the proposal below.
+- (d) `git diff -- extension/` empty; `npm test` → 542 passed, 42 files (start of the wave, and the
+  verifier's re-run); `npm run typecheck` exit 0.
+- **Verifier** (fresh Opus 5.5 agent, [`W1-verifier.md`](2026-10-21-step6-daemon-and-protocol-v2-steps/W1-verifier.md)):
+  PASS-with-notes. The log supports every claim; D6.3 recounted 0 / 0 / 0. One MAJOR: no MUX-5
+  run meets the row as written (proposal 1 below). MINOR: DL-1's console line unobserved
+  (proposal 5); the client `claude-code #20604` that spawned daemon 31436 was unnamed (now named in
+  the run record); NET-1's literal `12.9 KB` unmet (proposal 2), with the CRLF cause a fit, not a
+  proof. NITs applied where they touched the record's wording.
+
+### Deliberately left for later
+- **The active-tab mismatch** (MUX-5): `browser_status` names the first active tab of any window,
+  while every action asks for the last-focused window → Step 7, whose tab leases replace active-tab
+  targeting for SDK clients (proposal below).
+- **The spawned daemon inheriting a caller's output pipe** (MUX-6): measured by correlation only →
+  Step 8, which owns the SDK's surface (proposal below).
+- **Five wave-sheet nits** (MUX-6 `Format-List`, MUX-10's relative command line and `--force`
+  worktree removal, `python` off PATH, `Start-Process` argument splitting) → the next docs pass;
+  the rows' text is not edited after the run.
+- **POSIX** behaviour of the lifecycle and the detached daemon stays unverified (no Linux run).
+
+### Proposed decisions — for the user (surfaced, not decided)
+
+### 2026-10-22 · MUX-5 is accepted on its re-measurement
+**Options:** A — accept MUX-5: the handover, the 4002 reconnect without `/mcp` and every log
+constraint passed in all three runs; the first run's snapshot failed only because a DevTools window
+had focus, and the third run returned a snapshot 16.9 s after the recipe (the 15 s bound was missed
+by the headless session's own latency, not by the bridge). B — re-run MUX-5 by hand in the Step 7
+wave, with the service-worker console closed. **Recommendation:** A. **Why:** what the row measures
+(#22, #23, #24) behaved as built every time; the failure is the test set-up that caution A4 names.
+**Revisit if:** a later run shows an action failing right after a 4002 reconnect.
+
+### 2026-10-22 · NET-1's expected size is corrected to `12.6 KB`
+**Options:** A — add a dated correction to the MUX-9 row and to Run 6's NET-1: the 12 914-byte
+fixture formats as `12.6 KB`; Run 6's figure fits a CRLF copy (13 168 bytes) or a version edited during
+Run 6 — not proven. D6.4 is then met. B — keep
+`12.9 KB` and check out the fixture with CRLF for regression runs. **Recommendation:** A. **Why:**
+the formatter (1024-based) and Run 6's own later line agree on `12.6 KB`; line endings are not
+something the bridge controls. **Revisit if:** the fixture changes.
+
+### 2026-10-22 · Step 7 makes `browser_status` and the actions agree on the active tab
+**Options:** A — a Step 7 Stage 0 audit item: status, `listTabs`' `active` flag and `activeTab()`
+resolve the tab the same way (last-focused normal window), and the error names the cause (for
+example "the focused window has no tab — is a DevTools window focused?"). B — leave it; Step 7's tab
+leases make it moot for SDK clients. **Recommendation:** A. **Why:** today `browser_status` can name
+a tab that every action then refuses, and the MCP keeps active-tab targeting after Step 7.
+**Revisit if:** Step 7's spec drops active-tab targeting for the MCP too.
+
+### 2026-10-22 · Step 8 checks which handles the spawned daemon inherits
+**Options:** A — a Step 8 item: reproduce with a pipe test (a parent whose stdout is an inheritable
+pipe spawns a client that spawns the daemon; does the parent see end-of-file?) and, if confirmed,
+spawn the daemon so it inherits nothing. B — document it as a gotcha only. **Recommendation:** A.
+**Why:** a script run as `node x.js | tee` could hang until the daemon idles out (10 min); W1
+measured it once, by correlation. **Revisit if:** the pipe test does not reproduce it.
+
+### 2026-10-22 · DL-1's service-worker log line is accepted as not observed
+**Options:** A — accept: the file, its 69 bytes and its sha256 prove the download, and the line is
+a diagnostic. B — observe it in the Step 7 wave. **Recommendation:** A. **Why:** opening the
+service-worker console changes the last-focused window (MUX-5), so the check disturbs the row.
+**Revisit if:** a download fails with no other evidence.
+
+### 2026-10-22 · Step 6 closes (gate G6-2) once the first two proposals are accepted
+**Options:** A — close Step 6 and start Step 7 from the kickoff in `docs/plans/next-session-prompt.md`.
+B — keep it open for a hand-run MUX-5. **Recommendation:** A. **Why:** every exit check is met with
+those two rulings; #14 stands, so Step 7 has no launcher prerequisite. **Revisit if:** the user
+chooses B for MUX-5.

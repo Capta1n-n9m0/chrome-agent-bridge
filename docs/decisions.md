@@ -9,10 +9,53 @@ as a dated entry and point back.
 
 ## Open decisions
 
-None. *Updated 2026-10-22: the seven Step 6 decisions listed here (#13, #14, #15, #21, #22, #24,
-#27) were ratified by the user — see "The user rules on the seven Step 6 open decisions" below.*
+Six proposals from the Step 6 E2E wave (W1, 2026-10-22), with options, a recommendation and the
+measurement, in `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md` § "W1 as-built" →
+"Proposed decisions — for the user":
+1. **MUX-5 is accepted on its re-measurement** — recommended A (accept; the snapshot failure was a
+   focused DevTools window, and the re-measurement got a snapshot).
+2. **NET-1's expected size is corrected to `12.6 KB`** — recommended A (the row's `12.9 KB` came
+   from a different copy of the fixture — a CRLF copy fits).
+3. **Step 7 makes `browser_status` and the actions agree on the active tab** — recommended A (a
+   Step 7 Stage 0 item).
+4. **Step 8 checks which handles the spawned daemon inherits** — recommended A (a Step 8 item).
+5. **DL-1's service-worker log line is accepted as not observed** — recommended A.
+6. **Step 6 closes (gate G6-2) once 1 and 2 are accepted** — recommended A.
+
+*Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
+#15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
+decisions" below.*
 
 ## Log
+
+### 2026-10-22 · Live E2E waves are run by Claude end to end (#33)
+**Decided:** From now on Claude runs live E2E waves autonomously: it starts and prompts its own
+Claude sessions (headless `claude -p`, Sonnet or Haiku for simple tool-call prompts), runs
+PowerShell windows, opens and closes Chrome, captures Chrome's window for banner checks, and
+delegates side work to Opus subagents. The steps a wave sheet tags [UI] or [USER] are the driver's
+unless they need a decision only the user can make. The limits stay: no token printed, nothing
+pushed, no extension change or reload, kills only of identified PIDs after `Test-SafeToKill`.
+**Why:** the user ran W1's first eight rows by relaying steps remotely and asked mid-wave for the
+rest, and every future wave, to run this way ("I fully trust you").
+**Instead of:** the user doing every [UI]/[USER] step at the keyboard.
+**Revisit if:** an autonomous run disturbs the user's own Chrome work or misjudges a row a person
+would have caught.
+**By:** user
+
+### 2026-10-22 · W1's set-up: the driver has no bridge MCP, the token moves from the MCP config into `bridge.token` (#32)
+**Decided:** For wave W1 the driver session was relaunched with `--strict-mcp-config` and an empty
+MCP config, so it was not a bridge client (caution A1). The token already in the MCP entry's `env`
+was copied into `bridge.token` by a script that printed only its length, and the `env` block
+(`BRIDGE_TOKEN`, `BRIDGE_PORT`) was removed from `~/.claude.json` by script; the extension's
+Options already held that token, so nothing was pasted.
+**Why:** a driver with the bridge MCP would have changed every client count and made MUX-4, MUX-6
+and MUX-7 impossible; Windows clipboard history was on, so pasting a fresh token would have left it
+in the history.
+**Instead of:** the A1 fallback (skip MUX-4, 6, 7), and a fresh token pasted into the Options
+(§1 item 8).
+**Revisit if:** the token must be rotated — then generate a new one into `bridge.token` and type it
+into the Options from Notepad.
+**By:** user
 
 ### 2026-10-22 · The user rules on the seven Step 6 open decisions (#31)
 **Decided:** Every decision proposed in `docs/plans/2026-10-22-step6-open-decisions-review.md` is

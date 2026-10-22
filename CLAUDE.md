@@ -13,17 +13,17 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
 
 - **Shipped:** Steps 1–5 (21 tools, live E2E passes recorded in `docs/e2e-test-plan.md` §5);
   `browser_download`. Public on GitHub (MIT).
-- **Step 6 — daemon + protocol v2: code complete, E2E pending.** Stages D0–D5b, the D6 rows and the
-  D7 docs are done (`npm test` → 542 passed, 42 files, at `033b1bc`). As-built:
-  `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md`; decisions 2026-10-22 #13–#31, all
-  ratified by the user (#31: if MUX-7 fails, a double-spawn launcher becomes a Step 7 prerequisite).
-- **Done 2026-10-22:** the D7 docs commit; this machine's MCP config now points at
-  `<repo>/mcp/dist/index.js` (other machines: `docs/setup.md` §3 "Upgrading a machine that ran the
-  bridge before Step 6"); pushed.
-- **Next, deferred by the user to a later session:** the **D6 wave** (MUX-1…10, DL-1/2 in
-  `docs/e2e-test-plan.md`, wave sheet in `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-steps/D6.md`;
-  paste wave W1 from `docs/plans/handoffs.md`; may use UI automation). After the wave: Step 7
-  (multi-actor tabs), then Step 8 (SDK surface + MCP cursor).
+- **Step 6 — daemon + protocol v2: built and E2E-tested (wave W1, 2026-10-22).** Code D0–D5b
+  (`npm test` → 542 passed, 42 files); every live row passes but MUX-5, whose snapshot sub-check
+  failed on a focused DevTools window and passed on re-measurement; MUX-7 confirmed #14, so Step 7
+  has no launcher prerequisite. Run 7 in `docs/e2e-test-plan.md`; as-built (§ "W1 as-built")
+  `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md`.
+- **Waiting on the user:** six W1 proposals in `docs/decisions.md` → Open decisions; Step 6 closes
+  when #1 (MUX-5) and #2 (NET-1's size text) are accepted. This machine's MCP entry has no `env`;
+  the token lives in `bridge.token` (decisions.md · 2026-10-22 · W1's set-up).
+- **Next:** Step 7 (multi-actor tabs) from `docs/plans/next-session-prompt.md`, then Step 8 (SDK
+  surface + MCP cursor). Live waves run autonomously (decisions.md · 2026-10-22 · Live E2E waves are
+  run by Claude end to end).
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
 
@@ -154,6 +154,19 @@ and follow `docs/e2e-test-plan.md`.
   only one; the other client waits and blames Chrome (Stage 0 audit F24, by reading the code, 2026-10-22).
   `BRIDGE_DAEMON` (a dev override of the daemon path) must be a native Windows path on Windows: Node
   resolves `/c/Users/…` to `C:\c\Users\…` (F24); `paths.ts` names that in its error.
+- **`browser_status`'s active tab is not always the tab actions use.** `listTabs` (and so `browser_status`'s
+  `Active tab`) marks the first active tab of any window; every action resolves `activeTab()` =
+  `tabs.query({active:true, lastFocusedWindow:true})` (`extension/src/tabs.ts`). With a DevTools window
+  focused (e.g. the service-worker console), status names a tab and actions fail with `No active tab in
+  the last-focused window` (W1 MUX-5, 2026-10-22). In a live run, focus a normal Chrome window first.
+- **A daemon spawned through `Start-Process -NoNewWindow` held the caller's output pipe open** — a
+  PowerShell call that ran recipes that way returned only when that daemon was stopped (W1 MUX-6,
+  2026-10-22, by correlation); a plain foreground `npx tsx recipes/hello.ts` returned at once. Run
+  wave blocks with their output to a file, or stop the daemon after.
+- **Windows PowerShell 5.1 mangles `—`** (U+2014): it decodes program output with the console code
+  page and writes `Add-Content`/`Set-Content` in ANSI, so `—` becomes `â€"` (D6 fixer; again in W1,
+  2026-10-22). Set `[Console]::OutputEncoding = [Text.Encoding]::UTF8`, read with `-Encoding UTF8`, and
+  write UTF-8 text with Node or `[IO.File]::WriteAllText`.
 - **`ws` emits several frames from one TCP read synchronously**, before any promise continuation
   runs. A one-shot listener that settles a promise and unsubscribes later swallows the frames behind
   the one it waited for: the knock lost an `extensionStatus` sent in the same read as the `welcome`, so

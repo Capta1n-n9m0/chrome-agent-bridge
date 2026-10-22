@@ -5,6 +5,8 @@ Format: `.claude/skills/phase-kickoff/template-wave.md`. Phase kickoffs live in
 
 ## W1 — the Step 6 live E2E wave: MUX and DL rows (written 2026-10-22; precondition: the D7 docs commit is made, `npm run build` is run, and the MCP config points at `<repo>/mcp/dist/index.js`)
 
+*Run 2026-10-22: done — as-built in `2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md` § "W1 as-built", Run 7 in `docs/e2e-test-plan.md`; six proposals wait in `docs/decisions.md` → Open decisions.*
+
 *Status 2026-10-22: the three preconditions are met on the user's main machine (D7 committed as 0cf6cb5, built, config updated); the wave itself is deferred by the user to a later session. Review `docs/plans/2026-10-22-step6-open-decisions-review.md` before or during it.*
 
 ```
