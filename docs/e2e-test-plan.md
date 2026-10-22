@@ -1461,6 +1461,40 @@ Exit checks: **T5.1** met (rows before the run; the reload as the first line). *
 
 Failures / notes: the four SCREEN image-check FAILs and RESOLVER-1's title sub-check are an instrument fault in the pre-written check, not observed misbehaviour, and are proposed for a re-run with a corrected probe; the real failures are SCREEN-2 (`cdp` hangs on a hidden tab), BG-1/BG-2 (silent no-op), LEASE-3's empty `url`, and NET-1 (cache). Set-up fixes during the wave (helpers only) and the findings are in the run record.
 
+### Run 9 — 2026-10-23 (Step 7: T5b re-check and the corrected checks, §4.15)
+
+*Rows, expected text and corrected checks committed before any measurement (`b4ea752`); run by the
+driver with headless actors and SDK scripts, the user not present (decisions.md · 2026-10-23 #62–#65).
+Full evidence: [`T5-run9-record.md`](plans/2026-10-21-step7-multi-actor-tabs-steps/T5-run9-record.md);
+daemon log: [`T5-run9-daemon-log.txt`](plans/2026-10-21-step7-multi-actor-tabs-steps/T5-run9-daemon-log.txt).
+Run 8 above is unchanged.*
+
+```
+Date: 2026-10-23 (UTC 2026-10-22 22:52–23:02)  Chrome 156.0.8078.48  Node v25.2.1  Windows 11 Pro 10.0.26300  Commit: 15320a6 (rows at b4ea752)
+Daemon build: 490f1c60e04464b7e184fcb150699484cc5ca176d7041c726f8a2a4d0507d974 (T5b, 12ecb65)
+First line: extension reloaded by recipes/reload-extension.ps1 (RELOAD-AUTO 15320a6; #64/#65), user not present — run once more at step 0: exit 0, worker restart and resync seen
+
+R9-RELOAD-1 [P]  R9-SCREEN-2 [F as written: the active-tab positive control (cyan read #97fdfd → other); OFFSCREEN in 3 ms, no switch, no banner]
+R9-SCREEN-4 [P] (WINDOW_MINIMIZED in 3 ms)  R9-LEASE-3 [P] (url after 45 ms; TAB_HELD for another client before the event)  R9-RESTORE [P] (previous tab back at +30026 ms; TIMEOUT at 35119 ms)
+R9-SCREEN-1 [P] (flash 1588 / 1557 / 1556 ms, median 1557 ms)  R9-SCREEN-3 (a) [P] (b) [P]  R9-SCREEN-5 [P]  R9-RESOLVER-1 [P]
+R9-NET-1 [F as written: `showing 2 of 2` — the hard reload re-fetched favicon.ico; the document line 12.8 KB, from cache: no, content-length 13106]
+Log hygiene: '://' count 0  token count 0  withheld-line count 0   (81 lines)
+```
+
+Evidence in short (the record has every line):
+- **R9-RELOAD-1** — `daemon build 490f1c60…, proto 2, extension connected` … `CHECK PASS — …`.
+- **R9-SCREEN-2** — `screenshot T28 mode:"cdp" → OFFSCREEN: The tab is in the background of its window, and CDP cannot capture a hidden tab — use the default mode (it shows the tab briefly) or call focusTab first in 3 ms`; `human tab hidden: never; target visible: never`; banner band constant from t0 − 1 s to t1 + 0.5 s, no bar in the frame at t0; the active tab's CDP image came back but its bar reads `#97fdfd` (R = 151 > the rule's ≤ 100), so `… → other (hue rule)` and the script's line `R9 SCREEN-2 (Chrome side) FAIL — … the active tab still captures (cyan): no`.
+- **R9-SCREEN-4** — `… → WINDOW_MINIMIZED: Chrome's window is minimized, so CDP cannot capture the tab — restore the window, or call focusTab first in 3 ms`; still minimized.
+- **R9-LEASE-3** — `other client: popup T44 seen 44 ms after the click; its snapshot → TAB_HELD: tab T44 is held by "t5-lease3" since 22:58:18 — … · data {"owner":"t5-lease3","since":1792709898582}; leaseGranted had already arrived: no`; `leaseGranted {"tab":"T44","reason":"opener","url":"http://localhost:8080/e2e-playground.html?popup=1"} after 45 ms`; C's select → `tab T44 is held by "t5-lease3" since 22:58:18 — …`.
+- **R9-RESTORE** — `screenshot T39 → TIMEOUT: Timed out after 35000ms calling screenshot after 35119 ms`; `front active again +30026 ms`; `R9 RESTORE PASS — …`.
+- **R9-SCREEN-1/3/5** — every image `→ magenta|red|lime|blue (hue rule)` as its own tab; SCREEN-3 serialised; SCREEN-5's foreground window unchanged (`2821048`, not W5).
+- **R9-RESOLVER-1** — foreground `{"Hwnd":4197312,"Title":"<DevTools window>"}` before and after; `'sw.js': 19 element(s)`, `'[bridge]': 54 element(s)`; `Active tab: [T46] … ?t5=resolver`; snapshot `url: …?t5=resolver`.
+- **R9-NET-1** — `[5020]  5.8s ago   GET     200  document    4ms  12.8 KB  http://localhost:8080/e2e-playground.html` plus `[5021]  5.7s ago   GET     404  image       3ms  460 B   http://localhost:8080/favicon.ico` under `showing 2 of 2`; `from cache: no`; server `"GET /e2e-playground.html HTTP/1.1" 200`; no banner.
+
+Failures / notes: two FAILs as written, both in the pre-registered checks themselves, with the row's
+substance met (R9-SCREEN-2's positive control; R9-NET-1's request count), for the user's ruling. The
+T5b fixes hold live (the record's finding 1). The flash is still ~1.5 s.
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.
