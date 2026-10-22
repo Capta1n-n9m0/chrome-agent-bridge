@@ -22,11 +22,153 @@ measurement, in `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md` 
 
 None open now. *Updated 2026-10-22: all six W1 proposals are ruled.*
 
+Step 7 (2026-10-22 on):
+1. "Step 7 agents run Opus 5.5" (#37) — a default the user has not ruled; open for veto.
+2. "The `tab` parameter keeps its "all"/"active" meanings for the network tools" (#40).
+3. "A Step 6 client keeps working against a Step 7 daemon for one release, without loosening a
+   lease" (#41).
+4. "A stale extension is refused for tab calls, detected by its hello" (#42).
+5. "The formatters reach the MCP through a `@bridge/sdk/format` subpath" (#46).
+
+Items 2–5 are contract-level, taken by the conservative rule from the Stage 0 audit
+(`docs/plans/2026-10-21-step7-multi-actor-tabs-steps/stage0-audit.md`); the run continues on them.
+
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-22 · Stage 0's check sharpenings and T5 PASS rules (#48)
+**Decided:** The Stage 0 audit's F25 rewrites are added to the pre-registered exit checks as
+stricter forms beside the originals: T1.4 (a column-1 grep for top-level `await` and the listeners),
+T1.5 (no `console.*` call passes `p`, `params`, `tab`, `info` or `changeInfo`; the fallback warning
+prints only the method name), T6.1 (`grep -n "Control targets" CLAUDE.md` returns nothing, since the
+old grep could not fail), and T3.2's wording. F26's PASS rules for LEASE-2, LEASE-6, SCREEN-1,
+SCREEN-2, SCREEN-4, BG-1…4 and the DevTools-focused resolver check are pre-registered now; T5 copies
+them into its rows before the run and may only make them stricter. Dated notes in the phase doc.
+**Why:** nothing has been measured yet, every change makes a check discriminating or stricter, and
+T6.1 as written could not fail.
+**Instead of:** leaving judgement checks and an unfailable grep, or letting T5 write PASS rules alone.
+**Revisit if:** a sharpened check turns out to test something other than the original's intent.
+**By:** Claude
+
+### 2026-10-22 · T4.2's baseline is captured in a worktree of T3's parent commit (#47)
+**Decided:** T4's builder captures the baseline snapshot text (`buildSnapshot`) and network text
+(`formatEntries`) over the existing fixtures, once, in a git worktree of T3's parent commit, and
+stores it under `sdk/test/fixtures/` with that commit id; T4's verifier repeats the capture and must
+get the same bytes.
+**Why:** no whole-text baseline exists, and T3 changes `buildSnapshot` first (Stage 0 F11).
+**Instead of:** capturing from the new formatter (forbidden).
+**Revisit if:** the capture cannot run in the worktree.
+**By:** Claude
+
+### 2026-10-22 · The formatters reach the MCP through a `@bridge/sdk/format` subpath (#46)
+**Decided:** T4 adds a `./format` export to the SDK package for the moved formatters; `sdk/src/index.ts`
+keeps its five exports, and Step 8 decides whether the formatters join it.
+**Why:** the SDK's public surface is Step 8's (Stage 0 F23); a subpath can be removed or folded in
+later without breaking the five exports.
+**Instead of:** exporting the formatters from `index.ts` in Step 7.
+**Revisit if:** a recipe needs the formatters before Step 8.
+**By:** Claude (contract-level, conservative rule; open for the user)
+
+### 2026-10-22 · LEASE-6 measures whether a discard keeps the tab id, with both outcomes pre-written (#45)
+**Decided:** LEASE-6 records the tab id before and after a Memory-Saver discard. "Same id, no
+`tabReplaced`" and "new id, `tabReplaced`" both PASS when the handle still works afterwards; the row
+reports which happened.
+**Why:** Chrome's docs say `tabs.onReplaced` fires for prerendering/instant, and Chromium's 2024
+discard keeps the tab, so the plan's premise is probably false on Chrome 156 (Stage 0 F7; unconfirmed).
+**Instead of:** the row as written, which would fail on a premise rather than on the bridge.
+**Revisit if:** LEASE-6 shows a new id.
+**By:** Claude
+
+### 2026-10-22 · One deadline per call covers the lock wait and the forwarded call (#44)
+**Decided:** The daemon sets `deadline = received + clamp(timeoutMs ?? 30000, 100, 600000)`. The
+lock wait ends at the deadline with `LOCK_TIMEOUT {holder}`; the forwarded call then waits
+`deadline − now + 5000`. The extension still gets no deadline, so the revisit trigger of "D2's daemon
+details" does not fire.
+**Why:** two separate waits would outlive the SDK client's own timer (Stage 0 F9).
+**Instead of:** a fresh `daemonWaitMs` after the lock is taken.
+**Revisit if:** the extension needs the caller's deadline.
+**By:** Claude
+
+### 2026-10-22 · "The human's tab" is the active tab of the last-focused normal window (#43)
+**Decided:** One resolver, `chrome.windows.getLastFocused({windowTypes:["normal"]})` → its active
+tab, serves the 0.1 fallback, `listTabs`' active marker, `tabs.claim {active:true}`, the legacy path
+of #41, `browser_status` and `browser_list_tabs`. With no normal window, the error names a DevTools or
+popup window as the likely cause. Owners: T1 (resolver, marker, error), T2 (claim, legacy path), T4
+(MCP), T5 (a pre-registered live check with the service-worker console focused: status and snapshot
+name and act on the same tab). No E2E expected text changes (rows use an `[<id>]` placeholder).
+**Why:** W1 proposal 3, accepted (#36); Stage 0 F8.
+**Instead of:** `lastFocusedWindow:true` (fails under a focused DevTools window), or "first active tab
+of any window".
+**Revisit if:** a row shows a popup window chosen, or the DevTools-focused check fails.
+**By:** Claude
+
+### 2026-10-22 · A stale extension is refused for tab calls, detected by its hello (#42)
+**Decided:** T1's extension hello adds `role:"extension", proto:2` (a Step 6 daemon accepts it —
+Stage 0 probe P1). T2's daemon answers every tab-carrying method with `VERSION` and a reload hint when
+the connected extension's hello had no `proto`.
+**Why:** an extension that was not reloaded ignores `tabId` and acts on the active tab, past every
+lease (Stage 0 F6); refusing is the stricter choice.
+**Instead of:** relying on the `unknown method` text.
+**Revisit if:** the extension's hello gains a build id.
+**By:** Claude (contract-level, conservative rule; open for the user)
+
+### 2026-10-22 · A Step 6 client keeps working against a Step 7 daemon for one release, without loosening a lease (#41)
+**Decided:** (C) both of: (A) a daemon legacy path — a tab-carrying call with no `tab` (or
+`closeTab`/`selectTab` with a Chrome `id`) is resolved to the human's tab (#43) or the id's handle,
+lease-checked exactly as an explicit `tab`, takes the method's lock class unchanged, grants no lease,
+is forwarded with a numeric `tabId`, and is logged once per client without a URL; and (B) build
+discipline — no `npm run build` in the main tree between T2's and T4's commits; verifiers build in
+clean worktrees. Step 8 S2 removes the legacy path with the extension's fallback. T2.4's
+"`BAD_PARAMS "tab is required"`" clause is superseded by a dated note in the phase doc.
+**Why:** the SDK's knock hashes `daemon/dist/index.js` on disk (`sdk/src/knock.ts`), so every running
+Step 6 MCP — the user's own sessions — would adopt a freshly built Step 7 daemon and fail every tool
+with `BAD_PARAMS` (Stage 0 F5; the verifier re-executed it). Existing tools keep behaving; no lease
+is loosened; it is removable.
+**Instead of:** (A) alone, (B) alone, or forwarding without `tabId` (loosens a lease; forbidden).
+**Revisit if:** Step 8 S2 lands, or the user rules otherwise.
+**By:** Claude (contract-level, conservative rule; open for the user)
+
+### 2026-10-22 · The `tab` parameter keeps its "all"/"active" meanings for the network tools (#40)
+**Decided:** On the network methods `tab` is a handle, `"all"`, or `"active"`/absent. A bare number
+from a Step 7 client is `BAD_PARAMS`. `networkClear {tab:"all"}` is refused with `TAB_HELD` when
+another client holds a tab that has entries.
+**Why:** `tab` already means a scope on the wire and in the MCP schemas (Stage 0 F3); keeping it
+keeps today's tools identical, and the `"all"` refusal keeps the lease strict.
+**Instead of:** reading every `tab` as a handle, or renaming the scope parameter.
+**Revisit if:** Step 8 redesigns the network tools.
+**By:** Claude (contract-level, conservative rule; open for the user)
+
+### 2026-10-22 · The daemon's method classes are one table, and the download methods are free (#39)
+**Decided:** `route.ts` keeps every method in one table of classes (free, tab-carrying, intercepted,
+lock-taking). `downloadStart`, `downloadChunk` and `downloadEnd` are free. `closeTab` is intercepted
+and lease-checked and sits only in that class (verifier V8).
+**Why:** without it `browser_download` breaks (Stage 0 F2).
+**Instead of:** "no `tab` and not free → `BAD_PARAMS`" with the plan's free list.
+**Revisit if:** a new extension method is added (it must enter the table).
+**By:** Claude
+
+### 2026-10-22 · Content-script failures are returned, not thrown, to carry `CODE:message` (#38)
+**Decided:** Page functions return `{__bridgeError:"CODE:message"}`; `unwrapResult` turns it into a
+`BridgeError` with that code, and still treats a null or undefined result as failure (`REF_STALE`).
+**Why:** a thrown injected function resolves with `result: null` (CLAUDE.md gotcha), so a prefixed
+thrown message never arrives (Stage 0 F1). The null-or-undefined invariant is kept.
+**Instead of:** prefixing thrown messages, as phase-doc 0.6 says.
+**Revisit if:** Chrome adds an `error` field to `InjectionResult`.
+**By:** Claude
+
+### 2026-10-22 · Step 7 agents run Opus 5.5 (#37)
+**Decided:** Every Step 7 agent — the session agent, each step agent, every builder, verifier,
+fixer and the propagator — runs Claude Opus 5.5 (`claude-opus-5-5`); every `Agent` call passes
+`model: "opus"`. The only exception is the T5 wave's headless actor sessions (`claude -p`), which may
+run Sonnet or Haiku, as W1's did.
+**Why:** the Step 7 kickoff names it, continuing "Step 6 agents run Opus 5.5" and the user's W1
+instruction to delegate to Opus subagents; the phase doc names no model.
+**Instead of:** a cheaper model for builders or verifiers.
+**Revisit if:** the user vetoes it.
+**By:** Claude (default, flagged for veto)
 
 ### 2026-10-22 · The user rules on the W1 proposals (#36)
 **Decided:** The remaining W1 proposals are accepted as recommended. NET-1's expected text becomes

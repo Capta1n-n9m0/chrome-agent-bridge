@@ -476,7 +476,14 @@ step's baseline is Step 6's closing test count (recorded in Step 6's as-built) a
   non-numeric `tabId`.
 - T1.4 `grep -n "await" extension/src/sw.ts` shows no top-level `await`; the three `chrome.tabs.on*`
   listeners are registered at the top level.
+  *Sharpened 2026-10-22 (Stage 0 F25; decisions.md · 2026-10-22 · Stage 0's check sharpenings and
+  T5 PASS rules (#48)): in addition, `grep -nE "^(await|const .*= await|void await)" extension/src/sw.ts`
+  returns nothing, and the three `chrome.tabs.on*.addListener(` lines start at column 1. The original
+  check still applies.*
 - T1.5 `grep -rnE "console\.(log|warn|error)\(.*(url|lastUrl|href)" extension/src` returns nothing.
+  *Sharpened 2026-10-22 (Stage 0 F25, #48): in addition,
+  `grep -rnE "console\.\w+\([^)]*\b(p|params|tab|info|changeInfo)\b" extension/src` returns nothing,
+  and the 0.1 fallback warning prints only the method name.*
 - T1.6 The "load against the Step 6 daemon" checkbox is either recorded with the user (G7-1) or
   explicitly deferred to T5 in the stage report.
 - T1.7 `grep -n '_blank' test-fixtures/e2e-playground.html` finds the popup button, and its target is
@@ -494,6 +501,14 @@ step's baseline is Step 6's closing test count (recorded in Step 6's as-built) a
 - T2.4 Test: a tab-carrying method without `tab` that is not free → `BAD_PARAMS "tab is required"`;
   `listTabs`, `networkRequests`, `daemon.*`, `tabs.claim/release` succeed without a lease; `networkClear`
   on a foreign tab → `TAB_HELD`.
+  *Superseded in part 2026-10-22: was "a tab-carrying method without `tab` → `BAD_PARAMS "tab is
+  required"`", because a running Step 6 MCP adopts a freshly built Step 7 daemon (Stage 0 F5) and
+  every tool would fail — decisions.md · 2026-10-22 · A Step 6 client keeps working against a Step 7
+  daemon for one release, without loosening a lease (#41, open for the user). The test instead
+  covers the legacy path: a tab-carrying call with no `tab` is resolved to the human's tab,
+  lease-checked exactly like an explicit `tab` (`TAB_HELD` when another client holds it), takes the
+  method's lock class, grants no lease and is forwarded with a numeric `tabId`. The download methods
+  succeed without `tab` (#39). `networkClear` on a foreign tab → `TAB_HELD` stands.*
 - T2.5 `grep -rn "lastUrl\|url" daemon/src/log.ts daemon/src/wsHost.ts` shows no log call carrying a URL.
   *Corrected 2026-10-22: as built the daemon's log calls are in `daemon/src/main.ts` (`logger.log`);
   `wsHost.ts`'s `console.error` lines go nowhere (no stdio). The grep covers `daemon/src/main.ts` and
@@ -506,6 +521,8 @@ step's baseline is Step 6's closing test count (recorded in Step 6's as-built) a
 - T3.2 Tests cover: `buildSnapshot` returns `{url, title, elements, truncated}` with the element fields
   of 0.7 for the existing fixtures (shadow root, closed shadow root, same-origin frame, pruned
   subtrees, the 800 cap); the zero-size filter still gated on `hasLayout`.
+  *Corrected 2026-10-22 (Stage 0 F25): "closed shadow root" means the closed root's content is
+  absent — the walk does not enter closed roots (`snapshot.ts`).*
 - T3.3 `grep -n "focused" extension/src/tabs.ts` returns nothing; `grep -n "focused" extension/src/handlers/tabs.ts`
   appears only in `focusTab`.
 - T3.4 `grep -n "active: true" extension/src/handlers/tabs.ts` appears only in `focusTab` (and
@@ -531,12 +548,18 @@ step's baseline is Step 6's closing test count (recorded in Step 6's as-built) a
   before the run; the extension reload and `/mcp` are recorded as the first line of the run.
 - T5.2 Every row's result is recorded with the observed text; SCREEN-1 has a measured flash duration
   and its method; BG-1 and BG-2 state PASS/FAIL and, on FAIL, the `setFocusEmulationEnabled` retry.
+  *Pre-registered 2026-10-22 (Stage 0 F26, #48): the PASS rules for LEASE-2, LEASE-6, SCREEN-1,
+  SCREEN-2, SCREEN-4, BG-1…4 and the DevTools-focused resolver check are those in
+  `2026-10-21-step7-multi-actor-tabs-steps/stage0-audit.md` § "Lens (d) — testability"; T5 writes
+  each into its row before the run and may only make them stricter.*
 - T5.3 The regression rows pass with the same expected text as their last recorded run.
 - T5.4 No screenshot or evidence file committed contains page content from a real site (guide rule 8:
   the repo is public) — only the fixture.
 
 **T6**
 - T6.1 `grep -n "active tab" CLAUDE.md` shows no "Control targets the active tab" sentence.
+  *Sharpened 2026-10-22 (Stage 0 F25, #48): the sentence spans two lines (`CLAUDE.md:50-51`), so the
+  grep above cannot fail; the check is `grep -n "Control targets" CLAUDE.md` returns nothing.*
 - T6.2 Every new `CLAUDE.md` gotcha cites where it was measured (stage report or E2E row).
 - T6.3 One commit per stage in `git log` with the messages listed; no `dist/`, no token.
 

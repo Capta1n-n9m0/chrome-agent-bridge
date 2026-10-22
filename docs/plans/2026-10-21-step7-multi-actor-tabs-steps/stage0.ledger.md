@@ -11,3 +11,4 @@ Append-only. UTC from `date -u`. Step agent: Claude Opus 5.5.
 - 2026-10-22T12:51:39Z · fixer round 1 · done · V1–V7 fixed in stage0-audit.md, none disputed; severities unchanged · next: verifier re-check (resumed)
 - 2026-10-22T12:53:01Z · verifier re-check · done · PASS-with-notes; V1–V7 resolved; new V8 NIT (closeTab listed in two classes in F2, :189-190) left for T2 · next: report + commit
 - 2026-10-22T12:54:03Z · report · done · stage0.md written · next: commit via builder (audit, verifier, report, ledger, phase doc)
+- 2026-10-22T12:54:48Z · commit · done · 551d7fd (5 files, docs only) · next: hand back to session agent (this line uncommitted)
