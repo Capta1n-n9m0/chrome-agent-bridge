@@ -224,3 +224,34 @@ expected text in §4.14, written from the code's own strings (`daemon/src/interc
 | LEASE-3 with `trusted:true` (synthetic click, `openerTabId`) | LEASE-3 (synthetic first, then trusted; both recorded) |
 | NET-1's size | MUX-9's NET-1, `12.8 KB` (#56 note) |
 | T3 verifier V4 (a timed-out capture's restore undoing a later `focusTab`) | watch item in SCREEN-3; recorded if seen |
+
+## Run 9 (written 2026-10-23, before any Run 9 measurement)
+
+Rows and expected text: `docs/e2e-test-plan.md` §4.15 (decisions.md #62, #63). Standing rules, tags and
+cautions as above. The extension reload is again the only [USER] step. Every actor is started with a
+**quoted** tool list (Run 8 set-up fault 1). Order (cheap discriminators first):
+
+0. **Pre-flight** as step 0 above, with `Get-DaemonBuild` =
+   `490f1c60e04464b7e184fcb150699484cc5ca176d7041c726f8a2a4d0507d974` (T5b, commit `12ecb65`).
+1. **R9-RELOAD-1** (the first recorded line: the user's reload answer, then `t5.ts check`).
+2. **R9-SCREEN-2** in a topmost window on `…?t5=screen-human`, the capture loop running; a `TIMEOUT`
+   ⇒ the reload did not take: stop and ask again.
+3. **R9-SCREEN-1** (`screen1 --hue`), **R9-SCREEN-3** (a) (`screen3 --hue`) and (b) (actors D, E with
+   `--tools 'browser_select_tab,browser_screenshot'`), in the same window; `cleanup --keep screen-human`
+   between them.
+4. **R9-SCREEN-4** (`r9-cdp --minimized`), then **R9-SCREEN-5** (`screen5 --hue`; check the two rects
+   do not overlap before the run).
+5. **R9-RESTORE**: Wr9 (`restore-target` + `restore-front` active) covered by a topmost maximized Wc on
+   the same monitor; `r9-restore`; then un-topmost and close both. "Not measured" if the capture does not
+   hang.
+6. **R9-LEASE-3** (`lease3 --race`; actor C with `--tools 'browser_list_tabs,browser_select_tab'`).
+7. **R9-NET-1** (actor S with `--tools 'browser_select_tab,browser_network_clear,browser_network_requests'`;
+   a fresh window on the plain URL; the hard reload by `^+r` in that window, only after `Set-T5Foreground`
+   printed `True` and `Get-T5Foreground` names that window; the capture loop for A10).
+8. **R9-RESOLVER-1** last (it opens DevTools); the console is confirmed with the find-only
+   `Find-T5Uia <Wd> 'sw.js','[bridge]'` (counts only).
+9. Close-down, log hygiene (`://`, token, withheld = 0) on the Run 9 part of `daemon.log`, attached as
+   `T5-run9-daemon-log.txt`; `T5-run9-record.md`; §5 **Run 9**; a fresh verifier; commit.
+
+A failed row is recorded, never fixed in the wave. Helper bugs may be fixed and recorded as set-up fixes;
+`t5.ts`'s judged lines and the §4.15 texts do not change after step 1 starts.

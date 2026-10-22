@@ -158,6 +158,15 @@ function Invoke-T5Uia([long]$H, [string]$NameLike, [string]$RowText = '') {
   "invoked: $($target.Current.ControlType.ProgrammaticName) '$($target.Current.Name)'"
 }
 
+# Find-only UI Automation: how many elements under window $H have a name matching each pattern. Prints
+# counts only, never names (B2), and invokes nothing (prereg verifier, RESOLVER-1).
+function Find-T5Uia([long]$H, [string[]]$Patterns) {
+  Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+  $root = [Windows.Automation.AutomationElement]::FromHandle([IntPtr]$H)
+  $all = $root.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition)
+  foreach ($p in $Patterns) { $n = 0; foreach ($e in $all) { if ($e.Current.Name -and $e.Current.Name.Contains($p)) { $n++ } }; "'$p': $n element(s)" }
+}
+
 # One PrintWindow capture of window $H (PW_RENDERFULLCONTENT, works when the window is covered).
 function Save-T5Frame([long]$H, [string]$Path) {
   $r = New-Object T5Win+RECT; [void][T5Win]::GetWindowRect([IntPtr]$H, [ref]$r)

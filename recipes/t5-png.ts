@@ -92,6 +92,48 @@ export function sampleColours(png: Png): number {
   return seen.size;
 }
 
+/**
+ * Run 9's corrected image check (decisions.md · 2026-10-23 #62; pre-registered before Run 9). Run 8's
+ * probe (20,20) sat on the bar's black label and its ±24 tolerance failed on colour-managed captures
+ * (`#dd00fa` for `#ff00ff`). The hue rule names a colour by which channels are high (≥ 150) and low
+ * (≤ 100); anything else is "other".
+ */
+export function hueName(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  const hi = (v: number) => v >= 150;
+  const lo = (v: number) => v <= 100;
+  if (hi(r) && lo(g) && hi(b)) return "magenta";
+  if (lo(r) && hi(g) && hi(b)) return "cyan";
+  if (hi(r) && lo(g) && lo(b)) return "red";
+  if (hi(g) && lo(b) && r <= 180) return "lime";
+  if (lo(r) && lo(g) && hi(b)) return "blue";
+  if (hi(r) && hi(g) && lo(b)) return "yellow";
+  return "other";
+}
+
+/**
+ * The bar's colour by the hue rule at three probes on the bar's row y = 24 (the middle of the 48 CSS-px
+ * bar at DPR ≥ 1), all to the right of the label (which ends before x = 300): x = w/2, 3w/4, w − 20.
+ * The name is the probes' common hue, or "mixed" when they disagree.
+ */
+export function barColour(png: Png): { name: string; probes: string } {
+  const xs = [Math.floor(png.width / 2), Math.floor((png.width * 3) / 4), png.width - 20];
+  const hexes = xs.map((x) => pixelHex(png, x, 24));
+  const names = hexes.map(hueName);
+  const name = names.every((v) => v === names[0]) ? names[0] : "mixed";
+  return { name, probes: xs.map((x, i) => `(${x},24) ${hexes[i]}`).join(" ") };
+}
+
+/** `<w>x<h>, bar probes … → <name> (hue rule)`. */
+export function describeBar(buf: Buffer): { line: string; name: string } {
+  const png = decodePng(buf);
+  const { name, probes } = barColour(png);
+  return { line: `${png.width}x${png.height}, bar probes ${probes} → ${name} (hue rule)`, name };
+}
+
 /** `<w>x<h>, pixel(x,y) #rrggbb (<name>), <n> colours in an 8x8 grid`. */
 export function describePng(buf: Buffer, x = 20, y = 20): string {
   const png = decodePng(buf);
@@ -109,6 +151,24 @@ export function imagesInTranscript(text: string): Buffer[] {
 
 function main(): void {
   const args = process.argv.slice(2);
+  if (args[0] === "--transcript" && args[2] === "--hue") {
+    const images = imagesInTranscript(readFileSync(args[1], "utf8"));
+    console.log(`${images.length} image(s)`);
+    images.forEach((img, k) => {
+      let line: string;
+      try {
+        line = describeBar(img).line;
+      } catch (err) {
+        line = `unreadable: ${err instanceof Error ? err.message : String(err)}`;
+      }
+      console.log(`image ${k + 1}: ${line}`);
+    });
+    return;
+  }
+  if (args[0] === "--hue") {
+    console.log(describeBar(readFileSync(args[1])).line);
+    return;
+  }
   if (args[0] === "--transcript") {
     const x = Number(args[2] ?? 20);
     const y = Number(args[3] ?? 20);

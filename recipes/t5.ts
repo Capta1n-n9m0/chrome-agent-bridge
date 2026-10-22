@@ -53,7 +53,7 @@ import {
   type ListedTab,
   type VisEntry,
 } from "./t5-lib.js";
-import { describePng } from "./t5-png.js";
+import { describeBar, describePng } from "./t5-png.js";
 
 /** Client → its actor name, so newTab can check the lease it reports (verifier m4). */
 const names = new WeakMap<BridgeClient, string>();
@@ -79,7 +79,7 @@ function positional(k: number): string | undefined {
   const plain: string[] = [];
   for (let i = 0; i < rest.length; i++) {
     if (rest[i].startsWith("--")) {
-      if (!["--active", "--current", "--then-focus"].includes(rest[i])) i++;
+      if (!["--active", "--current", "--then-focus", "--hue", "--minimized"].includes(rest[i])) i++;
       continue;
     }
     plain.push(rest[i]);
@@ -94,8 +94,23 @@ function savePng(file: string, dataUrl: string): Buffer {
   return buf;
 }
 
+/**
+ * Run 9 (pre-registered 2026-10-23, #62): with `--hue` the image is judged by t5-png.ts `describeBar`
+ * (three probes on the bar off the label, the hue rule) instead of Run 8's pixel (20,20) ±24. Without
+ * `--hue` the Run 8 behaviour is unchanged.
+ */
+const HUE = rest.includes("--hue");
+
 function imageLine(file: string, dataUrl: string): { line: string; colour: string } {
   const buf = savePng(file, dataUrl);
+  if (HUE) {
+    try {
+      const { line, name } = describeBar(buf);
+      return { line: `${line} → ${join(OUT, file)}`, colour: name };
+    } catch (err) {
+      return { line: `unreadable image (${err instanceof Error ? err.message : String(err)}) → ${join(OUT, file)}`, colour: "other" };
+    }
+  }
   try {
     const line = describePng(buf, 20, 20);
     const m = /\((\w+)\), /.exec(line);
@@ -348,6 +363,9 @@ async function lease3(): Promise<void> {
   const client = await connectNamed(name);
   const events: Array<{ at: number; p: LeaseGrantedParams }> = [];
   client.on("leaseGranted", (p) => events.push({ at: Date.now(), p }));
+  // Run 9 (--race, pre-registered 2026-10-23): another client acts on the popup the moment listTabs shows
+  // it, to see it held (TAB_HELD) even before leaseGranted reaches the opener (T5b §9 fix 3).
+  const race = flag("--race") ? await connectNamed("t5-lease3-other") : undefined;
   try {
     requireFixtureCurrent(await listTabs(client));
     const { tab } = await newTab(client, "lease3", true);
@@ -358,8 +376,32 @@ async function lease3(): Promise<void> {
     for (const trusted of [false, true]) {
       const before = events.length;
       const t0 = Date.now();
+      void before;
+      const racing = race
+        ? (async () => {
+            const r0 = Date.now();
+            while (Date.now() - r0 < 5000) {
+              const p = (await listTabs(race)).find((t) => t.url === POPUP_URL || (t.openerTabId !== undefined && t.tab !== tab && !t.url.startsWith(`${FIXTURE}?t5=`) && t.owner === name));
+              if (p) {
+                const seenAt = Date.now();
+                const eventBefore = events.length > before;
+                let res: string;
+                try {
+                  await race.call("snapshot", { tab: p.tab });
+                  res = "ok (no error)";
+                } catch (e) {
+                  res = describeError(e);
+                }
+                return `other client: popup ${p.tab} seen ${seenAt - t0} ms after the click; its snapshot → ${res}; leaseGranted had already arrived: ${eventBefore ? "yes" : "no"}`;
+              }
+              await sleep(20);
+            }
+            return "other client: no popup seen within 5 s";
+          })()
+        : undefined;
       await client.call("click", { ref, trusted, tab });
       say(name, `click ${ref} (${trusted ? "trusted" : "synthetic"}) — ok`);
+      if (racing) say(name, await racing);
       while (events.length === before && Date.now() - t0 < 5000) await sleep(100);
       const popups = (await listTabs(client)).filter((t) => t.url === POPUP_URL);
       const ev = events[before];
@@ -392,6 +434,7 @@ async function lease3(): Promise<void> {
       say(name, `after the hold: ${again ? showTab(again) : `${granted.tab} gone`}`);
     }
   } finally {
+    race?.close();
     client.close();
   }
 }
@@ -875,6 +918,134 @@ async function bg4(): Promise<void> {
   }
 }
 
+// ---------------------------------------------------------------------------------------- Run 9
+
+/**
+ * Run 9, T5b fix 2 (pre-registered 2026-10-23): `screenshot {mode:"cdp"}` refuses at once.
+ * Default: a background tab of the driver's window (marker screen-human current) → OFFSCREEN; then the
+ * human's own active tab still captures by CDP. `--minimized`: the tab "screen4" in a minimized window
+ * → WINDOW_MINIMIZED.
+ */
+async function r9cdp(): Promise<void> {
+  const name = "t5-r9-cdp";
+  const minimized = flag("--minimized");
+  const client = await connectNamed(name);
+  try {
+    let tab: string;
+    let h: ListedTab | undefined;
+    if (minimized) {
+      tab = requireMarker(await listTabs(client), "screen4").tab;
+      await client.call("tabs.claim", { tab });
+    } else {
+      h = humanOf(await listTabs(client), "screen-human");
+      tab = (await newTab(client, "r9-cdp", false)).tab;
+      await evalJson(client, h.tab, barExpression(COLOURS.cyan, "HUMAN")); // the active-tab capture's colour (prereg verifier M1)
+      if (!(await visible(client, h.tab, name))) return;
+      await evalJson(client, tab, VISLOG_INSTALL);
+      say(name, `human ${h.tab}, target ${tab} (background, leased to ${name}) — the call starts in 10000 ms (start the capture loop now)`);
+      await sleep(10_000);
+    }
+    const t0 = Date.now();
+    let err: unknown;
+    try {
+      await client.call("screenshot", { tab, mode: "cdp" }, { timeoutMs: 20_000 });
+    } catch (e) {
+      err = e;
+    }
+    const ms = Date.now() - t0;
+    say(name, `call ${new Date(t0).toISOString()} → ${new Date(t0 + ms).toISOString()}: screenshot ${tab} mode:"cdp" → ${err === undefined ? "an image (no error)" : describeError(err)} in ${ms} ms`);
+    const wantCode = minimized ? "WINDOW_MINIMIZED" : "OFFSCREEN";
+    const wantMsg = minimized
+      ? "Chrome's window is minimized, so CDP cannot capture the tab — restore the window, or call focusTab first"
+      : "The tab is in the background of its window, and CDP cannot capture a hidden tab — use the default mode (it shows the tab briefly) or call focusTab first";
+    const refused = err instanceof BridgeError && err.code === wantCode && err.message === wantMsg && ms < 1000;
+    if (minimized) {
+      say(name, `R9 SCREEN-4 cdp ${refused ? "PASS" : "FAIL"} — ${wantCode} with the exact message in < 1000 ms: ${refused ? "yes" : "no"} (the window must still be minimized: Test-T5Minimized)`);
+      return;
+    }
+    await sleep(1000);
+    const hl = await visLog(client, h!.tab);
+    const xl = await visLog(client, tab);
+    const hHidden = firstChange(hl, "hidden", t0 - 50);
+    const xVisible = firstChange(xl, "visible", t0 - 50);
+    say(name, `human tab hidden: ${rel(hHidden, t0)}; target visible: ${rel(xVisible, t0)}`);
+    let activeOk = false;
+    try {
+      const r = (await client.call("screenshot", { tab: h!.tab, mode: "cdp" }, { timeoutMs: 20_000 })) as { dataUrl: string };
+      const img = imageLine("r9-cdp-active.png", r.dataUrl);
+      activeOk = img.colour === "cyan";
+      say(name, `the human's active tab ${h!.tab} by mode:"cdp" → image ${img.line}`);
+    } catch (e) {
+      say(name, `the human's active tab ${h!.tab} by mode:"cdp" → ${describeError(e)}`);
+    }
+    const pass = refused && hHidden === undefined && xVisible === undefined && activeOk;
+    say(name, `R9 SCREEN-2 (Chrome side) ${pass ? "PASS" : "FAIL"} — OFFSCREEN with the exact message in < 1000 ms: ${refused ? "yes" : "no"}; no tab switch: ${hHidden === undefined && xVisible === undefined ? "yes" : "no"}; the active tab still captures (cyan): ${activeOk ? "yes" : "no"}; banner: judged from the capture loop between the call's two times`);
+  } finally {
+    client.close();
+  }
+}
+
+/**
+ * Run 9, T5b fix 1 (pre-registered 2026-10-23): a default-mode capture that hangs restores the
+ * window's previous tab at the 30 s chain bound, before the daemon's 35 s TIMEOUT. Induced as in Run 8
+ * SCREEN-5's first attempt: the target's window fully covered by another driver window. Markers:
+ * "restore-front" (active) and "restore-target" (background) in one window.
+ */
+async function r9restore(): Promise<void> {
+  const name = "t5-r9-restore";
+  const client = await connectNamed(name);
+  try {
+    const tabs = await listTabs(client);
+    const front = requireMarker(tabs, "restore-front");
+    const target = requireMarker(tabs, "restore-target");
+    const layout = front.windowId === target.windowId && front.active && !target.active;
+    say(name, `before — front ${showTab(front)}; target ${showTab(target)}; layout as required: ${layout ? "yes" : "no"}`);
+    if (!layout) {
+      say(name, "SET-UP: need restore-front active and restore-target in the background of one window");
+      process.exitCode = 2;
+      return;
+    }
+    await client.call("tabs.claim", { tab: target.tab });
+    const watcher = await connectNamed("t5-r9-watch");
+    const t0 = Date.now();
+    let switchedAt: number | undefined;
+    let restoredAt: number | undefined;
+    let done = false;
+    const call = client
+      .call("screenshot", { tab: target.tab })
+      .then(() => "an image (no error)", (e: unknown) => describeError(e))
+      .finally(() => {
+        done = true;
+      });
+    while (!done) {
+      const now = await listTabs(watcher);
+      const f = tabBy(now, front.tab);
+      const t = tabBy(now, target.tab);
+      if (switchedAt === undefined && t?.active) switchedAt = Date.now();
+      if (switchedAt !== undefined && restoredAt === undefined && f?.active && !t?.active) restoredAt = Date.now();
+      await sleep(500);
+    }
+    const outcome = await call;
+    const t1 = Date.now();
+    const after = await listTabs(watcher);
+    watcher.close();
+    const fA = tabBy(after, front.tab);
+    const tA = tabBy(after, target.tab);
+    say(name, `screenshot ${target.tab} → ${outcome} after ${t1 - t0} ms`);
+    say(name, `target active from ${rel(switchedAt, t0)}; front active again ${rel(restoredAt, t0)}; after — front ${fA ? showTab(fA) : "absent"}; target ${tA ? showTab(tA) : "absent"}`);
+    if (!outcome.startsWith("TIMEOUT")) {
+      say(name, "R9 RESTORE not measured — the capture did not hang (set-up: the window was not fully covered)");
+      process.exitCode = 2;
+      return;
+    }
+    const inWindow = restoredAt !== undefined && restoredAt - t0 >= 25_000 && restoredAt - t0 < 35_000;
+    const pass = inWindow && fA?.active === true && tA?.active === false;
+    say(name, `R9 RESTORE ${pass ? "PASS" : "FAIL"} — previous tab back between 25 s and 35 s after the call (before the TIMEOUT): ${inWindow ? "yes" : "no"}; front active and target background afterwards: ${fA?.active && !tA?.active ? "yes" : "no"}`);
+  } finally {
+    client.close();
+  }
+}
+
 // ---------------------------------------------------------------------------------------- main
 
 const commands: Record<string, () => Promise<void>> = {
@@ -896,6 +1067,8 @@ const commands: Record<string, () => Promise<void>> = {
   bg1: () => bgInput("bg1"),
   bg2: () => bgInput("bg2"),
   bg4,
+  "r9-cdp": r9cdp,
+  "r9-restore": r9restore,
 };
 
 const cmd = commands[command];
