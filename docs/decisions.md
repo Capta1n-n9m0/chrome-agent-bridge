@@ -41,6 +41,42 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-23 · T5b's three fixes (#63)
+**Decided:** (1) A switch capture restores the window's previous tab at most once, when the capture
+settles or at the 30 s chain bound, unless the window's active tab is no longer the target or
+`focusTab` touched the window; the chain is released by 30 s without waiting on the restore.
+(2) `screenshot {mode:"cdp"}` refuses before attaching the debugger: `WINDOW_MINIMIZED` for a
+minimized window, `OFFSCREEN` for a background tab. (3) For a popup whose url is empty or
+`about:blank`, the daemon polls `listTabs` every 100 ms for at most 2 s before sending
+`leaseGranted`; the grant takes effect at once (F20). The switch-mode `WINDOW_MINIMIZED` message,
+which still suggests `mode:"cdp"`, stays unchanged in Step 7 (its text is SCREEN-4's recorded
+expectation); Step 8 rewrites it.
+**Why:** Run 8 SCREEN-5, SCREEN-2/4, LEASE-3 (#62); refusing shows no banner and adds no unmeasured
+timing constant; no wire change.
+**Instead of:** a time bound on CDP capture; a new code `TAB_HIDDEN` (contract change); a url-update
+event; delaying `tabCreated`; changing the message text after SCREEN-4 recorded it.
+**Revisit if:** Chrome is measured to capture a hidden tab through CDP; a popup's url often takes
+more than 2 s; a restore is seen undoing a human's choice (T5b verifier N1: after the 30 s release a
+late restore can make the next capture show the human's tab).
+**By:** Claude
+
+### 2026-10-23 · The user rules on Run 8: fix stage T5b, then Run 9 (#62)
+**Decided:** (1) SCREEN-1, SCREEN-3, SCREEN-5 and RESOLVER-1, which failed on defects in their own
+pre-written checks (a pixel probe on label text and colour-managed captures; a DevTools window title
+Chrome does not use), are re-run as Run 9 under corrected checks committed before any measurement;
+Run 8 keeps its FAIL-as-written results. (2) NET-1, served from Chrome's cache in Run 8, is re-run in
+Run 9 with the cache bypassed, expecting `12.8 KB`. (3) A fix stage T5b fixes three defects Run 8
+found, with tests and a verifier, before Run 9: a timed-out capture restores the human's previous
+tab; `screenshot {mode:"cdp"}` on a hidden or minimized tab refuses at once with a code (or is
+bounded) instead of hanging to `TIMEOUT` (SCREEN-2); `leaseGranted.url` is filled rather than `""`
+(LEASE-3). (4) BG-1/BG-2 (trusted input into a background tab answers `ok` and does nothing): Step 8
+first adds a focus-emulation option and measures it, then decides its policy (`sdk/src/policy.ts`).
+**Why:** the user's answers to the Run 8 questions.
+**Instead of:** keeping the four rows as FAIL-as-written; accepting NET-1 as explained; deferring the
+three fixes to Step 8; a "tab must be in front" policy without measuring focus emulation.
+**Revisit if:** Run 9 fails again.
+**By:** user
+
 ### 2026-10-22 · BG-1/BG-2's focus-emulation retry cannot run in this wave; T5.2 reports it unmet if they fail (#61)
 **Decided:** No bridge method sends `Emulation.setFocusEmulationEnabled`, and a wave may not change
 the extension. If BG-1 or BG-2 fails, the row records its text and "focus-emulation retry: not run",

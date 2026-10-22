@@ -236,3 +236,41 @@ One section per stage, appended at stage close, never rewritten; corrections are
 ### Open decisions for the user
 - None new. Follow-ups: dead network formatters in `extension/src/network-log.ts` (T6 or Step 8);
   the cursor notice's wording on a non-4002 close; a clean-tree guard in `capture-baseline.ts`.
+
+## Stage T5 — E2E, Run 8 · 2026-10-22/23 · wave verifier: PASS-with-notes · commits e7e56ff, 87c75c5, 8ed3e89
+
+### Results
+- PASS: RELOAD-1, LEASE-1, LEASE-2, LEASE-4, LEASE-5, LEASE-6 (outcome (b): a Memory-Saver discard
+  gave a new tab id; the handle survived through `tabReplaced` — #45's revisit trigger met, Stage 0
+  F7's premise wrong), LEASE-7, BG-3, BG-4; SCREEN-4 PASS-as-designed; designed-change rows (#60);
+  ACT-8 and the offscreen relay's live event frame (G7-1 deferrals); regression rows except NET-1.
+- FAIL (bridge): SCREEN-2 (cdp on a hidden tab → `TIMEOUT` 35 s), BG-1/BG-2 (trusted input into a
+  background tab answers `ok`, does nothing; retry not run, #61), LEASE-3 (`leaseGranted.url` `""`).
+- FAIL (check defects, pre-written): SCREEN-1, SCREEN-3, SCREEN-5, RESOLVER-1. NET-1: Chrome's cache.
+- SCREEN-1 flash: 1509 / 1486 / 1493 ms, median 1493 ms (page-side `visibilitychange` timestamps).
+- Daemon log `T5-daemon-log.txt`: `://` 0, token 0.
+- The user's rulings: #62 (T5b, then Run 9).
+
+## Stage T5b — fixes from Run 8 · 2026-10-23 · verifier: PASS-with-notes · commit 12ecb65
+
+### Contracts (binding forward)
+- A failed or hung switch capture restores the previous tab (once; skipped if the window moved on or
+  `focusTab` touched it); chain released by 30 s. `screenshot {mode:"cdp"}` refuses a minimized window
+  (`WINDOW_MINIMIZED`) or a background tab (`OFFSCREEN`) before attaching. `leaseGranted.url` filled by
+  polling `listTabs` (100 ms, ≤ 2 s); the grant itself at once.
+- Daemon build id `490f1c60e04464b7e184fcb150699484cc5ca176d7041c726f8a2a4d0507d974` (main tree).
+
+### Decisions taken
+- #63.
+
+### Estimates vs actuals
+| Item | Estimate | Actual | Source |
+|---|---|---|---|
+| Tests | ≥ 934 + new | 965 passed / 59 files | verifier clean worktree |
+
+### Needs the user's keyboard
+- The extension reload before Run 9.
+
+### Open decisions for the user
+- None new. Docs owed by T6/the propagator: spec §7 *Superseded* note on the cdp mode; stale comments
+  on `ScreenshotMode` and `LeaseGrantedParams.url` in `shared/src/protocol.ts`.

@@ -40,6 +40,12 @@ journal.md — not ours, never staged by T5b). Baseline per brief: 934 tests / 5
       awaited at the bound) + wedge tests; F5 tests. F2/F3/F4/F9 → proposed decisions (out of lane).
 - [x] Re-check: PASS-with-notes (965 / 59, typecheck 0, build 0; N1 note). Report T5b.md written;
       phase-doc note under Stage T5 added.
-- [ ] Commit (builder) — dispatched
-- [ ] Main-tree build + daemon build id
-- [ ] Report T5b.md
+- [x] Commit (builder): 12ecb65 (14 files; decisions.md and journal.md left unstaged).
+- [x] Main-tree build + daemon build id (see § Build)
+- [x] Report T5b.md
+
+## Build
+
+2026-10-23, main tree at 12ecb65: `npm run build` exit 0. Daemon build id (sha256 of
+`daemon/dist/index.js`): `490f1c60e04464b7e184fcb150699484cc5ca176d7041c726f8a2a4d0507d974`.
+The extension `dist/` changed too, so Run 9 needs the extension reload (G7-1).
