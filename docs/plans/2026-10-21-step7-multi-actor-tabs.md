@@ -19,6 +19,14 @@ always present from the daemon but optional on the wire (a v1 `{message}` become
 "upgrading" after `daemon.shutdown` replies `{ok:true}`; `extensionStatus {connected}`; `timeoutMs` not
 forwarded to the extension; any other `daemon.*` method → `UNKNOWN_METHOD`. Step 6's live E2E (the D6
 wave) has not run yet — see as-built § Stage D2, § Stage D6.*
+*Corrected 2026-10-22 (Stage 0): "Step 6's live E2E (the D6 wave) has not run yet" is superseded — wave
+W1 ran it (`docs/e2e-test-plan.md` §5 Run 7; Step 6 as-built § "W1 as-built"), and the user's rulings
+closed Step 6 on 2026-10-22 (decisions.md · 2026-10-22 · MUX-5 is accepted; its slowness is a later item
+(#34); · NET-1's `12.9 KB` came from a CRLF copy of the fixture, proven by a live probe (#35); · The user
+rules on the W1 proposals (#36)). MUX-7 confirmed #14, so per decisions.md · 2026-10-22 · The user rules
+on the seven Step 6 open decisions (#31) no double-spawn launcher is a Step 7 prerequisite. The Stage 0
+audit executed every listed contract on port 0 with a fake extension: 25 of 25 runs hold
+(`2026-10-21-step7-multi-actor-tabs-steps/stage0-audit.md` § "Step 6 contracts executed").*
 
 ## Outcome
 
@@ -192,6 +200,12 @@ today's for the fields that existed (so the MCP transcript doesn't change and th
 extension handler no longer builds `text`; `NetworkRequestsResult.text` (today
 `shared/src/protocol.ts:136`) is removed from the wire. *Corrected 2026-10-22: was line 136; as built
 the field is at `shared/src/protocol.ts:204` (D0 grew the file) — see as-built § Stage D0.*
+*Corrected 2026-10-22 (Stage 0): there is no `NetworkLog.format` method — the network text comes from the
+free functions `formatEntries` (`extension/src/network-log.ts:287`) and `formatEntry` (`:338`), with
+helpers `formatAgo :240`, `formatDuration :253`, `formatSize :257`, `scopeLabel :263`, `formatRow :318`;
+these move to `sdk/src/format/network.ts`. The snapshot text is built inside `buildSnapshot` itself
+(`extension/src/content/snapshot.ts:170-177`, element line `:151`); there is no separate snapshot
+formatter today — see `…-steps/stage0-audit.md` F11.*
 
 ### 0.8 `newTab` no longer activates
 
@@ -362,6 +376,12 @@ This stage is a **wave run with the user** after the autonomous phase closes (hu
 starts with `npm run build` → `chrome://extensions` ↻ → `/mcp`; an `unknown method: focusTab` or
 `BAD_PARAMS tabId` error means the loaded extension is stale. The autonomous run writes the rows and
 their expected results into `docs/e2e-test-plan.md` beforehand.
+*Corrected 2026-10-22 (Stage 0): amended by decisions.md · 2026-10-22 · Live E2E waves are run by
+Claude end to end (#33) — the wave is not run with the user: the driver runs it (headless Claude
+sessions as the actors, scripts through the SDK, Chrome windows it opens itself on fixture pages,
+window captures for banner and flash checks). The user's keyboard is needed only for the extension
+reload after `npm run build`; `/mcp` is not needed for the headless actor sessions, which load the
+current `mcp/dist/index.js` when they start.*
 *Corrected 2026-10-22: since Step 6, `npm run build` also changes the daemon's build: the first client
 to connect hands the running daemon over, and every other client reconnects on 4002 without a
 handover; every Claude session in the wave needs `/mcp` (T4 changes the MCP bundle) — see as-built
@@ -406,6 +426,11 @@ and LEASE-4 need two real sessions, so the evidence names both actor names. **Ne
 keyboard:** yes — all of it: extension reload, two Claude sessions (LEASE-1, LEASE-4), closing a tab by
 hand (LEASE-5), `chrome://discards` (LEASE-6), minimizing and using two windows (SCREEN-4/5), watching
 for the flash (SCREEN-1).
+*Corrected 2026-10-22 (Stage 0): amended by decisions.md · 2026-10-22 · Live E2E waves are run by
+Claude end to end (#33) — needs the user's keyboard: only the extension reload. The driver runs the
+two (or three) Claude sessions as headless `claude -p` actors, closes the tab (LEASE-5), uses
+`chrome://discards` (LEASE-6), minimizes and arranges its own windows (SCREEN-4/5) and measures the
+flash with a method written in the wave sheet before the run (SCREEN-1).*
 
 ### Stage T6 — Docs + commits
 
@@ -532,6 +557,12 @@ step's baseline is Step 6's closing test count (recorded in Step 6's as-built) a
   (watch and time the flash), SCREEN-4 (minimize), SCREEN-5 (two windows), BG-3 (focus by tool, then
   confirm). The BG-1/BG-2 outcome is a **Step 8 input**: Step 8's kickoff cannot set `sdk/src/policy.ts`
   without it.
+  *Corrected 2026-10-22 (Stage 0): amended by decisions.md · 2026-10-22 · Live E2E waves are run by
+  Claude end to end (#33) — G7-2 is not "a wave run with the user": the driver runs every row listed
+  above itself (headless Claude sessions as actors, scripts, its own Chrome windows on fixture pages,
+  UI automation, window captures). The gate keeps one keyboard step, the extension reload after
+  `npm run build` (#33 keeps "no extension change or reload" with the user); if the user does not
+  answer the reload request, the run stops at G7-2 with the package ready.*
 - **G7-3 — the "open popup" fixture button.** Adding it to `test-fixtures/e2e-playground.html` is in
   the repo and needs no gate (T1 adds it, *ruled 2026-10-21*); serving the fixture (`python -m
   http.server 8080 --directory test-fixtures`) and clicking it in the real profile is part of G7-2.
@@ -582,6 +613,9 @@ re-checks each ruling's premise by execution and raises a finding only if a prem
 - 0.3 marks `networkClear` as lease-checked with an explicit note of doubt ("hmm"). The spec §6.3 lists
   only `listTabs`, `networkRequests` and `daemon.status` as free, so "checked" is consistent with the
   spec; the audit confirms and the doubt is closed. (Not put to the user: consistent with the spec.)
+  *Corrected 2026-10-22 (Stage 0): confirmed — spec §6.3's free list is `listTabs`, `networkRequests`,
+  `daemon.status`; `networkClear` is lease-checked and the doubt is closed. The `tab:"all"` case of
+  `networkClear` is a separate proposal (`…-steps/stage0-audit.md` F3).*
 - *Ruled 2026-10-21:* `actions.ts` has 4 `activeTab()` calls, 13 across handlers; T1 corrected
   (decisions.md · 2026-10-21 · Step 7 T1's `activeTab()` count is 4 in actions.ts, 13 across handlers).
 - *Ruled 2026-10-21:* Step 6's D6 writes DL-1 and DL-2 before its wave; the cite stays (decisions.md ·
@@ -595,6 +629,9 @@ re-checks each ruling's premise by execution and raises a finding only if a prem
   SDK clears its cursor when it reconnects after a daemon restart).
 - T2 says `extensionStatus` is "already emitted (Step 6)" — verified by execution against Step 6's
   as-built, not assumed (it is Step 6's exit check D2.7 and, since 2026-10-21, a D2 checkbox).
+  *Corrected 2026-10-22 (Stage 0): verified by execution — `extensionStatus {connected:true}` reaches
+  clients on every extension hello, and `{connected:false}` only when the current extension socket
+  closes, not a replaced one (`…-steps/stage0-audit.md` C1b, C7).*
 
 **Left open by design:** `tabs.claim {wait:true}`; read-only foreign snapshots; generation-stamped
 refs; `daemon.kick` (follow-ups).
@@ -610,6 +647,10 @@ window (then `cdp` mode gains a use the docs should state).
 
 **Needs the user's keyboard:** extension reload + `/mcp` (G7-1 if taken at T1, and at the start of the
 T5 wave); the whole T5 wave; any push.
+*Corrected 2026-10-22 (Stage 0): amended by decisions.md · 2026-10-22 · Live E2E waves are run by
+Claude end to end (#33) — "the whole T5 wave" no longer needs the user: only the extension reload (G7-1
+if taken at T1; at the start of the T5 wave in any case), `/mcp` on the user's own interactive sessions
+that ran during the phase, and any push.*
 
 ## Follow-ups (not this step)
 
