@@ -255,3 +255,48 @@ cautions as above. The extension reload is again the only [USER] step. Every act
 
 A failed row is recorded, never fixed in the wave. Helper bugs may be fixed and recorded as set-up fixes;
 `t5.ts`'s judged lines and the §4.15 texts do not change after step 1 starts.
+
+## BG-FLAGS (Run 10) (written 2026-10-23, before Chrome was touched and before any BG-FLAGS measurement)
+
+Rows, expected text, the flag set and the restart/restore procedure: `docs/e2e-test-plan.md` §4.16
+(decisions.md #64 (2), #61, #62 (4)). Standing rules, tags and cautions as above; no product code
+changes (only the three `recipes/bgf-*.ps1` helpers are new). No [USER] step: the user is away; an
+extension reload, if one is ever needed, is `recipes/reload-extension.ps1` (#65). The driver never
+names, captures or acts in the user's own windows; the counts are the only thing recorded about them.
+
+0. **Pre-flight** [SH] as Run 9's step 0 (`Get-DaemonBuild` =
+   `490f1c60e04464b7e184fcb150699484cc5ca176d7041c726f8a2a4d0507d974`, no daemon or one of ours,
+   9234 free or ours, `Test-Path Env:BRIDGE_TOKEN` → `False`, driver check → nothing). Record Chrome's
+   path and file version. **First count** `bgf-count.ps1` → N, T, P (before any driver window opens).
+   Fixture server (miniconda, `-I`, `--bind 127.0.0.1`, port 8080) → `200 13106`.
+   Helper test (set-up, not a row; it only touches a window the driver opens): `chrome.exe --new-window
+   about:blank` (as `reload-extension.ps1` does) → `bgf-count` shows N + 1 windows and `blank windows 1`;
+   `bgf-count -CloseBlank -Expect N` → `closed the blank window …; gone: yes` and the count is N, T, P,
+   blank 0 again. If the blank window is not recognised, `bgf-count.ps1` may be fixed as a set-up fix (recorded
+   with its diff) — only before restart 1.
+1. **Check before** [UI] W0 = `Open-T5Window '…?t5=check'`; [SH] `npx tsx recipes/t5.ts check` →
+   `CHECK PASS`, its `listTabs — <k> tab(s)` recorded; `<k>` = T + 1 is restart 1's precondition
+   (§4.16 step 0).
+2. **BGF-0** in Wb on `…?t5=bg-human` (topmost; B1): `bg1 --then-focus`; `cleanup --keep bg-human`; B1;
+   `bg2 --then-focus`; `cleanup --keep bg-human`; then `cleanup`. Close Wb and W0 (`Close-T5Window`); `bgf-count` = N, T, P, blank 0.
+3. **Restart 1** per §4.16 steps 0–5 with the flag set. Any STOP ⇒ nothing further except, if Chrome
+   runs with the flags and the user's session is intact, restart 2 at once.
+4. **BGF-1, BGF-2, BGF-4, BGF-3** in Wb (`…?t5=bg-human`, topmost; B1 before each; `bgf-count` shows the
+   flags): `bg1 --then-focus`; `cleanup --keep bg-human`; B1; `bg2 --then-focus`; `cleanup --keep
+   bg-human`; B1; `bg4`; `cleanup --keep bg-human`; BG-3: `open bg3`, `info bg3` → `background`,
+   `t5-actor.ts start F --tools 'browser_select_tab,browser_evaluate,browser_focus_tab'`, F's four calls
+   (one prompt each), `end F`. `cleanup`; close Wb and the check window; `bgf-count` = N, T, P, blank 0.
+5. **Restart 2** per §4.16 steps 1–5 with `--restore-last-session` alone.
+6. **BGF-5** in Wb: `bg1 --then-focus`; `cleanup --keep bg-human`; B1; `bg2 --then-focus`; `cleanup --keep
+   bg-human`; then `cleanup`;
+   close Wb and the check window. **Final count** `bgf-count` = N, T, P, blank 0, switches
+   `[--restore-last-session]`.
+7. Close-down: `t5-actor.ts status` (F ended); stop the fixture server and the daemon only after
+   `Test-SafeToKill` prints `safe: …`; the log-hygiene counts (`://`, the token, withheld) on the
+   BG-FLAGS part of `daemon.log`, attached as `BG-FLAGS-daemon-log.txt`.
+8. Record: `BG-FLAGS-run-record.md` (commands, verbatim outputs, the counts before/after each restart),
+   §5 **Run 10 (BG-FLAGS)**; a fresh verifier re-reads the record against §4.16; commit
+   "docs(e2e): BG-FLAGS results (Run 10)".
+
+A failed row is recorded, never fixed; `t5.ts`'s judged lines and the §4.16 texts do not change after
+step 1 starts.

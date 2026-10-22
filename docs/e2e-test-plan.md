@@ -742,6 +742,116 @@ can: a stale extension hangs to `TIMEOUT` (Run 8) where the new one answers `OFF
 | R9-RESOLVER-1 | RESOLVER-1 under the corrected title rule | As RESOLVER-1 (§4.14). | `Get-T5Foreground` before and after R's calls: `Hwnd` = Wd's handle, `Title` `<DevTools window>`; the find-only `Find-T5Uia <Wd> 'sw.js','[bridge]'` (a literal substring match, counts only) prints a count ≥ 1 for each; R's `browser_status` last line `Active tab: [<T#>] Agent Bridge E2E Playground — http://localhost:8080/e2e-playground.html?t5=resolver` and the snapshot's first line `url: http://localhost:8080/e2e-playground.html?t5=resolver   title: "Agent Bridge E2E Playground"`, neither containing `No normal Chrome window is focused` or `No active tab`. |
 | R9-NET-1 ★ | NET-1 with Chrome's cache bypassed | Actor S on a driver window on the plain URL `http://localhost:8080/e2e-playground.html` (its tab selected). **[UI]** S: `browser_network_clear {}`. **[UI]** a hard reload of that tab by keyboard in the driver's own window (`Set-T5Foreground <hwnd>` must print `True` and `Get-T5Foreground` must name that window's handle, else no keys are sent; then SendKeys `^+r`) — it bypasses the cache, replacing MUX-9's `browser_navigate`, which Run 8 showed is served from the cache. **[UI]** S: `browser_network_requests {}`, then `browser_network_requests {"id":"<id>"}`. **[SH]** the 8080 server's log. Capture loop for the banner. | `Cleared <n> requests.`; then `Network — active tab: showing 1 of 1 (recording since <t> ago; 0 pending)` and `[<id>]  <t> ago   GET     200  document    <n>ms  12.8 KB  http://localhost:8080/e2e-playground.html`; the id lookup contains `from cache: no` and `content-length: 13106`; the server log has a new `"GET /e2e-playground.html HTTP/1.1" 200` at the reload's time; no banner (A10). |
 
+### 4.16 BG-FLAGS rows (Step 7: background input with Chrome restarted under flags; decisions.md #64 (2))
+
+*Added 2026-10-23 by stage BG-FLAGS, before Chrome was touched and before any BG-FLAGS measurement
+(decisions.md · 2026-10-23 · The driver may reload the extension by UI automation, and restart Chrome
+with flags for the background-input test (#64) (2); · 2026-10-22 · BG-1/BG-2's focus-emulation retry
+cannot run in this wave; T5.2 reports it unmet if they fail (#61); · 2026-10-23 · The user rules on
+Run 8: fix stage T5b, then Run 9 (#62) item (4)). Run 8's BG results (§5 Run 8) stay
+as recorded. The order and set-up are in the wave sheet
+[`T5-wave-sheet.md`](plans/2026-10-21-step7-multi-actor-tabs-steps/T5-wave-sheet.md) § "BG-FLAGS
+(Run 10)". §4.14's tools, markers and cautions B1–B6 apply; tags as in §4.12.*
+
+**The question.** Run 8: a trusted click / trusted typing into a background tab answers `ok` in 5–10 ms
+and the page receives nothing; after `focusTab` both work (BG-1/BG-2 FAIL). Is Chrome's background
+throttling the cause? This stage measures it **with no code change**: Chrome is restarted with flags
+that disable renderer backgrounding, and BG-1/BG-2 are run again exactly as written. Focus emulation
+proper (`Emulation.setFocusEmulationEnabled`) needs a bridge method that does not exist; adding it is
+Step 8's (#62 (4)) and is **not** done here — BGF-1/BGF-2 record only whether these flags alone change
+the outcome.
+
+**The flag set** (as the stage brief gives it; unchanged):
+`--disable-renderer-backgrounding --disable-backgrounding-occluded-windows --disable-background-timer-throttling`.
+What each does: the first keeps a background tab's renderer process at normal priority; the second
+stops Chrome treating a covered window's tabs as backgrounded; the third stops the 1 s timer clamp of
+background pages. None of them makes a background tab *visible* or *focused* — so `document.visibilityState`
+of a background tab is still expected to read `hidden`, which BG-1/BG-2's PASS rule requires anyway.
+
+**New helpers** (written before the run; Windows PowerShell 5.1; counts only — none prints a title or URL):
+- `recipes/bgf-count.ps1 [-CloseBlank -Expect <N>]` — one line: `chrome.exe` processes, browser processes,
+  browser windows (visible `Chrome_WidgetWin_1` windows of `chrome.exe` titled `… - Google Chrome`),
+  how many minimized, tabs (UIA elements of ControlType `TabItem` **and** ClassName `Tab` per window —
+  the tab strip only; a page's `role="tab"` elements are also `TabItem`s, with an empty ClassName, and
+  are not counted (prereg verifier finding 1, measured: the user's window read 2 `TabItem`s = 1 `Tab` +
+  1 web element); total and the per-window list sorted), `blank windows` (windows titled exactly
+  `about:blank - Google Chrome` with one tab) and the browser process's switches (names only).
+  `-CloseBlank -Expect <N>` closes the blank window (WM_CLOSE) only when exactly one exists **and** there
+  are exactly N + 1 browser windows, then counts again; otherwise it closes nothing.
+- `recipes/bgf-quit.ps1` — quits Chrome **gracefully**: opens one window of its own on `about:blank`
+  (as `recipes/reload-extension.ps1` does), checks its address bar reads `about:blank`, sets it to
+  `chrome://quit` and sends one Enter only while that window is in front with its address bar focused
+  (Chrome's own Exit: every window closes and the session is saved), then waits ≤ 60 s for no
+  `chrome.exe` to remain. **It never kills `chrome.exe`**: exit 3 if Chrome is still running, and the
+  driver stops. Exit 2 = nothing sent.
+- `recipes/bgf-launch.ps1 -Exe <chrome.exe> -ArgLine '<args>'` — starts Chrome outside the driver's job
+  object (the driver's shell runs in one; limit flags `0x800`, measured) with the user's default
+  environment (`CreateEnvironmentBlock`; the driver's session variables are not passed on) and no
+  inherited handles, in a new process group (`CREATE_NEW_PROCESS_GROUP`, so no console Ctrl+C of the
+  driver reaches it), as a desktop shortcut would. Exit 2 = refused, nothing started.
+
+**The restart and restore procedure (both restarts).** Pre-registered, because it is the user's real
+Chrome (integrity floor):
+0. **Precondition (restart 1 only):** the pre-flight check's `listTabs — <k> tab(s)` (one check
+   window open) equals T + 1 — the two tab counts agree. Otherwise `bgf-count.ps1` may get a set-up fix
+   (recorded with its diff) and the first count is taken again; if they still disagree ⇒ STOP before
+   any restart.
+1. All the driver's own windows are closed; `bgf-count` must print the same `browser windows`, `tabs`
+   and per-window list as the stage's first count (N windows, T tabs, list P), with `blank windows 0`
+   — else ⇒ STOP (no quit). Chrome's path and version are recorded
+   (`C:\Program Files\Google\Chrome\Application\chrome.exe`, file version `156.0.8078.48` measured
+   at 23:12Z).
+2. `bgf-quit.ps1` → `QUIT OK - no chrome.exe process remains, <s> s after the Enter`, exit 0. Exit 3
+   ⇒ **STOP** (nothing is forced; the record says so). Exit 2 ⇒ nothing was sent: step 1's count is
+   taken again (a window the script left open would change it ⇒ STOP), then one rerun; a second exit 2
+   ⇒ STOP.
+3. `bgf-launch.ps1 -Exe 'C:\Program Files\Google\Chrome\Application\chrome.exe' -ArgLine '<args>'` with
+   `<args>` = `--restore-last-session` followed by the flag set (restart 1) or `--restore-last-session`
+   alone (restart 2) → `bgf-launch: started pid <p> …; in job: False; …`.
+4. `bgf-count` every 2 s until two results in a row are equal and show ≥ N browser windows, at most 60 s
+   (at 60 s the last count is judged as it stands).
+   The quit window is in the saved session, so it may come back: **expected** N + 1 windows with
+   `blank windows 1`, or N windows with `blank windows 0`. Then `bgf-count -CloseBlank -Expect N` (only
+   if blank = 1 and windows = N + 1) closes that one window. **Restore PASS** = the final count prints exactly N browser windows,
+   T tabs, per-window list P, `blank windows 0`, and `browser switches: [<args>]` (the flags present
+   after restart 1; only `--restore-last-session` after restart 2). Anything else — fewer or more
+   windows or tabs, a different list, two blank windows — ⇒ **STOP all further steps** and report it
+   plainly; the driver does not try to repair the user's session (nothing is reopened or closed). The
+   record then names what the STOP leaves behind: whether Chrome runs, with which switches, and whether
+   the driver's blank window is still open.
+5. `npx tsx recipes/t5.ts check` in a driver window on `…?t5=check` → `CHECK PASS — …` (the extension
+   reconnects to the daemon by itself after a restart; its `listTabs — <k> tab(s)` must equal the
+   pre-flight check's `<k>`, taken with the same one check window open — a second, independent tab
+   count). Only if it fails with the extension not connected after 30 s: `reload-extension.ps1`
+   (#65), then the check once more; a second failure ⇒ STOP (restart 1: then restart 2 runs at once to
+   take the flags off; restart 2: report).
+At the end Chrome must be as it was: N windows, T tabs, list P, none of the three flags (the first
+count's switches were `[]`), `t5.ts check` passing. Two harmless differences are expected and recorded:
+the command line keeps `--restore-last-session` (a one-shot switch), and the browser process is no
+longer in a job object (the original one was, with its parent gone).
+
+**Validity of BGF-0…5.** BGF-1…4 count only if `bgf-count`, run right before them, prints the three
+flags in `browser switches`; BGF-0 and BGF-5 only if it prints none of them. Otherwise the row is
+**not run (set-up)**, neither PASS nor FAIL.
+
+| ID | Objective | Steps | Expected |
+|---|---|---|---|
+| BGF-0 | Baseline before restart 1: BG-1/BG-2 still fail on this build without flags (informational; makes the comparison discriminating) | Driver window Wb on `…?t5=bg-human`, topmost, current (B1, B4). **[SH]** `npx tsx recipes/t5.ts bg1 --then-focus`; `cleanup --keep bg-human`; B1; `bg2 --then-focus`; `cleanup --keep bg-human`. | Recorded either way, judged by BG-1's / BG-2's rules (§4.14). Run 8 recorded both `FAIL` (`ok` in 5–10 ms, `status: idle`). |
+| BGF-1 ★ | BG-1 under the flag set: trusted click into a background tab | Restart 1 done (Restore PASS) and the check passed. Driver window Wb on `…?t5=bg-human`, `Set-T5Topmost`, current (B1, B4); `bgf-count` shows the flags. **[SH]** `npx tsx recipes/t5.ts bg1 --then-focus`. | BG-1's rule (§4.14), copied: PASS = `click e<N> trusted → ok (<ms> ms)`; `target status "status: TRUSTED click received"; …; target visibilityState hidden`; `human tab hidden during the call: no; after — human … active in its window, current; target … background …`; `BG-1 PASS — exact; background throughout: yes; human's tab unchanged: yes` (the script's PASS also requires the target `hidden` when read). On FAIL the text is recorded, and so is the script's line `BG-1 focus-emulation retry: not run — no bridge method sends Emulation.setFocusEmulationEnabled, and adding one is an extension change (forbidden in a wave)` (focus emulation is Step 8's, #62 (4)). The `--then-focus` line (`informational, not the T5.2 retry — after focusTab …`) is recorded either way. |
+| BGF-2 ★ | BG-2 under the flag set: trusted typing into a background tab | As BGF-1, after `cleanup --keep bg-human` and B1 again: `npx tsx recipes/t5.ts bg2 --then-focus`. | BG-2's rule (§4.14), copied: PASS = `type e<N> "bg2typed" trusted → ok (<ms> ms)`; `target status "status: TRUSTED input = bg2typed"; field value "bg2typed"; target visibilityState hidden`; the human's-tab line as BG-1; `BG-2 PASS — exact; …`. FAIL handling as BGF-1. |
+| BGF-3 | Control under the flags: clipboard write needs focus (BG-3) | As BG-3 (§4.14) in Wb: **[SH]** `t5.ts open bg3`; `t5.ts info bg3` → `background`. **[UI]** actor F (`--tools 'browser_select_tab,browser_evaluate,browser_focus_tab'`): `browser_select_tab {"tab":"<T#>"}`; `browser_evaluate {"expression":"navigator.clipboard.writeText('t5-bg3').then(() => 'ok')"}`; `browser_focus_tab {}`; the same `browser_evaluate` again. | BG-3's rule, copied: Select: `Selected tab <T#> (…)`. First evaluate: an error (`OUTPUT (isError)`) containing `NotAllowedError` or `Document is not focused`. Focus: `Focused tab <T#>`. Second evaluate: `ok`. (The user's clipboard then holds `t5-bg3`.) |
+| BGF-4 | Control under the flags: `waitFor {text}` and `networkIdle` on a background tab (BG-4) | As BGF-1's set-up. **[SH]** `npx tsx recipes/t5.ts bg4`. | BG-4's rule, copied: `… target <T#> (background, visibilityState hidden); the text is added 2000 ms after the arm`; `waitFor {text} → ok after <t> ms` with 1900 ≤ `<t>` ≤ 10000; `fetch /ok.json → 200; waitFor {networkIdle} → ok after <n> ms` with `<n>` ≤ 10000; `BG-4 PASS — text after <t> ms, network idle after <n> ms; target still background: yes`. The elapsed times are recorded (Run 8: 3746 ms / 552 ms; with the timer clamp off, `<t>` nearer 2000 ms is expected but not required). |
+| BGF-5 | After restart 2 (no flags): BG-1/BG-2 once more (informational) | Restart 2 done (Restore PASS, `browser switches: [--restore-last-session]`), the check passed; Wb as BGF-1. **[SH]** `bg1 --then-focus`; `cleanup --keep bg-human`; B1; `bg2 --then-focus`. | Recorded either way, judged by BG-1's / BG-2's rules. |
+
+**Reading the result (pre-registered).** The flags **change** BG-1 (resp. BG-2) iff BGF-0's row FAILs,
+BGF-1 (BGF-2) PASSes, and BGF-5's row FAILs again. BGF-1/BGF-2 FAIL ⇒ "the flags alone do not change
+the outcome" (background throttling is not the cause on its own; focus emulation stays Step 8's
+question). BGF-1/BGF-2 PASS but BGF-5 also PASSes ⇒ "not attributable to the flags" (the restart or
+something else changed it). BGF-0 PASS ⇒ the baseline no longer reproduces Run 8: recorded, and the
+flags' effect is "not determinable"; the same reading if BGF-0, BGF-1/BGF-2 or BGF-5 is not run. One
+trial per condition (as in Run 8); a single PASS/FAIL is reported as such. Every outcome is fine;
+nothing is re-tuned after the measurement.
+
 ## 5. Results template
 
 Copy this and fill it in during the run:
