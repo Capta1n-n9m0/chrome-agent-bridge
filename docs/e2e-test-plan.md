@@ -132,6 +132,45 @@ Record outcomes in the [Results template](#results-template). A run "passes" whe
    - **Where to look:** Claude Code does not show the MCP's stderr, so the evidence is
      `browser_status`, the recipe's output, the process listings and `daemon.log` (lines are
      `<UTC time, whole seconds> <message>`).
+9. **Reloading the extension by UI automation** — *added 2026-10-23, stage RELOAD-AUTO (decisions.md ·
+   2026-10-23 · The driver may reload the extension by UI automation, … (#64)); measured on Windows 11,
+   Chrome 156, English UI.* After `npm run build` changes `extension/dist`, Chrome runs the old code
+   until the extension is reloaded (CLAUDE.md gotcha). A driver with shell access reloads it with
+   **[SH]**, from the repo root in Windows PowerShell:
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\reload-extension.ps1   # -DryRun: find only
+   $LASTEXITCODE   # 0 reloaded and verified; 2 nothing pressed; 3 pressed, not verified; 4 own window left open; 5 dry run found the button; 1 script error
+   ```
+   What it does: it opens **one** Chrome window of its own (`chrome.exe --new-window about:blank` — Chrome
+   opens a `chrome://` URL given on the command line as a New Tab page instead, so the script types
+   `chrome://extensions` into **that window's** address bar by UIA `ValuePattern.SetValue` and sends one
+   Enter only while that window is in the foreground and its address bar has the focus). In the page's
+   accessibility tree (Chrome builds it when a UIA client asks; no `--force-renderer-accessibility`
+   was needed) every card is flattened into a run of siblings that starts at a text with AutomationId
+   `name`. The script takes the run whose name is `Chrome Agent Bridge` **and** whose ID line is the ID
+   Chrome derives from the path of `extension/` (sha256 of the absolute path as UTF-16LE, first 16 bytes,
+   nibbles as `a`–`p`: `cpnemjbgecfbeicldpaaegbhjgjgjfep` on this machine), and in it the one Button
+   with AutomationId `dev-reload-button` (raw-view parent `itemsList`). Anything else — a new window not on `about:blank` (then it is not closed either), no or two such
+   cards, no or two buttons, another page, Chrome not running, more than one new window — presses
+   nothing and exits 2. The browser's own toolbar Reload (AutomationId `view_…`), **Update**
+   (`updateNow`, reloads every unpacked extension), the toggles (`enableToggle`, `devMode`), Remove,
+   Details and Errors are never pressed. It invokes the button once, then verifies two ways: UIA sees
+   the card's "Inspect views" change (for ~0.1–0.4 s it reads `service worker (Inactive)` and the
+   offscreen document's `1 more…` link is gone), and, if a daemon is running, `daemon.log` gets a new
+   `extension resync: <n> tabs, <m> gone` line (the extension's socket came back; it appeared in the
+   same second as the press). It then closes its window (WM_CLOSE) and checks it is gone. It prints no
+   title or URL of any other window and never reads the token. A **daemon running** before the press
+   makes the check stronger (start one with any client, e.g. `npx tsx recipes/hello.ts`).
+   **Then prove the build** with the wave's stale-extension check (RELOAD-1's `npx tsx recipes/t5.ts
+   check`, and for a T5b-or-later build a call only that build answers, e.g. `screenshot {mode:"cdp"}`
+   on a background tab → `OFFSCREEN` in < 1 s). Limits: Developer mode must already be on (the button
+   exists only then; the script never switches it); the new window opens in Chrome's last-used
+   profile, so with several profiles the card may be missing (exit 2); the card name and AutomationIds
+   are language-independent, the `(Inactive)` text is not (it is only one of the two checks). Without a
+   UIA-capable shell, the fallback is keyboard navigation in one's own `chrome://extensions` window
+   (not built; Tab order through the cards is long and fragile). A future extension method calling
+   `chrome.runtime.reload()` would make a reload of an already-current extension a single call (not
+   built: it is an extension change).
 
 **Fixture reference:** `test-fixtures/e2e-playground.html` exposes a sticky `status:` line that
 updates on every interaction (so `browser_snapshot` / `browser_screenshot` can verify outcomes), a

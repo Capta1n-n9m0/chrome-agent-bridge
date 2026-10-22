@@ -107,6 +107,11 @@ $env:BRIDGE_TOKEN="<your-token>"; npx @modelcontextprotocol/inspector node mcp/d
 Open the extension's **service worker** console (chrome://extensions → the extension →
 "service worker"). You should see `[bridge] connection: up`.
 
+**After rebuilding the extension** (`npm run build`), Chrome keeps running the old code until the
+extension is reloaded (chrome://extensions → ↻ on the Chrome Agent Bridge card). On Windows,
+`powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\reload-extension.ps1` does that by UI
+automation in a window of its own and verifies it; see `docs/e2e-test-plan.md` §1 item 9.
+
 ## 5. Use it
 
 With the daemon running and the extension connected, call the 22 tools from your client. Every tool
