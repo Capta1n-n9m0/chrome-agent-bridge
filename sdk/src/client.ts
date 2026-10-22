@@ -6,9 +6,14 @@ import {
   fromWire,
   isErrorResponse,
   isEvent,
+  isLeaseGrantedEvent,
   isResponse,
+  isTabGoneEvent,
   type EventMessage,
+  type ExtensionStatusParams,
+  type LeaseGrantedParams,
   type RequestMessage,
+  type TabGoneParams,
   type WelcomeMessage,
 } from "@bridge/shared";
 import type { Knocked } from "./knock.js";
@@ -83,6 +88,37 @@ export function onClientFailure(client: BridgeClient, listener: FailureListener)
 type EventListener = (event: EventMessage) => void;
 type ReconnectListener = (welcome: WelcomeMessage) => void;
 
+/** The daemon → client events with typed params (spec §10), each checked before delivery. */
+interface TypedEvents {
+  tabGone: TabGoneParams;
+  leaseGranted: LeaseGrantedParams;
+  extensionStatus: ExtensionStatusParams;
+}
+type TypedEventName = keyof TypedEvents;
+type TypedListener = (params: never) => void;
+
+/**
+ * The params of `message` if it is a well-formed `name` event, else null. `tabGone`/`leaseGranted`
+ * use the shared guards; `extensionStatus` has none in `@bridge/shared`, so its one field is checked
+ * here (the same check `extensionConnected` already applied).
+ */
+function typedParams(name: TypedEventName, message: EventMessage): object | null {
+  switch (name) {
+    case "tabGone":
+      return isTabGoneEvent(message) ? message.params : null;
+    case "leaseGranted":
+      return isLeaseGrantedEvent(message) ? message.params : null;
+    case "extensionStatus":
+      return message.event === "extensionStatus" && typeof message.params.connected === "boolean"
+        ? message.params
+        : null;
+  }
+}
+
+function isTypedEventName(name: string): name is TypedEventName {
+  return name === "tabGone" || name === "leaseGranted" || name === "extensionStatus";
+}
+
 interface Pending {
   resolve: (value: unknown) => void;
   reject: (err: BridgeError) => void;
@@ -103,6 +139,7 @@ export class BridgeClient {
   private nextId = 1;
   private readonly eventListeners = new Set<EventListener>();
   private readonly reconnectListeners = new Set<ReconnectListener>();
+  private readonly typedListeners = new Map<TypedEventName, Set<TypedListener>>();
   private currentWelcome: WelcomeMessage | null = null;
   private extensionUp = false;
 
@@ -171,11 +208,35 @@ export class BridgeClient {
    * the hook where Step 7/8 clear the client's tab cursor (decision #11): a replaced daemon knows
    * nothing of the tabs the old one handed out. Not fired for the first connect.
    *
+   * `"tabGone"` / `"leaseGranted"` / `"extensionStatus"`: that event's params, only when the frame is
+   * well-formed (`isTabGoneEvent` / `isLeaseGrantedEvent` / a boolean `connected`); a malformed frame
+   * still reaches `"event"` listeners. Delivered synchronously from the socket's message callback, so
+   * several frames from one read arrive in order, each after the previous listener returned.
+   *
    * Returns an unsubscribe.
    */
   on(type: "event", listener: EventListener): () => void;
   on(type: "reconnected", listener: ReconnectListener): () => void;
-  on(type: "event" | "reconnected", listener: EventListener | ReconnectListener): () => void {
+  on(type: "tabGone", listener: (params: TabGoneParams) => void): () => void;
+  on(type: "leaseGranted", listener: (params: LeaseGrantedParams) => void): () => void;
+  on(type: "extensionStatus", listener: (params: ExtensionStatusParams) => void): () => void;
+  on(
+    type: "event" | "reconnected" | TypedEventName,
+    listener: EventListener | ReconnectListener | TypedListener,
+  ): () => void {
+    if (isTypedEventName(type)) {
+      const l = listener as TypedListener;
+      let set = this.typedListeners.get(type);
+      if (!set) {
+        set = new Set();
+        this.typedListeners.set(type, set);
+      }
+      const listeners = set;
+      listeners.add(l);
+      return () => {
+        listeners.delete(l);
+      };
+    }
     if (type === "event") {
       const l = listener as EventListener;
       this.eventListeners.add(l);
@@ -271,6 +332,14 @@ export class BridgeClient {
         this.extensionUp = message.params.connected;
       }
       for (const l of [...this.eventListeners]) l(message);
+      if (isTypedEventName(message.event)) {
+        const set = this.typedListeners.get(message.event);
+        const params = set && set.size > 0 ? typedParams(message.event, message) : null;
+        if (set && params) {
+          // A listener removed by an earlier one in this same dispatch is skipped.
+          for (const l of [...set]) if (set.has(l)) (l as (p: object) => void)(params);
+        }
+      }
     }
   }
 

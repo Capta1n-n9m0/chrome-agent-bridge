@@ -7,15 +7,21 @@
 // A tool call that rejects with NOT_CONNECTED probes too, so a dead client is dropped right away.
 // The MCP's `connect()` does not wait for the extension (`requireExtension: false`, decision #27), so
 // a NOT_CONNECTED reply while Chrome is closed probes an open client: it stays, nothing reconnects.
-import { BridgeError, ErrorCodes, type BridgeClient, type CallOptions } from "@bridge/sdk";
+import { BridgeError, ErrorCodes, type BridgeClient, type CallOptions, type WelcomeMessage } from "@bridge/sdk";
 
 export const RETRY_MS = 5000;
 /** The reason shown before the first attempt has settled. */
 export const CONNECTING_REASON = "connecting to the bridge daemon…";
 const STOPPED_REASON = "the MCP server is shutting down";
 
-/** The part of `BridgeClient` the link uses. */
-export type LinkClient = Pick<BridgeClient, "call" | "status" | "close"> & { connect(): Promise<unknown> };
+/**
+ * The part of `BridgeClient` the link uses. `on("reconnected")` is for `onClient` subscribers (the
+ * MCP's tab cursor, Step 7 T4); the link itself never subscribes.
+ */
+export type LinkClient = Pick<BridgeClient, "call" | "status" | "close"> & {
+  connect(): Promise<unknown>;
+  on(type: "reconnected", listener: (welcome: WelcomeMessage) => void): () => void;
+};
 
 export interface LinkTimers {
   setTimeout(fn: () => void, ms: number): unknown;
@@ -38,6 +44,12 @@ export interface LinkOptions {
   timers?: LinkTimers;
   /** Called when the stored reason changes: a message, or null once connected. */
   onChange?: (reason: string | null) => void;
+  /**
+   * Called with each client the link adopts, before it serves a call — a second call means the
+   * earlier client failed and this is a fresh `connect()` (decision #15). The MCP's tab cursor uses it
+   * to notice a daemon restart on that path and to subscribe to the client's 4002 `reconnected`.
+   */
+  onClient?: (client: LinkClient) => void;
 }
 
 function messageOf(err: unknown): string {
@@ -49,6 +61,7 @@ export class BridgeLink {
   private readonly retryMs: number;
   private readonly timers: LinkTimers;
   private readonly onChange?: (reason: string | null) => void;
+  private readonly onClient?: (client: LinkClient) => void;
   private client: LinkClient | null = null;
   private storedReason: string | null = null;
   private timer: unknown = null;
@@ -60,6 +73,7 @@ export class BridgeLink {
     this.retryMs = options.retryMs ?? RETRY_MS;
     this.timers = options.timers ?? unrefTimers;
     this.onChange = options.onChange;
+    this.onClient = options.onClient;
   }
 
   /** Whether a client is held (it may still turn out to have failed; the next probe tells). */
@@ -145,6 +159,11 @@ export class BridgeLink {
           return;
         }
         this.client = c;
+        try {
+          this.onClient?.(c);
+        } catch {
+          // A subscriber's failure must not break the link (the no-crash rule).
+        }
         this.setReason(null);
         this.schedule();
       },

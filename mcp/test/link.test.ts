@@ -41,7 +41,7 @@ function deferred<T>() {
 }
 
 /** A fake client: `failWith` makes it behave like a BridgeClient after a non-4002 close. */
-function fakeClient(over: Partial<LinkClient> = {}) {
+function fakeClient(over: Partial<Omit<LinkClient, "on">> = {}) {
   let failure: BridgeError | null = null;
   const client = {
     call: vi.fn(async (_m: string, _p?: Record<string, unknown>, _o?: { timeoutMs?: number }): Promise<unknown> => {
@@ -57,6 +57,7 @@ function fakeClient(over: Partial<LinkClient> = {}) {
       return { type: "welcome" };
     }),
     close: vi.fn(() => {}),
+    on: vi.fn((_type: "reconnected", _l: unknown) => () => {}),
     ...over,
   };
   return {
@@ -297,5 +298,76 @@ describe("BridgeLink — stop()", () => {
     pending.reject(new Error("late"));
     await flush();
     expect(t.pending()).toEqual([]);
+  });
+});
+
+describe("BridgeLink — onClient (Step 7 T4: the cursor's hook)", () => {
+  it("is called with each adopted client, in order, and not for a failed attempt", async () => {
+    const t = manualTimers();
+    const a = fakeClient();
+    const b = fakeClient();
+    const connect = vi
+      .fn<() => Promise<LinkClient>>()
+      .mockResolvedValueOnce(a.client)
+      .mockRejectedValueOnce(new Error("refused"))
+      .mockResolvedValueOnce(b.client);
+    const adopted: LinkClient[] = [];
+    const link = new BridgeLink({ connect, timers: t.timers, onClient: (c) => adopted.push(c) });
+    link.start();
+    await flush();
+    expect(adopted).toEqual([a.client]);
+    a.failWith(CLOSED_MSG);
+    t.fire(); // probe drops a, attempt #2 fails
+    await flush();
+    expect(adopted).toEqual([a.client]);
+    t.fire(); // attempt #3 adopts b
+    await flush();
+    expect(adopted).toEqual([a.client, b.client]);
+    expect(link.hasClient).toBe(true);
+  });
+
+  it("is called before the client serves a call, and not for a client that arrives after stop()", async () => {
+    const t = manualTimers();
+    const pending = deferred<LinkClient>();
+    const onClient = vi.fn();
+    const link = new BridgeLink({ connect: () => pending.promise, timers: t.timers, onClient });
+    link.start();
+    link.stop();
+    pending.resolve(fakeClient().client);
+    await flush();
+    expect(onClient).not.toHaveBeenCalled();
+  });
+
+  it("is not called again when a healthy probe keeps the client", async () => {
+    const t = manualTimers();
+    const onClient = vi.fn();
+    const link = new BridgeLink({ connect: async () => fakeClient().client, timers: t.timers, onClient });
+    link.start();
+    await flush();
+    t.fire();
+    await flush();
+    t.fire();
+    await flush();
+    expect(onClient).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("BridgeLink — onClient failure", () => {
+  it("a throwing onClient does not lose the client or stop the link", async () => {
+    const t = manualTimers();
+    const { client } = fakeClient();
+    const link = new BridgeLink({
+      connect: async () => client,
+      timers: t.timers,
+      onClient: () => {
+        throw new Error("subscriber bug");
+      },
+    });
+    link.start();
+    await flush();
+    expect(link.hasClient).toBe(true);
+    expect(link.reason).toBeNull();
+    await expect(link.call("snapshot")).resolves.toEqual({ ok: true });
+    expect(t.pending()).toEqual([RETRY_MS]);
   });
 });

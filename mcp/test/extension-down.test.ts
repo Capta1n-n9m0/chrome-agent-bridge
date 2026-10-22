@@ -71,8 +71,14 @@ function tool(server: McpServer, name: string): Handler {
 }
 const textOf = (res: unknown) => (res as { content: Array<{ text: string }> }).content[0].text;
 
+/** What the fake extension answers `snapshot` with: a T3 (data, not text) result. */
+const SNAPSHOT = { url: "", title: "t", elements: [{ ref: "e1", role: "button", name: "Go", depth: 0 }], truncated: false };
+
 /**
- * A fake extension; answers `snapshot` with a fixed text.
+ * A fake extension; answers `snapshot` with `SNAPSHOT`.
+ * 2026-10-22 (Step 7 T4): was a `{text, count}` answer — T3 made the extension return data and T4
+ * renders it in the MCP with `formatSnapshot`, so the fake answers the T3 shape and the expected text
+ * below is the formatter's rendering of it (header line added).
  * 2026-10-22 (decisions.md #52, applying #42/#41): was a v1 hello (no role) answering only `snapshot` —
  * a no-proto extension now gets VERSION for tab methods, and a Step 7 daemon resolves a call with no
  * `tab` through `listTabs` (and resyncs from it on hello), so the fake says proto:2 and answers it.
@@ -86,7 +92,7 @@ function fakeExtension(port: number): Promise<WebSocket> {
       else if (typeof f.id === "string" && f.method === "listTabs") {
         ws.send(JSON.stringify({ id: f.id, result: { tabs: [{ id: 1, title: "t", url: "", active: true, current: true }] } }));
       } else if (typeof f.id === "string" && f.method === "snapshot") {
-        ws.send(JSON.stringify({ id: f.id, result: { text: '- button "Go" [ref=e1]', count: 1 } }));
+        ws.send(JSON.stringify({ id: f.id, result: SNAPSHOT }));
       }
     });
     ws.on("open", () => ws.send(JSON.stringify({ type: "hello", token: TOKEN, role: "extension", proto: 2 })));
@@ -184,7 +190,7 @@ describe("MCP over a real SDK client with the extension down (D5b)", () => {
     ext = await fakeExtension(port);
     await waitUntil(() => clients[0].extensionConnected);
     const snap = textOf(await tool(server, "browser_snapshot")({}, {}));
-    expect(snap).toBe('- button "Go" [ref=e1]');
+    expect(snap).toBe('url:    title: "t"\n- button "Go" [ref=e1]');
     expect(clients).toHaveLength(1);
     expect(host.registry.count()).toBe(1);
   });

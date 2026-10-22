@@ -350,10 +350,5 @@ export interface NetworkRequestsResult {
   pending: number;
   /** Epoch ms — when this log started (extension load / last clear of "all"). */
   recordingSince: number;
-  /**
-   * What the tool prints; rendered in the extension like `snapshot`.
-   * @deprecated Step 7 (decisions.md #49): T3 stops producing it and T4 removes it, once the MCP
-   * formats `entries` itself. Optional meanwhile so every commit stays typecheck-green.
-   */
-  text?: string;
+  // `text` was removed in Step 7 T4 (decisions.md #49): the SDK's `formatNetwork` renders `entries`.
 }

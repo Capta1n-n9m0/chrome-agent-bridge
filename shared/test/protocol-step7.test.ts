@@ -224,8 +224,14 @@ describe("Step 7 types (compile-time; npm run typecheck covers shared/test)", ()
     expect(bad).toBe("focus");
   });
 
-  it("lets a NetworkRequestsResult omit the deprecated text", () => {
+  // Superseded 2026-10-22 (T4, decisions.md #49): was "lets a NetworkRequestsResult omit the
+  // deprecated text", because T4 removed the field. The @ts-expect-error makes `npm run typecheck`
+  // fail if `text` comes back.
+  it("has no text field on NetworkRequestsResult (removed in T4, #49)", () => {
     const r: NetworkRequestsResult = { entries: [], total: 0, pending: 0, recordingSince: 0 };
-    expect(r.text).toBeUndefined();
+    // @ts-expect-error — `text` was removed from the wire in Step 7 T4.
+    const gone = r.text;
+    expect(gone).toBeUndefined();
+    expect(Object.keys(r).sort()).toEqual(["entries", "pending", "recordingSince", "total"]);
   });
 });

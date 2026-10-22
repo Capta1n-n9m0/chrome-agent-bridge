@@ -1,0 +1,1003 @@
+{
+  "commit": "51de80000b976aa1c44586a23cd2f078aab447a7",
+  "note": "Captured once from the baseline code at this commit by sdk/test/fixtures/capture-baseline.ts (decisions.md #47). Never regenerate it from the new formatter; re-run the script in check mode to verify.",
+  "snapshot": [
+    {
+      "name": "buildSnapshot › lists interactive elements with role, accessible name, and ref",
+      "html": "\n      <input type=\"text\" aria-label=\"Email\" />\n      <button>Sign in</button>\n      <a href=\"/forgot\">Forgot password?</a>\n      <p>not interactive</p>\n    ",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- textbox \"Email\" [ref=e1]\n- button \"Sign in\" [ref=e2]\n- link \"Forgot password?\" [ref=e3]"
+    },
+    {
+      "name": "buildSnapshot › skips hidden elements",
+      "html": "<button style=\"display:none\">Hidden</button><button>Shown</button>",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- button \"Shown\" [ref=e1]"
+    },
+    {
+      "name": "buildSnapshot › returns a refs count matching the listed elements",
+      "html": "<button>A</button><button>B</button>",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- button \"A\" [ref=e1]\n- button \"B\" [ref=e2]"
+    },
+    {
+      "name": "buildSnapshot › names an input via an associated <label for>",
+      "html": "<label for=\"email\">Email address</label><input id=\"email\" type=\"text\" />",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- textbox \"Email address\" [ref=e1]"
+    },
+    {
+      "name": "buildSnapshot › names an input via aria-labelledby",
+      "html": "<span id=\"lbl\">Password</span><input aria-labelledby=\"lbl\" type=\"password\" />",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- textbox \"Password\" [ref=e1]"
+    },
+    {
+      "name": "buildSnapshot › names an input wrapped in a <label>",
+      "html": "<label>Username <input type=\"text\" /></label>",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- textbox \"Username\" [ref=e1]"
+    },
+    {
+      "name": "buildSnapshot › prefers aria-label over an associated label",
+      "html": "<label for=\"x\">Wrong</label><input id=\"x\" aria-label=\"Right\" type=\"text\" />",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- textbox \"Right\" [ref=e1]"
+    },
+    {
+      "name": "buildSnapshot — hidden subtrees › prunes descendants of a display:none ancestor",
+      "html": "<div style=\"display:none\"><button>Buried</button></div><button>Shown</button>",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- button \"Shown\" [ref=e1]"
+    },
+    {
+      "name": "buildSnapshot — hidden subtrees › prunes an aria-hidden subtree",
+      "html": "<div aria-hidden=\"true\"><button>Decorative</button></div><button>Real</button>",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- button \"Real\" [ref=e1]"
+    },
+    {
+      "name": "buildSnapshot — hidden subtrees › prunes an inert subtree",
+      "html": "<div inert><button>Behind modal</button></div><button>Modal action</button>",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- button \"Modal action\" [ref=e1]"
+    },
+    {
+      "name": "buildSnapshot — hidden subtrees › skips zero-size elements when the document reports layout",
+      "html": "<button id=\"zero\">Collapsed</button><button id=\"sized\">Visible</button>",
+      "layout": {
+        "zero": [
+          0,
+          0
+        ],
+        "sized": [
+          80,
+          24
+        ]
+      },
+      "expected": "url: http://localhost:3000/   title: \"\"\n- button \"Visible\" [ref=e1]"
+    },
+    {
+      "name": "buildSnapshot — hidden subtrees › keeps every element when the document reports no layout",
+      "html": "<button>A</button>",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- button \"A\" [ref=e1]"
+    },
+    {
+      "name": "buildSnapshot — shadow DOM › descends into an open shadow root",
+      "html": "<div id=\"host\"></div><button>Light</button>",
+      "shadow": {
+        "hostId": "host",
+        "mode": "open",
+        "html": "<button>Shadow</button>"
+      },
+      "expected": "url: http://localhost:3000/   title: \"\"\n- button \"Shadow\" [ref=e1]\n- button \"Light\" [ref=e2]"
+    },
+    {
+      "name": "buildSnapshot — shadow DOM › does not descend into a closed shadow root",
+      "html": "<div id=\"host\"></div>",
+      "shadow": {
+        "hostId": "host",
+        "mode": "closed",
+        "html": "<button>Sealed</button>"
+      },
+      "expected": "url: http://localhost:3000/   title: \"\"\n"
+    },
+    {
+      "name": "buildSnapshot — shadow DOM › assigns refs that resolve back to shadow elements",
+      "html": "<div id=\"host\"></div>",
+      "shadow": {
+        "hostId": "host",
+        "mode": "open",
+        "html": "<button>Shadow</button>"
+      },
+      "expected": "url: http://localhost:3000/   title: \"\"\n- button \"Shadow\" [ref=e1]"
+    },
+    {
+      "name": "buildSnapshot — iframes › descends into a same-origin iframe",
+      "html": "<iframe id=\"f\"></iframe><button>Top</button>",
+      "frame": {
+        "id": "f",
+        "html": "<button>Inner</button>"
+      },
+      "expected": "url: http://localhost:3000/   title: \"\"\n- button \"Inner\" [ref=e1]\n- button \"Top\" [ref=e2]"
+    },
+    {
+      "name": "buildSnapshot — iframes › skips a cross-origin iframe whose document is unreachable",
+      "html": "<iframe id=\"f\"></iframe><button>Top</button>",
+      "crossOriginFrameId": "f",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- button \"Top\" [ref=e1]"
+    },
+    {
+      "name": "buildSnapshot — roles › maps additional native controls",
+      "html": "\n      <input type=\"number\" aria-label=\"Qty\" />\n      <input type=\"range\" aria-label=\"Volume\" />\n      <input type=\"file\" aria-label=\"Avatar\" />\n      <select multiple aria-label=\"Tags\"></select>\n      <div contenteditable=\"true\" aria-label=\"Body\"></div>\n    ",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- spinbutton \"Qty\" [ref=e1]\n- slider \"Volume\" [ref=e2]\n- button \"Avatar\" [ref=e3]\n- listbox \"Tags\" [ref=e4]\n- textbox \"Body\" [ref=e5]"
+    },
+    {
+      "name": "buildSnapshot — roles › passes through explicit interactive ARIA roles",
+      "html": "\n      <div role=\"tab\" aria-label=\"Details\"></div>\n      <div role=\"menuitem\" aria-label=\"Rename\"></div>\n      <div role=\"switch\" aria-label=\"Dark mode\"></div>\n      <div role=\"option\" aria-label=\"Blue\"></div>\n    ",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- tab \"Details\" [ref=e1]\n- menuitem \"Rename\" [ref=e2]\n- switch \"Dark mode\" [ref=e3]\n- option \"Blue\" [ref=e4]"
+    },
+    {
+      "name": "buildSnapshot — roles › lets an explicit role override the native mapping",
+      "html": "<a href=\"/x\" role=\"button\">Looks like a button</a>",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- button \"Looks like a button\" [ref=e1]"
+    },
+    {
+      "name": "buildSnapshot — roles › marks disabled controls",
+      "html": "<button disabled>Save</button><button>Cancel</button>",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- button \"Save\" [ref=e1] [disabled]\n- button \"Cancel\" [ref=e2]"
+    },
+    {
+      "name": "buildSnapshot — roles › ignores non-interactive ARIA roles",
+      "html": "<div role=\"tablist\"><div role=\"presentation\">x</div></div>",
+      "expected": "url: http://localhost:3000/   title: \"\"\n"
+    },
+    {
+      "name": "buildSnapshot — large pages › caps the number of listed elements and says so",
+      "html": "<button>B0</button><button>B1</button><button>B2</button><button>B3</button><button>B4</button><button>B5</button><button>B6</button><button>B7</button><button>B8</button><button>B9</button><button>B10</button><button>B11</button><button>B12</button><button>B13</button><button>B14</button><button>B15</button><button>B16</button><button>B17</button><button>B18</button><button>B19</button><button>B20</button><button>B21</button><button>B22</button><button>B23</button><button>B24</button><button>B25</button><button>B26</button><button>B27</button><button>B28</button><button>B29</button><button>B30</button><button>B31</button><button>B32</button><button>B33</button><button>B34</button><button>B35</button><button>B36</button><button>B37</button><button>B38</button><button>B39</button><button>B40</button><button>B41</button><button>B42</button><button>B43</button><button>B44</button><button>B45</button><button>B46</button><button>B47</button><button>B48</button><button>B49</button><button>B50</button><button>B51</button><button>B52</button><button>B53</button><button>B54</button><button>B55</button><button>B56</button><button>B57</button><button>B58</button><button>B59</button><button>B60</button><button>B61</button><button>B62</button><button>B63</button><button>B64</button><button>B65</button><button>B66</button><button>B67</button><button>B68</button><button>B69</button><button>B70</button><button>B71</button><button>B72</button><button>B73</button><button>B74</button><button>B75</button><button>B76</button><button>B77</button><button>B78</button><button>B79</button><button>B80</button><button>B81</button><button>B82</button><button>B83</button><button>B84</button><button>B85</button><button>B86</button><button>B87</button><button>B88</button><button>B89</button><button>B90</button><button>B91</button><button>B92</button><button>B93</button><button>B94</button><button>B95</button><button>B96</button><button>B97</button><button>B98</button><button>B99</button><button>B100</button><button>B101</button><button>B102</button><button>B103</button><button>B104</button><button>B105</button><button>B106</button><button>B107</button><button>B108</button><button>B109</button><button>B110</button><button>B111</button><button>B112</button><button>B113</button><button>B114</button><button>B115</button><button>B116</button><button>B117</button><button>B118</button><button>B119</button><button>B120</button><button>B121</button><button>B122</button><button>B123</button><button>B124</button><button>B125</button><button>B126</button><button>B127</button><button>B128</button><button>B129</button><button>B130</button><button>B131</button><button>B132</button><button>B133</button><button>B134</button><button>B135</button><button>B136</button><button>B137</button><button>B138</button><button>B139</button><button>B140</button><button>B141</button><button>B142</button><button>B143</button><button>B144</button><button>B145</button><button>B146</button><button>B147</button><button>B148</button><button>B149</button><button>B150</button><button>B151</button><button>B152</button><button>B153</button><button>B154</button><button>B155</button><button>B156</button><button>B157</button><button>B158</button><button>B159</button><button>B160</button><button>B161</button><button>B162</button><button>B163</button><button>B164</button><button>B165</button><button>B166</button><button>B167</button><button>B168</button><button>B169</button><button>B170</button><button>B171</button><button>B172</button><button>B173</button><button>B174</button><button>B175</button><button>B176</button><button>B177</button><button>B178</button><button>B179</button><button>B180</button><button>B181</button><button>B182</button><button>B183</button><button>B184</button><button>B185</button><button>B186</button><button>B187</button><button>B188</button><button>B189</button><button>B190</button><button>B191</button><button>B192</button><button>B193</button><button>B194</button><button>B195</button><button>B196</button><button>B197</button><button>B198</button><button>B199</button><button>B200</button><button>B201</button><button>B202</button><button>B203</button><button>B204</button><button>B205</button><button>B206</button><button>B207</button><button>B208</button><button>B209</button><button>B210</button><button>B211</button><button>B212</button><button>B213</button><button>B214</button><button>B215</button><button>B216</button><button>B217</button><button>B218</button><button>B219</button><button>B220</button><button>B221</button><button>B222</button><button>B223</button><button>B224</button><button>B225</button><button>B226</button><button>B227</button><button>B228</button><button>B229</button><button>B230</button><button>B231</button><button>B232</button><button>B233</button><button>B234</button><button>B235</button><button>B236</button><button>B237</button><button>B238</button><button>B239</button><button>B240</button><button>B241</button><button>B242</button><button>B243</button><button>B244</button><button>B245</button><button>B246</button><button>B247</button><button>B248</button><button>B249</button><button>B250</button><button>B251</button><button>B252</button><button>B253</button><button>B254</button><button>B255</button><button>B256</button><button>B257</button><button>B258</button><button>B259</button><button>B260</button><button>B261</button><button>B262</button><button>B263</button><button>B264</button><button>B265</button><button>B266</button><button>B267</button><button>B268</button><button>B269</button><button>B270</button><button>B271</button><button>B272</button><button>B273</button><button>B274</button><button>B275</button><button>B276</button><button>B277</button><button>B278</button><button>B279</button><button>B280</button><button>B281</button><button>B282</button><button>B283</button><button>B284</button><button>B285</button><button>B286</button><button>B287</button><button>B288</button><button>B289</button><button>B290</button><button>B291</button><button>B292</button><button>B293</button><button>B294</button><button>B295</button><button>B296</button><button>B297</button><button>B298</button><button>B299</button><button>B300</button><button>B301</button><button>B302</button><button>B303</button><button>B304</button><button>B305</button><button>B306</button><button>B307</button><button>B308</button><button>B309</button><button>B310</button><button>B311</button><button>B312</button><button>B313</button><button>B314</button><button>B315</button><button>B316</button><button>B317</button><button>B318</button><button>B319</button><button>B320</button><button>B321</button><button>B322</button><button>B323</button><button>B324</button><button>B325</button><button>B326</button><button>B327</button><button>B328</button><button>B329</button><button>B330</button><button>B331</button><button>B332</button><button>B333</button><button>B334</button><button>B335</button><button>B336</button><button>B337</button><button>B338</button><button>B339</button><button>B340</button><button>B341</button><button>B342</button><button>B343</button><button>B344</button><button>B345</button><button>B346</button><button>B347</button><button>B348</button><button>B349</button><button>B350</button><button>B351</button><button>B352</button><button>B353</button><button>B354</button><button>B355</button><button>B356</button><button>B357</button><button>B358</button><button>B359</button><button>B360</button><button>B361</button><button>B362</button><button>B363</button><button>B364</button><button>B365</button><button>B366</button><button>B367</button><button>B368</button><button>B369</button><button>B370</button><button>B371</button><button>B372</button><button>B373</button><button>B374</button><button>B375</button><button>B376</button><button>B377</button><button>B378</button><button>B379</button><button>B380</button><button>B381</button><button>B382</button><button>B383</button><button>B384</button><button>B385</button><button>B386</button><button>B387</button><button>B388</button><button>B389</button><button>B390</button><button>B391</button><button>B392</button><button>B393</button><button>B394</button><button>B395</button><button>B396</button><button>B397</button><button>B398</button><button>B399</button><button>B400</button><button>B401</button><button>B402</button><button>B403</button><button>B404</button><button>B405</button><button>B406</button><button>B407</button><button>B408</button><button>B409</button><button>B410</button><button>B411</button><button>B412</button><button>B413</button><button>B414</button><button>B415</button><button>B416</button><button>B417</button><button>B418</button><button>B419</button><button>B420</button><button>B421</button><button>B422</button><button>B423</button><button>B424</button><button>B425</button><button>B426</button><button>B427</button><button>B428</button><button>B429</button><button>B430</button><button>B431</button><button>B432</button><button>B433</button><button>B434</button><button>B435</button><button>B436</button><button>B437</button><button>B438</button><button>B439</button><button>B440</button><button>B441</button><button>B442</button><button>B443</button><button>B444</button><button>B445</button><button>B446</button><button>B447</button><button>B448</button><button>B449</button><button>B450</button><button>B451</button><button>B452</button><button>B453</button><button>B454</button><button>B455</button><button>B456</button><button>B457</button><button>B458</button><button>B459</button><button>B460</button><button>B461</button><button>B462</button><button>B463</button><button>B464</button><button>B465</button><button>B466</button><button>B467</button><button>B468</button><button>B469</button><button>B470</button><button>B471</button><button>B472</button><button>B473</button><button>B474</button><button>B475</button><button>B476</button><button>B477</button><button>B478</button><button>B479</button><button>B480</button><button>B481</button><button>B482</button><button>B483</button><button>B484</button><button>B485</button><button>B486</button><button>B487</button><button>B488</button><button>B489</button><button>B490</button><button>B491</button><button>B492</button><button>B493</button><button>B494</button><button>B495</button><button>B496</button><button>B497</button><button>B498</button><button>B499</button><button>B500</button><button>B501</button><button>B502</button><button>B503</button><button>B504</button><button>B505</button><button>B506</button><button>B507</button><button>B508</button><button>B509</button><button>B510</button><button>B511</button><button>B512</button><button>B513</button><button>B514</button><button>B515</button><button>B516</button><button>B517</button><button>B518</button><button>B519</button><button>B520</button><button>B521</button><button>B522</button><button>B523</button><button>B524</button><button>B525</button><button>B526</button><button>B527</button><button>B528</button><button>B529</button><button>B530</button><button>B531</button><button>B532</button><button>B533</button><button>B534</button><button>B535</button><button>B536</button><button>B537</button><button>B538</button><button>B539</button><button>B540</button><button>B541</button><button>B542</button><button>B543</button><button>B544</button><button>B545</button><button>B546</button><button>B547</button><button>B548</button><button>B549</button><button>B550</button><button>B551</button><button>B552</button><button>B553</button><button>B554</button><button>B555</button><button>B556</button><button>B557</button><button>B558</button><button>B559</button><button>B560</button><button>B561</button><button>B562</button><button>B563</button><button>B564</button><button>B565</button><button>B566</button><button>B567</button><button>B568</button><button>B569</button><button>B570</button><button>B571</button><button>B572</button><button>B573</button><button>B574</button><button>B575</button><button>B576</button><button>B577</button><button>B578</button><button>B579</button><button>B580</button><button>B581</button><button>B582</button><button>B583</button><button>B584</button><button>B585</button><button>B586</button><button>B587</button><button>B588</button><button>B589</button><button>B590</button><button>B591</button><button>B592</button><button>B593</button><button>B594</button><button>B595</button><button>B596</button><button>B597</button><button>B598</button><button>B599</button><button>B600</button><button>B601</button><button>B602</button><button>B603</button><button>B604</button><button>B605</button><button>B606</button><button>B607</button><button>B608</button><button>B609</button><button>B610</button><button>B611</button><button>B612</button><button>B613</button><button>B614</button><button>B615</button><button>B616</button><button>B617</button><button>B618</button><button>B619</button><button>B620</button><button>B621</button><button>B622</button><button>B623</button><button>B624</button><button>B625</button><button>B626</button><button>B627</button><button>B628</button><button>B629</button><button>B630</button><button>B631</button><button>B632</button><button>B633</button><button>B634</button><button>B635</button><button>B636</button><button>B637</button><button>B638</button><button>B639</button><button>B640</button><button>B641</button><button>B642</button><button>B643</button><button>B644</button><button>B645</button><button>B646</button><button>B647</button><button>B648</button><button>B649</button><button>B650</button><button>B651</button><button>B652</button><button>B653</button><button>B654</button><button>B655</button><button>B656</button><button>B657</button><button>B658</button><button>B659</button><button>B660</button><button>B661</button><button>B662</button><button>B663</button><button>B664</button><button>B665</button><button>B666</button><button>B667</button><button>B668</button><button>B669</button><button>B670</button><button>B671</button><button>B672</button><button>B673</button><button>B674</button><button>B675</button><button>B676</button><button>B677</button><button>B678</button><button>B679</button><button>B680</button><button>B681</button><button>B682</button><button>B683</button><button>B684</button><button>B685</button><button>B686</button><button>B687</button><button>B688</button><button>B689</button><button>B690</button><button>B691</button><button>B692</button><button>B693</button><button>B694</button><button>B695</button><button>B696</button><button>B697</button><button>B698</button><button>B699</button><button>B700</button><button>B701</button><button>B702</button><button>B703</button><button>B704</button><button>B705</button><button>B706</button><button>B707</button><button>B708</button><button>B709</button><button>B710</button><button>B711</button><button>B712</button><button>B713</button><button>B714</button><button>B715</button><button>B716</button><button>B717</button><button>B718</button><button>B719</button><button>B720</button><button>B721</button><button>B722</button><button>B723</button><button>B724</button><button>B725</button><button>B726</button><button>B727</button><button>B728</button><button>B729</button><button>B730</button><button>B731</button><button>B732</button><button>B733</button><button>B734</button><button>B735</button><button>B736</button><button>B737</button><button>B738</button><button>B739</button><button>B740</button><button>B741</button><button>B742</button><button>B743</button><button>B744</button><button>B745</button><button>B746</button><button>B747</button><button>B748</button><button>B749</button><button>B750</button><button>B751</button><button>B752</button><button>B753</button><button>B754</button><button>B755</button><button>B756</button><button>B757</button><button>B758</button><button>B759</button><button>B760</button><button>B761</button><button>B762</button><button>B763</button><button>B764</button><button>B765</button><button>B766</button><button>B767</button><button>B768</button><button>B769</button><button>B770</button><button>B771</button><button>B772</button><button>B773</button><button>B774</button><button>B775</button><button>B776</button><button>B777</button><button>B778</button><button>B779</button><button>B780</button><button>B781</button><button>B782</button><button>B783</button><button>B784</button><button>B785</button><button>B786</button><button>B787</button><button>B788</button><button>B789</button><button>B790</button><button>B791</button><button>B792</button><button>B793</button><button>B794</button><button>B795</button><button>B796</button><button>B797</button><button>B798</button><button>B799</button><button>B800</button><button>B801</button><button>B802</button><button>B803</button><button>B804</button><button>B805</button><button>B806</button><button>B807</button><button>B808</button><button>B809</button><button>B810</button><button>B811</button><button>B812</button><button>B813</button><button>B814</button><button>B815</button><button>B816</button><button>B817</button><button>B818</button><button>B819</button><button>B820</button><button>B821</button><button>B822</button><button>B823</button><button>B824</button><button>B825</button><button>B826</button><button>B827</button><button>B828</button><button>B829</button><button>B830</button><button>B831</button><button>B832</button><button>B833</button><button>B834</button><button>B835</button><button>B836</button><button>B837</button><button>B838</button><button>B839</button><button>B840</button><button>B841</button><button>B842</button><button>B843</button><button>B844</button><button>B845</button><button>B846</button><button>B847</button><button>B848</button><button>B849</button><button>B850</button><button>B851</button><button>B852</button><button>B853</button><button>B854</button><button>B855</button><button>B856</button><button>B857</button><button>B858</button><button>B859</button><button>B860</button><button>B861</button><button>B862</button><button>B863</button><button>B864</button><button>B865</button><button>B866</button><button>B867</button><button>B868</button><button>B869</button><button>B870</button><button>B871</button><button>B872</button><button>B873</button><button>B874</button><button>B875</button><button>B876</button><button>B877</button><button>B878</button><button>B879</button><button>B880</button><button>B881</button><button>B882</button><button>B883</button><button>B884</button><button>B885</button><button>B886</button><button>B887</button><button>B888</button><button>B889</button><button>B890</button><button>B891</button><button>B892</button><button>B893</button><button>B894</button><button>B895</button><button>B896</button><button>B897</button><button>B898</button><button>B899</button>",
+      "expected": "url: http://localhost:3000/   title: \"\"\n- button \"B0\" [ref=e1]\n- button \"B1\" [ref=e2]\n- button \"B2\" [ref=e3]\n- button \"B3\" [ref=e4]\n- button \"B4\" [ref=e5]\n- button \"B5\" [ref=e6]\n- button \"B6\" [ref=e7]\n- button \"B7\" [ref=e8]\n- button \"B8\" [ref=e9]\n- button \"B9\" [ref=e10]\n- button \"B10\" [ref=e11]\n- button \"B11\" [ref=e12]\n- button \"B12\" [ref=e13]\n- button \"B13\" [ref=e14]\n- button \"B14\" [ref=e15]\n- button \"B15\" [ref=e16]\n- button \"B16\" [ref=e17]\n- button \"B17\" [ref=e18]\n- button \"B18\" [ref=e19]\n- button \"B19\" [ref=e20]\n- button \"B20\" [ref=e21]\n- button \"B21\" [ref=e22]\n- button \"B22\" [ref=e23]\n- button \"B23\" [ref=e24]\n- button \"B24\" [ref=e25]\n- button \"B25\" [ref=e26]\n- button \"B26\" [ref=e27]\n- button \"B27\" [ref=e28]\n- button \"B28\" [ref=e29]\n- button \"B29\" [ref=e30]\n- button \"B30\" [ref=e31]\n- button \"B31\" [ref=e32]\n- button \"B32\" [ref=e33]\n- button \"B33\" [ref=e34]\n- button \"B34\" [ref=e35]\n- button \"B35\" [ref=e36]\n- button \"B36\" [ref=e37]\n- button \"B37\" [ref=e38]\n- button \"B38\" [ref=e39]\n- button \"B39\" [ref=e40]\n- button \"B40\" [ref=e41]\n- button \"B41\" [ref=e42]\n- button \"B42\" [ref=e43]\n- button \"B43\" [ref=e44]\n- button \"B44\" [ref=e45]\n- button \"B45\" [ref=e46]\n- button \"B46\" [ref=e47]\n- button \"B47\" [ref=e48]\n- button \"B48\" [ref=e49]\n- button \"B49\" [ref=e50]\n- button \"B50\" [ref=e51]\n- button \"B51\" [ref=e52]\n- button \"B52\" [ref=e53]\n- button \"B53\" [ref=e54]\n- button \"B54\" [ref=e55]\n- button \"B55\" [ref=e56]\n- button \"B56\" [ref=e57]\n- button \"B57\" [ref=e58]\n- button \"B58\" [ref=e59]\n- button \"B59\" [ref=e60]\n- button \"B60\" [ref=e61]\n- button \"B61\" [ref=e62]\n- button \"B62\" [ref=e63]\n- button \"B63\" [ref=e64]\n- button \"B64\" [ref=e65]\n- button \"B65\" [ref=e66]\n- button \"B66\" [ref=e67]\n- button \"B67\" [ref=e68]\n- button \"B68\" [ref=e69]\n- button \"B69\" [ref=e70]\n- button \"B70\" [ref=e71]\n- button \"B71\" [ref=e72]\n- button \"B72\" [ref=e73]\n- button \"B73\" [ref=e74]\n- button \"B74\" [ref=e75]\n- button \"B75\" [ref=e76]\n- button \"B76\" [ref=e77]\n- button \"B77\" [ref=e78]\n- button \"B78\" [ref=e79]\n- button \"B79\" [ref=e80]\n- button \"B80\" [ref=e81]\n- button \"B81\" [ref=e82]\n- button \"B82\" [ref=e83]\n- button \"B83\" [ref=e84]\n- button \"B84\" [ref=e85]\n- button \"B85\" [ref=e86]\n- button \"B86\" [ref=e87]\n- button \"B87\" [ref=e88]\n- button \"B88\" [ref=e89]\n- button \"B89\" [ref=e90]\n- button \"B90\" [ref=e91]\n- button \"B91\" [ref=e92]\n- button \"B92\" [ref=e93]\n- button \"B93\" [ref=e94]\n- button \"B94\" [ref=e95]\n- button \"B95\" [ref=e96]\n- button \"B96\" [ref=e97]\n- button \"B97\" [ref=e98]\n- button \"B98\" [ref=e99]\n- button \"B99\" [ref=e100]\n- button \"B100\" [ref=e101]\n- button \"B101\" [ref=e102]\n- button \"B102\" [ref=e103]\n- button \"B103\" [ref=e104]\n- button \"B104\" [ref=e105]\n- button \"B105\" [ref=e106]\n- button \"B106\" [ref=e107]\n- button \"B107\" [ref=e108]\n- button \"B108\" [ref=e109]\n- button \"B109\" [ref=e110]\n- button \"B110\" [ref=e111]\n- button \"B111\" [ref=e112]\n- button \"B112\" [ref=e113]\n- button \"B113\" [ref=e114]\n- button \"B114\" [ref=e115]\n- button \"B115\" [ref=e116]\n- button \"B116\" [ref=e117]\n- button \"B117\" [ref=e118]\n- button \"B118\" [ref=e119]\n- button \"B119\" [ref=e120]\n- button \"B120\" [ref=e121]\n- button \"B121\" [ref=e122]\n- button \"B122\" [ref=e123]\n- button \"B123\" [ref=e124]\n- button \"B124\" [ref=e125]\n- button \"B125\" [ref=e126]\n- button \"B126\" [ref=e127]\n- button \"B127\" [ref=e128]\n- button \"B128\" [ref=e129]\n- button \"B129\" [ref=e130]\n- button \"B130\" [ref=e131]\n- button \"B131\" [ref=e132]\n- button \"B132\" [ref=e133]\n- button \"B133\" [ref=e134]\n- button \"B134\" [ref=e135]\n- button \"B135\" [ref=e136]\n- button \"B136\" [ref=e137]\n- button \"B137\" [ref=e138]\n- button \"B138\" [ref=e139]\n- button \"B139\" [ref=e140]\n- button \"B140\" [ref=e141]\n- button \"B141\" [ref=e142]\n- button \"B142\" [ref=e143]\n- button \"B143\" [ref=e144]\n- button \"B144\" [ref=e145]\n- button \"B145\" [ref=e146]\n- button \"B146\" [ref=e147]\n- button \"B147\" [ref=e148]\n- button \"B148\" [ref=e149]\n- button \"B149\" [ref=e150]\n- button \"B150\" [ref=e151]\n- button \"B151\" [ref=e152]\n- button \"B152\" [ref=e153]\n- button \"B153\" [ref=e154]\n- button \"B154\" [ref=e155]\n- button \"B155\" [ref=e156]\n- button \"B156\" [ref=e157]\n- button \"B157\" [ref=e158]\n- button \"B158\" [ref=e159]\n- button \"B159\" [ref=e160]\n- button \"B160\" [ref=e161]\n- button \"B161\" [ref=e162]\n- button \"B162\" [ref=e163]\n- button \"B163\" [ref=e164]\n- button \"B164\" [ref=e165]\n- button \"B165\" [ref=e166]\n- button \"B166\" [ref=e167]\n- button \"B167\" [ref=e168]\n- button \"B168\" [ref=e169]\n- button \"B169\" [ref=e170]\n- button \"B170\" [ref=e171]\n- button \"B171\" [ref=e172]\n- button \"B172\" [ref=e173]\n- button \"B173\" [ref=e174]\n- button \"B174\" [ref=e175]\n- button \"B175\" [ref=e176]\n- button \"B176\" [ref=e177]\n- button \"B177\" [ref=e178]\n- button \"B178\" [ref=e179]\n- button \"B179\" [ref=e180]\n- button \"B180\" [ref=e181]\n- button \"B181\" [ref=e182]\n- button \"B182\" [ref=e183]\n- button \"B183\" [ref=e184]\n- button \"B184\" [ref=e185]\n- button \"B185\" [ref=e186]\n- button \"B186\" [ref=e187]\n- button \"B187\" [ref=e188]\n- button \"B188\" [ref=e189]\n- button \"B189\" [ref=e190]\n- button \"B190\" [ref=e191]\n- button \"B191\" [ref=e192]\n- button \"B192\" [ref=e193]\n- button \"B193\" [ref=e194]\n- button \"B194\" [ref=e195]\n- button \"B195\" [ref=e196]\n- button \"B196\" [ref=e197]\n- button \"B197\" [ref=e198]\n- button \"B198\" [ref=e199]\n- button \"B199\" [ref=e200]\n- button \"B200\" [ref=e201]\n- button \"B201\" [ref=e202]\n- button \"B202\" [ref=e203]\n- button \"B203\" [ref=e204]\n- button \"B204\" [ref=e205]\n- button \"B205\" [ref=e206]\n- button \"B206\" [ref=e207]\n- button \"B207\" [ref=e208]\n- button \"B208\" [ref=e209]\n- button \"B209\" [ref=e210]\n- button \"B210\" [ref=e211]\n- button \"B211\" [ref=e212]\n- button \"B212\" [ref=e213]\n- button \"B213\" [ref=e214]\n- button \"B214\" [ref=e215]\n- button \"B215\" [ref=e216]\n- button \"B216\" [ref=e217]\n- button \"B217\" [ref=e218]\n- button \"B218\" [ref=e219]\n- button \"B219\" [ref=e220]\n- button \"B220\" [ref=e221]\n- button \"B221\" [ref=e222]\n- button \"B222\" [ref=e223]\n- button \"B223\" [ref=e224]\n- button \"B224\" [ref=e225]\n- button \"B225\" [ref=e226]\n- button \"B226\" [ref=e227]\n- button \"B227\" [ref=e228]\n- button \"B228\" [ref=e229]\n- button \"B229\" [ref=e230]\n- button \"B230\" [ref=e231]\n- button \"B231\" [ref=e232]\n- button \"B232\" [ref=e233]\n- button \"B233\" [ref=e234]\n- button \"B234\" [ref=e235]\n- button \"B235\" [ref=e236]\n- button \"B236\" [ref=e237]\n- button \"B237\" [ref=e238]\n- button \"B238\" [ref=e239]\n- button \"B239\" [ref=e240]\n- button \"B240\" [ref=e241]\n- button \"B241\" [ref=e242]\n- button \"B242\" [ref=e243]\n- button \"B243\" [ref=e244]\n- button \"B244\" [ref=e245]\n- button \"B245\" [ref=e246]\n- button \"B246\" [ref=e247]\n- button \"B247\" [ref=e248]\n- button \"B248\" [ref=e249]\n- button \"B249\" [ref=e250]\n- button \"B250\" [ref=e251]\n- button \"B251\" [ref=e252]\n- button \"B252\" [ref=e253]\n- button \"B253\" [ref=e254]\n- button \"B254\" [ref=e255]\n- button \"B255\" [ref=e256]\n- button \"B256\" [ref=e257]\n- button \"B257\" [ref=e258]\n- button \"B258\" [ref=e259]\n- button \"B259\" [ref=e260]\n- button \"B260\" [ref=e261]\n- button \"B261\" [ref=e262]\n- button \"B262\" [ref=e263]\n- button \"B263\" [ref=e264]\n- button \"B264\" [ref=e265]\n- button \"B265\" [ref=e266]\n- button \"B266\" [ref=e267]\n- button \"B267\" [ref=e268]\n- button \"B268\" [ref=e269]\n- button \"B269\" [ref=e270]\n- button \"B270\" [ref=e271]\n- button \"B271\" [ref=e272]\n- button \"B272\" [ref=e273]\n- button \"B273\" [ref=e274]\n- button \"B274\" [ref=e275]\n- button \"B275\" [ref=e276]\n- button \"B276\" [ref=e277]\n- button \"B277\" [ref=e278]\n- button \"B278\" [ref=e279]\n- button \"B279\" [ref=e280]\n- button \"B280\" [ref=e281]\n- button \"B281\" [ref=e282]\n- button \"B282\" [ref=e283]\n- button \"B283\" [ref=e284]\n- button \"B284\" [ref=e285]\n- button \"B285\" [ref=e286]\n- button \"B286\" [ref=e287]\n- button \"B287\" [ref=e288]\n- button \"B288\" [ref=e289]\n- button \"B289\" [ref=e290]\n- button \"B290\" [ref=e291]\n- button \"B291\" [ref=e292]\n- button \"B292\" [ref=e293]\n- button \"B293\" [ref=e294]\n- button \"B294\" [ref=e295]\n- button \"B295\" [ref=e296]\n- button \"B296\" [ref=e297]\n- button \"B297\" [ref=e298]\n- button \"B298\" [ref=e299]\n- button \"B299\" [ref=e300]\n- button \"B300\" [ref=e301]\n- button \"B301\" [ref=e302]\n- button \"B302\" [ref=e303]\n- button \"B303\" [ref=e304]\n- button \"B304\" [ref=e305]\n- button \"B305\" [ref=e306]\n- button \"B306\" [ref=e307]\n- button \"B307\" [ref=e308]\n- button \"B308\" [ref=e309]\n- button \"B309\" [ref=e310]\n- button \"B310\" [ref=e311]\n- button \"B311\" [ref=e312]\n- button \"B312\" [ref=e313]\n- button \"B313\" [ref=e314]\n- button \"B314\" [ref=e315]\n- button \"B315\" [ref=e316]\n- button \"B316\" [ref=e317]\n- button \"B317\" [ref=e318]\n- button \"B318\" [ref=e319]\n- button \"B319\" [ref=e320]\n- button \"B320\" [ref=e321]\n- button \"B321\" [ref=e322]\n- button \"B322\" [ref=e323]\n- button \"B323\" [ref=e324]\n- button \"B324\" [ref=e325]\n- button \"B325\" [ref=e326]\n- button \"B326\" [ref=e327]\n- button \"B327\" [ref=e328]\n- button \"B328\" [ref=e329]\n- button \"B329\" [ref=e330]\n- button \"B330\" [ref=e331]\n- button \"B331\" [ref=e332]\n- button \"B332\" [ref=e333]\n- button \"B333\" [ref=e334]\n- button \"B334\" [ref=e335]\n- button \"B335\" [ref=e336]\n- button \"B336\" [ref=e337]\n- button \"B337\" [ref=e338]\n- button \"B338\" [ref=e339]\n- button \"B339\" [ref=e340]\n- button \"B340\" [ref=e341]\n- button \"B341\" [ref=e342]\n- button \"B342\" [ref=e343]\n- button \"B343\" [ref=e344]\n- button \"B344\" [ref=e345]\n- button \"B345\" [ref=e346]\n- button \"B346\" [ref=e347]\n- button \"B347\" [ref=e348]\n- button \"B348\" [ref=e349]\n- button \"B349\" [ref=e350]\n- button \"B350\" [ref=e351]\n- button \"B351\" [ref=e352]\n- button \"B352\" [ref=e353]\n- button \"B353\" [ref=e354]\n- button \"B354\" [ref=e355]\n- button \"B355\" [ref=e356]\n- button \"B356\" [ref=e357]\n- button \"B357\" [ref=e358]\n- button \"B358\" [ref=e359]\n- button \"B359\" [ref=e360]\n- button \"B360\" [ref=e361]\n- button \"B361\" [ref=e362]\n- button \"B362\" [ref=e363]\n- button \"B363\" [ref=e364]\n- button \"B364\" [ref=e365]\n- button \"B365\" [ref=e366]\n- button \"B366\" [ref=e367]\n- button \"B367\" [ref=e368]\n- button \"B368\" [ref=e369]\n- button \"B369\" [ref=e370]\n- button \"B370\" [ref=e371]\n- button \"B371\" [ref=e372]\n- button \"B372\" [ref=e373]\n- button \"B373\" [ref=e374]\n- button \"B374\" [ref=e375]\n- button \"B375\" [ref=e376]\n- button \"B376\" [ref=e377]\n- button \"B377\" [ref=e378]\n- button \"B378\" [ref=e379]\n- button \"B379\" [ref=e380]\n- button \"B380\" [ref=e381]\n- button \"B381\" [ref=e382]\n- button \"B382\" [ref=e383]\n- button \"B383\" [ref=e384]\n- button \"B384\" [ref=e385]\n- button \"B385\" [ref=e386]\n- button \"B386\" [ref=e387]\n- button \"B387\" [ref=e388]\n- button \"B388\" [ref=e389]\n- button \"B389\" [ref=e390]\n- button \"B390\" [ref=e391]\n- button \"B391\" [ref=e392]\n- button \"B392\" [ref=e393]\n- button \"B393\" [ref=e394]\n- button \"B394\" [ref=e395]\n- button \"B395\" [ref=e396]\n- button \"B396\" [ref=e397]\n- button \"B397\" [ref=e398]\n- button \"B398\" [ref=e399]\n- button \"B399\" [ref=e400]\n- button \"B400\" [ref=e401]\n- button \"B401\" [ref=e402]\n- button \"B402\" [ref=e403]\n- button \"B403\" [ref=e404]\n- button \"B404\" [ref=e405]\n- button \"B405\" [ref=e406]\n- button \"B406\" [ref=e407]\n- button \"B407\" [ref=e408]\n- button \"B408\" [ref=e409]\n- button \"B409\" [ref=e410]\n- button \"B410\" [ref=e411]\n- button \"B411\" [ref=e412]\n- button \"B412\" [ref=e413]\n- button \"B413\" [ref=e414]\n- button \"B414\" [ref=e415]\n- button \"B415\" [ref=e416]\n- button \"B416\" [ref=e417]\n- button \"B417\" [ref=e418]\n- button \"B418\" [ref=e419]\n- button \"B419\" [ref=e420]\n- button \"B420\" [ref=e421]\n- button \"B421\" [ref=e422]\n- button \"B422\" [ref=e423]\n- button \"B423\" [ref=e424]\n- button \"B424\" [ref=e425]\n- button \"B425\" [ref=e426]\n- button \"B426\" [ref=e427]\n- button \"B427\" [ref=e428]\n- button \"B428\" [ref=e429]\n- button \"B429\" [ref=e430]\n- button \"B430\" [ref=e431]\n- button \"B431\" [ref=e432]\n- button \"B432\" [ref=e433]\n- button \"B433\" [ref=e434]\n- button \"B434\" [ref=e435]\n- button \"B435\" [ref=e436]\n- button \"B436\" [ref=e437]\n- button \"B437\" [ref=e438]\n- button \"B438\" [ref=e439]\n- button \"B439\" [ref=e440]\n- button \"B440\" [ref=e441]\n- button \"B441\" [ref=e442]\n- button \"B442\" [ref=e443]\n- button \"B443\" [ref=e444]\n- button \"B444\" [ref=e445]\n- button \"B445\" [ref=e446]\n- button \"B446\" [ref=e447]\n- button \"B447\" [ref=e448]\n- button \"B448\" [ref=e449]\n- button \"B449\" [ref=e450]\n- button \"B450\" [ref=e451]\n- button \"B451\" [ref=e452]\n- button \"B452\" [ref=e453]\n- button \"B453\" [ref=e454]\n- button \"B454\" [ref=e455]\n- button \"B455\" [ref=e456]\n- button \"B456\" [ref=e457]\n- button \"B457\" [ref=e458]\n- button \"B458\" [ref=e459]\n- button \"B459\" [ref=e460]\n- button \"B460\" [ref=e461]\n- button \"B461\" [ref=e462]\n- button \"B462\" [ref=e463]\n- button \"B463\" [ref=e464]\n- button \"B464\" [ref=e465]\n- button \"B465\" [ref=e466]\n- button \"B466\" [ref=e467]\n- button \"B467\" [ref=e468]\n- button \"B468\" [ref=e469]\n- button \"B469\" [ref=e470]\n- button \"B470\" [ref=e471]\n- button \"B471\" [ref=e472]\n- button \"B472\" [ref=e473]\n- button \"B473\" [ref=e474]\n- button \"B474\" [ref=e475]\n- button \"B475\" [ref=e476]\n- button \"B476\" [ref=e477]\n- button \"B477\" [ref=e478]\n- button \"B478\" [ref=e479]\n- button \"B479\" [ref=e480]\n- button \"B480\" [ref=e481]\n- button \"B481\" [ref=e482]\n- button \"B482\" [ref=e483]\n- button \"B483\" [ref=e484]\n- button \"B484\" [ref=e485]\n- button \"B485\" [ref=e486]\n- button \"B486\" [ref=e487]\n- button \"B487\" [ref=e488]\n- button \"B488\" [ref=e489]\n- button \"B489\" [ref=e490]\n- button \"B490\" [ref=e491]\n- button \"B491\" [ref=e492]\n- button \"B492\" [ref=e493]\n- button \"B493\" [ref=e494]\n- button \"B494\" [ref=e495]\n- button \"B495\" [ref=e496]\n- button \"B496\" [ref=e497]\n- button \"B497\" [ref=e498]\n- button \"B498\" [ref=e499]\n- button \"B499\" [ref=e500]\n- button \"B500\" [ref=e501]\n- button \"B501\" [ref=e502]\n- button \"B502\" [ref=e503]\n- button \"B503\" [ref=e504]\n- button \"B504\" [ref=e505]\n- button \"B505\" [ref=e506]\n- button \"B506\" [ref=e507]\n- button \"B507\" [ref=e508]\n- button \"B508\" [ref=e509]\n- button \"B509\" [ref=e510]\n- button \"B510\" [ref=e511]\n- button \"B511\" [ref=e512]\n- button \"B512\" [ref=e513]\n- button \"B513\" [ref=e514]\n- button \"B514\" [ref=e515]\n- button \"B515\" [ref=e516]\n- button \"B516\" [ref=e517]\n- button \"B517\" [ref=e518]\n- button \"B518\" [ref=e519]\n- button \"B519\" [ref=e520]\n- button \"B520\" [ref=e521]\n- button \"B521\" [ref=e522]\n- button \"B522\" [ref=e523]\n- button \"B523\" [ref=e524]\n- button \"B524\" [ref=e525]\n- button \"B525\" [ref=e526]\n- button \"B526\" [ref=e527]\n- button \"B527\" [ref=e528]\n- button \"B528\" [ref=e529]\n- button \"B529\" [ref=e530]\n- button \"B530\" [ref=e531]\n- button \"B531\" [ref=e532]\n- button \"B532\" [ref=e533]\n- button \"B533\" [ref=e534]\n- button \"B534\" [ref=e535]\n- button \"B535\" [ref=e536]\n- button \"B536\" [ref=e537]\n- button \"B537\" [ref=e538]\n- button \"B538\" [ref=e539]\n- button \"B539\" [ref=e540]\n- button \"B540\" [ref=e541]\n- button \"B541\" [ref=e542]\n- button \"B542\" [ref=e543]\n- button \"B543\" [ref=e544]\n- button \"B544\" [ref=e545]\n- button \"B545\" [ref=e546]\n- button \"B546\" [ref=e547]\n- button \"B547\" [ref=e548]\n- button \"B548\" [ref=e549]\n- button \"B549\" [ref=e550]\n- button \"B550\" [ref=e551]\n- button \"B551\" [ref=e552]\n- button \"B552\" [ref=e553]\n- button \"B553\" [ref=e554]\n- button \"B554\" [ref=e555]\n- button \"B555\" [ref=e556]\n- button \"B556\" [ref=e557]\n- button \"B557\" [ref=e558]\n- button \"B558\" [ref=e559]\n- button \"B559\" [ref=e560]\n- button \"B560\" [ref=e561]\n- button \"B561\" [ref=e562]\n- button \"B562\" [ref=e563]\n- button \"B563\" [ref=e564]\n- button \"B564\" [ref=e565]\n- button \"B565\" [ref=e566]\n- button \"B566\" [ref=e567]\n- button \"B567\" [ref=e568]\n- button \"B568\" [ref=e569]\n- button \"B569\" [ref=e570]\n- button \"B570\" [ref=e571]\n- button \"B571\" [ref=e572]\n- button \"B572\" [ref=e573]\n- button \"B573\" [ref=e574]\n- button \"B574\" [ref=e575]\n- button \"B575\" [ref=e576]\n- button \"B576\" [ref=e577]\n- button \"B577\" [ref=e578]\n- button \"B578\" [ref=e579]\n- button \"B579\" [ref=e580]\n- button \"B580\" [ref=e581]\n- button \"B581\" [ref=e582]\n- button \"B582\" [ref=e583]\n- button \"B583\" [ref=e584]\n- button \"B584\" [ref=e585]\n- button \"B585\" [ref=e586]\n- button \"B586\" [ref=e587]\n- button \"B587\" [ref=e588]\n- button \"B588\" [ref=e589]\n- button \"B589\" [ref=e590]\n- button \"B590\" [ref=e591]\n- button \"B591\" [ref=e592]\n- button \"B592\" [ref=e593]\n- button \"B593\" [ref=e594]\n- button \"B594\" [ref=e595]\n- button \"B595\" [ref=e596]\n- button \"B596\" [ref=e597]\n- button \"B597\" [ref=e598]\n- button \"B598\" [ref=e599]\n- button \"B599\" [ref=e600]\n- button \"B600\" [ref=e601]\n- button \"B601\" [ref=e602]\n- button \"B602\" [ref=e603]\n- button \"B603\" [ref=e604]\n- button \"B604\" [ref=e605]\n- button \"B605\" [ref=e606]\n- button \"B606\" [ref=e607]\n- button \"B607\" [ref=e608]\n- button \"B608\" [ref=e609]\n- button \"B609\" [ref=e610]\n- button \"B610\" [ref=e611]\n- button \"B611\" [ref=e612]\n- button \"B612\" [ref=e613]\n- button \"B613\" [ref=e614]\n- button \"B614\" [ref=e615]\n- button \"B615\" [ref=e616]\n- button \"B616\" [ref=e617]\n- button \"B617\" [ref=e618]\n- button \"B618\" [ref=e619]\n- button \"B619\" [ref=e620]\n- button \"B620\" [ref=e621]\n- button \"B621\" [ref=e622]\n- button \"B622\" [ref=e623]\n- button \"B623\" [ref=e624]\n- button \"B624\" [ref=e625]\n- button \"B625\" [ref=e626]\n- button \"B626\" [ref=e627]\n- button \"B627\" [ref=e628]\n- button \"B628\" [ref=e629]\n- button \"B629\" [ref=e630]\n- button \"B630\" [ref=e631]\n- button \"B631\" [ref=e632]\n- button \"B632\" [ref=e633]\n- button \"B633\" [ref=e634]\n- button \"B634\" [ref=e635]\n- button \"B635\" [ref=e636]\n- button \"B636\" [ref=e637]\n- button \"B637\" [ref=e638]\n- button \"B638\" [ref=e639]\n- button \"B639\" [ref=e640]\n- button \"B640\" [ref=e641]\n- button \"B641\" [ref=e642]\n- button \"B642\" [ref=e643]\n- button \"B643\" [ref=e644]\n- button \"B644\" [ref=e645]\n- button \"B645\" [ref=e646]\n- button \"B646\" [ref=e647]\n- button \"B647\" [ref=e648]\n- button \"B648\" [ref=e649]\n- button \"B649\" [ref=e650]\n- button \"B650\" [ref=e651]\n- button \"B651\" [ref=e652]\n- button \"B652\" [ref=e653]\n- button \"B653\" [ref=e654]\n- button \"B654\" [ref=e655]\n- button \"B655\" [ref=e656]\n- button \"B656\" [ref=e657]\n- button \"B657\" [ref=e658]\n- button \"B658\" [ref=e659]\n- button \"B659\" [ref=e660]\n- button \"B660\" [ref=e661]\n- button \"B661\" [ref=e662]\n- button \"B662\" [ref=e663]\n- button \"B663\" [ref=e664]\n- button \"B664\" [ref=e665]\n- button \"B665\" [ref=e666]\n- button \"B666\" [ref=e667]\n- button \"B667\" [ref=e668]\n- button \"B668\" [ref=e669]\n- button \"B669\" [ref=e670]\n- button \"B670\" [ref=e671]\n- button \"B671\" [ref=e672]\n- button \"B672\" [ref=e673]\n- button \"B673\" [ref=e674]\n- button \"B674\" [ref=e675]\n- button \"B675\" [ref=e676]\n- button \"B676\" [ref=e677]\n- button \"B677\" [ref=e678]\n- button \"B678\" [ref=e679]\n- button \"B679\" [ref=e680]\n- button \"B680\" [ref=e681]\n- button \"B681\" [ref=e682]\n- button \"B682\" [ref=e683]\n- button \"B683\" [ref=e684]\n- button \"B684\" [ref=e685]\n- button \"B685\" [ref=e686]\n- button \"B686\" [ref=e687]\n- button \"B687\" [ref=e688]\n- button \"B688\" [ref=e689]\n- button \"B689\" [ref=e690]\n- button \"B690\" [ref=e691]\n- button \"B691\" [ref=e692]\n- button \"B692\" [ref=e693]\n- button \"B693\" [ref=e694]\n- button \"B694\" [ref=e695]\n- button \"B695\" [ref=e696]\n- button \"B696\" [ref=e697]\n- button \"B697\" [ref=e698]\n- button \"B698\" [ref=e699]\n- button \"B699\" [ref=e700]\n- button \"B700\" [ref=e701]\n- button \"B701\" [ref=e702]\n- button \"B702\" [ref=e703]\n- button \"B703\" [ref=e704]\n- button \"B704\" [ref=e705]\n- button \"B705\" [ref=e706]\n- button \"B706\" [ref=e707]\n- button \"B707\" [ref=e708]\n- button \"B708\" [ref=e709]\n- button \"B709\" [ref=e710]\n- button \"B710\" [ref=e711]\n- button \"B711\" [ref=e712]\n- button \"B712\" [ref=e713]\n- button \"B713\" [ref=e714]\n- button \"B714\" [ref=e715]\n- button \"B715\" [ref=e716]\n- button \"B716\" [ref=e717]\n- button \"B717\" [ref=e718]\n- button \"B718\" [ref=e719]\n- button \"B719\" [ref=e720]\n- button \"B720\" [ref=e721]\n- button \"B721\" [ref=e722]\n- button \"B722\" [ref=e723]\n- button \"B723\" [ref=e724]\n- button \"B724\" [ref=e725]\n- button \"B725\" [ref=e726]\n- button \"B726\" [ref=e727]\n- button \"B727\" [ref=e728]\n- button \"B728\" [ref=e729]\n- button \"B729\" [ref=e730]\n- button \"B730\" [ref=e731]\n- button \"B731\" [ref=e732]\n- button \"B732\" [ref=e733]\n- button \"B733\" [ref=e734]\n- button \"B734\" [ref=e735]\n- button \"B735\" [ref=e736]\n- button \"B736\" [ref=e737]\n- button \"B737\" [ref=e738]\n- button \"B738\" [ref=e739]\n- button \"B739\" [ref=e740]\n- button \"B740\" [ref=e741]\n- button \"B741\" [ref=e742]\n- button \"B742\" [ref=e743]\n- button \"B743\" [ref=e744]\n- button \"B744\" [ref=e745]\n- button \"B745\" [ref=e746]\n- button \"B746\" [ref=e747]\n- button \"B747\" [ref=e748]\n- button \"B748\" [ref=e749]\n- button \"B749\" [ref=e750]\n- button \"B750\" [ref=e751]\n- button \"B751\" [ref=e752]\n- button \"B752\" [ref=e753]\n- button \"B753\" [ref=e754]\n- button \"B754\" [ref=e755]\n- button \"B755\" [ref=e756]\n- button \"B756\" [ref=e757]\n- button \"B757\" [ref=e758]\n- button \"B758\" [ref=e759]\n- button \"B759\" [ref=e760]\n- button \"B760\" [ref=e761]\n- button \"B761\" [ref=e762]\n- button \"B762\" [ref=e763]\n- button \"B763\" [ref=e764]\n- button \"B764\" [ref=e765]\n- button \"B765\" [ref=e766]\n- button \"B766\" [ref=e767]\n- button \"B767\" [ref=e768]\n- button \"B768\" [ref=e769]\n- button \"B769\" [ref=e770]\n- button \"B770\" [ref=e771]\n- button \"B771\" [ref=e772]\n- button \"B772\" [ref=e773]\n- button \"B773\" [ref=e774]\n- button \"B774\" [ref=e775]\n- button \"B775\" [ref=e776]\n- button \"B776\" [ref=e777]\n- button \"B777\" [ref=e778]\n- button \"B778\" [ref=e779]\n- button \"B779\" [ref=e780]\n- button \"B780\" [ref=e781]\n- button \"B781\" [ref=e782]\n- button \"B782\" [ref=e783]\n- button \"B783\" [ref=e784]\n- button \"B784\" [ref=e785]\n- button \"B785\" [ref=e786]\n- button \"B786\" [ref=e787]\n- button \"B787\" [ref=e788]\n- button \"B788\" [ref=e789]\n- button \"B789\" [ref=e790]\n- button \"B790\" [ref=e791]\n- button \"B791\" [ref=e792]\n- button \"B792\" [ref=e793]\n- button \"B793\" [ref=e794]\n- button \"B794\" [ref=e795]\n- button \"B795\" [ref=e796]\n- button \"B796\" [ref=e797]\n- button \"B797\" [ref=e798]\n- button \"B798\" [ref=e799]\n- button \"B799\" [ref=e800]\n- ... truncated at 800 elements; scroll or narrow the page to see more"
+    }
+  ],
+  "network": [
+    {
+      "name": "formatEntries › prints a header, one line per entry and a hint footer",
+      "input": {
+        "entries": [
+          {
+            "id": "1042",
+            "tabId": 7,
+            "url": "http://localhost:8080/e2e.html",
+            "method": "GET",
+            "type": "main_frame",
+            "startedAt": 1700000000000,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "responseSize": 4300,
+            "endedAt": 1700000000085,
+            "durationMs": 85
+          },
+          {
+            "id": "1044",
+            "tabId": 7,
+            "url": "http://localhost:8080/ok.json",
+            "method": "POST",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000600,
+            "status": 501,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000609,
+            "durationMs": 9
+          },
+          {
+            "id": "1045",
+            "tabId": 7,
+            "url": "http://127.0.0.1:9/",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000001100,
+            "error": "net::ERR_CONNECTION_REFUSED",
+            "endedAt": 1700000001103,
+            "durationMs": 3
+          },
+          {
+            "id": "1046",
+            "tabId": 7,
+            "url": "http://10.255.255.1/",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000001700
+          },
+          {
+            "id": "1047",
+            "tabId": 7,
+            "url": "http://localhost:8080/redir",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000001800,
+            "status": 301,
+            "redirectUrl": "http://localhost:8080/redir/",
+            "endedAt": 1700000001804,
+            "durationMs": 4
+          }
+        ],
+        "total": 5,
+        "pending": 1,
+        "recordingSince": 1700000000000
+      },
+      "options": {
+        "now": 1700000002100,
+        "scope": "active"
+      },
+      "kind": "list",
+      "expected": "Network — active tab: showing 5 of 5 (recording since 2.1s ago; 1 pending)\n[1042]  2.1s ago   GET     200  document   85ms  4.2 KB  http://localhost:8080/e2e.html\n[1044]  1.5s ago   POST    501  xhr         9ms  —       http://localhost:8080/ok.json\n[1045]  1.0s ago   GET     ERR  xhr         3ms  —       http://127.0.0.1:9/  net::ERR_CONNECTION_REFUSED\n[1046]  0.4s ago   GET     ···  xhr        (pending)     http://10.255.255.1/\n[1047]  0.3s ago   GET     301  xhr         4ms  —       http://localhost:8080/redir  → http://localhost:8080/redir/\nUse filter/types/failedOnly to narrow, limit to widen, id for one request's headers and body."
+    },
+    {
+      "name": "formatEntries › renders errors, pending and redirect hops",
+      "input": {
+        "entries": [
+          {
+            "id": "1042",
+            "tabId": 7,
+            "url": "http://localhost:8080/e2e.html",
+            "method": "GET",
+            "type": "main_frame",
+            "startedAt": 1700000000000,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "responseSize": 4300,
+            "endedAt": 1700000000085,
+            "durationMs": 85
+          },
+          {
+            "id": "1044",
+            "tabId": 7,
+            "url": "http://localhost:8080/ok.json",
+            "method": "POST",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000600,
+            "status": 501,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000609,
+            "durationMs": 9
+          },
+          {
+            "id": "1045",
+            "tabId": 7,
+            "url": "http://127.0.0.1:9/",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000001100,
+            "error": "net::ERR_CONNECTION_REFUSED",
+            "endedAt": 1700000001103,
+            "durationMs": 3
+          },
+          {
+            "id": "1046",
+            "tabId": 7,
+            "url": "http://10.255.255.1/",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000001700
+          },
+          {
+            "id": "1047",
+            "tabId": 7,
+            "url": "http://localhost:8080/redir",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000001800,
+            "status": 301,
+            "redirectUrl": "http://localhost:8080/redir/",
+            "endedAt": 1700000001804,
+            "durationMs": 4
+          }
+        ],
+        "total": 5,
+        "pending": 1,
+        "recordingSince": 1700000000000
+      },
+      "options": {
+        "now": 1700000002100,
+        "scope": "active"
+      },
+      "kind": "list",
+      "expected": "Network — active tab: showing 5 of 5 (recording since 2.1s ago; 1 pending)\n[1042]  2.1s ago   GET     200  document   85ms  4.2 KB  http://localhost:8080/e2e.html\n[1044]  1.5s ago   POST    501  xhr         9ms  —       http://localhost:8080/ok.json\n[1045]  1.0s ago   GET     ERR  xhr         3ms  —       http://127.0.0.1:9/  net::ERR_CONNECTION_REFUSED\n[1046]  0.4s ago   GET     ···  xhr        (pending)     http://10.255.255.1/\n[1047]  0.3s ago   GET     301  xhr         4ms  —       http://localhost:8080/redir  → http://localhost:8080/redir/\nUse filter/types/failedOnly to narrow, limit to widen, id for one request's headers and body."
+    },
+    {
+      "name": "formatEntries › uses the DevTools type names and keeps the columns aligned",
+      "input": {
+        "entries": [
+          {
+            "id": "1042",
+            "tabId": 7,
+            "url": "http://localhost:8080/e2e.html",
+            "method": "GET",
+            "type": "main_frame",
+            "startedAt": 1700000000000,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "responseSize": 4300,
+            "endedAt": 1700000000085,
+            "durationMs": 85
+          },
+          {
+            "id": "1044",
+            "tabId": 7,
+            "url": "http://localhost:8080/ok.json",
+            "method": "POST",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000600,
+            "status": 501,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000609,
+            "durationMs": 9
+          },
+          {
+            "id": "1045",
+            "tabId": 7,
+            "url": "http://127.0.0.1:9/",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000001100,
+            "error": "net::ERR_CONNECTION_REFUSED",
+            "endedAt": 1700000001103,
+            "durationMs": 3
+          },
+          {
+            "id": "1046",
+            "tabId": 7,
+            "url": "http://10.255.255.1/",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000001700
+          },
+          {
+            "id": "1047",
+            "tabId": 7,
+            "url": "http://localhost:8080/redir",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000001800,
+            "status": 301,
+            "redirectUrl": "http://localhost:8080/redir/",
+            "endedAt": 1700000001804,
+            "durationMs": 4
+          }
+        ],
+        "total": 5,
+        "pending": 1,
+        "recordingSince": 1700000000000
+      },
+      "options": {
+        "now": 1700000002100,
+        "scope": "active"
+      },
+      "kind": "list",
+      "expected": "Network — active tab: showing 5 of 5 (recording since 2.1s ago; 1 pending)\n[1042]  2.1s ago   GET     200  document   85ms  4.2 KB  http://localhost:8080/e2e.html\n[1044]  1.5s ago   POST    501  xhr         9ms  —       http://localhost:8080/ok.json\n[1045]  1.0s ago   GET     ERR  xhr         3ms  —       http://127.0.0.1:9/  net::ERR_CONNECTION_REFUSED\n[1046]  0.4s ago   GET     ···  xhr        (pending)     http://10.255.255.1/\n[1047]  0.3s ago   GET     301  xhr         4ms  —       http://localhost:8080/redir  → http://localhost:8080/redir/\nUse filter/types/failedOnly to narrow, limit to widen, id for one request's headers and body."
+    },
+    {
+      "name": "formatEntries › adds a tab column for the 'all' scope",
+      "input": {
+        "entries": [
+          {
+            "id": "a",
+            "tabId": 3,
+            "url": "http://localhost:8080/ok.json",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000000,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000050,
+            "durationMs": 50
+          },
+          {
+            "id": "b",
+            "tabId": -1,
+            "url": "http://localhost:8080/ok.json",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000000,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000050,
+            "durationMs": 50
+          }
+        ],
+        "total": 2,
+        "pending": 0,
+        "recordingSince": 1700000000000
+      },
+      "options": {
+        "now": 1700000002100,
+        "scope": "all"
+      },
+      "kind": "list",
+      "expected": "Network — all tabs: showing 2 of 2 (recording since 2.1s ago; 0 pending)\n[a]     tab:3     2.1s ago   GET     200  xhr        50ms  —       http://localhost:8080/ok.json\n[b]     tab:-1    2.1s ago   GET     200  xhr        50ms  —       http://localhost:8080/ok.json\nUse filter/types/failedOnly to narrow, limit to widen, id for one request's headers and body."
+    },
+    {
+      "name": "formatEntries › names a numeric tab scope",
+      "input": {
+        "entries": [
+          {
+            "id": "a",
+            "tabId": 3,
+            "url": "http://localhost:8080/ok.json",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000000,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000050,
+            "durationMs": 50
+          }
+        ],
+        "total": 1,
+        "pending": 0,
+        "recordingSince": 1700000000000
+      },
+      "options": {
+        "now": 1700000002100,
+        "scope": 3
+      },
+      "kind": "list",
+      "expected": "Network — tab 3: showing 1 of 1 (recording since 2.1s ago; 0 pending)\n[a]     2.1s ago   GET     200  xhr        50ms  —       http://localhost:8080/ok.json\nUse filter/types/failedOnly to narrow, limit to widen, id for one request's headers and body."
+    },
+    {
+      "name": "formatEntries › cuts a very long URL at 300 chars",
+      "input": {
+        "entries": [
+          {
+            "id": "a",
+            "tabId": 7,
+            "url": "http://localhost:8080/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000000,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000050,
+            "durationMs": 50
+          }
+        ],
+        "total": 1,
+        "pending": 0,
+        "recordingSince": 1700000000000
+      },
+      "options": {
+        "now": 1700000002100,
+        "scope": "active"
+      },
+      "kind": "list",
+      "expected": "Network — active tab: showing 1 of 1 (recording since 2.1s ago; 0 pending)\n[a]     2.1s ago   GET     200  xhr        50ms  —       http://localhost:8080/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…\nUse filter/types/failedOnly to narrow, limit to widen, id for one request's headers and body."
+    },
+    {
+      "name": "formatEntries › says so when nothing was recorded",
+      "input": {
+        "entries": [],
+        "total": 0,
+        "pending": 0,
+        "recordingSince": 1700000000000
+      },
+      "options": {
+        "now": 1700000192000,
+        "scope": "active"
+      },
+      "kind": "list",
+      "expected": "No requests recorded for active tab (recording since 3m12s ago). Reload or act on the page, then query again."
+    },
+    {
+      "name": "formatEntries › caps the whole text and says how many lines it dropped",
+      "input": {
+        "entries": [
+          {
+            "id": "c0",
+            "tabId": 7,
+            "url": "http://localhost:8080/0",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000000,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000000,
+            "durationMs": 0
+          },
+          {
+            "id": "c1",
+            "tabId": 7,
+            "url": "http://localhost:8080/1",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000001,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000001,
+            "durationMs": 0
+          },
+          {
+            "id": "c2",
+            "tabId": 7,
+            "url": "http://localhost:8080/2",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000002,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000002,
+            "durationMs": 0
+          },
+          {
+            "id": "c3",
+            "tabId": 7,
+            "url": "http://localhost:8080/3",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000003,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000003,
+            "durationMs": 0
+          },
+          {
+            "id": "c4",
+            "tabId": 7,
+            "url": "http://localhost:8080/4",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000004,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000004,
+            "durationMs": 0
+          },
+          {
+            "id": "c5",
+            "tabId": 7,
+            "url": "http://localhost:8080/5",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000005,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000005,
+            "durationMs": 0
+          },
+          {
+            "id": "c6",
+            "tabId": 7,
+            "url": "http://localhost:8080/6",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000006,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000006,
+            "durationMs": 0
+          },
+          {
+            "id": "c7",
+            "tabId": 7,
+            "url": "http://localhost:8080/7",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000007,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000007,
+            "durationMs": 0
+          },
+          {
+            "id": "c8",
+            "tabId": 7,
+            "url": "http://localhost:8080/8",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000008,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000008,
+            "durationMs": 0
+          },
+          {
+            "id": "c9",
+            "tabId": 7,
+            "url": "http://localhost:8080/9",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000009,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000009,
+            "durationMs": 0
+          },
+          {
+            "id": "c10",
+            "tabId": 7,
+            "url": "http://localhost:8080/10",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000010,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000010,
+            "durationMs": 0
+          },
+          {
+            "id": "c11",
+            "tabId": 7,
+            "url": "http://localhost:8080/11",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000011,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000011,
+            "durationMs": 0
+          },
+          {
+            "id": "c12",
+            "tabId": 7,
+            "url": "http://localhost:8080/12",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000012,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000012,
+            "durationMs": 0
+          },
+          {
+            "id": "c13",
+            "tabId": 7,
+            "url": "http://localhost:8080/13",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000013,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000013,
+            "durationMs": 0
+          },
+          {
+            "id": "c14",
+            "tabId": 7,
+            "url": "http://localhost:8080/14",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000014,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000014,
+            "durationMs": 0
+          },
+          {
+            "id": "c15",
+            "tabId": 7,
+            "url": "http://localhost:8080/15",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000015,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000015,
+            "durationMs": 0
+          },
+          {
+            "id": "c16",
+            "tabId": 7,
+            "url": "http://localhost:8080/16",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000016,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000016,
+            "durationMs": 0
+          },
+          {
+            "id": "c17",
+            "tabId": 7,
+            "url": "http://localhost:8080/17",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000017,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000017,
+            "durationMs": 0
+          },
+          {
+            "id": "c18",
+            "tabId": 7,
+            "url": "http://localhost:8080/18",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000018,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000018,
+            "durationMs": 0
+          },
+          {
+            "id": "c19",
+            "tabId": 7,
+            "url": "http://localhost:8080/19",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000019,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000019,
+            "durationMs": 0
+          },
+          {
+            "id": "c20",
+            "tabId": 7,
+            "url": "http://localhost:8080/20",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000020,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000020,
+            "durationMs": 0
+          },
+          {
+            "id": "c21",
+            "tabId": 7,
+            "url": "http://localhost:8080/21",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000021,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000021,
+            "durationMs": 0
+          },
+          {
+            "id": "c22",
+            "tabId": 7,
+            "url": "http://localhost:8080/22",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000022,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000022,
+            "durationMs": 0
+          },
+          {
+            "id": "c23",
+            "tabId": 7,
+            "url": "http://localhost:8080/23",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000023,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000023,
+            "durationMs": 0
+          },
+          {
+            "id": "c24",
+            "tabId": 7,
+            "url": "http://localhost:8080/24",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000024,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000024,
+            "durationMs": 0
+          },
+          {
+            "id": "c25",
+            "tabId": 7,
+            "url": "http://localhost:8080/25",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000025,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000025,
+            "durationMs": 0
+          },
+          {
+            "id": "c26",
+            "tabId": 7,
+            "url": "http://localhost:8080/26",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000026,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000026,
+            "durationMs": 0
+          },
+          {
+            "id": "c27",
+            "tabId": 7,
+            "url": "http://localhost:8080/27",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000027,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000027,
+            "durationMs": 0
+          },
+          {
+            "id": "c28",
+            "tabId": 7,
+            "url": "http://localhost:8080/28",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000028,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000028,
+            "durationMs": 0
+          },
+          {
+            "id": "c29",
+            "tabId": 7,
+            "url": "http://localhost:8080/29",
+            "method": "GET",
+            "type": "xmlhttprequest",
+            "startedAt": 1700000000029,
+            "status": 200,
+            "statusLine": "HTTP/1.1 200 OK",
+            "endedAt": 1700000000029,
+            "durationMs": 0
+          }
+        ],
+        "total": 30,
+        "pending": 0,
+        "recordingSince": 1700000000000
+      },
+      "options": {
+        "now": 1700000002100,
+        "scope": "active",
+        "maxChars": 400
+      },
+      "kind": "list",
+      "expected": "Network — active tab: showing 30 of 30 (recording since 2.1s ago; 0 pending)\n[c0]    2.1s ago   GET     200  xhr         0ms  —       http://localhost:8080/0\n[c1]    2.1s ago   GET     200  xhr         0ms  —       http://localhost:8080/1\n[c2]    2.1s ago   GET     200  xhr         0ms  —       http://localhost:8080/2\n[c3]    2.1s ago   GET     200  xhr         0ms  —       http://localhost:8080/3\n… [truncated: 26 more lines — narrow with filter/limit]"
+    },
+    {
+      "name": "formatEntry › prints the full detail of one request",
+      "input": {
+        "id": "1043",
+        "tabId": 7,
+        "url": "http://localhost:8080/ok.json",
+        "method": "GET",
+        "type": "xmlhttprequest",
+        "startedAt": 1700000000000,
+        "initiator": "http://localhost:8080",
+        "requestBody": "user=a&password=<redacted>",
+        "requestHeaders": {
+          "accept": "*/*",
+          "authorization": "<redacted>"
+        },
+        "status": 200,
+        "statusLine": "HTTP/1.1 200 OK",
+        "responseHeaders": {
+          "content-type": "application/json",
+          "content-length": "118"
+        },
+        "responseSize": 118,
+        "fromCache": false,
+        "ip": "127.0.0.1",
+        "endedAt": 1700000000012,
+        "durationMs": 12
+      },
+      "options": {
+        "now": 1700000001912
+      },
+      "kind": "entry",
+      "expected": "[1043] GET http://localhost:8080/ok.json\ntype: xhr   initiator: http://localhost:8080   started 1.9s ago   took 12ms\nstatus: 200 OK   from cache: no   ip: 127.0.0.1   size: 118 B\nrequest headers:\n  accept: */*\n  authorization: <redacted>\nresponse headers:\n  content-type: application/json\n  content-length: 118\nrequest body:\n  user=a&password=<redacted>"
+    },
+    {
+      "name": "formatEntry › omits missing sections and marks a pending request",
+      "input": {
+        "id": "9",
+        "tabId": 7,
+        "url": "http://10.255.255.1/",
+        "method": "GET",
+        "type": "xmlhttprequest",
+        "startedAt": 1700000000000
+      },
+      "options": {
+        "now": 1700000000400
+      },
+      "kind": "entry",
+      "expected": "[9] GET http://10.255.255.1/\ntype: xhr   started 0.4s ago   (pending)"
+    },
+    {
+      "name": "formatEntry › shows a network error instead of a status",
+      "input": {
+        "id": "9",
+        "tabId": 7,
+        "url": "http://127.0.0.1:9/",
+        "method": "GET",
+        "type": "xmlhttprequest",
+        "startedAt": 1700000000000,
+        "error": "net::ERR_CONNECTION_REFUSED",
+        "endedAt": 1700000000003,
+        "durationMs": 3
+      },
+      "options": {
+        "now": 1700000000100
+      },
+      "kind": "entry",
+      "expected": "[9] GET http://127.0.0.1:9/\ntype: xhr   started 0.1s ago   took 3ms\nerror: net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "name": "formatEntry › shows the redirect target of a hop",
+      "input": {
+        "id": "9",
+        "tabId": 7,
+        "url": "http://localhost:8080/redir",
+        "method": "GET",
+        "type": "xmlhttprequest",
+        "startedAt": 1700000000000,
+        "status": 301,
+        "statusLine": "HTTP/1.1 301 Moved Permanently",
+        "redirectUrl": "http://localhost:8080/redir/",
+        "endedAt": 1700000000004,
+        "durationMs": 4
+      },
+      "options": {
+        "now": 1700000000100
+      },
+      "kind": "entry",
+      "expected": "[9] GET http://localhost:8080/redir\ntype: xhr   started 0.1s ago   took 4ms\nstatus: 301 Moved Permanently   redirect → http://localhost:8080/redir/"
+    }
+  ],
+  "helpers": [
+    {
+      "fn": "formatAgo",
+      "arg": 0,
+      "expected": "0.0s ago"
+    },
+    {
+      "fn": "formatAgo",
+      "arg": 2100,
+      "expected": "2.1s ago"
+    },
+    {
+      "fn": "formatAgo",
+      "arg": 65000,
+      "expected": "1m05s ago"
+    },
+    {
+      "fn": "formatAgo",
+      "arg": 192000,
+      "expected": "3m12s ago"
+    },
+    {
+      "fn": "formatAgo",
+      "arg": 3720000,
+      "expected": "1h02m ago"
+    },
+    {
+      "fn": "formatDuration",
+      "arg": 0,
+      "expected": "0ms"
+    },
+    {
+      "fn": "formatDuration",
+      "arg": 123,
+      "expected": "123ms"
+    },
+    {
+      "fn": "formatDuration",
+      "arg": 1200,
+      "expected": "1.2s"
+    },
+    {
+      "fn": "formatSize",
+      "arg": 812,
+      "expected": "812 B"
+    },
+    {
+      "fn": "formatSize",
+      "arg": 4300,
+      "expected": "4.2 KB"
+    },
+    {
+      "fn": "formatSize",
+      "arg": 1153434,
+      "expected": "1.1 MB"
+    }
+  ]
+}

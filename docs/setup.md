@@ -109,32 +109,72 @@ Open the extension's **service worker** console (chrome://extensions → the ext
 
 ## 5. Use it
 
-With the daemon running and the extension connected, call the tools from your client:
+With the daemon running and the extension connected, call the 22 tools from your client. Every tool
+marked *tab* also takes an optional `tab` argument — see [Tabs](#tabs) below; without it the tool
+acts on **this session's tab**.
 
 | Tool | What it does |
 |---|---|
-| `browser_status()` | Diagnose the bridge: daemon connected (build, clients by name)? extension connected? active tab. Call it first when other tools fail |
-| `browser_navigate(url)` | Navigate the active tab |
-| `browser_snapshot()` | Accessibility outline of the active tab with element refs |
-| `browser_screenshot(fullPage?)` | Screenshot (viewport; full-page via CDP when `fullPage:true`) |
-| `browser_click(ref, trusted?)` | Click a ref; `trusted:true` forces real CDP input (shows the debugging banner) |
-| `browser_type(ref, text, submit?, trusted?)` | Type into a ref, optionally submit; `trusted:true` sends real CDP keystrokes (shows the debugging banner) |
-| `browser_press_key(key, trusted?)` | Press a key on the focused element; `trusted:true` sends a real CDP keystroke (shows the debugging banner) |
-| `browser_scroll(ref?, direction?)` | Scroll to a ref or up/down |
-| `browser_hover(ref)` | Hover a ref |
-| `browser_select_option(ref, values)` | Select option(s) in a `<select>` |
-| `browser_back()` / `browser_forward()` | History navigation |
-| `browser_wait_for(text?, seconds?, networkIdle?, idleMs?)` | Wait until text appears on the active tab, for N seconds, or — with `networkIdle:true` — until the tab has made no network request for `idleMs` (default 500, max 10 s wait) |
-| `browser_list_tabs()` | List open tabs |
-| `browser_select_tab(id)` | Make a tab active (the new control target) |
-| `browser_new_tab(url?)` / `browser_close_tab(id)` | Open / close tabs |
-| `browser_evaluate(expression, timeoutMs?)` | Run JavaScript in the active tab’s page context and return the result (shows the debugging banner) |
+| `browser_status()` | Diagnose the bridge: daemon connected (build, clients by name)? extension connected? the human's active tab, by handle. Call it first when other tools fail |
+| `browser_navigate(url)` *tab* | Navigate the tab |
+| `browser_snapshot()` *tab* | Accessibility outline of the tab with element refs |
+| `browser_screenshot(fullPage?)` *tab* | Screenshot (viewport; full-page via CDP when `fullPage:true`) |
+| `browser_click(ref, trusted?)` *tab* | Click a ref; `trusted:true` forces real CDP input (shows the debugging banner) |
+| `browser_type(ref, text, submit?, trusted?)` *tab* | Type into a ref, optionally submit; `trusted:true` sends real CDP keystrokes (shows the debugging banner) |
+| `browser_press_key(key, trusted?)` *tab* | Press a key on the focused element; `trusted:true` sends a real CDP keystroke (shows the debugging banner) |
+| `browser_scroll(ref?, direction?)` *tab* | Scroll to a ref or up/down |
+| `browser_hover(ref)` *tab* | Hover a ref |
+| `browser_select_option(ref, values)` *tab* | Select option(s) in a `<select>` |
+| `browser_back()` / `browser_forward()` *tab* | History navigation |
+| `browser_wait_for(text?, seconds?, networkIdle?, idleMs?)` *tab* | Wait until text appears on the tab, for N seconds, or — with `networkIdle:true` — until the tab has made no network request for `idleMs` (default 500, max 10 s wait) |
+| `browser_list_tabs()` | List open tabs: handle, `*` on the human's active tab, the holding actor, title — URL |
+| `browser_select_tab(tab)` | Make `tab` this session's tab: claims it, **without** bringing it on screen |
+| `browser_focus_tab()` *tab* | Bring the tab on screen and focus its window — the only tool that changes what you see |
+| `browser_new_tab(url?)` / `browser_close_tab(tab)` | Open a tab (it becomes active and this session's tab) / close a tab by handle |
+| `browser_evaluate(expression, timeoutMs?)` *tab* | Run JavaScript in the tab's page context and return the result (shows the debugging banner) |
 | `browser_network_requests(tab?, filter?, types?, failedOnly?, limit?, includeHeaders?, id?)` | List the network requests the tab has made — method, status, type, duration, size, URL — captured continuously with no banner; `id` shows one request's headers and body summary |
 | `browser_network_clear(tab?)` | Forget the recorded network requests, so the next `browser_network_requests` shows only what your next action caused |
 | `browser_download(url, path, overwrite?, timeoutMs?)` | Save a URL to disk with the profile's cookies (fetched by the extension's service worker: no CORS, cross-origin redirects followed). `path` is absolute — a file, or a directory to use the response's filename. Reports size, type and sha256 |
 
+*Superseded 2026-10-22: was 21 tools that all acted on "the active tab", with `browser_select_tab(id)`
+making a tab active and `browser_new_tab`/`browser_close_tab` reporting Chrome tab ids, because Step 7
+T4 gave every tab-touching tool a `tab` argument, ids became handles, `browser_select_tab` claims
+without showing and `browser_focus_tab` is new.*
+
 Typical loop: `browser_snapshot()` to see refs → act by ref (`browser_click`, `browser_type`)
 → snapshot again to see the result.
+
+### Tabs
+
+Several clients can share the bridge — Claude sessions and scripts — each on its own tab. Tabs are
+named by **handles** (`T1`, `T2`, …) that the daemon hands out; `browser_list_tabs` shows them:
+
+```
+T1  Inbox — https://mail.example/
+T3* [claude-code #4412] Agent Bridge E2E Playground — http://localhost:8080/e2e-playground.html
+T4  [export-grades.ts] Export — http://localhost:8080/export
+```
+
+`*` marks the tab you (the human) are looking at: the active tab of the last-focused normal Chrome
+window. `[name]` is the actor that holds the tab; a Claude session is `claude-code #<pid>`, where
+`<pid>` is its MCP server's process id.
+
+- **This session's tab.** A tool called without `tab` acts on this session's tab. The first such call
+  claims the tab you are looking at and keeps it: switching tabs in Chrome afterwards does not move it.
+  `browser_select_tab({tab})` and `browser_new_tab()` move it; passing `tab` to one call does not.
+- **`tab`** takes a handle from `browser_list_tabs`. A tab held by another actor is refused, with the
+  holder's name: `tab T3 is held by "export-grades.ts" since 12:01:33 — use browser_new_tab, or
+  browser_list_tabs to pick a free tab`. A closed tab gives `tab T3 was closed — call listTabs to pick
+  another tab`; this session's tab is then not replaced silently — pick another one.
+- **`browser_select_tab({tab})`** claims the tab for this session and makes it this session's tab. It
+  does **not** bring it on screen: the human's view stays as it is. `browser_focus_tab()` brings this
+  session's tab (or `tab`) on screen and focuses its window. Both need `tab` to be free or yours.
+- **A daemon restart** (a new build, or the daemon was stopped) renumbers the handles. The next call
+  without `tab` claims the tab you are looking at again, and its result starts with one line:
+  `Note: the bridge daemon restarted, so this session's tab was lost; it now holds T2 (the active tab).`
+  An old handle passed as `tab` gets `unknown tab handle T9 — call listTabs`.
+- **The network tools** keep two extra values for `tab`: `"all"` (every tab) and `"active"` (the same
+  as leaving it out: this session's tab).
 
 ## The daemon
 
@@ -198,7 +238,9 @@ than appends; it never assigns `.value`.
 
 ## Running JavaScript
 
-`browser_evaluate(expression, timeoutMs?)` runs an expression in the active tab's **page context**,
+`browser_evaluate(expression, timeoutMs?)` runs an expression in the **page context** of this
+session's tab (or `tab`; *superseded 2026-10-22: was "the active tab's", because of Step 7 T4's tab
+argument*),
 the same as typing it into the DevTools console: it sees the page's own globals, cookies and
 `localStorage`, and it is **not** limited by the page's `script-src` CSP (it goes through CDP, not
 `eval`).
@@ -240,7 +282,8 @@ this browser" banner for the duration, exactly like `trusted:true` input.
 gesture-gated APIs work — but activation is **not window focus**. Anything gated on
 `document.hasFocus()`, notably `navigator.clipboard.writeText`, still fails with `NotAllowedError`
 while the Chrome window is in the background, which is the normal state while an agent drives it.
-Focus the window (e.g. `browser_select_tab`) if you need those.
+Focus the window (`browser_focus_tab`) if you need those. *Superseded 2026-10-22: was "(e.g.
+`browser_select_tab`)", because since Step 7 T4 `browser_select_tab` no longer changes the screen.*
 
 **It reads the DOM, not the accessibility tree.** `document.querySelectorAll("button")` lists hidden
 and `aria-hidden` elements that `browser_snapshot` deliberately prunes. Useful, but don't treat the
@@ -282,7 +325,10 @@ last-activity timestamp is in memory only — counts as idle and returns immedia
 it in slashes (`"/ok\\.json|nope/"`, flags allowed: `"/OK/i"`). `types` keeps the resource types you
 name and accepts the DevTools aliases (`xhr`/`fetch` → `xmlhttprequest`, `document` → `main_frame`,
 `frame` → `sub_frame`). `failedOnly` keeps network errors and status ≥ 400. `limit` is clamped to
-1…500. `tab` takes a tab id from `browser_list_tabs`, or `"all"` (which adds a `tab:<id>` column).
+1…500. `tab` takes a handle from `browser_list_tabs`, or `"all"` (which adds a `tab:<handle>` column;
+a request no tab can be named for, such as a site's service worker, shows `tab:-1`). Without `tab`
+the listing is this session's tab and its header still reads `Network — active tab: …`. *Superseded
+2026-10-22: was "a tab id … a `tab:<id>` column", because Step 7 T4 shows handles, never Chrome ids.*
 
 **One request in full.** `browser_network_requests({id: "3894"})` prints that request's headers and
 request-body summary:
@@ -380,8 +426,13 @@ when Chrome exits or the extension is reloaded.
 - **Chrome was killed / crashed while connected**: the daemon pings the extension every 30 s and
   drops a socket that misses a pong, so within ~60 s tools report "not connected" instead of
   timing out for 30 s each. Relaunch Chrome and it reconnects by itself.
-- **A tool errors with "restricted URL"**: the active tab is a `chrome://` page, the New
-  Tab page, or the Chrome Web Store, where extensions can't run. Switch to a normal page.
+- **A tool errors with "restricted URL"**: the tab is a `chrome://` page, the New
+  Tab page, or the Chrome Web Store, where extensions can't run. Navigate it to a normal page, or
+  pick another tab (`browser_select_tab`). *Superseded 2026-10-22: was "the active tab … Switch to a
+  normal page", because since Step 7 T4 tools act on this session's tab, not on whatever is active.*
+- **A tool errors with `tab T3 is held by "…"`**: another actor (named in the message) holds that
+  tab. Open your own (`browser_new_tab`) or pick a free one from `browser_list_tabs`. The first call
+  of a session fails this way when another actor already holds the tab you are looking at.
 - **"Chrome DevTools (or another extension) is already attached to this tab"**: Chrome allows
   one debugger per tab, and DevTools wins. Close DevTools on that tab and retry the trusted action.
 - **"The debugging session was cancelled mid-action"**: someone clicked **Cancel** on the
