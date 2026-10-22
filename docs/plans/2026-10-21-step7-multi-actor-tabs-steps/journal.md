@@ -27,3 +27,5 @@ Times are UTC from `date -u`.
 - 2026-10-22T17:08:56Z · T2 committed e409706 (746 tests / 52 files, PASS-with-notes). Session agent found its known gap (networkClear all probe-then-clear race) to be a lease loosening: T2 resumed for one fix round — refuse 'all' while any other client holds any tab (#57 update, amends #40). V4 recorded as a follow-up. T3 still verifying.
 - 2026-10-22T17:16:12Z · T2 closed: fix cd346ed, verifier PASS, 748 tests / 52 files. As-built appended.
 - 2026-10-22T17:34:00Z · T3 closed: DONE, PASS-with-notes after 1 fix round (V1 fullPage lock mismatch), 43c0a53, 793 tests / 53 files. #58. T4 next. Note: #41 (B) extended — no main-tree build until T5's reload step (a build before then would hand the user's live sessions a daemon that refuses the unreloaded extension with VERSION).
+- 2026-10-22T17:34:31Z · T4 dispatched (base e332c4b, 793 tests / 53 files). Build rule extended in its brief: no main-tree build until T5's reload step.
+- 2026-10-22T18:30:57Z · T4 closed: DONE, PASS-with-notes, 138c7f6, 934 tests / 59 files, 22 tools. #59, #60. Builder worktree wt-51de800 removed. T5 (autonomous part) next.

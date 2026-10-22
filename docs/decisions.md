@@ -41,6 +41,38 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-22 · Which rows T5.3 counts as regression rows (#60)
+**Decided:** T5.3 ("the regression rows pass with the same expected text as their last recorded
+run") applies to rows whose behaviour Step 7 does not change by design. Rows whose expected text T4
+updated with a dated note for a designed change (TAB-1…4, STAT-1, MUX-1/3, DL-1, NET-12 — the
+handle/owner columns, `browser_select_tab` claiming, background `newTab`) are run against their
+dated expected text and reported as such, not as regression rows. NET-1/MUX-9 stays a regression row
+with `12.8 KB` (#56) and the `Network — active tab:` label.
+**Why:** T4.4 and 0.8 change those outputs on purpose; the dated notes were written before any run,
+and no recorded result was edited (T4 report).
+**Instead of:** treating every earlier row as a byte-identical regression row, which designed
+changes would fail.
+**Revisit if:** a row's dated note turns out to be written after a run.
+**By:** Claude
+
+### 2026-10-22 · T4's MCP cursor and tool details (#59)
+**Decided:** As in T4's report (`…-steps/T4.md` § Proposed decisions): an explicit `tab` never moves
+the cursor (only `browser_select_tab`/`browser_new_tab` do); no `tab` → the cursor, or one shared
+first-touch `tabs.claim {active:true}`; the cursor is lost on a 4002 `reconnected` and on a new
+client, and the next untargeted result carries a one-line notice once; it is not cleared by
+`TAB_GONE`/`tabGone`; `browser_select_tab`/`browser_close_tab` with no `tab` return an error without
+calling anything; network tools keep "all"/"active" and drop the numeric form from the MCP schema
+(handles replace Chrome ids, T4.3); an untargeted listing keeps the `Network — active tab:` label;
+`browser_status` prints `Active tab: [T<n>] …` from `current`. The T4.2 fixtures run in one
+global-realm JSDOM shared by the capture script and the test; the baseline is
+`sdk/test/fixtures/baseline-51de800.json`, captured once and re-captured identically by the verifier.
+**Why:** spec §6.5/§8.3 (the cursor does not follow the human), #43, #57, NET-1's regression text.
+**Instead of:** an explicit `tab` moving the cursor; re-claiming the human's tab when the cursor's tab
+closes; vitest's jsdom environment for the capture.
+**Revisit if:** Step 8 adds `browser_use_active_tab`; a row shows an agent acting on an old handle
+after a restart it was not told about.
+**By:** Claude
+
 ### 2026-10-22 · T3's snapshot fields and capture rules (#58)
 **Decided:** Snapshot elements (0.7): `depth` counts listed ancestors across open shadow roots and
 frames; `frame` is the 1-based order of entered same-origin frames (absent at top level); `disabled`

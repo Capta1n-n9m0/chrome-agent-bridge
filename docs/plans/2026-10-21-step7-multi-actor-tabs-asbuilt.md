@@ -199,3 +199,40 @@ One section per stage, appended at stage close, never rewritten; corrections are
 ### Open decisions for the user
 - None new. Open NIT/MINOR: T3 verifier V4 (a timed-out capture's restore can undo a later
   `focusTab`) — a T5 watch item.
+
+## Stage T4 — SDK formatters + MCP pass-through · 2026-10-22 · verifier: PASS-with-notes · commit 138c7f6
+
+### Contracts (binding forward)
+- Formatters in `sdk/src/format/{snapshot,network}.ts`, exported through the SDK's `./format` subpath
+  (#46); `sdk/src/index.ts` keeps its five exports. Byte-identical to the baseline at `51de800`:
+  `sdk/test/fixtures/baseline-51de800.json` (23 snapshot, 12 network, 11 helper fixtures), compared
+  with `toBe`; the verifier's fresh re-capture matched.
+- `NetworkRequestsResult.text` removed (#49).
+- MCP: 22 tools (`browser_focus_tab` added); 18 schemas with `tab: z.string().optional()`; a cursor
+  (`mcp/src/cursor.ts`) claimed on first touch, lost on a 4002 reconnect or a new client with a
+  one-time notice (#59); `browser_select_tab` claims, never activates; `browser_list_tabs` prints
+  `T3* [owner] Title — url`; `TAB_HELD` shows the owner's actor name. `lifecycle.ts` untouched.
+- Cross-package test `mcp/test/multi-actor.test.ts`: real daemon + SDK + MCP over `ws` on port 0 with
+  a fake proto:2 extension.
+
+### Decisions taken
+- #59, #60.
+
+### Deviations from the phase doc
+- None beyond the decisions. `docs/setup.md` and `docs/e2e-test-plan.md` updated (T4.5), with dated
+  notes on rows whose output changes by design; no recorded result changed.
+
+### Estimates vs actuals
+| Item | Estimate | Actual | Source |
+|---|---|---|---|
+| Wall time | 2.5 h (audit ~45 min) | ~56 min | agent run |
+| Tests | ≥ 793 + new | 934 passed / 59 files | verifier clean worktrees |
+| Tools | 22 | 22 | `grep -c "server.tool("` |
+
+### Needs the user's keyboard
+- `/mcp` or a fresh session for any interactive Claude session (its MCP bundle predates T4), after
+  the T5 build.
+
+### Open decisions for the user
+- None new. Follow-ups: dead network formatters in `extension/src/network-log.ts` (T6 or Step 8);
+  the cursor notice's wording on a non-4002 close; a clean-tree guard in `capture-baseline.ts`.
