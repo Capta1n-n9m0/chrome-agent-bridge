@@ -8,11 +8,17 @@
 // never the data. How it fails: `FAILED — …` and exit 1 (no status, a missing or bad chunk, a mismatch,
 // an existing file without --overwrite); exit 2 on bad arguments.
 //
-//   npm run recipe -- recipes/blackboard/assemble-mcp.ts <transcript.jsonl> <course-id|course-key> [--overwrite]
+//   npm run recipe -- recipes/blackboard/assemble-mcp.ts <transcript.jsonl> <course-id|course-key> [--overwrite] [--held]
+//
+// `--held` (added 2026-10-23, #103): the transcript is of the held-export plan (`export-grades.ts
+// <course> --mcp-plan --hold`): STATUS and CHUNK on the key `held-<course>` and no START, which this
+// never needed (it reads only the STATUS and CHUNK results). Still 0 bad results expected, and the
+// assembled text must have the held export's STATUS length, bytes and sha256 (verifyTransfer).
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { assemble, exportFileName, sha256Hex, verifyTransfer } from "./export-file.js";
 import { parseCourseArg, Refusal } from "./guard.js";
+import { heldKey } from "./held.js";
 import { exportKey } from "./readonly.js";
 import { parseTranscriptChunks } from "./transcript.js";
 import { REPO } from "./session.js";
@@ -22,16 +28,18 @@ const say = (msg: string): void => console.log(`${new Date().toISOString()} asse
 function main(): void {
   const args = process.argv.slice(2);
   const overwrite = args.includes("--overwrite");
+  const held = args.includes("--held");
   const pos = args.filter((a) => !a.startsWith("--"));
   if (args.includes("--help") || pos.length !== 2) {
-    console.log("recipes/blackboard/assemble-mcp.ts <transcript.jsonl> <course-id|course-key> [--overwrite]");
+    console.log("recipes/blackboard/assemble-mcp.ts <transcript.jsonl> <course-id|course-key> [--overwrite] [--held]");
     if (!args.includes("--help")) process.exitCode = 2;
     return;
   }
   const [transcript, courseArg] = pos as [string, string];
   const course = parseCourseArg(courseArg).label;
-  const key = exportKey("mcp", course);
+  const key = held ? heldKey(course) : exportKey("mcp", course);
   const r = parseTranscriptChunks(readFileSync(transcript, "utf8").split(/\r?\n/), key);
+  if (held) say(`held export: key ${key} (no START expected)`);
   say(`transcript: status ${r.status ? "found" : "missing"}, ${r.chunks.length} chunk result(s), ${r.errors.length} bad result(s)`);
   for (const e of r.errors) say(`bad result: ${e}`);
   if (!r.status) throw new Error(`no "done" status result for ${key} in the transcript`);

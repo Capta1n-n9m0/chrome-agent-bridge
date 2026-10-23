@@ -23,19 +23,32 @@
 //   npm run recipe -- recipes/blackboard/export-grades.ts <course-id|course-url|course-key> [--overwrite] [--keep-open] [--timeout <s>] [--bbjs <path>]
 //   npm run recipe -- recipes/blackboard/export-grades.ts <course-id> --dry-run
 //   npm run recipe -- recipes/blackboard/export-grades.ts <course-id> --mcp-plan     (prints the MCP leg's expressions; connects to nothing)
+//
+// Held-export mode (added 2026-10-23, decision #103, before S6.3's re-run; recipes/blackboard/held.ts):
+// `--hold` makes the SDK leg build the export ONCE under the key `held-<course>`, read it as before, and
+// leave it in page memory with the tab open (--keep-open semantics); `--mcp-plan --hold` prints STATUS
+// and CHUNK on that same key and no START, so the MCP leg reads the same export and never rebuilds it;
+// `--drop-held <T#>` deletes the held copy after both reads (then s6.ts close-bb-tab as before). The page
+// code is the same START/STATUS/CHUNK/drop as before (readonly.ts): only who starts it and the key change.
+//   npm run recipe -- recipes/blackboard/export-grades.ts <course> --hold [--overwrite] [--timeout <s>] [--bbjs <path>] [--dry-run]
+//   npm run recipe -- recipes/blackboard/export-grades.ts <course> --mcp-plan --hold
+//   npm run recipe -- recipes/blackboard/export-grades.ts <course> --drop-held <T#> [--dry-run]
 import { existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { BridgeError, connect, type Tab } from "@bridge/sdk";
 import { chunkRanges, exportFileName, MCP_CHUNK_CHARS, MCP_MAX_CHARS, mcpLegPlan, SDK_CHUNK_CHARS, sha256Hex, verifyTransfer } from "./export-file.js";
-import { parseBbArgs, parseCourseArg, refuseKeyDryRun, Refusal } from "./guard.js";
+import { checkHoldFlags, parseBbArgs, parseCourseArg, refuseKeyDryRun, Refusal } from "./guard.js";
+import { checkHeldTab, droppedLine, heldFoundLine, heldKey, heldLine, keptHeldLine, mcpPlanLines, type HeldStatus } from "./held.js";
 import { chunkExpression, dropExpression, exportKey, startExpression, statusExpression } from "./readonly.js";
 import { bootBb, describeSource, openCourse, prepare, REPO, resolveCourse } from "./session.js";
+import { listTabs } from "../t5-lib.js";
 
 const NAME = "export-grades";
 const say = (msg: string): void => console.log(`${new Date().toISOString()} ${NAME}: ${msg}`);
 const HELP = `recipes/blackboard/export-grades.ts <course-id|course-url|course-key> [--overwrite] [--keep-open] [--timeout <s>] [--bbjs <path>]
 recipes/blackboard/export-grades.ts <course-id> --dry-run [--fixture-origin http://localhost:<port>]
 recipes/blackboard/export-grades.ts <course-id> --mcp-plan
+recipes/blackboard/export-grades.ts <course> --hold [--dry-run]   |   <course> --mcp-plan --hold   |   <course> --drop-held <T#> [--dry-run]
 Reads the course gradebook (read-only) into exports/<course>-<date>.json; prints counts and sha256 only.`;
 
 interface Status {
@@ -56,21 +69,29 @@ function safeError(e: string | undefined): string {
   return m ? `HTTP ${m[1]} from Blackboard (body withheld)` : "error (message withheld: it may carry page data)";
 }
 
-function mcpPlan(arg: string | undefined): void {
-  const c = parseCourseArg(arg);
-  const course = c.label;
-  const key = exportKey("mcp", course);
-  console.log(`# SDK-7 MCP leg for course ${course} — paste into the actor's prompt (S6-wave-sheet.md, SDK-7)`);
-  console.log(`# key ${key}; chunk size ${MCP_CHUNK_CHARS} characters (the MCP prints a string result raw, capped at 20 000); at most ${MCP_MAX_CHARS} characters (${MCP_MAX_CHARS / MCP_CHUNK_CHARS} chunks), else the MCP leg is not measured`);
-  if (c.kind === "key") console.log(`# a course key: START carries no course id; it runs only on the tab the SDK leg kept open (--keep-open), which carries the label mark`);
-  console.log("START:");
-  // An id names bb.C itself; a key label runs on the SDK leg's marked tab (bbC null: no id in the plan).
-  console.log(c.kind === "key" ? startExpression(key, course, { bbC: null }) : startExpression(key, course));
-  console.log("STATUS:");
-  console.log(statusExpression(key));
-  console.log(`CHUNK (for start = 0, ${MCP_CHUNK_CHARS}, ${2 * MCP_CHUNK_CHARS}, … while start < length; end = start + ${MCP_CHUNK_CHARS}):`);
-  console.log(chunkExpression(key, 0, MCP_CHUNK_CHARS));
-  console.log(chunkExpression(key, MCP_CHUNK_CHARS, 2 * MCP_CHUNK_CHARS));
+// The plan's lines moved unchanged to held.ts (mcpPlanLines, #103), which adds the held plan (no START).
+function mcpPlan(arg: string | undefined, held: boolean): void {
+  for (const line of mcpPlanLines(parseCourseArg(arg), { held })) console.log(line);
+}
+
+/** `--drop-held <T#>` (#103): the held export found, deleted, and STATUS gone after; the tab stays open. */
+async function dropHeld(course: string | undefined, handle: string, dryRun: boolean): Promise<void> {
+  const arg = parseCourseArg(course);
+  refuseKeyDryRun(arg, dryRun);
+  const key = heldKey(arg.label);
+  const client = await connect({ name: NAME, failureReports: false });
+  try {
+    const row = (await listTabs(client)).find((t) => t.tab === handle);
+    checkHeldTab(row, handle, arg, dryRun);
+    const tab = await client.claim(handle);
+    say(heldFoundLine(key, handle, await tab.evaluate<HeldStatus | null>(statusExpression(key))));
+    const r = await tab.evaluate<unknown>(dropExpression(key));
+    say(droppedLine(key, handle, r, await tab.evaluate<HeldStatus | null>(statusExpression(key))));
+    await tab.release();
+    say(`released ${handle} (left open: close it with s6.ts close-bb-tab ${handle})`);
+  } finally {
+    client.close();
+  }
 }
 
 async function waitDone(tab: Tab, key: string, timeoutS: number): Promise<Status> {
@@ -93,9 +114,14 @@ async function main(): Promise<void> {
     console.log(HELP);
     return;
   }
+  checkHoldFlags(args);
   if (args.mcpPlan) {
     refuseKeyDryRun(parseCourseArg(args.course), args.dryRun);
-    mcpPlan(args.course);
+    mcpPlan(args.course, args.hold);
+    return;
+  }
+  if (args.dropHeld !== undefined) {
+    await dropHeld(args.course, args.dropHeld, args.dryRun);
     return;
   }
   const p = prepare(args);
@@ -111,7 +137,7 @@ async function main(): Promise<void> {
     const version = await bootBb(tab, p, courseId, say);
     say(`bb.VERSION = ${version ?? "(none)"}`);
     if (version === null) throw new Error("bb did not load (no bb.VERSION)");
-    const key = exportKey("sdk", p.label);
+    const key = args.hold ? heldKey(p.label) : exportKey("sdk", p.label);
     const t0 = Date.now();
     await tab.evaluate(startExpression(key, p.label, { bbC: courseId }), { timeoutMs: 15_000 });
     const s = await waitDone(tab, key, args.timeoutS);
@@ -130,14 +156,18 @@ async function main(): Promise<void> {
     }
     verifyTransfer(text, { length: s.length!, bytes: s.bytes!, sha256: s.sha256! });
     say(`pulled ${ranges.length} chunk(s); length, bytes and sha256 equal the page's: yes`);
-    await tab.evaluate(dropExpression(key));
+    if (!args.hold) await tab.evaluate(dropExpression(key));
     mkdirSync(join(REPO, "exports"), { recursive: true });
     const tmp = `${file}.part`;
     writeFileSync(tmp, text, "utf8");
     renameSync(tmp, file);
     say(`written ${relative(REPO, file)} — ${Buffer.byteLength(text, "utf8")} bytes, sha256 ${sha256Hex(text)}`);
     say(`SDK-7 (SDK leg${p.dryRun ? ", dry run" : ""}) PASS — ${s.columns} columns, ${s.grades} grade records; file sha256 = page sha256`);
-    if (args.keepOpen) {
+    if (args.hold) {
+      say(heldLine(key, tab.handle, p.label));
+      say(keptHeldLine(tab.handle));
+      tab = undefined;
+    } else if (args.keepOpen) {
       say(`kept ${tab.handle} open with bb loaded for the MCP leg (run with --mcp-plan for its expressions); released when this script exits`);
       tab = undefined;
     }

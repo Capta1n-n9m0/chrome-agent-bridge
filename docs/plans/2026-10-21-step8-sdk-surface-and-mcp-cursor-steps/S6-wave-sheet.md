@@ -294,6 +294,60 @@ reload…", accepted by #99 (3)), and before every `reload-extension.ps1` call t
   classifier stop ⇒ recorded as observed (the step where it stopped, counts only), **never re-tuned** (no other
   chunk size, cap, prompt split or rerun under a changed rule). At the end `Close-T5Window $Wb.Hwnd`. Expected
   texts (§4.19 SDK-7 with its #102 note), pass rules, the evidence rules and #96/#98 are unchanged.*
+  *2026-10-23 (S6.3 re-run on one held export, #103, before its first line): decisions.md · 2026-10-23 · S6.3
+  compares one in-page export read through both paths (#103). The page builds the export once (the SDK leg,
+  `--hold`), both legs read that held export, the files are compared by hash, and the held copy is dropped
+  after both reads (§4.19 SDK-7's #103 note has the expected lines). Run 12's S6.3 FAIL stays recorded.
+  Procedure, in this order:
+  (1) **Set-up** as P3-a/P3-b/P3-c with a **fresh** `$env:S6_OUT` (`Test-Path` → `False` first) and the 8080
+  fixture server (hidden). A driver-opened fixture window: `$Wb = Open-T5Window "${U}s6-bb"`,
+  `Set-T5Foreground $Wb.Hwnd` → `True`, `B1` → `<T#> fixture` (else `Set-T5Foreground` once more, then stop
+  and record). Then `Rcp recipes/s6.ts stale-check` is the **first** result line (R-b's rules; the daemon
+  build = the stale check's, P3-c). Steps 1–2 of "SDK-6/SDK-7 live" are not run: no `bb-login.ps1`, and
+  SDK-6's addendum PASS stands.
+  (2) **Set-up step: earlier export files moved aside.** If `exports\pp1-<date>.json` or
+  `exports\pp1-<date>-mcp.json` exists from an earlier run on the same UTC date (`export-grades.ts` refuses an
+  existing SDK file and `assemble-mcp.ts` an existing `-mcp` file without `--overwrite`), each is renamed in
+  `exports\`, never deleted or overwritten (e.g. `pp1-<date>.run<n>.json`, `pp1-<date>-mcp.run<n>.json`). Its
+  size and `Get-FileHash` are recorded before the rename, and `git check-ignore -v` on the new name prints
+  `.gitignore:<n>:exports/` after. No registered command takes `--overwrite`.
+  (3) **The SDK leg, hold mode [SH].** `B1` (→ `<T#> fixture`, `$Wb` current), then
+  `Rcp recipes/blackboard/export-grades.ts pp1 --hold`. Its resolution lines confirm the login (branch (a) or
+  (b)). A `REFUSED — …` ⇒ SDK-7 **"waits for the user"**, with no login attempt and nothing pressed or typed.
+  Note `<T#>`, the `held export under key held-pp1 in <T#> …` line and the `MCP leg size:` line (`<L>`, `<k>`,
+  measurable). `measurable: no` ⇒ the MCP leg and S6.3 are "not measured", then go to (9).
+  (4) **The plan [SH].** `npm run -s recipe -- recipes/blackboard/export-grades.ts pp1 --mcp-plan --hold > "$env:S6_OUT\sdk7-plan.txt"`.
+  Then `Select-String -Path "$env:S6_OUT\sdk7-plan.txt" -Pattern '_\d+_\d+' -Quiet` → `False` (no course id)
+  and `Select-String -Path "$env:S6_OUT\sdk7-plan.txt" -Pattern '^START:' -Quiet` → `False` (no START). The
+  prompts are built from the plan's STATUS line and its first CHUNK line, with `slice(0, 8000)` →
+  `slice(a, a+8000)` (the template must reproduce the plan's second CHUNK line). The file's encoding is read
+  from its first bytes: Windows PowerShell 5.1's `>` wrote UTF-16LE (`ff fe`) in the builder's `-NoProfile`
+  dry run, and UTF-8 with a BOM in the #102 run.
+  (5) `$F0 = FailPng` (failures folder before).
+  (6) **Actor M, fresh [UI].** `node --import tsx recipes/t5-actor.ts start M --tools 'browser_select_tab,browser_evaluate'`.
+  Every `send` also uses `node --import tsx recipes/t5-actor.ts send M "…"`, not `npx`: the `npx.exe` shim's
+  `cmd.exe` refused a long prompt in the #102 run. Prompts go one `send` per block:
+  **M1** = `1. browser_select_tab with {"tab":"<T#>"} 2. browser_evaluate with {"expression": <the STATUS text>}`.
+  The export is already done, so M1's STATUS is expected done. If it is not, M2 resends the STATUS alone, one
+  `send` each, **at most 60 STATUS calls in all**, until `"state": "done"` or `"state": "error"`. Then M3… sends
+  **one CHUNK per `send`** (`<k>` sends). **No START is sent** (M must not rebuild the export). Then
+  `node --import tsx recipes/t5-actor.ts end M` and `$F1 = FailPng`.
+  (7) **Failures folder [SH].** The new names (`$F1` minus `$F0`) are counted (expected 0) and each is
+  deleted unopened. The names are not recorded.
+  (8) **Assemble [SH].** `Rcp recipes/blackboard/assemble-mcp.ts "$env:T5_ACTORS\M\out.jsonl" pp1 --held`
+  (`0 bad result(s)`, `= the page's: yes`).
+  (9) **S6.3 [SH].** `Get-FileHash exports\pp1-<date>.json, exports\pp1-<date>-mcp.json -Algorithm SHA256` →
+  equal. `git check-ignore -v` for both paths → both printed. Only the hash is recorded.
+  (10) **Drop [SH]**, after both reads: `Rcp recipes/blackboard/export-grades.ts pp1 --drop-held <T#>` → the
+  `held export held-pp1 in <T#>: done, …` line, `dropped the held export held-pp1 from <T#>; STATUS on
+  held-pp1 now: gone (null)` and exit 0. If the MCP leg did not run, drop right after (4).
+  (11) `Rcp recipes/s6.ts close-bb-tab <T#>` → `closed <T#> (the Blackboard recipe's course tab)`. Step 11's
+  data hygiene follows, and at the end `Close-T5Window $Wb.Hwnd`.
+  Anything truncated, stopped or denied is recorded as observed, with the step where it stopped and counts
+  only. That covers a truncated chunk, an actor that cannot finish the loop, a context or classifier stop, a
+  permission denial, and a STATUS `null` (the held export gone). It is **never re-tuned**: no other chunk
+  size, cap, prompt split, key, or rerun under a changed rule. The expected texts (§4.19 SDK-7 with its #102
+  and #103 notes), the pass rules, the evidence rules and #96/#98 are otherwise unchanged.*
 - **P3-i. SM-1 + its restart, last** — "SM-1 and MUX-8" below with these changes: **MUX-8 is not re-run** (Part 2's
   PASS stands; recorded "MUX-8: not re-run in Part 3"), so actor X is not started and steps 5 and 10 are skipped;
   step 3's `sm1.ps1` is `npm run -s recipe -- recipes/s6.ts sm1 --observed "<S6_OUT>\sm1-observed.json" *> "<S6_OUT>\sm1.out"`

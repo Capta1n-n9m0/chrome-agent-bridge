@@ -208,10 +208,14 @@ export interface BbArgs {
   timeoutS: number;
   mcpPlan: boolean;
   help: boolean;
+  /** export-grades.ts (#103): build the export once and hold it in the page for both legs. */
+  hold: boolean;
+  /** export-grades.ts (#103): drop the held export from this tab (`T<n>`) after both reads. */
+  dropHeld?: string;
 }
 
-const VALUE_FLAGS = new Set(["--bbjs", "--fixture-origin", "--timeout"]);
-const BOOL_FLAGS = new Set(["--dry-run", "--keep-open", "--overwrite", "--mcp-plan", "--help", "-h"]);
+const VALUE_FLAGS = new Set(["--bbjs", "--fixture-origin", "--timeout", "--drop-held"]);
+const BOOL_FLAGS = new Set(["--dry-run", "--keep-open", "--overwrite", "--mcp-plan", "--hold", "--help", "-h"]);
 
 /** The flags of boot-bb.ts and export-grades.ts (each uses its own subset; unknown flags are refused). */
 export function parseBbArgs(argv: string[]): BbArgs {
@@ -223,6 +227,7 @@ export function parseBbArgs(argv: string[]): BbArgs {
     timeoutS: DEFAULT_TIMEOUT_S,
     mcpPlan: false,
     help: false,
+    hold: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
@@ -232,7 +237,10 @@ export function parseBbArgs(argv: string[]): BbArgs {
       i++;
       if (a === "--bbjs") out.bbjs = v;
       else if (a === "--fixture-origin") out.fixtureOrigin = v;
-      else {
+      else if (a === "--drop-held") {
+        if (!/^T\d+$/.test(v)) throw new Refusal("--drop-held needs the tab handle the SDK leg printed (T<n>)");
+        out.dropHeld = v;
+      } else {
         const n = Number(v);
         if (!Number.isInteger(n) || n < 1 || n > 3600) throw new Refusal("--timeout is whole seconds from 1 to 3600");
         out.timeoutS = n;
@@ -242,6 +250,7 @@ export function parseBbArgs(argv: string[]): BbArgs {
       else if (a === "--keep-open") out.keepOpen = true;
       else if (a === "--overwrite") out.overwrite = true;
       else if (a === "--mcp-plan") out.mcpPlan = true;
+      else if (a === "--hold") out.hold = true;
       else out.help = true;
     } else if (a.startsWith("-")) {
       throw new Refusal(`unknown flag ${a}`);
@@ -252,6 +261,16 @@ export function parseBbArgs(argv: string[]): BbArgs {
     }
   }
   return out;
+}
+
+/**
+ * export-grades.ts's mode combinations (#103): `--drop-held` runs alone (the course, and `--dry-run` for the
+ * stub); `--hold` builds and keeps the export (it implies --keep-open), `--mcp-plan --hold` plans the reads.
+ */
+export function checkHoldFlags(a: BbArgs): void {
+  if (a.dropHeld !== undefined && (a.hold || a.mcpPlan || a.keepOpen || a.overwrite || a.bbjs !== undefined)) {
+    throw new Refusal("--drop-held runs alone: the course and the handle (and --dry-run for the stub)");
+  }
 }
 
 /** The `VERSION` a bb.js source declares (`const VERSION = '…'`), or null. */

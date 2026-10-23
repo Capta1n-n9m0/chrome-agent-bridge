@@ -67,7 +67,8 @@ export function resolvePath(op: ReadOp, col?: string): string {
 /** A course as the recipes print and file it: an id `_N_N`, or a lower-case key label (`pp1`, #96). */
 export const COURSE_LABEL_RE = /^(_\d+_\d+|[a-z][a-z0-9]{0,31})$/;
 
-export function exportKey(leg: "sdk" | "mcp", course: string): string {
+/** `held` (added 2026-10-23, #103): the one export the SDK leg builds with `--hold` and both legs read. */
+export function exportKey(leg: "sdk" | "mcp" | "held", course: string): string {
   if (!COURSE_LABEL_RE.test(course)) throw new Error("not a course id or label");
   return `${leg}-${course}`;
 }
