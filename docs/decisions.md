@@ -61,6 +61,22 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-23 · A probe of the failure-report screenshot runs before any row that could attach a non-fixture tab (#97)
+**Decided:** before REP-1, SDK-7's MCP leg or any other row whose failure report could capture a page
+other than a fixture, the resumed S6 wave runs a pre-registered probe row (REP-0): a deliberate
+attach-set failure on a background fixture tab while page-side `visibilitychange` timestamps are logged
+on that fixture tab and on the "human" fixture tab, and the report PNG's hue is checked against the
+fixture's bar (Run 9's method, with a positive control). PASS = the failed tab went `visible` during the
+capture and the PNG shows its bar. FAIL = the capture did not switch, or showed another tab → the rows
+that could attach a non-fixture page are not run, and the failure becomes a proposed decision (a code
+fix in a later stage, never in the wave). The probe's expected text is committed before it runs. The
+sheet's PowerShell helper `R` is renamed first (it collides with the `Invoke-History` alias).
+**Why:** S6 live verifier MINOR-1: SDK-2/SDK-3's report screenshots returned 190–220 ms after the tab
+opened, where a background capture takes ~1.5 s (R9-SCREEN-1), so the report may not switch tabs and
+could capture the human's visible tab — a privacy risk on a real site. The PNGs were deleted unopened.
+**Instead of:** running REP-1 and the Blackboard MCP leg unprobed.
+**By:** Claude
+
 ### 2026-10-23 · The user grants the pp1 course for SDK-6/SDK-7 and one Chrome restart for SM-1 (#96)
 **Decided:** SDK-6 and SDK-7 run on the user's Blackboard course "pp1"; the login uses Chrome's autofilled
 credentials, which are never read, typed, printed, logged or recorded. SM-1 may restart Chrome once

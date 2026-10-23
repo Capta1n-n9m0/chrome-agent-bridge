@@ -46,7 +46,7 @@ the pre-registered rules win.
 - Commits: an explicit pathspec of the stage's own files; never `dist/`, `bridge.token`, `.env`,
   `exports/`, a failure screenshot; never `git add -A`; never push. Trailers:
   `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` and
-  `Claude-Session: https://claude.ai/code/session_01BkTidDEqcrGQDLJF2R2B8L`. A classifier denial is
+  `Claude-Session: https://claude.ai/code/session_01PxETt6oU7BgdVRrFFdDNNc`. A classifier denial is
   reported, never retried or worked around.
 
 ## ESCALATION list (verbatim)

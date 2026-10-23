@@ -113,3 +113,8 @@
   propagator, gate, session-closeout, phase-kickoff.
 - Stages closed: Stage 0, S0, S1, FE (policy focusFirst, #89), S2, S3, S4, S2b, S5. Tests 1654 / 83 at
   23b878f. Open decisions for the user: #71–#76, #78–#84, #87, #90, #91, #93–#95 (decisions.md list).
+
+## 2026-10-23 — resumed by the user ("there shouldn't be any permission issues")
+
+- New session (Claude-Session trailer updated in briefs/common.md). #97 records the REP-0 screenshot
+  probe and the `R` rename. A fresh S6 step agent resumes from S6.ledger.md at step 8.
