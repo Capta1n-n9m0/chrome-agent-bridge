@@ -88,3 +88,15 @@
   0.6 literally; status lines; schemas; MCP reports); #59 updated.
 - Asked the user (2026-10-23, in chat) for SDK-6/SDK-7's course and SM-1's Chrome-restart grant; no
   answer yet. S6 dispatched; its live part asks/records per the kickoff.
+
+## 2026-10-23 — S6 live stopped by a classifier denial (PII Data Handling)
+
+- Pre-run part 23b878f (expected text, recipes, sheet; tests 1534/79 → 1654/83). Live part 8d77a35:
+  reload exit 0, stale check NEW BUILD (daemon 597d6c28…), 7 rows PASS (S6-STALE, SDK-6D, SDK-7D,
+  SDK-2…5), 0 FAIL. At SDK-1's second actor send (a fixture snapshot) the auto-mode classifier denied
+  the driver's command `[PII Data Handling]`; not retried. 27 rows not run, incl. SDK-6/7 on pp1 (no
+  login attempted) and SM-1 (no restart; #96's grant unused). Fresh verifier PASS-with-notes, hygiene 0.
+- MINOR-1: SDK-2/3 report screenshots returned in ~0.2 s (a background capture takes ~1.5 s) — the
+  report may have captured without switching, possibly the human's visible tab. PNGs deleted unopened.
+  A probe row runs before REP-1 or any Blackboard MCP leg (#97).
+- Waits for the user: the classifier denial.
