@@ -1989,6 +1989,32 @@ SDK-7 [SDK leg P; MCP leg and S6.3 not measured — 418406 characters over the c
 Log hygiene: '://' count 0  token count 0  withheld-line count 0   (232 lines; course ids 0, ada.blackboard 0)
 ```
 
+**Part 3 addendum, MCP leg and S6.3 — 2026-10-23, 19:04–19:30 UTC (#102).** *Run by the MCP-leg driver under the wave
+sheet's dated note "SDK-7 MCP-leg re-run, #102" (pre-run commit `7c16a00`, cap 600 000). The driver opened a fixture
+window (`?t5=s6-bb`, `B1` → `T388 fixture`); `bb-login.ps1` was not run; the course lookup confirmed the login (branch
+(b)). Attempt 2's export file was renamed aside first, so the registered command ran without `--overwrite`. The
+SDK leg passed (`measurable: yes`, 418 561 characters: one grade record more than attempt 2). Actor M sent M1, 1 STATUS and
+53 chunks, all 53 in shape. Its first loop (`npx.exe` → `cmd.exe`: `The command line is too long.`) delivered nothing to
+the actor and was re-run in a fresh actor through `node --import tsx`. The MCP transfer assembled whole (`0 bad`,
+`= the page's: yes`), but the MCP leg's export differs from the SDK leg's (3 of 77 column entries; two SDK reads 20 min
+apart differ too), so by the written rule the MCP leg and S6.3 FAIL. The finding is that pp1's gradebook changed between
+the reads. No write, no denial, 0 failure PNGs. Record: `S6-run-record.md` § "Part 3 addendum" → "MCP leg and S6.3";
+`S6-daemon-log.txt` now 256 lines.*
+
+```
+Date: 2026-10-23 (UTC 19:04–19:30)  HEAD: 7c16a00   daemon build: 597d6c28…34da3f (pid 28664, spawned by the driver's B1)   dist unchanged
+S6-STALE [P] (STALE-CHECK NEW BUILD, the first result line; no reload)
+SDK-7 SDK leg [P] (branch (b); 77 columns, 791 grade records, 418614 bytes, sha256 08169d21…a190b = file; MCP leg size 418561 → 53 chunks, measurable: yes)
+SDK-7 MCP leg [F] (select + START as expected; STATUS done after 1 send, length/bytes/sha256 ≠ the SDK leg's (418589/418642/bb4d7a08…); 53/53 chunks in shape; assemble 53 chunks, 0 bad, = the page's: yes; 0 new failure PNGs)
+S6.3 [F] (08169D21…A190B ≠ BB4D7A08…C9395; both paths ignored, neither committed) — finding: the course's gradebook changed between the reads
+Log hygiene: '://' count 0  token count 0  withheld-line count 0   (256 lines; course ids 0, ada.blackboard 0)
+```
+
+*2026-10-23 (step agent, live verifier r5 MINOR-1): "The finding is that pp1's gradebook changed between the reads"
+above and "finding: the course's gradebook changed between the reads" in the summary are an inference, not a measured
+fact. It is consistent with two SDK reads 20 minutes apart also differing, and with the differing entries differing by
+value, not by order; it is not proven (no content was read). No recorded line or verdict is changed.*
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.
