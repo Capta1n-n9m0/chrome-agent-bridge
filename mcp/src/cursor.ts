@@ -1,8 +1,8 @@
 // The MCP's tab cursor (Step 7 T4): the tab an untargeted tool acts on. Spec §8.3 as far as Step 7
 // goes — on the first tab-touching tool with no `tab`, claim the human's active tab
-// (`tabs.claim {active:true}`) and keep it; the human switching tabs does not move it. Only
-// browser_select_tab and browser_new_tab move it (`set`). Step 8 adds browser_use_active_tab and the
-// status line.
+// (`tabs.claim {active:true}`) and keep it; the human switching tabs does not move it. Three tools
+// move it (`set`): browser_select_tab, browser_new_tab and, since Step 8 S5, browser_use_active_tab —
+// the one way it follows the human (phase doc 0.6). browser_status shows it and never claims.
 //
 // A daemon restart renumbers handles, so the cursor is lost (phase-doc 0.2, amended and corrected;
 // decisions.md · 2026-10-21 #11): on a 4002 reconnect (`on("reconnected")`) and when BridgeLink adopts
@@ -51,7 +51,7 @@ export class TabCursor {
     return this.handle;
   }
 
-  /** Moves the cursor (browser_select_tab, browser_new_tab). A pending loss no longer matters. */
+  /** Moves the cursor (browser_select_tab, browser_new_tab, browser_use_active_tab). A pending loss no longer matters. */
   set(tab: string): void {
     this.handle = tab;
     this.lostFlag = false;

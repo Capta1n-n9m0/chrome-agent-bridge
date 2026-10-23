@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./token": "./src/token.ts",
     "./download": "./src/download.ts",
-    "./format": "./src/format/index.ts"
+    "./format": "./src/format/index.ts",
+    "./report": "./src/report.ts"
   },
   "dependencies": {
     "@bridge/shared": "*",

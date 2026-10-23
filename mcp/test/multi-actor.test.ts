@@ -1,5 +1,5 @@
 // Step 7 T4, cross-package: the real daemon host (handles, leases, intercept) in process on
-// 127.0.0.1 port 0, the real SDK `connect()`/BridgeClient, BridgeLink, TabCursor and the 22 tools,
+// 127.0.0.1 port 0, the real SDK `connect()`/BridgeClient, BridgeLink, TabCursor and the 23 tools,
 // against a fake proto:2 extension over real `ws`. Two MCP actors with different names share one
 // daemon; then the daemon is restarted on the same port, on both the non-4002 path (a fresh client
 // from BridgeLink) and the 4002 path (the same client's reconnect), and the cursor-lost notice appears.
@@ -218,11 +218,11 @@ describe("Step 7 T4 — two MCP actors over the real daemon and SDK", () => {
     expect(held.message).toMatch(/^tab T\d+ is held by "claude-code #1001" since \d\d:\d\d:\d\d — use browser_new_tab, or browser_list_tabs to pick a free tab$/);
     expect(ext.methods()).not.toContain("click");
 
-    // B opens its own tab (active:true, 0.8) and works there.
+    // B opens its own tab and works there; with no cursor yet it opens in the background (0.6, F26).
     const opened = await b.run("browser_new_tab", { url: "http://localhost:8080/other.html" });
-    expect(opened).toMatch(/^Opened tab T\d+$/);
-    const bTab = opened.slice("Opened tab ".length);
-    expect(ext.received.find((r) => r.method === "newTab")!.params).toEqual({ url: "http://localhost:8080/other.html", active: true });
+    expect(opened).toMatch(/^Opened tab T\d+ \(in the background — browser_focus_tab shows it\)$/);
+    const bTab = opened.match(/^Opened tab (T\d+)/)![1];
+    expect(ext.received.find((r) => r.method === "newTab")!.params).toEqual({ url: "http://localhost:8080/other.html", active: false });
     expect(await b.run("browser_click", { ref: "e1" })).toBe("Clicked e1");
     expect(ext.received.find((r) => r.method === "click")!.params).toEqual({ ref: "e1", trusted: false, tabId: 200 });
 

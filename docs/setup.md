@@ -117,29 +117,30 @@ automation in a window of its own and verifies it; see `docs/e2e-test-plan.md` �
 
 ## 5. Use it
 
-With the daemon running and the extension connected, call the 22 tools from your client. Every tool
+With the daemon running and the extension connected, call the 23 tools from your client. Every tool
 marked *tab* also takes an optional `tab` argument — see [Tabs](#tabs) below; without it the tool
 acts on **this session's tab**.
 
 | Tool | What it does |
 |---|---|
-| `browser_status()` | Diagnose the bridge: daemon connected (build, clients by name)? extension connected? the human's active tab, by handle. Call it first when other tools fail |
+| `browser_status()` | Diagnose the bridge: daemon connected (build, clients by name)? extension connected? the human's active tab, by handle; this session's tab (`Cursor:`), and the human's tab again when it is a different one. Call it first when other tools fail |
+| `browser_use_active_tab()` | Make the tab you (the human) are looking at this session's tab. Claude calls it when you say "this tab" or "the tab I'm on" — the only way this session's tab follows you |
 | `browser_navigate(url)` *tab* | Navigate the tab |
 | `browser_snapshot()` *tab* | Accessibility outline of the tab with element refs |
 | `browser_screenshot(fullPage?)` *tab* | Screenshot (viewport; full-page via CDP when `fullPage:true`). A viewport shot of a background tab shows that tab for about 1.5 s, then puts your tab back — see [Screenshots](#screenshots) |
-| `browser_click(ref, trusted?)` *tab* | Click a ref; `trusted:true` forces real CDP input (shows the debugging banner) |
-| `browser_type(ref, text, submit?, trusted?)` *tab* | Type into a ref, optionally submit; `trusted:true` sends real CDP keystrokes (shows the debugging banner) |
+| `browser_click(ref \| locator, trusted?)` *tab* | Click a ref or a [locator](#locators); `trusted:true` forces real CDP input (shows the debugging banner) |
+| `browser_type(ref \| locator, text, submit?, trusted?)` *tab* | Type `text` into a ref or locator, optionally submit; `trusted:true` sends real CDP keystrokes (shows the debugging banner) |
 | `browser_press_key(key, trusted?)` *tab* | Press a key on the focused element; `trusted:true` sends a real CDP keystroke (shows the debugging banner) |
-| `browser_scroll(ref?, direction?)` *tab* | Scroll to a ref or up/down |
-| `browser_hover(ref)` *tab* | Hover a ref |
-| `browser_select_option(ref, values)` *tab* | Select option(s) in a `<select>` |
+| `browser_scroll(ref? \| locator?, direction?)` *tab* | Scroll to a ref or locator, or the page up/down |
+| `browser_hover(ref \| locator)` *tab* | Hover a ref or locator |
+| `browser_select_option(ref \| locator, values)` *tab* | Select option(s) in a `<select>` |
 | `browser_back()` / `browser_forward()` *tab* | History navigation |
-| `browser_wait_for(text?, seconds?, networkIdle?, idleMs?)` *tab* | Wait until text appears on the tab, for N seconds, or — with `networkIdle:true` — until the tab has made no network request for `idleMs` (default 500, max 10 s wait) |
+| `browser_wait_for(text?, seconds?, networkIdle?, idleMs?, locator?, state?)` *tab* | Wait until text appears on the tab, for N seconds, — with `networkIdle:true` — until the tab has made no network request for `idleMs` (default 500, max 10 s wait), or — with `locator` — until an element matching it is visible (`state:"hidden"`: until none is; max 10 s) |
 | `browser_list_tabs()` | List open tabs: handle, `*` on the human's active tab, the holding actor, title — URL |
 | `browser_select_tab(tab)` | Make `tab` this session's tab: claims it, **without** bringing it on screen |
 | `browser_focus_tab()` *tab* | Bring the tab on screen and focus its window — the only tool that changes what you see |
-| `browser_new_tab(url?)` / `browser_close_tab(tab)` | Open a tab (it becomes active and this session's tab) / close a tab by handle |
-| `browser_evaluate(expression, timeoutMs?)` *tab* | Run JavaScript in the tab's page context and return the result (shows the debugging banner) |
+| `browser_new_tab(url?)` / `browser_close_tab(tab)` | Open a tab (it becomes this session's tab; it comes to the front only if you were looking at this session's tab, else it opens in the background) / close a tab by handle |
+| `browser_evaluate(expression, timeoutMs?, asRef?)` *tab* | Run JavaScript in the tab's page context and return the result (shows the debugging banner); `asRef:true` also returns a `[ref=eN]` for an element result, to act on with the other tools |
 | `browser_network_requests(tab?, filter?, types?, failedOnly?, limit?, includeHeaders?, id?)` | List the network requests the tab has made — method, status, type, duration, size, URL — captured continuously with no banner; `id` shows one request's headers and body summary |
 | `browser_network_clear(tab?)` | Forget the recorded network requests, so the next `browser_network_requests` shows only what your next action caused |
 | `browser_download(url, path, overwrite?, timeoutMs?)` | Save a URL to disk with the profile's cookies (fetched by the extension's service worker: no CORS, cross-origin redirects followed). `path` is absolute — a file, or a directory to use the response's filename. Reports size, type and sha256 |
@@ -148,9 +149,51 @@ acts on **this session's tab**.
 making a tab active and `browser_new_tab`/`browser_close_tab` reporting Chrome tab ids, because Step 7
 T4 gave every tab-touching tool a `tab` argument, ids became handles, `browser_select_tab` claims
 without showing and `browser_focus_tab` is new.*
+*Superseded 2026-10-23: was 22 tools, actions by `ref` only and `browser_new_tab` always in front,
+because Step 8 S5 added `browser_use_active_tab`, the `locator` on actions and `browser_wait_for`,
+`asRef`, and the background rule of `browser_new_tab`.*
 
 Typical loop: `browser_snapshot()` to see refs → act by ref (`browser_click`, `browser_type`)
-→ snapshot again to see the result.
+→ snapshot again to see the result. When the name is already known, act by locator and skip the
+snapshot.
+
+### Locators
+
+The actions (`browser_click`, `browser_type`, `browser_hover`, `browser_select_option`,
+`browser_scroll`) and `browser_wait_for` take a nested `locator` instead of a `ref`:
+
+- `{role, name?}` — e.g. `{role: "button", name: "Sign in"}`: the role and accessible name a
+  `browser_snapshot` shows (`- button "Sign in" [ref=e4]`). What a snapshot shows is what a locator
+  matches.
+- `{text}` — visible text, e.g. `{text: "Forgot password?"}`.
+- `{css}` — a CSS selector, e.g. `{css: "#size"}`.
+
+Each may add `nth` (0-based) to pick one of several matches; `exact: true` with `name` or `text`
+makes the match case-sensitive and whole instead of a substring. Pass `ref` or `locator`, not both
+(a tool error, nothing is sent); `browser_scroll` takes neither to scroll the page.
+`browser_type`'s `text` stays what to type, and `browser_wait_for`'s `text` stays the page text to
+wait for — a text locator is `locator: {text: …}`. `browser_wait_for({locator, state?})` waits alone
+(no `text`, `seconds` or `networkIdle` with it), up to 10 s. `browser_press_key` has no target: it
+presses on the focused element.
+
+### Failure reports
+
+When an action fails because the page was not as expected — `LOCATOR_NOT_FOUND`,
+`LOCATOR_AMBIGUOUS`, `REF_STALE`, `OFFSCREEN`, `PAGE_ERROR`, `NAV_FAILED` or `TIMEOUT` — the tool
+reads the tab once more and returns a report instead of the bare error: the message, the nearest
+candidates, a window of a fresh snapshot (its refs replace the old ones), the failed network requests,
+and a screenshot of the tab, as text plus an **image** Claude can see. The PNG is saved under
+`~/.chrome-agent-bridge/failures/<time>-<handle>.png` (or `BRIDGE_FAILURES_DIR`); clear that folder
+now and then. Other errors (`TAB_HELD`, `TAB_GONE`, `NOT_CONNECTED`, …) read as before. A page
+exception in `browser_evaluate` (`PAGE_ERROR`) is reported this way too: the snapshot renumbers the
+tab's refs and the screenshot may flash a background tab for about 1.5 s; a message of several lines
+(a stack) follows the report under `Full message:`, as it was.
+
+The screenshot is a default-mode capture, so **the failed tab flashes for about 1.5 s** if it is in
+the background, like any viewport screenshot. Reading the tab is bounded by 5 s: past that a part is
+listed as not attached. On a window entirely covered by other windows the screenshot cannot be taken
+— the report says so after 5 s — but the bridge has already switched that window to the failed tab,
+and may leave it in front for up to about 30 s before switching back.
 
 ### Tabs
 
@@ -169,7 +212,12 @@ window. `[name]` is the actor that holds the tab; a Claude session is `claude-co
 
 - **This session's tab.** A tool called without `tab` acts on this session's tab. The first such call
   claims the tab you are looking at and keeps it: switching tabs in Chrome afterwards does not move it.
-  `browser_select_tab({tab})` and `browser_new_tab()` move it; passing `tab` to one call does not.
+  `browser_select_tab({tab})`, `browser_new_tab()` and `browser_use_active_tab()` move it; passing
+  `tab` to one call does not. It follows you only through `browser_use_active_tab` (and the first
+  claim), which Claude calls when you ask it to work on "this tab". `browser_status` shows it as
+  `Cursor: T3 "Title" — url (held by me)` (or `none yet`, or `(not open any more)`) and, when you
+  look at another tab, adds `Human's active tab: T7 "Gmail" — not mine; call browser_use_active_tab
+  to work there` (`— held by <actor>, not mine` when another actor holds that tab).
 - **`tab`** takes a handle from `browser_list_tabs`. A tab held by another actor is refused, with the
   holder's name: `tab T3 is held by "export-grades.ts" since 12:01:33 — use browser_new_tab, or
   browser_list_tabs to pick a free tab`. A closed tab gives `tab T3 was closed — call listTabs to pick
@@ -205,7 +253,11 @@ link or a popup — "click Export, a new tab appears" lands with the clicker; a 
 ### What you see while actors work
 
 - **Nothing moves on its own.** Actors work in background tabs. A script's `newTab` opens its tab in
-  the background; Claude's `browser_new_tab` opens it in front (the tab you then look at). No call
+  the background. Claude's `browser_new_tab` opens it in front only when you are looking at this
+  session's tab at that moment (you were watching Claude, so you keep watching); otherwise — including
+  the session's first tab, and whenever the bridge cannot tell — it opens in the background and the
+  result says `(in the background — browser_focus_tab shows it)`. *Superseded 2026-10-23: was "Claude's
+  `browser_new_tab` opens it in front", because Step 8 S5 applied phase doc 0.6's rule.* No call
   brings a Chrome window to the front except `browser_focus_tab` (a script's `focusTab`).
 - **A viewport screenshot of a background tab flashes it.** The bridge switches the tab's window to
   it, captures, and switches back: your tab is hidden for about 1.5 s (measured 1.49–1.59 s, Step 7
