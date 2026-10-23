@@ -63,3 +63,9 @@
 
 - S2: PASS-with-notes, +141 tests (with S2 alone, 1276/71); #92. Open: F22 call timeouts (S5);
   navigation onto an error page ends `waitFor {locator}` in TIMEOUT (S6 row).
+
+## 2026-10-23 — S2b and S4 stopped on an API access error; resumed
+
+- Both step agents ended with `oauth_org_not_allowed` (HTTP 403). S2b had written nothing; S4 had a
+  ledger and an untracked partial `sdk/test/failure-report.test.ts` from its builder. The user said to
+  continue; both resumed by message (S4 from its ledger, S2b from scratch). Tree otherwise clean at 53f68db.
