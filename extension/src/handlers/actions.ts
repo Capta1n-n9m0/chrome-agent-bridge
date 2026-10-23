@@ -1,7 +1,16 @@
 import { pageTab } from "../tabs.js";
 import { ensureContent, callInPage } from "../inject.js";
-import { withDebugger, trustedClick, trustedType, trustedPressKey } from "../debugger.js";
+import { runTrustedInput } from "../debugger.js";
 import { codeOf } from "../errors.js";
+
+/**
+ * A trusted-path result: `focusEmulation: "on"` exactly when the input ran under CDP focus emulation
+ * (stage FE), so a stale extension — which ignores the unknown param — is detectable (#71).
+ */
+type ActionResult = { ok: true; focusEmulation?: "on" };
+function trustedResult(emulated: boolean): ActionResult {
+  return emulated ? { ok: true, focusEmulation: "on" } : { ok: true };
+}
 
 async function inTargetTab<T>(
   p: Record<string, unknown>,
@@ -14,7 +23,7 @@ async function inTargetTab<T>(
   return callInPage(tab.id!, fn, args);
 }
 
-export async function click(p: Record<string, unknown>): Promise<{ ok: true }> {
+export async function click(p: Record<string, unknown>): Promise<ActionResult> {
   const tab = await pageTab(p, "click");
   await ensureContent(tab.id!);
   const trusted = p.trusted === true;
@@ -33,8 +42,8 @@ export async function click(p: Record<string, unknown>): Promise<{ ok: true }> {
     (ref) => window.__agentBridge!.centerForInput(ref as string),
     [p.ref],
   );
-  await withDebugger(tab.id!, () => trustedClick(tab.id!, x, y));
-  return { ok: true };
+  // centerForInput only scrolls and measures (it focuses nothing), so it stays before attaching.
+  return trustedResult(await runTrustedInput(tab.id!, { kind: "click", x, y }, { focusEmulation: p.focusEmulation === true }));
 }
 
 /**
@@ -42,7 +51,7 @@ export async function click(p: Record<string, unknown>): Promise<{ ok: true }> {
  * failure to escalate on — `trusted:true` is the way in to real CDP keystrokes. The content path is
  * still tried first when untrusted, and a throw there (stale ref) falls through to the trusted path.
  */
-export async function type(p: Record<string, unknown>): Promise<{ ok: true }> {
+export async function type(p: Record<string, unknown>): Promise<ActionResult> {
   const tab = await pageTab(p, "type");
   await ensureContent(tab.id!);
   const ref = p.ref as string;
@@ -63,13 +72,13 @@ export async function type(p: Record<string, unknown>): Promise<{ ok: true }> {
       // fall through to trusted input
     }
   }
-  // Focus + select-all in the page, then replace the selection with real keystrokes.
-  await callInPage(tab.id!, (r) => window.__agentBridge!.focusForTyping(r as string), [ref]);
-  await withDebugger(tab.id!, async () => {
-    await trustedType(tab.id!, value);
-    if (submit) await trustedPressKey(tab.id!, "Enter");
-  });
-  return { ok: true };
+  // Focus + select-all in the page, then replace the selection with real keystrokes. With focus
+  // emulation the focus step runs inside the debugger session, after the enable (decisions.md ·
+  // 2026-10-23 · Stage 0's build-level rulings … (#85) item 3); without it, before attaching, as before.
+  const focusEmulation = p.focusEmulation === true;
+  const focus = () => callInPage(tab.id!, (r) => window.__agentBridge!.focusForTyping(r as string), [ref]);
+  if (!focusEmulation) await focus();
+  return trustedResult(await runTrustedInput(tab.id!, { kind: "type", text: value, submit }, { focusEmulation, focus }));
 }
 
 export const scroll = (p: Record<string, unknown>) =>
@@ -91,12 +100,12 @@ export const selectOption = (p: Record<string, unknown>) =>
     [p.ref, p.values],
   );
 
-export async function pressKey(p: Record<string, unknown>): Promise<{ ok: true }> {
+export async function pressKey(p: Record<string, unknown>): Promise<ActionResult> {
   const key = p.key as string;
   if (p.trusted === true) {
     const tab = await pageTab(p, "pressKey");
-    await withDebugger(tab.id!, () => trustedPressKey(tab.id!, key));
-    return { ok: true };
+    // No focus step: a key goes to the page's focused element (FE-3's row names how it is focused).
+    return trustedResult(await runTrustedInput(tab.id!, { kind: "pressKey", key }, { focusEmulation: p.focusEmulation === true }));
   }
   return inTargetTab(p, "pressKey", (k) => {
     const el = (document.activeElement ?? document.body) as HTMLElement;

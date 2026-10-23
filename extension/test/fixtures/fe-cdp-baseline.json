@@ -1,0 +1,541 @@
+{
+  "note": "Stage FE baseline: the handler log of click/type/pressKey on the pre-FE code, recorded once with extension/test/fe-harness.ts. Never regenerate.",
+  "baseCommit": "637a808700cc8b3a1969030562235bd5cdfbec43",
+  "recordedAt": "2026-10-23T07:43:53Z",
+  "cases": [
+    {
+      "name": "click trusted",
+      "handler": "click",
+      "params": {
+        "tabId": 7,
+        "ref": "e1",
+        "trusted": true
+      },
+      "log": [
+        {
+          "op": "pageTab",
+          "method": "click"
+        },
+        {
+          "op": "ensureContent",
+          "tabId": 7
+        },
+        {
+          "op": "page",
+          "name": "centerForInput",
+          "tabId": 7,
+          "args": [
+            "e1"
+          ]
+        },
+        {
+          "op": "attach",
+          "target": {
+            "tabId": 7
+          },
+          "version": "1.3"
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchMouseEvent",
+          "params": {
+            "type": "mousePressed",
+            "x": 10,
+            "y": 20,
+            "button": "left",
+            "clickCount": 1,
+            "buttons": 1
+          }
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchMouseEvent",
+          "params": {
+            "type": "mouseReleased",
+            "x": 10,
+            "y": 20,
+            "button": "left",
+            "clickCount": 1,
+            "buttons": 0
+          }
+        },
+        {
+          "op": "detach",
+          "target": {
+            "tabId": 7
+          }
+        }
+      ],
+      "result": {
+        "ok": true
+      }
+    },
+    {
+      "name": "type trusted submit",
+      "handler": "type",
+      "params": {
+        "tabId": 7,
+        "ref": "e2",
+        "text": "a.\n",
+        "submit": true,
+        "trusted": true
+      },
+      "log": [
+        {
+          "op": "pageTab",
+          "method": "type"
+        },
+        {
+          "op": "ensureContent",
+          "tabId": 7
+        },
+        {
+          "op": "page",
+          "name": "focusForTyping",
+          "tabId": 7,
+          "args": [
+            "e2"
+          ]
+        },
+        {
+          "op": "attach",
+          "target": {
+            "tabId": 7
+          },
+          "version": "1.3"
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchKeyEvent",
+          "params": {
+            "key": "a",
+            "code": "KeyA",
+            "windowsVirtualKeyCode": 65,
+            "text": "a",
+            "type": "keyDown"
+          }
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchKeyEvent",
+          "params": {
+            "key": "a",
+            "code": "KeyA",
+            "windowsVirtualKeyCode": 65,
+            "text": "a",
+            "type": "keyUp"
+          }
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchKeyEvent",
+          "params": {
+            "key": ".",
+            "code": "",
+            "text": ".",
+            "type": "keyDown"
+          }
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchKeyEvent",
+          "params": {
+            "key": ".",
+            "code": "",
+            "text": ".",
+            "type": "keyUp"
+          }
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchKeyEvent",
+          "params": {
+            "key": "Enter",
+            "code": "Enter",
+            "windowsVirtualKeyCode": 13,
+            "text": "\r",
+            "type": "keyDown"
+          }
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchKeyEvent",
+          "params": {
+            "key": "Enter",
+            "code": "Enter",
+            "windowsVirtualKeyCode": 13,
+            "text": "\r",
+            "type": "keyUp"
+          }
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchKeyEvent",
+          "params": {
+            "key": "Enter",
+            "code": "Enter",
+            "windowsVirtualKeyCode": 13,
+            "text": "\r",
+            "type": "keyDown"
+          }
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchKeyEvent",
+          "params": {
+            "key": "Enter",
+            "code": "Enter",
+            "windowsVirtualKeyCode": 13,
+            "text": "\r",
+            "type": "keyUp"
+          }
+        },
+        {
+          "op": "detach",
+          "target": {
+            "tabId": 7
+          }
+        }
+      ],
+      "result": {
+        "ok": true
+      }
+    },
+    {
+      "name": "pressKey trusted Tab",
+      "handler": "pressKey",
+      "params": {
+        "tabId": 7,
+        "key": "Tab",
+        "trusted": true
+      },
+      "log": [
+        {
+          "op": "pageTab",
+          "method": "pressKey"
+        },
+        {
+          "op": "attach",
+          "target": {
+            "tabId": 7
+          },
+          "version": "1.3"
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchKeyEvent",
+          "params": {
+            "key": "Tab",
+            "code": "Tab",
+            "windowsVirtualKeyCode": 9,
+            "type": "keyDown"
+          }
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchKeyEvent",
+          "params": {
+            "key": "Tab",
+            "code": "Tab",
+            "windowsVirtualKeyCode": 9,
+            "type": "keyUp"
+          }
+        },
+        {
+          "op": "detach",
+          "target": {
+            "tabId": 7
+          }
+        }
+      ],
+      "result": {
+        "ok": true
+      }
+    },
+    {
+      "name": "click escalation",
+      "handler": "click",
+      "params": {
+        "tabId": 7,
+        "ref": "e1"
+      },
+      "log": [
+        {
+          "op": "pageTab",
+          "method": "click"
+        },
+        {
+          "op": "ensureContent",
+          "tabId": 7
+        },
+        {
+          "op": "page",
+          "name": "click",
+          "tabId": 7,
+          "args": [
+            "e1"
+          ]
+        },
+        {
+          "op": "page",
+          "name": "centerForInput",
+          "tabId": 7,
+          "args": [
+            "e1"
+          ]
+        },
+        {
+          "op": "attach",
+          "target": {
+            "tabId": 7
+          },
+          "version": "1.3"
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchMouseEvent",
+          "params": {
+            "type": "mousePressed",
+            "x": 10,
+            "y": 20,
+            "button": "left",
+            "clickCount": 1,
+            "buttons": 1
+          }
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchMouseEvent",
+          "params": {
+            "type": "mouseReleased",
+            "x": 10,
+            "y": 20,
+            "button": "left",
+            "clickCount": 1,
+            "buttons": 0
+          }
+        },
+        {
+          "op": "detach",
+          "target": {
+            "tabId": 7
+          }
+        }
+      ],
+      "result": {
+        "ok": true
+      }
+    },
+    {
+      "name": "type escalation",
+      "handler": "type",
+      "params": {
+        "tabId": 7,
+        "ref": "e2",
+        "text": "ok"
+      },
+      "log": [
+        {
+          "op": "pageTab",
+          "method": "type"
+        },
+        {
+          "op": "ensureContent",
+          "tabId": 7
+        },
+        {
+          "op": "page",
+          "name": "type",
+          "tabId": 7,
+          "args": [
+            "e2",
+            "ok",
+            false
+          ]
+        },
+        {
+          "op": "page",
+          "name": "focusForTyping",
+          "tabId": 7,
+          "args": [
+            "e2"
+          ]
+        },
+        {
+          "op": "attach",
+          "target": {
+            "tabId": 7
+          },
+          "version": "1.3"
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchKeyEvent",
+          "params": {
+            "key": "o",
+            "code": "KeyO",
+            "windowsVirtualKeyCode": 79,
+            "text": "o",
+            "type": "keyDown"
+          }
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchKeyEvent",
+          "params": {
+            "key": "o",
+            "code": "KeyO",
+            "windowsVirtualKeyCode": 79,
+            "text": "o",
+            "type": "keyUp"
+          }
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchKeyEvent",
+          "params": {
+            "key": "k",
+            "code": "KeyK",
+            "windowsVirtualKeyCode": 75,
+            "text": "k",
+            "type": "keyDown"
+          }
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchKeyEvent",
+          "params": {
+            "key": "k",
+            "code": "KeyK",
+            "windowsVirtualKeyCode": 75,
+            "text": "k",
+            "type": "keyUp"
+          }
+        },
+        {
+          "op": "detach",
+          "target": {
+            "tabId": 7
+          }
+        }
+      ],
+      "result": {
+        "ok": true
+      }
+    },
+    {
+      "name": "click trusted, first Input.* throws",
+      "handler": "click",
+      "params": {
+        "tabId": 7,
+        "ref": "e1",
+        "trusted": true
+      },
+      "log": [
+        {
+          "op": "pageTab",
+          "method": "click"
+        },
+        {
+          "op": "ensureContent",
+          "tabId": 7
+        },
+        {
+          "op": "page",
+          "name": "centerForInput",
+          "tabId": 7,
+          "args": [
+            "e1"
+          ]
+        },
+        {
+          "op": "attach",
+          "target": {
+            "tabId": 7
+          },
+          "version": "1.3"
+        },
+        {
+          "op": "sendCommand",
+          "target": {
+            "tabId": 7
+          },
+          "method": "Input.dispatchMouseEvent",
+          "params": {
+            "type": "mousePressed",
+            "x": 10,
+            "y": 20,
+            "button": "left",
+            "clickCount": 1,
+            "buttons": 1
+          }
+        },
+        {
+          "op": "detach",
+          "target": {
+            "tabId": 7
+          }
+        }
+      ],
+      "error": {
+        "name": "BridgeError",
+        "message": "The debugging session was cancelled mid-action (the 'is debugging this browser' banner's Cancel was clicked, or DevTools took over the tab) — retry the action.",
+        "code": "DEBUGGER_CANCELLED"
+      }
+    }
+  ]
+}
