@@ -318,3 +318,38 @@ Contracts binding forward, at dcb72db:
   (84 files). Proposed for the user's ruling (§5).
 
 - Probe (Claude Code 2.1.309): isError [text,image], [image,text], [image], [text,resource] → 0 images each; non-error [image], [text,image] → 1 each. Decision #100. Gotcha candidate for S7: S6b.md last section.
+
+## S6 — recipes and the E2E wave (Run 12 (S6), three parts) · 2026-10-23/24 · verifier: PASS-with-notes · commits 23b878f, 8d77a35, bc78ded, 24b5ce5, 036909f, a56d198, 1b429bc, b237a3f, dde0c78, 7c16a00, bff51ec, 75f0bd6, 05a34f0
+
+
+- `recipes/` gains `sdk-login.ts`, `s6.ts`/`s6-rules.ts` and `blackboard/`. `blackboard/` is read-only by
+  construction, with `failureReports: false`, also in `close-bb-tab`. `npm run recipe -- <file>` runs a recipe with
+  tsx, and `exports/` is gitignored.
+  - `s6.ts`/`s6-rules.ts` include `rep0` (a failure-report capture probe with hue and page-side visibility
+    controls), `sm1Part3Verdict`, and `sm1 --observed` / `sm1-log --observed`.
+  - `bb-login.ps1` handles autofill + one UIA invoke. After the redirect it follows ADA's SSO, pressing only on an
+    allowlisted host (`ada.edu.az`, `*.ada.edu.az`, `login.microsoftonline.com`), and has a `-DryRunBase` loopback
+    mode with stand-ins in `recipes/fixtures/`.
+- `recipes/blackboard/export-file.ts`: `MCP_MAX_CHARS` is 600 000 (#102, 7c16a00), with 8 000-character chunks.
+- **Held-export mode** (#103, 75f0bd6; `recipes/blackboard/held.ts`, pure): `export-grades.ts <course> --hold` (the SDK
+  leg builds the export once under `held-<course>`, writes its file, keeps the tab open and the export held);
+  `--mcp-plan --hold` (the MCP leg's plan: select + STATUS + CHUNK on the held key, no START); `--drop-held <T#>`
+  (alone; checks the tab, a `done` STATUS, drops the key, STATUS `null`); `assemble-mcp.ts <transcript> <course>
+  --held`. Judge assemble by its `0 bad result(s)` line (it exits 0 with bad results). The old modes are
+  byte-identical.
+- Run 12 (S6), three parts, the Part 3 addendum, the MCP leg (#102) and the held-export run (#103):
+  - Recorded results: 39 PASS, 5 FAIL, 2 not measured, 6 waiting (52).
+  - Standing per row: 35 PASS, 1 FAIL (ASREF-1, optional clause, ruled by #99 (6)), 0 not measured, 0 waiting (36).
+  - LOC-1, REP-1 (after S6b/#100) and SM-1 pass under re-registered text; SM-0 passes; SDK-6 live passes on pp1
+    in the session the SSO login opened (#101); SDK-7 passes on one held export (#103).
+  - Two Chrome restarts. REP-0 showed that failure reports switch to the failed tab.
+- Tests: 1714 in 85 files (`npm test`, pre-run verifier r5, clean worktree at 75f0bd6); recipes 169 in 5 files.
+- S6.3 is met under #103: one held export read by both legs, both files sha256 `b1f8ef6f…46b6a8`, 418 999 bytes. The
+  earlier #102 FAIL (two separate exports, `08169d21…` vs `bb4d7a08…`, transport whole) stays recorded. S6 is DONE.
+
+- *Session agent 2026-10-24:* decisions #96–#99, #101–#103 ruled the wave (user grants; REP-0 probe;
+  SM-1/LOC-1 re-registered; SSO login; SDK-7's cap; S6.3 on one held export). Totals by each row's
+  latest result: 35 PASS, 1 FAIL (ASREF-1, optional clause superseded by #99 item 6). Kept on record:
+  Run 12's earlier FAILs (LOC-1, REP-1, SM-1, S6.3). Two classifier/permission interruptions (one
+  denial `[PII Data Handling]`, one API access error) — both resumed from ledgers. Tests 1714 / 85 at
+  75f0bd6.

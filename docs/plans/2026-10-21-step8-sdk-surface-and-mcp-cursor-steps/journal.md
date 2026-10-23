@@ -154,3 +154,9 @@
 - MCP transport whole (53/53 chunks, hash = its in-page hash); the two separate exports differed (3 of
   77 columns; SDK reads 20 min apart differed too). #103 re-registers S6.3 on one held export; re-run
   dispatched.
+
+## 2026-10-24 — S6 closed (75f0bd6, 05a34f0); S7 next
+
+- S6.3 PASS on one held export (both files sha256 b1f8ef6f…46b6a8). S6.1–S6.5 hold. 35 PASS / 1 FAIL
+  (ASREF-1). Student data outside the repo for the user: %TEMP%\bridge-e2e\s6-run3-*, actor
+  transcripts, five gitignored exports\ files.
