@@ -55,6 +55,26 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-23 · S0's rulings: bounded bundle diff, `WaitForParams`, 0-based `nth`, #79's S2b check (#86)
+**Decided:** (1) The kickoff's S0 verifier focus "daemon and extension bundles byte-identical after S0"
+becomes: `extension/dist/{content,offscreen,options}.js` byte-identical; `daemon/dist/index.js` and
+`extension/dist/sw.js` may differ only by the `NO_CURSOR` entry in `ErrorCodes` and the hello guard's
+`session` check, shown by a `diff` of the two builds (measured by S0: daemon `490f1c60…` → `7712e1af…`,
+sw `503cd209…` → `b614aa9e…`, nothing else). (2) `WaitForParams` = `{text: string}` |
+`{locator, state?, timeoutMs?}` | `{networkIdle: true, idleMs?}` | `{seconds}`, as built (F28).
+(3) A locator's `nth` is 0-based. (4) #79's daemon half gets an S2b checkbox and exit check S2b.9: a
+second `HandleTable` started against the first's high-water mark never re-mints a number the first
+minted (stale `T<n>` → `TAB_UNKNOWN`), and with the mark file unreadable it falls back to a start-time
+base; tested with an injected directory, never `~/.chrome-agent-bridge/` itself. (5) S6.2 names the
+SDK-1 recipe file the S6 wave sheet fixes before the run. (6) S4 builds the failure report per #83
+(optional properties on the shared `BridgeError`); its "subclass" wording is superseded.
+**Why:** S0 report: `ErrorCodes` and `isHello` are runtime values bundled into the daemon and the
+worker, so "types only" was a wrong premise of the check, not a fault in the build; the bounded diff
+keeps the check's intent (no behaviour slipped in). 0-based `nth` matches Playwright and arrays. #79 had
+no check of its own.
+**Instead of:** moving `NO_CURSOR` out of `ErrorCodes` to keep the bytes (contradicts #76); 1-based `nth`.
+**By:** Claude
+
 ### 2026-10-23 · Stage 0's build-level rulings: SDK-1's recipe, S3.5's control, the stage split (#85)
 **Decided:** (1) SDK-1 runs a new recipe file; `recipes/hello.ts` and MUX-3/5/6/8/10's expected text
 stay (stage0.md §5). (2) S3.5 gains a positive control — the same test with `stdio:"inherit"` must see
