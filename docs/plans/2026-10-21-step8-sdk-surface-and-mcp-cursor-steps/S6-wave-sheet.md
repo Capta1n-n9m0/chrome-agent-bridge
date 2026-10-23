@@ -155,6 +155,147 @@ for an accidental or needed write; any write is recorded (kind, when, when hidde
 student data.* (decisions.md · 2026-10-23 · The user allows unlimited Chrome restarts and unpublished
 Blackboard writes (#98).)
 
+## Part 3 (2026-10-23, after S6b)
+
+*Added 2026-10-23 by S6 builder r3, before any Part 3 run, for decisions.md · 2026-10-23 · S6's findings ruled:
+the user's answers, stage S6b for REP-1, re-registered rows (#99) (7) and decisions.md · 2026-10-23 · An MCP
+failure report with a screenshot is returned as a non-error result (#100). The live driver follows this section;
+"Order of work" and "Resumed run" below/above apply only where this section points to them. Parts 1 and 2 are
+done and are not redone. Rows whose expected text changed, each by a dated note before this run:
+`docs/e2e-test-plan.md` §4.18 LOC-1, ASREF-1 (optional clause superseded; not re-run), REP-1; §4.19 SM-1, SM-0
+(an informational line), SDK-6's login step. Nothing in this section changes after P3-b starts.*
+
+**Set-up.** The sheet's set-up block in a fresh Windows PowerShell 5.1 (with `Rcp`), with a **new**
+`$env:S6_OUT = "$env:TEMP\bridge-e2e\s6-run3"` (`Test-Path $env:S6_OUT` must print `False` before
+`New-Item`), and the 8080 fixture server started again as written (hidden). Actor prompts that carry JSON are
+sent from Git Bash (`npx tsx recipes/t5-actor.ts send <name> "<prompt>"`, with `T5_ACTORS` set to the same
+directory): Windows PowerShell 5.1 strips embedded `"` from a native command's arguments (Run 12, S6.md gotcha 3).
+**No driver window is made topmost in Part 3** (`Set-T5Topmost` is not called with on; S6.md proposal "An exit-2
+reload…", accepted by #99 (3)), and before every `reload-extension.ps1` call the driver runs
+`Set-T5Topmost <hwnd> -Off` on each of its own open windows (`recipes/t5-win.ps1:114-117`).
+
+- **P3-a. Set-up checks [SH]** (set-up lines, recorded under Part 3's "Set-up"): `git log --oneline -3` (HEAD =
+  the Part 3 pre-run commit holding this section, or later with no change under `extension/ daemon/ sdk/ shared/
+  mcp/`); `git status --short -- extension daemon shared sdk mcp` → nothing; the driver is not a client
+  (`Get-DriverChain` lists no `mcp\dist\index.js`); `Get-BridgeDaemon` (none, or one — pid and build);
+  `Test-Path Env:BRIDGE_TOKEN` → `False`; `git check-ignore bridge.token exports/x.json` → both paths; 8080 →
+  `200` for `/e2e-playground.html`; `npx tsc --noEmit -p recipes/tsconfig.s6.json` → exit 0;
+  `npx vitest run recipes/` → all passed, **152 tests in 4 files** (fixer r3; 151 at builder r3); `git log --stat
+  24b5ce5..HEAD -- extension daemon sdk shared` → **nothing** (S6b changed only `mcp/`, 03254d9);
+  `Get-FileHash daemon\dist\index.js, mcp\dist\index.js -Algorithm SHA256` → `597D6C28…34DA3F` and
+  `4B07B464…3153` (builder r3 rebuilt the main tree from 0a6c82c: every dist file unchanged, `S6-builder-r3.md`
+  §2). Anything else ⇒ STOP and report (a build, a daemon handover or an extension reload is not in this plan).
+- **P3-b. Stale check [SH] — the FIRST recorded result line of Part 3:** `Rcp recipes/s6.ts stale-check`, under
+  R-b's rules exactly (NEW BUILD ⇒ go on, no reload; STALE ⇒ the reload (exit `0` required, else STOP and ask the
+  user), the check once more, a second STALE ⇒ STOP; `STALE-CHECK FAILED — …` or `UNEXPECTED` ⇒ STOP, no rerun).
+- **P3-c. Daemon [SH]** — R-c as written: `Get-DaemonBuild` = the newest `config … build=<sha>` = the stale
+  check's `connected — daemon build <sha>` = `597d6c28…34da3f`. A different build ⇒ STOP.
+- **P3-d. Driver window [UI]** — `$Ws = Open-T5Window "${U}s6-human"`; `Set-T5Foreground $Ws.Hwnd` → `True`;
+  `B1` → `<T#> fixture`. **Not** topmost.
+- **P3-e. SM-0 [SH]** — §4.19 SM-0, text unchanged, with its Part 3 note. B1 → the `s6-human` tab (the recipe
+  opens its tab in the background of the human's window). `sm0.ps1` as in Part 2 (`Set-Location <repo>`; the nvm
+  `Path`; `npm run -s recipe -- recipes/s6.ts sm0 --hold 120 *> "<S6_OUT>\sm0.out"`, the path written literally);
+  `Start-Process -WindowStyle Hidden -FilePath powershell -ArgumentList '-NoProfile','-File',"$env:S6_OUT\sm0.ps1"`;
+  when `sm0.out` shows `holding <T#a> for 120 s`: `Set-T5Topmost $Ws.Hwnd -Off`; the reload
+  (`powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\reload-extension.ps1; $LASTEXITCODE`), its output
+  and exit recorded with the time. **Reload rule (#99 (1), standing; S6.md proposal accepted by #99 (3)):** exit
+  `2` ("pressed nothing") may be re-run, **up to 3 reload runs in all for SM-0**, each recorded with its output — a
+  re-run inside the same hold only if ≥ 30 s of the hold remain, else wait for `SM-0 NOT MEASURED` (exit 3) and
+  start a fresh `sm0` (a new `sm0.out`, e.g. `sm0-2.out`) before the next reload run; a **third exit 2**, or **any
+  exit other than 0 or 2** (1, 3, 4, …), ⇒ SM-0 **not measured** AND **STOP the live part**: no P3-e', no LOC-1 or
+  any later row; record the reload's output and exit and report to the step agent (integrity floor: a reload script
+  that exits non-zero, other than #99 (1)'s exit-2 re-runs, waits for the user; P3-b's rule; S6 fixer r3 F3).
+  Exit `0` ⇒ wait for `SM-0 PASS|FAIL|NOT MEASURED`; `Get-BridgeLog 12`; record the reload's exit time and the
+  `extension resync` line's time (watch item). After the verdict the recipe prints `closed <T#a> (its own
+  fixture tab)` (informational).
+- **P3-e'. Stale check again [SH]** — after an SM-0 reload run that exited `0` (any other exit than 0 or 2 has
+  already stopped the live part at P3-e): `Rcp recipes/s6.ts stale-check` → `STALE-CHECK NEW BUILD` required
+  before the next row; anything else ⇒ STOP the live part and report. (No reload exited 0 ⇒ skipped.)
+- **P3-f. LOC-1 [UI] — a fresh actor** (§4.18 LOC-1 with its Part 3 note): `Close-T5Window $Ws.Hwnd` (no later row
+  needs it); `$Wl = Open-T5Window 'http://localhost:8080/e2e-playground.html'`; `Set-T5Foreground $Wl.Hwnd` →
+  `True`; B1 → `<T#> fixture`. `A start LO3 --tools 'browser_type,browser_click,browser_snapshot,browser_wait_for,browser_evaluate'`
+  (the wave sheet's LOC/ASREF/REP list, which has `browser_evaluate`); `A send LO3 "<P-LOC1 (Part 3)>"`;
+  `A end LO3`; `Close-T5Window $Wl.Hwnd`. The value is read from call 2's `OUTPUT:` block only; **no OS-level frame**.
+- **P3-g. REP-1 [UI] — a fresh actor** (§4.18 REP-1 with its Part 3 note; S6b §7): `$Wp = Open-T5Window "${U}rep1"`;
+  `Set-T5Foreground $Wp.Hwnd` → `True`; B1 → the `rep1` tab. `A start RP --tools 'browser_snapshot,browser_click'`
+  (started now, after the S6b build: it loads `mcp/dist/index.js` `4b07b464…3153`); `A send RP "<P-REP1-a>"` (its
+  first touch claims the `rep1` tab). **[UI]** REP-1's set-up — its tab in the background with another tab on
+  screen in the same window: `Open-T5Tab "${U}rep1-front"` (opens in `$Wp`, in front); B1 → the `rep1-front`
+  tab. Failures-folder rule: `$F0 = FailPng`; `A send RP "<P-REP1>"`; `$F1 = FailPng`; B1 → the `rep1-front` tab
+  again (the previous tab came back). The new name in `$F1` minus `$F0` (1 expected) must be the `Screenshot:` path
+  the report printed; it is deleted unopened. **Image count:** the session id from RP's `INIT session <id>` line
+  (`$env:T5_ACTORS\RP\out.jsonl`); `$T = (Get-ChildItem "$HOME\.claude\projects" -Recurse -Depth 1 -Filter "<id>.jsonl").FullName`;
+  `node mcp\test\probe\count-images.mjs $T mcp__chrome-agent-bridge__browser_click` and
+  `node mcp\test\probe\count-images.mjs "$env:T5_ACTORS\RP\out.jsonl" mcp__chrome-agent-bridge__browser_click`
+  — both JSON lines recorded verbatim (the transcript's `file` value may be abbreviated `<proj>/<id>.jsonl`); the
+  transcript decides. Claude Code's copy of the failure PNG: `@(Get-ChildItem "$HOME\.claude\projects\*\<id>\tool-results" -Filter *.png -ErrorAction SilentlyContinue).Count`
+  recorded (count only; never opened, copied or attached; outside the repo — the user's call to delete). `A end RP`;
+  `Close-T5Window $Wp.Hwnd`.
+- **P3-h. SDK-6 / SDK-7 live (pp1)** — "SDK-6/SDK-7 live" below, steps 1–11, with step 1 as its Part 3 note
+  says (the SSO login), the MCP leg (actor M, P-SDK7-M; REP-0 passed, so it is not gated) and S6.3's byte-compare.
+  Blackboard is touched only here, in windows and tabs the recipes and `bb-login.ps1` open — never the user's.
+  **Part 2's bb-login window, if still open, is the user's: it is not touched, closed or read** (`bb-login.ps1`
+  opens a new window of its own and acts only in it). #98's write clause: any Blackboard write is recorded (kind,
+  when, when hidden) without content.
+- **P3-i. SM-1 + its restart, last** — "SM-1 and MUX-8" below with these changes: **MUX-8 is not re-run** (Part 2's
+  PASS stands; recorded "MUX-8: not re-run in Part 3"), so actor X is not started and steps 5 and 10 are skipped;
+  step 3's `sm1.ps1` is `npm run -s recipe -- recipes/s6.ts sm1 --observed "<S6_OUT>\sm1-observed.json" *> "<S6_OUT>\sm1.out"`
+  (paths literal; the file must not exist); **step 8** waits for `sm1.out`'s `extension back` line as written, and
+  then — not for `SM-1 PASS|FAIL|NOT MEASURED`, which Part 3's `sm1 --observed` never prints — for its
+  `observations written to <S6_OUT>\sm1-observed.json (held tab's events, handles, counts; no URL or title)` line
+  followed by either `the verdict is sm1-log's "SM-1 (Part 3 rule)" line (run sm1-log --since $Q --observed <this
+  file>)` (exit 0) or `SM-1 (Part 3 rule) NOT MEASURED — the extension did not disconnect and reconnect during the
+  hold — the restart was not seen` (exit 3) (`recipes/s6.ts`, the `--observed` branch; S6 fixer r3 F4); step 9 is
+  `Rcp recipes/s6.ts sm1-log --since $Q --observed "$env:S6_OUT\sm1-observed.json"`, which ends with
+  `SM-1 (Part 3 rule) PASS — …`, `SM-1 (Part 3 rule) FAIL — …` or `SM-1 (Part 3 rule) NOT MEASURED — …` (wait for
+  that line), and `Get-BridgeDaemon` → the same pid. "After `$Q`" in clause (e) is read from `$Q` truncated to its
+  whole second (the log has whole seconds): a line stamped in `$Q`'s second counts, so it can only make "exactly
+  one" FAIL, never hide a line (`sm1Part3Verdict`; S6 fixer r3 N1, with a test). Quit **only** by `recipes/bgf-quit.ps1` (`chrome://quit` in its own
+  window); relaunch by `bgf-launch.ps1 -Exe $Chrome -ArgLine '--restore-last-session'`, no behaviour flags; counts
+  before and after (`Count`, `Count -CloseBlank -Expect N`); the extension must come back (`reload-extension.ps1`
+  once only if no `extension back` 120 s after the launch — exit `0`, else STOP). Verdict: §4.19 SM-1's Part 3 note.
+- **Close-down and hygiene** — as "Hygiene" below and Part 2's step 17: the fixture server stopped by its
+  identified PID after `Test-SafeToKill` prints `safe: …`; every actor ended (`A status`); driver windows closed;
+  `S6-daemon-log.txt` extended to the end of Part 3, counts (never printed) of `://`, the token,
+  `[line withheld:`, `_\d+_\d+` and `ada.blackboard` — all `0`, else not attached; `FailPng` lists no file of this
+  part; `git status --short` (S6.4) shows no `exports/` path, nothing from `~/.chrome-agent-bridge/`, no PNG.
+
+**Evidence rules (restated, binding).** OS-level frames (`Save-T5Frame`) are cropped to the fixture viewport or
+judged by numbers only, and are never viewed (a full-window frame shows Chrome's own UI — the user's bookmark bar,
+Part 2); no Blackboard content, names, grades, course ids, course URLs or titles anywhere in a record, a log
+excerpt or a transcript excerpt — counts, sizes, hashes, handles and the label `pp1` only; `exports/` stays outside
+commits; failure PNGs are deleted per the failures-folder rule (Blackboard rows: count only, no names); the user's
+windows and tabs are never named, captured, typed into or closed (`[<n> non-fixture lines omitted]`); a permission
+or classifier denial is recorded verbatim with its time, not retried or worked around, and that line of work stops.
+
+**Record.** Appended to `S6-run-record.md` under `## Part 3 — <date>, <UTC times>`: P3-a's set-up lines, then
+P3-b's stale check as the first result line, then the rows in the order above, the restart, hygiene, watch items,
+findings and a verdict table. The "Run 12 (S6)" block in `docs/e2e-test-plan.md` §5 gains a Part 3 paragraph and
+summary lines below Part 2's; earlier lines stay as they are.
+
+**Part 3 prompts** (after P0, verbatim):
+
+| Id | Prompt after P0 |
+|---|---|
+| P-LOC1 (Part 3) | `1. browser_type with {"locator":{"role":"textbox","name":"Email address"},"text":"a@b.com"} 2. browser_evaluate with {"expression":"document.getElementById('email').value"} 3. browser_click with {"locator":{"role":"button","name":"Click counter"}} 4. browser_snapshot with {} 5. browser_click with {"ref":"e1","locator":{"text":"Sign in"}}` (the email field is `<input id="email">`, `test-fixtures/e2e-playground.html:31`) |
+| P-REP1-a | `1. browser_snapshot with {}` (REP-1's set-up: claims the `rep1` tab) |
+| P-REP1 | as above: `1. browser_click with {"locator":{"role":"button","name":"No such button"}}` |
+
+**Part 3 rows** (pass rules written now; expected text in full in the §4.18/§4.19 notes named):
+
+| Row | Command(s) | Pass rule (written now) | Evidence |
+|---|---|---|---|
+| S6-STALE (P3-b) | `Rcp recipes/s6.ts stale-check` | `STALE-CHECK NEW BUILD` and exit 0; R-b's outcomes | stdout verbatim |
+| SM-0 (P3-e) | `s6.ts sm0 --hold 120` + reload (≤ 3 runs) | a reload run with exit `0`; `SM-0 PASS` (`sm0Verdict`, unchanged); the log from that reload on has a new `extension resync:` line and **no** `extension session changed` line. A third exit 2 or another exit ⇒ **not measured** and the live part STOPS (report to the step agent; F3). `SM-0 NOT MEASURED` after an exit-0 reload ⇒ not a result: rerun (within the 3 reload runs) | every `sm0*.out`; every reload's output and exit; log lines |
+| LOC-1 (P3-f) | P-LOC1 (Part 3), fresh actor LO3 | §4.18 LOC-1's Part 3 note, every clause: `Typed into textbox "Email address"`; call 2's output exactly `a@b.com` (one line); `Clicked button "Click counter"`; snapshot `button "Click counter: 1"`; call 5 `OUTPUT (isError):` exactly `browser_click takes ref or locator, not both`; no tool call outside the prompt | the five `OUTPUT:` blocks (fixture text) |
+| REP-1 (P3-g) | P-REP1-a, the `[UI]` set-up, P-REP1, fresh actor RP | §4.18 REP-1's Part 3 note: line 1 `LOCATOR_NOT_FOUND: no button named "No such button".…`; the `Screenshot:` line and the snapshot window (`- button "Sign in" [ref=e<N>]`); the last report line exactly `failedLine("LOCATOR_NOT_FOUND")` (then the notice line only if the cursor was re-claimed); `OUTPUT:` without `(isError)`; the transcript counter `images_in_tool_results` ≥ 1 with `is_error` false; 1 new PNG at the printed path (deleted); B1 after = `rep1-front` (the previous tab came back). The ~1.5 s flash is not measured page-side here (REP-0 measured the same path, 1331 ms): informational | `OUTPUT:` block (text lines; the image line noted); both counter lines; PNG count; the tool-results count |
+| SDK-6 login (P3-h step 1) | `bb-login.ps1` | §4.19 SDK-6's Part 3 note: exit `0` with `LOGGED IN …` or `SIGNED IN - … one submit …` ⇒ go on; exit `4` ⇒ SDK-6/SDK-7 **waits for the user**; exit `2` ⇒ once more, a second `2` ⇒ as `4`; never a second press | stdout verbatim (counts, yes/no, an allowlisted host only) |
+| SDK-6 (live) | step 2 | §4.19 SDK-6 (live, pp1), unchanged | stdout (no id, title or URL) |
+| SDK-7 (live) | steps 3–10 | §4.19 SDK-7 (live, pp1), unchanged, with the MCP leg and S6.3 | counts and hashes only |
+| SM-1 (P3-i) | `sm1 --observed …`, the restart, `sm1-log --since $Q --observed …` | §4.19 SM-1's Part 3 note: `SM-1 (Part 3 rule) PASS` (`sm1Part3Verdict`), daemon pid unchanged, counts equal after `-CloseBlank` and after cleanup. `NOT MEASURED` ⇒ recorded; one rerun allowed (#98), both recorded | `sm1.out`; `sm1-log` stdout; listings; counts |
+| MUX-8 | — | not re-run in Part 3 (Part 2's PASS stands) | — |
+| ASREF-1 | — | not re-run (#99 (6): the optional clause is superseded; Run 12's FAIL stays) | — |
+
 ## Order of work
 
 0. **Set-up checks [SH]** (set-up lines, recorded under "Set-up" before the reload — #84 makes the reload
@@ -339,6 +480,23 @@ actor's `OUTPUT:` block into `S6-run-record.md`.
    field). Exit `0` ⇒ step 2. Exit `4` ⇒ SDK-6 and SDK-7 **"waits for the user"**; the window is left open
    for the user; go to "SM-1 and MUX-8". Exit `2` (nothing touched) ⇒ once more; a second `2` ⇒ as `4`.
    The driver never takes a screenshot, snapshot or evaluate of that window, and never types into it.
+   *2026-10-23 (S6 Part 3, #99 (1), before its run): `bb-login.ps1` now follows ADA's SSO (the user: ada.blackboard.com
+   redirects to ADA's SSO, the autofilled credentials sign in there, and it redirects back): off ada after load it
+   counts the page's Edit and Button controls and the buttons whose whole name is on a fixed submit allowlist, and
+   presses **only** when the post-redirect host is on the SSO host allowlist — `ada.edu.az`, a host ending in
+   `.ada.edu.az`, or exactly `login.microsoftonline.com` (one list in the script, S6 fixer r3 F1) — the https
+   reading is not `no`, and exactly one allowlisted button is found: it invokes that button once, then needs
+   ada.blackboard.com with no sign-in button for exit `0` (`SIGNED IN - SSO autofill + one submit …`). Any other host,
+   an empty or unreadable address bar or a host that does not parse ⇒ exit `4`, nothing pressed, printed as `other
+   host` / `address bar unreadable` (a host name is printed only when it is on the list). The https reading
+   (explicit scheme, else no `Not secure` chip ⇒ `assumed`) is a backstop only and **unproven** — Chrome shows no
+   chip for localhost and a non-English Chrome may name it differently — and it can only veto a press. Expected
+   lines: §4.19 SDK-6's Part 3 note. Dry runs of this rule: `S6-fixer3.md`.
+   Outcomes: exit `0` ⇒ step 2; exit `4` ⇒ SDK-6 and SDK-7 **"waits for the user"** (the window is left open for
+   the user; go to SM-1); exit `2` (nothing touched) ⇒ once more, and a second `2` ⇒ as `4`; a press is never
+   retried, nothing is typed; exit `1` (a script error) ⇒ as `4`, recorded. Blackboard is touched only in SDK-6/SDK-7
+   live, in windows and tabs the driver or the recipes open, never the user's; Part 2's bb-login window (if still
+   open) is the user's call and is not touched.*
 2. **SDK-6 [SH]** — `Get-NetTCPConnection -LocalPort 8765 -State Listen -ErrorAction SilentlyContinue`;
    `Rcp recipes/blackboard/boot-bb.ts pp1`; the 8765 check again. A `REFUSED — not logged in …` here means
    the login did not take: "waits for the user" for both rows (no second login).

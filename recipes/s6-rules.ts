@@ -298,6 +298,129 @@ export function sm1LogVerdict(lines: string[], since: string): Verdict {
   return verdict(fails);
 }
 
+// ── SM-1, Part 3 rule (added 2026-10-23 by S6 builder r3, before any Part 3 run; decisions.md · ──────
+// 2026-10-23 · S6's findings ruled … (#99) (5)). #99's clause, verbatim: "the held handle is gone after the
+// restart (by `tabGone` at the quit or by the session change), a call on it gives `TAB_GONE`, and no handle
+// minted before the quit resolves after it". Made measurable (docs/e2e-test-plan.md §4.19 SM-1, Part 3 note):
+// (a) gone = a `tabGone {tab: T<a>}` with the pre-restart lastUrl received from the quit ($Q) until 30 s
+//     after `extension back`, OR the one session-changed line after $Q retires n ≥ 1;
+// (b) `snapshot {tab: T<a>}` after the restart → TAB_GONE (an answer = a live T<a>: FAIL);
+// (c) `listTabs` after the restart lists no handle ≤ T<m>, the highest handle before the quit (no other
+//     pre-quit handle is called: a non-fixture tab is never snapshotted or evaluated);
+// (d) unchanged: no tab owned by the recipe, the same daemon build, no 4002 reconnect, an uptime that kept
+//     counting (the pid and the counts are the driver's listings);
+// (e) stricter than #99's minimum (step agent ruling, written now): exactly one
+//     `extension session changed: <n> handles retired` line after $Q (any n ≥ 0, n recorded), nothing else
+//     on it, and an `extension resync:` line at most 30 s after it.
+// Also FAIL (kept from the Part 2 rule, stricter): two tabGone for T<a>, or one with another lastUrl.
+// Part 2's rules (`sm1Verdict`, `sm1LogVerdict`) are kept unchanged above: Run 12's record stays as judged.
+
+/**
+ * What `s6.ts sm1 --observed <file>` writes after the restart: only the held tab's events (as booleans),
+ * handles, counts and the 12-hex build — no URL or title of any tab, so the file holds nothing of the
+ * user's tabs (B2).
+ */
+export interface Sm1Observed {
+  tab: string;
+  name: string;
+  /** The highest handle number in `daemon.status` before the quit (T<m>). */
+  maxPre: number;
+  fixtureUrl: string;
+  /** Epoch ms of the `holding` line, the extension's disconnect and reconnect events, and `extension back`. */
+  holdStartMs: number;
+  downMs?: number;
+  upMs?: number;
+  backMs?: number;
+  /** Every `tabGone` for the held tab, with its receipt time and whether its lastUrl is the pre-restart page. */
+  tabGone: Array<{ atMs: number; lastUrlMatches: boolean }>;
+  snapshotAfter: { ok: true } | { ok: false; code: string };
+  /** The handles `listTabs` lists after the restart, and those owned by the recipe. */
+  listAfter: string[];
+  ownedAfter: string[];
+  buildBefore: string;
+  buildAfter: string;
+  uptimeBeforeMs: number;
+  uptimeAfterMs: number;
+  elapsedMs: number;
+  reconnected: boolean;
+}
+
+export interface Sm1Part3Result extends Verdict {
+  /** The session-changed line's `<n>`, when exactly one well-formed line was found. */
+  retired?: number;
+  /** The PASS line's text after `SM-1 (Part 3 rule) PASS — `. */
+  line: string;
+}
+
+export function sm1Part3Verdict(o: Sm1Observed, logLines: string[], since: string): Sm1Part3Result {
+  const q = Date.parse(since);
+  if (!Number.isFinite(q)) throw new Error("since is not an ISO time");
+  if (o.downMs === undefined || o.upMs === undefined || o.backMs === undefined) {
+    return { pass: false, why: ["the extension did not disconnect and reconnect during the hold — the restart was not seen"], findings: [], notMeasured: true, line: "" };
+  }
+  const fails: string[] = [];
+  const findings: string[] = [];
+  // (e) the log, from the quit's second on. The log has whole seconds, so "after $Q" starts at $Q truncated
+  // to its second (the stricter reading, S6 fixer r3, N1): a line in that second logged just before the quit
+  // is counted, so it can only add to the count and make "exactly one" FAIL, never hide a second line.
+  const after = logLines
+    .map((l) => LOG_TS.exec(l.trim()))
+    .filter((m): m is RegExpExecArray => m !== null && Date.parse(m[1]!) >= Math.floor(q / 1000) * 1000);
+  const changed = after.filter((m) => /extension session changed/.test(m[2]!));
+  let retired: number | undefined;
+  let resyncS: number | undefined;
+  if (changed.length !== 1) fail(fails, `${changed.length} "extension session changed" line(s) since ${since} (exactly 1 expected)`);
+  else {
+    const c = changed[0]!;
+    const exact = /^extension session changed: (\d+) handles retired$/.exec(c[2]!);
+    if (!exact) fail(fails, "the session-changed line carries more than the count (a marker value?)");
+    else retired = Number(exact[1]);
+    const tc = Date.parse(c[1]!);
+    const resync = after.find((m) => /^extension resync: \d+ tabs, \d+ gone$/.test(m[2]!) && Date.parse(m[1]!) >= tc);
+    if (!resync) fail(fails, "no `extension resync:` line after the session-changed line");
+    else {
+      resyncS = (Date.parse(resync[1]!) - tc) / 1000;
+      if (resyncS > 30) fail(fails, `the resync came ${resyncS} s after the session-changed line (> 30 s)`);
+    }
+  }
+  // (a) the held handle is gone.
+  if (o.tabGone.length > 1) fail(fails, `${o.tabGone.length} tabGone for ${o.tab} (at most 1 expected)`);
+  if (o.tabGone.some((g) => !g.lastUrlMatches)) fail(fails, `a tabGone for ${o.tab} names another page than the pre-restart one`);
+  const inWindow = o.tabGone.find((g) => g.lastUrlMatches && g.atMs >= q && g.atMs <= o.backMs! + 30_000);
+  for (const g of o.tabGone) {
+    if (g !== inWindow) findings.push(`tabGone ${o.tab} at ${g.atMs - q >= 0 ? "+" : ""}${g.atMs - q} ms from the quit, outside [the quit, extension back + 30 s]`);
+  }
+  const byLog = retired !== undefined && retired >= 1;
+  if (!inWindow && !byLog) {
+    fail(fails, `${o.tab} not shown gone: no tabGone ${o.tab} (pre-restart lastUrl) from the quit to 30 s after extension back, and the session change retired ${retired ?? "?"} (≥ 1 needed without the tabGone)`);
+  }
+  // (b) a call on it gives TAB_GONE.
+  if (o.snapshotAfter.ok) fail(fails, `snapshot ${o.tab} after the restart answered — a live ${o.tab}`);
+  else if (o.snapshotAfter.code !== "TAB_GONE") fail(fails, `snapshot ${o.tab} after the restart → ${o.snapshotAfter.code}, not TAB_GONE`);
+  // (c) no handle minted before the quit resolves after it.
+  if (o.listAfter.includes(o.tab)) fail(fails, `listTabs still lists ${o.tab} — a live ${o.tab}`);
+  const notAbove = o.listAfter.filter((h) => {
+    const n = handleNo(h);
+    return n === null || n <= o.maxPre;
+  });
+  if (notAbove.length > 0) fail(fails, `listTabs after the restart lists handle(s) minted before the quit (≤ T${o.maxPre}): ${notAbove.join(", ")}`);
+  // (d) unchanged clauses.
+  if (o.ownedAfter.length > 0) fail(fails, `listTabs shows tab(s) owned by ${o.name}: ${o.ownedAfter.join(", ")}`);
+  if (o.buildBefore !== o.buildAfter) fail(fails, `daemon build ${o.buildBefore}… → ${o.buildAfter}… — not the same daemon build`);
+  if (o.reconnected) fail(fails, "the client reconnected (4002) — the daemon changed during the hold");
+  if (o.uptimeAfterMs - o.uptimeBeforeMs < o.elapsedMs - 5000) {
+    fail(fails, `daemon uptime ${o.uptimeBeforeMs} → ${o.uptimeAfterMs} ms over ${o.elapsedMs} ms — not the same daemon`);
+  }
+  const how = inWindow
+    ? `by tabGone at the quit (+${inWindow.atMs - q} ms after $Q)`
+    : `by the session change (${retired} retired)`;
+  const line =
+    `${o.tab} gone ${how}; snapshot → TAB_GONE; no handle ≤ T${o.maxPre} listed after the restart; ` +
+    `none owned by ${o.name}; same daemon (build ${o.buildAfter}…, no reconnect, uptime kept counting); ` +
+    `one session-changed line (${retired ?? "?"} retired), resync +${resyncS ?? "?"} s`;
+  return { pass: fails.length === 0, why: fails, findings, retired, line };
+}
+
 // ── REP-0 (added 2026-10-23, S6 resume, before its run — decisions.md · 2026-10-23 · A probe of the ──
 // failure-report screenshot runs before any row that could attach a non-fixture tab (#97)).
 // Method: Run 9's — page-side `visibilitychange` timestamps (t5-lib.ts VISLOG_INSTALL, epoch ms from

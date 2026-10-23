@@ -1,0 +1,29 @@
+<!doctype html>
+<!-- recipes/fixtures/sso-standin-otherhost.html: the SSO stand-in on a host that is NOT allowlisted (served
+     as sso.localhost; written 2026-10-23 by the S6 fixer, round 3, finding F1). Exactly ONE allowlisted
+     button ("Sign in"), as on the known-good page, so only the host check can refuse it: the script must
+     press nothing and exit 4. A press would show in the page's own heading and as a GET of
+     /pressed-otherhost in the server's log (a 404; never read by the script). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SSO stand-in (other host)</title>
+</head>
+<body>
+<h1 id="h">SSO stand-in (other host)</h1>
+<form id="f" onsubmit="return false">
+  <label for="u">E-mail</label>
+  <input id="u" type="email" value="standin@example.invalid" autocomplete="off">
+  <label for="p">Password</label>
+  <input id="p" type="password" autocomplete="off">
+  <button type="button" id="help">Forgot password?</button>
+  <button type="submit" id="go">Sign in</button>
+</form>
+<script>
+  document.getElementById("go").addEventListener("click", function () {
+    document.getElementById("h").textContent = "PRESSED go (the dry run failed: nothing should be pressed here)";
+    fetch("/pressed-otherhost").catch(function () {});
+  });
+</script>
+</body>
+</html>

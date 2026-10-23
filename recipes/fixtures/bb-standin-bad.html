@@ -1,0 +1,19 @@
+<!doctype html>
+<!-- recipes/fixtures/bb-standin-bad.html: bb-login.ps1's known-bad dry run (written 2026-10-23 by S6
+     builder r3). As bb-standin.html, but it redirects to sso-standin-two.html, an SSO stand-in with TWO
+     allowlisted buttons, where the script must press nothing and exit 4. -->
+<html lang="en" data-sso="sso-standin-two.html">
+<head>
+<meta charset="utf-8">
+<title>Blackboard stand-in</title>
+<script>
+  if (!/[?&]signedin=1(&|$)/.test(location.search)) {
+    location.replace("http://localhost:" + location.port + "/" + (document.documentElement.dataset.sso || "sso-standin.html"));
+  }
+</script>
+</head>
+<body>
+<h1>Blackboard stand-in</h1>
+<p>Signed in (stand-in).</p>
+</body>
+</html>

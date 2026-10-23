@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- recipes/fixtures/bb-standin.html: the "blackboard" stand-in for bb-login.ps1's dry run (-DryRunBase,
+     written 2026-10-23 by S6 builder r3). Served on 127.0.0.1 by
+     python -I -m http.server <port> --bind 127.0.0.1 --directory recipes/fixtures
+     Not signed in: redirects at once to the SSO stand-in on the OTHER loopback name (localhost), so the
+     host differs, as ada.blackboard.com -> ADA's SSO. Signed in (?signedin=1): a page with no sign-in
+     control. No real site, no credential, no network beyond the loopback server. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Blackboard stand-in</title>
+<script>
+  if (!/[?&]signedin=1(&|$)/.test(location.search)) {
+    location.replace("http://localhost:" + location.port + "/" + (document.documentElement.dataset.sso || "sso-standin.html"));
+  }
+</script>
+</head>
+<body>
+<h1>Blackboard stand-in</h1>
+<p>Signed in (stand-in). Nothing here is a sign-in control.</p>
+<button type="button">Open course list</button>
+</body>
+</html>

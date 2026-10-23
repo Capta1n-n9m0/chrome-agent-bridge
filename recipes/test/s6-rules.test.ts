@@ -17,6 +17,7 @@ import {
   sm0Verdict,
   sm1LogVerdict,
   sm1Verdict,
+  sm1Part3Verdict,
   staleVerdict,
   rep0Verdict,
   visibleIn,
@@ -24,6 +25,7 @@ import {
   REP0_PROBE_COLOUR,
   REP0_SLACK_MS,
   type Rep0Input,
+  type Sm1Observed,
   type VisLog,
 } from "../s6-rules.js";
 import { COLOURS } from "../t5-lib.js";
@@ -276,6 +278,129 @@ describe("sm1LogVerdict (daemon.log lines from the quit on)", () => {
   });
   it("refuses a bad since", () => {
     expect(() => sm1LogVerdict(good, "yesterday")).toThrow();
+  });
+});
+
+// SM-1's Part 3 rule (decisions.md #99 (5), written 2026-10-23 by S6 builder r3 before any Part 3 run).
+// The known-good input is Part 2's measured run (S6-run-record.md § "SM-1 + MUX-8 (step 16)"): tabGone T216
+// at the quit, 0 handles retired — the reason #99 rewrote the clause; it is input data, not a target.
+describe("sm1Part3Verdict (Part 3 rule: gone by tabGone at the quit or by the session change)", () => {
+  const Q = "2026-10-23T15:08:17.8649083Z";
+  const ms = (iso: string): number => Date.parse(iso);
+  const URL_A = "http://localhost:8080/e2e-playground.html?t5=sm1";
+  const part2: Sm1Observed = {
+    tab: "T216",
+    name: "s6-sm1",
+    maxPre: 216,
+    fixtureUrl: URL_A,
+    holdStartMs: ms("2026-10-23T15:08:09.322Z"),
+    downMs: ms("2026-10-23T15:08:19.383Z"),
+    upMs: ms("2026-10-23T15:08:52.697Z"),
+    backMs: ms("2026-10-23T15:08:53.001Z"),
+    tabGone: [{ atMs: ms("2026-10-23T15:08:19.369Z"), lastUrlMatches: true }],
+    snapshotAfter: { ok: false, code: "TAB_GONE" },
+    listAfter: ["T218", "T219", "T220", "T221"],
+    ownedAfter: [],
+    buildBefore: "597d6c28abd1",
+    buildAfter: "597d6c28abd1",
+    uptimeBeforeMs: 1493019,
+    uptimeAfterMs: 1546713,
+    elapsedMs: 53_693,
+    reconnected: false,
+  };
+  const log2 = [
+    "2026-10-23T15:07:53Z client + \"claude-code #26280\" (1 client)",
+    "2026-10-23T15:08:09Z client + \"s6-sm1\" (2 clients)",
+    "2026-10-23T15:08:27Z client + \"hello-recipe\" (3 clients)",
+    "2026-10-23T15:08:42Z client - \"hello-recipe\" (2 clients)",
+    "2026-10-23T15:08:52Z extension session changed: 0 handles retired",
+    "2026-10-23T15:08:52Z extension resync: 4 tabs, 0 gone",
+    "2026-10-23T15:09:03Z client - \"s6-sm1\" (1 client)",
+  ];
+  // N3 (S6 fixer r3): each bad case also pins the clause that fired, not only pass === false.
+  const bad = (o: Sm1Observed, l: string[], why: RegExp): void => {
+    const v = sm1Part3Verdict(o, l, Q);
+    expect(v.pass).toBe(false);
+    expect(v.why.some((w) => why.test(w))).toBe(true);
+  };
+  const withLog = (l: string[], changed: string): string[] => l.map((x) => (/session changed/.test(x) ? changed : x));
+  it("PASSES on Part 2's measured run (tabGone at the quit, 0 retired)", () => {
+    const v = sm1Part3Verdict(part2, log2, Q);
+    expect(v.why).toEqual([]);
+    expect(v.pass).toBe(true);
+    expect(v.retired).toBe(0);
+    expect(v.line).toContain("T216 gone by tabGone at the quit");
+    expect(v.line).toContain("0 retired");
+  });
+  it("PASSES when there is no tabGone but the session change retired ≥ 1", () => {
+    const v = sm1Part3Verdict({ ...part2, tabGone: [] }, withLog(log2, "2026-10-23T15:08:52Z extension session changed: 3 handles retired"), Q);
+    expect(v.why).toEqual([]);
+    expect(v.pass).toBe(true);
+    expect(v.retired).toBe(3);
+    expect(v.line).toContain("by the session change (3 retired)");
+  });
+  it("FAILS with no tabGone and 0 retired (the held handle not shown gone)", () => {
+    const v = sm1Part3Verdict({ ...part2, tabGone: [] }, log2, Q);
+    expect(v.pass).toBe(false);
+    expect(v.why.join(" ")).toMatch(/not shown gone/);
+  });
+  it("a tabGone outside [the quit, extension back + 30 s] does not count", () => {
+    bad({ ...part2, tabGone: [{ atMs: ms("2026-10-23T15:08:10.000Z"), lastUrlMatches: true }] }, log2, /not shown gone/);
+    bad({ ...part2, tabGone: [{ atMs: part2.backMs! + 30_001, lastUrlMatches: true }] }, log2, /not shown gone/);
+    expect(sm1Part3Verdict({ ...part2, tabGone: [{ atMs: part2.backMs! + 30_000, lastUrlMatches: true }] }, log2, Q).pass).toBe(true);
+  });
+  it("FAILS on a tabGone for T<a> with another lastUrl, or on two of them", () => {
+    bad({ ...part2, tabGone: [{ atMs: part2.tabGone[0]!.atMs, lastUrlMatches: false }] }, log2, /names another page/);
+    bad({ ...part2, tabGone: [part2.tabGone[0]!, part2.tabGone[0]!] }, log2, /2 tabGone for T216/);
+  });
+  it("FAILS when a handle minted before the quit (≤ T<m>) is listed after the restart", () => {
+    bad({ ...part2, listAfter: ["T215", "T218"] }, log2, /minted before the quit \(≤ T216\): T215$/);
+    bad({ ...part2, listAfter: ["T216", "T218"] }, log2, /listTabs still lists T216/);
+    bad({ ...part2, listAfter: ["X1"] }, log2, /minted before the quit .*: X1$/);
+  });
+  it("FAILS when the snapshot of T<a> answers (a live T<a>) or gives another code", () => {
+    bad({ ...part2, snapshotAfter: { ok: true } }, log2, /answered — a live T216/);
+    bad({ ...part2, snapshotAfter: { ok: false, code: "TAB_UNKNOWN" } }, log2, /→ TAB_UNKNOWN, not TAB_GONE/);
+  });
+  it("FAILS on two session-changed lines, or none, after the quit", () => {
+    const two = [...log2, "2026-10-23T15:08:58Z extension session changed: 0 handles retired"];
+    bad(part2, two, /2 "extension session changed" line\(s\)/);
+    const none = log2.filter((l) => !/session changed/.test(l));
+    const v = sm1Part3Verdict(part2, none, Q);
+    expect(v.pass).toBe(false);
+    expect(v.why.join(" ")).toMatch(/0 "extension session changed" line/);
+  });
+  it("a session-changed line before the quit is ignored", () => {
+    expect(sm1Part3Verdict(part2, ["2026-10-23T15:00:00Z extension session changed: 2 handles retired", ...log2], Q).pass).toBe(true);
+    expect(sm1Part3Verdict(part2, ["2026-10-23T15:08:16Z extension session changed: 2 handles retired", ...log2], Q).pass).toBe(true);
+  });
+  // N1 (S6 fixer r3, the stricter reading): the log has whole seconds, so "after $Q" starts at $Q truncated
+  // to its second. A line stamped in $Q's own second counts as after $Q even if it was logged just before the
+  // quit: with the restart's own line that makes two, and "exactly one" FAILS rather than hiding one.
+  it("a session-changed line in $Q's own second counts: with the restart's line it makes two ⇒ FAIL", () => {
+    const v = sm1Part3Verdict(part2, ["2026-10-23T15:08:17Z extension session changed: 0 handles retired", ...log2], Q);
+    expect(v.pass).toBe(false);
+    expect(v.why.join(" ")).toMatch(/2 "extension session changed" line\(s\)/);
+  });
+  it("FAILS on a marker value on the session-changed line, or no resync within 30 s", () => {
+    bad(part2, withLog(log2, "2026-10-23T15:08:52Z extension session changed: 0 handles retired (marker ab12)"), /a marker value/);
+    const late = log2.map((x) => (/resync/.test(x) ? "2026-10-23T15:09:23Z extension resync: 4 tabs, 0 gone" : x));
+    bad(part2, late, /31 s after the session-changed line/);
+    bad(part2, log2.filter((l) => !/resync/.test(l)), /no `extension resync:` line/);
+  });
+  it("FAILS on a tab owned by the recipe, a changed build, a reconnect or an uptime that restarted", () => {
+    bad({ ...part2, ownedAfter: ["T221"] }, log2, /owned by s6-sm1: T221/);
+    bad({ ...part2, buildAfter: "0123456789ab" }, log2, /not the same daemon build/);
+    bad({ ...part2, reconnected: true }, log2, /reconnected \(4002\)/);
+    bad({ ...part2, uptimeAfterMs: 5_000 }, log2, /not the same daemon$/);
+  });
+  it("is NOT MEASURED when the extension did not go and come back", () => {
+    const v = sm1Part3Verdict({ ...part2, upMs: undefined, backMs: undefined }, log2, Q);
+    expect(v.notMeasured).toBe(true);
+    expect(v.pass).toBe(false);
+  });
+  it("refuses a bad since", () => {
+    expect(() => sm1Part3Verdict(part2, log2, "yesterday")).toThrow();
   });
 });
 

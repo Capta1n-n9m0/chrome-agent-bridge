@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- recipes/fixtures/bb-standin-otherhost.html: bb-login.ps1's non-allowlisted-host dry run (written
+     2026-10-23 by the S6 fixer, round 3, finding F1). As bb-standin.html, but it redirects to
+     sso-standin-otherhost.html on sso.localhost - a loopback name that is NOT on the dry run's SSO host
+     allowlist (only the other loopback name, localhost, is). Chrome resolves *.localhost to loopback
+     itself (no DNS lookup), so the same server bound to 127.0.0.1 answers. The page there has exactly ONE
+     allowlisted button; the script must press nothing and exit 4 ("other host"). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Blackboard stand-in</title>
+<script>
+  if (!/[?&]signedin=1(&|$)/.test(location.search)) {
+    location.replace("http://sso.localhost:" + location.port + "/sso-standin-otherhost.html");
+  }
+</script>
+</head>
+<body>
+<h1>Blackboard stand-in</h1>
+<p>Signed in (stand-in).</p>
+</body>
+</html>

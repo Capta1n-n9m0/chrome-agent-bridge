@@ -20,7 +20,7 @@ The SDK finds, starts or hands over the daemon itself; the token comes from `BRI
 |---|---|
 | `hello.ts` | The smallest SDK script: connect, `daemon.status`, `listTabs`, optional hold. The instrument of rows MUX-3/5/6/8/10 — its output is pinned by those rows, so do not change it. |
 | `sdk-login.ts` | Row SDK-1: `newTab` to the fixture → `locate({role:"button", name:"Sign in"})` → `click` → `waitFor({text})` → print the page's status line → close. |
-| `s6.ts` | Step 8 S6's SDK rows, one subcommand each: `stale-check` (first line after a reload), `sdk2`…`sdk5`, `sm0`, `sm1` and `sm1-log` (SM-1 across a Chrome restart), `rep0` (REP-0, #97: does a failure report's screenshot switch to the failed tab; added 2026-10-23), and the helpers `peek`, `daemon-shutdown`, `close-bb-tab`. `--help` lists them. |
+| `s6.ts` | Step 8 S6's SDK rows, one subcommand each: `stale-check` (first line after a reload), `sdk2`…`sdk5`, `sm0`, `sm1` and `sm1-log` (SM-1 across a Chrome restart; with `--observed <file>`, SM-1's Part 3 rule `SM-1 (Part 3 rule)`, #99, added 2026-10-23), `rep0` (REP-0, #97: does a failure report's screenshot switch to the failed tab; added 2026-10-23), and the helpers `peek`, `daemon-shutdown`, `close-bb-tab`. `--help` lists them. |
 | `s6-rules.ts` | The pure pass rules `s6.ts` and `sdk-login.ts` print (tested in `test/s6-rules.test.ts`). |
 | `blackboard/boot-bb.ts` | Row SDK-6: open the named course in its own tab, load the blackboard-ultra skill's `bb.js` by `evaluate`, print `bb.VERSION`. |
 | `blackboard/export-grades.ts` | Row SDK-7: the course gradebook, read-only, into `exports/<course>-<date>.json` (gitignored); prints counts and sha256 only. `--mcp-plan` prints the MCP leg's expressions. |
@@ -31,7 +31,7 @@ The SDK finds, starts or hands over the daemon itself; the token comes from `BRI
 | `t5.ts`, `t5-lib.ts`, `t5-actor.ts`, `t5-png.ts`, `t5-win.ps1` | Step 7's wave tools: SDK steps, the persistent headless actor, PNG probes, window helpers. Reused by later waves. |
 | `reload-extension.ps1` | Reloads the unpacked extension by UI Automation and proves it (exit 0; exit 2 = pressed nothing). |
 | `bgf-*.ps1` | Chrome quit/relaunch/count (BG-FLAGS, then SM-1 under #96; every Chrome restart needs a fresh grant from the user). |
-| `bb-login.ps1` | SDK-6/SDK-7's login step: its own window on ada, Chrome's autofill, one invoke of the one sign-in button; counts and yes/no only, never reads or types a field (exit 0 logged in, 4 waits for the user, 2 nothing touched). |
+| `bb-login.ps1` | SDK-6/SDK-7's login step: its own window on ada, Chrome's autofill, at most one invoke in a run — Blackboard's own sign-in button, or (since 2026-10-23, #99) the one allowlisted submit button of ADA's SSO page, only on a host on its SSO host allowlist (`ada.edu.az` and hosts under it, or exactly `login.microsoftonline.com`); counts, yes/no and an allowlisted host only, never reads or types a field (exit 0 logged in, 4 waits for the user, 2 nothing touched). `-DryRunBase http://127.0.0.1:<port>/` runs it against the loopback stand-ins in `fixtures/` (`bb-standin*.html`, `sso-standin*.html`). |
 
 ## The Blackboard recipes' rules
 

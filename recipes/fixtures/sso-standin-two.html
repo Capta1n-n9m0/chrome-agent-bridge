@@ -1,0 +1,27 @@
+<!doctype html>
+<!-- recipes/fixtures/sso-standin-two.html: the known-bad SSO stand-in for bb-login.ps1's dry run (written
+     2026-10-23 by S6 builder r3). TWO allowlisted buttons ("Next" and "Sign in"): the script must press
+     nothing and exit 4. If either button were pressed, the page would say so in its own heading
+     (never read by the script; for a human looking at the window only). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SSO stand-in (two buttons)</title>
+</head>
+<body>
+<h1 id="h">SSO stand-in (two buttons)</h1>
+<form id="f" onsubmit="return false">
+  <label for="u">E-mail</label>
+  <input id="u" type="email" value="standin@example.invalid" autocomplete="off">
+  <button type="submit" id="next">Next</button>
+  <button type="button" id="go">Sign in</button>
+</form>
+<script>
+  for (const id of ["next", "go"]) {
+    document.getElementById(id).addEventListener("click", function () {
+      document.getElementById("h").textContent = "PRESSED " + id + " (the dry run failed: nothing should be pressed here)";
+    });
+  }
+</script>
+</body>
+</html>

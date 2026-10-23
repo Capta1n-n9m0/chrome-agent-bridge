@@ -18,6 +18,10 @@
 //                      a Chrome restart (default 900 s), then: one tabGone, snapshot → TAB_GONE, no tab
 //                      ours, every handle above the old ones, same daemon (added by the S6 fixer, #96)
 //   sm1-log --since <iso>  SM-1's daemon.log clause (no connect; prints only the session lines)
+//   sm1 … --observed <file> / sm1-log --since <iso> --observed <file>   SM-1's Part 3 rule (#99 (5), added
+//                      2026-10-23 by S6 builder r3, before any Part 3 run): sm1 writes its observations
+//                      (no URL or title) and prints no verdict; sm1-log prints `SM-1 (Part 3 rule) …`
+//                      (`sm1Part3Verdict`) instead of `SM-1 LOG …`
 //   peek <t5-marker>   SDK-8 helper: the unheld `?t5=<marker>` tab's counter button, by snapshot (claims,
 //                      reads, releases; refuses a held tab)
 //   daemon-shutdown    MUX-1 set-up: `daemon.shutdown`, refused while any other client is connected
@@ -33,7 +37,7 @@
 // driver's own `?t5=` fixture tab; it prints only fixture URLs and titles, never the token.
 // Exit codes: 0 = PASS (or the helper did its job), 1 = FAIL / a bridge error (`FAILED — …`),
 // 2 = set-up or refusal (nothing measured), 3 = not measured (SM-0 saw no reload; REP-0: NOT DISCRIMINATING).
-import { existsSync, readdirSync, readFileSync, rmdirSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -53,6 +57,7 @@ import {
   sm0Verdict,
   sm1LogVerdict,
   sm1Verdict,
+  sm1Part3Verdict,
   staleVerdict,
   SDK2_LOCATOR,
   SDK3_LOCATOR,
@@ -63,6 +68,7 @@ import {
   REP0_SLACK_MS,
   type VisLog,
   type SeenEvent,
+  type Sm1Observed,
   type StaleInput,
   type Verdict,
 } from "./s6-rules.js";
@@ -75,8 +81,8 @@ const say = (msg: string): void => console.log(`${new Date().toISOString()} ${wh
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 const HELP = `recipes/s6.ts — Step 8 S6 rows (docs/e2e-test-plan.md §4.19)
-  stale-check | sdk2 | sdk3 | sdk4 | sdk5 | sm0 [--hold <s>] | sm1 [--hold <s>] [--marker <t5-marker>]
-  | sm1-log --since <iso> | peek <t5-marker> | daemon-shutdown | close-bb-tab <T#> | rep0 | --help
+  stale-check | sdk2 | sdk3 | sdk4 | sdk5 | sm0 [--hold <s>] | sm1 [--hold <s>] [--marker <t5-marker>] [--observed <file>]
+  | sm1-log --since <iso> [--observed <file>] | peek <t5-marker> | daemon-shutdown | close-bb-tab <T#> | rep0 | --help
 Exit: 0 PASS, 1 FAIL or bridge error, 2 set-up/refusal, 3 not measured (REP-0: not discriminating).`;
 
 class SetUp extends Error {}
@@ -254,12 +260,30 @@ function peekMarker(): string {
   return marker;
 }
 
-function sm1Args(): { holdS: number; marker: string } {
+function sm1Args(): { holdS: number; marker: string; observed?: string } {
   const holdS = Number(option("--hold") ?? "900");
   if (!Number.isInteger(holdS) || holdS < 300 || holdS > 3600) throw new SetUp("SET-UP: --hold is whole seconds from 300 to 3600 (the restart, MUX-8 and the relaunch fit in it)");
   const marker = option("--marker") ?? "sm1";
   if (!/^[a-z0-9-]{1,32}$/.test(marker)) throw new SetUp("SET-UP: --marker is the driver window's ?t5= marker (a-z, 0-9, -)");
-  return { holdS, marker };
+  const observed = observedPath(true);
+  return { holdS, marker, ...(observed !== undefined ? { observed } : {}) };
+}
+
+/**
+ * `--observed <file>` (S6 Part 3, #99 (5); added 2026-10-23 by S6 builder r3, before any Part 3 run): the
+ * JSON file `sm1` writes its observations to and `sm1-log` reads them back from for SM-1's Part 3 rule. An
+ * absolute path outside the repo; for `sm1` the file must not exist yet, for `sm1-log` it must.
+ */
+function observedPath(fresh: boolean): string | undefined {
+  const i = rest.indexOf("--observed");
+  if (i < 0) return undefined;
+  const p = rest[i + 1];
+  if (!p || p.startsWith("--") || !isAbsolute(p)) throw new SetUp("SET-UP: --observed needs an absolute file path outside the repo (e.g. $env:S6_OUT\\sm1-observed.json)");
+  if (isInside(REPO, p)) throw new SetUp("SET-UP: --observed is inside the repo — write it under $env:S6_OUT");
+  if (fresh && existsSync(p)) throw new SetUp(`SET-UP: ${p} exists already — use a fresh file name`);
+  if (fresh && !existsSync(dirname(p))) throw new SetUp(`SET-UP: the directory of ${p} does not exist`);
+  if (!fresh && !existsSync(p)) throw new SetUp(`SET-UP: ${p} does not exist — run sm1 with the same --observed first`);
+  return p;
 }
 
 function sm1LogSince(): string {
@@ -267,6 +291,7 @@ function sm1LogSince(): string {
   if (!since || !Number.isFinite(Date.parse(since)) || !/^\d{4}-\d{2}-\d{2}T/.test(since)) {
     throw new SetUp("SET-UP: sm1-log needs --since <ISO time taken just before chrome://quit>");
   }
+  observedPath(false);
   return since;
 }
 
@@ -312,9 +337,10 @@ async function closeBbTab(client: BridgeClient): Promise<void> {
  * It closes nothing: the restored fixture window is closed after the driver's counts (t5.ts cleanup).
  */
 async function sm1(client: BridgeClient): Promise<void> {
-  const { holdS, marker } = sm1Args();
+  const { holdS, marker, observed } = sm1Args();
   const fixtureUrl = urlOf(marker);
   const events: SeenEvent[] = [];
+  const eventAt: number[] = [];
   let reconnected = false;
   client.on("reconnected", () => {
     reconnected = true;
@@ -323,6 +349,7 @@ async function sm1(client: BridgeClient): Promise<void> {
   client.on("event", (m) => {
     const e = { event: m.event, params: (m.params ?? {}) as Record<string, unknown> };
     events.push(e);
+    eventAt.push(Date.now());
     say(`event +${Date.now() - started} ms ${describeEvent(e)}`);
   });
   const row = byMarker(await listTabs(client), marker);
@@ -350,7 +377,9 @@ async function sm1(client: BridgeClient): Promise<void> {
       say(`still holding (+${Math.round((Date.now() - t0) / 1000)} s; extension ${client.extensionConnected ? "connected" : "not connected"})`);
     }
   }
+  let backMs: number | undefined;
   if (upIndex() >= 0) {
+    backMs = Date.now();
     say(`extension back at +${Date.now() - started} ms; waiting up to 30 s for tabGone ${tab.handle}`);
     const until = Date.now() + 30_000;
     while (Date.now() < until && !events.some((e) => e.event === "tabGone" && e.params.tab === tab.handle)) await sleep(250);
@@ -371,6 +400,41 @@ async function sm1(client: BridgeClient): Promise<void> {
   const after = (await client.status()) as Status;
   const elapsedMs = Date.now() - t0;
   say(`daemon.status after: uptime ${after.uptime} ms (+${after.uptime - before.uptime} ms over ${elapsedMs} ms); build ${(after.build ?? "?").slice(0, 12)}…; reconnected: ${reconnected ? "yes" : "no"}`);
+  if (observed !== undefined) {
+    // S6 Part 3 (#99 (5)): the verdict is sm1-log's `SM-1 (Part 3 rule)` line; this command prints no
+    // Part 2 verdict line, so the two rules cannot be confused. Only the held tab's events are kept.
+    const down = events.findIndex((e) => e.event === "extensionStatus" && e.params.connected === false);
+    const up = upIndex();
+    const obs: Sm1Observed = {
+      tab: tab.handle,
+      name: who,
+      maxPre,
+      fixtureUrl,
+      holdStartMs: t0,
+      ...(down >= 0 ? { downMs: eventAt[down]! } : {}),
+      ...(up >= 0 ? { upMs: eventAt[up]! } : {}),
+      ...(backMs !== undefined ? { backMs } : {}),
+      tabGone: events.flatMap((e, i) =>
+        e.event === "tabGone" && e.params.tab === tab.handle ? [{ atMs: eventAt[i]!, lastUrlMatches: e.params.lastUrl === fixtureUrl }] : [],
+      ),
+      snapshotAfter: snapshotAfter.ok ? { ok: true } : { ok: false, code: snapshotAfter.code },
+      listAfter: listAfter.map((t) => t.tab),
+      ownedAfter: listAfter.filter((t) => t.owner === who).map((t) => t.tab),
+      buildBefore: (before.build ?? "?").slice(0, 12),
+      buildAfter: (after.build ?? "?").slice(0, 12),
+      uptimeBeforeMs: before.uptime,
+      uptimeAfterMs: after.uptime,
+      elapsedMs,
+      reconnected,
+    };
+    writeFileSync(observed, JSON.stringify(obs, null, 2) + "\n", { flag: "wx" });
+    say(`observations written to ${observed} (held tab's events, handles, counts; no URL or title)`);
+    if (up < 0) {
+      say("SM-1 (Part 3 rule) NOT MEASURED — the extension did not disconnect and reconnect during the hold — the restart was not seen");
+      process.exitCode = 3;
+    } else say('the verdict is sm1-log\'s "SM-1 (Part 3 rule)" line (run sm1-log --since $Q --observed <this file>)');
+    return;
+  }
   const v = sm1Verdict({
     tab: tab.handle,
     name: who,
@@ -396,6 +460,21 @@ function sm1Log(): void {
   for (const l of lines) {
     const m = /^(\S+) (extension session changed|extension resync)/.exec(l);
     if (m && Date.parse(m[1]!) >= t0) console.log(l);
+  }
+  const observed = observedPath(false);
+  if (observed !== undefined) {
+    // S6 Part 3 (#99 (5)): the combined rule replaces Part 2's `SM-1 LOG` line, which is not printed.
+    const v = sm1Part3Verdict(JSON.parse(readFileSync(observed, "utf8")) as Sm1Observed, lines, since);
+    for (const f of v.findings) say(`finding: ${f}`);
+    if (v.notMeasured) {
+      say(`SM-1 (Part 3 rule) NOT MEASURED — ${v.why.join("; ")}`);
+      process.exitCode = 3;
+    } else if (v.pass) say(`SM-1 (Part 3 rule) PASS — ${v.line}`);
+    else {
+      say(`SM-1 (Part 3 rule) FAIL — ${v.why.join("; ")}`);
+      process.exitCode = 1;
+    }
+    return;
   }
   report(sm1LogVerdict(lines, since), "SM-1 LOG", `one "extension session changed: <n> handles retired" (n ≥ 1, no marker value) since ${since}, the resync within 30 s`);
 }
@@ -427,8 +506,18 @@ async function sm0(client: BridgeClient): Promise<void> {
   const row = (await listTabs(client)).find((t) => t.tab === tab.handle);
   say(`listTabs: ${tab.handle} ${row ? `owner ${JSON.stringify(row.owner ?? null)}` : "absent"}`);
   const v = sm0Verdict({ tab: tab.handle, name: who, events, snapshotAfter, owner: row?.owner });
-  await tab.close().catch(() => {});
   report(v, "SM-0", `the reload kept ${tab.handle}: no tabGone, the snapshot answered, still owned by ${who}`);
+  // After the verdict, on every outcome (NOT MEASURED included), its own tab is closed and the outcome
+  // printed: in Part 2 (finding 9) the tab stayed open after NOT MEASURED and the old silent close
+  // (`.catch(() => {})`, before the verdict) printed nothing, so why is not known (S6 Part 2 mechanical
+  // fix (b), #99 (3); added 2026-10-23 by S6 builder r3). An
+  // informational line after the verdict, not part of SM-0's rule.
+  try {
+    await tab.close();
+    say(`closed ${tab.handle} (its own fixture tab)`);
+  } catch (err) {
+    say(`close ${tab.handle} failed: ${err instanceof BridgeError ? `${err.code}: ${err.message}` : String(err)} — close it by hand (a ?s6=sm0 fixture tab)`);
+  }
 }
 
 async function peek(client: BridgeClient): Promise<void> {
