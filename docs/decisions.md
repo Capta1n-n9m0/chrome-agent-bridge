@@ -63,6 +63,22 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-23 · SDK-7's MCP leg is re-registered with a cap that fits pp1's export (#102)
+**Decided:** before SDK-7's MCP leg runs again, its transport cap (240 000 characters, registered in
+23b878f by S6's predecessor proposal 4) is raised to 600 000 characters with the same 8 000-character
+chunks (pp1's export is 418 406 characters, ≈ 53 chunks); every other clause of SDK-7 and S6.3 (two
+files, compared by hash, hash recorded, files not committed, `exports/` outside commits) is unchanged.
+The new cap is committed before the leg's first line; the earlier "not measured" result stays recorded.
+`bb-login.ps1`'s condition-based post-submit wait (poll until back on the Blackboard host, no sign-in
+control and a stable address, ≤ ~90 s) is accepted as a later item, not built in this step.
+**Why:** S6 Part 3 addendum: SDK-6 PASS and SDK-7's SDK leg PASS (77 columns, 790 records, 418 459 bytes,
+page hash = file hash) on pp1, but the MCP leg hit the 240 000 cap, a transport limit of the recipe,
+not a rule of the plan (phase doc S6: "byte-compare with the same data pulled through the MCP
+`browser_evaluate` path"). Raising it before the run keeps the comparison whole.
+**Instead of:** comparing an in-page hash only (not two files); a smaller course; a subset of the
+export (weaker check).
+**By:** Claude
+
 ### 2026-10-23 · SDK-6/SDK-7 run in the session the login actually opened (#101)
 **Decided:** the Blackboard login of S6 Part 3 succeeded; the page only took long to load, so
 `bb-login.ps1`'s post-submit check ran too early and exited 4. The user has opened the pp1 course in

@@ -141,3 +141,10 @@
   Over three parts: 33 PASS, 1 FAIL (ASREF-1 optional clause, superseded), SDK-6/7 pending.
 - bb-login exit 4 was a too-early check: the user saw the login had worked and opened pp1 (#101).
   SDK-6/7 live addendum dispatched to the S6 step agent.
+
+## 2026-10-23 — SDK-6 PASS, SDK-7 SDK leg PASS on pp1; MCP leg re-registered (#102)
+
+- Addendum (1b429bc, b237a3f, dde0c78): SDK-6 PASS live; SDK-7 SDK leg PASS (77 columns, 790 records);
+  MCP leg not measured (export 418 406 chars > the 240 000 recipe cap). #102 raises the cap to 600 000
+  before a re-run; S6 agent resumed for the MCP leg and S6.3.
+- Data outside the repo for the user: exports\pp1-2026-10-23.json (student data), %TEMP%\bridge-e2e\s6-*.
