@@ -61,6 +61,18 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-23 · The user allows unlimited Chrome restarts and unpublished Blackboard writes (#98)
+**Decided:** the run may restart Chrome as often as it needs (still only by `chrome://quit`, session
+restore, counts checked). A write on Blackboard is no longer a STOP, provided the content is not
+published to students — or, if it becomes visible briefly, it is hidden shortly after. The recipes stay
+read-only as built (0.7's first jobs); the grant only lifts the STOP for a write a row needs or makes by
+accident, and any write is recorded (what, when, hidden when) without course content or student data.
+**Why:** the user (2026-10-23): "you may restart Chrome as many time as you need +you can attempt
+writing on the blackboard as long as it is not published it students. If it published briefly, it is
+fine, just needs to be hidden shortly after". Amends #96 and the phase doc's 0.7 STOP rule.
+**Instead of:** one restart for SM-1 only; any Blackboard write as a STOP.
+**By:** user
+
 ### 2026-10-23 · A probe of the failure-report screenshot runs before any row that could attach a non-fixture tab (#97)
 **Decided:** before REP-1, SDK-7's MCP leg or any other row whose failure report could capture a page
 other than a fixture, the resumed S6 wave runs a pre-registered probe row (REP-0): a deliberate
