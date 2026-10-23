@@ -81,3 +81,10 @@
   (S2b.2's daemon grep vs #85's by-name refusal) → reworded in #94 with a behavioural test; #80 amended
   (2 s reload wait). Main-tree dist rebuilt by S2b's builder; the loaded extension is FE's until S6.
 - S5 still running; S6 after it.
+
+## 2026-10-23 — S5 closed (aa113df); S6 next
+
+- S5: PASS-with-notes, +41 tests (1534 / 79), 23 tools; #95 (new_tab background without a cursor per
+  0.6 literally; status lines; schemas; MCP reports); #59 updated.
+- Asked the user (2026-10-23, in chat) for SDK-6/SDK-7's course and SM-1's Chrome-restart grant; no
+  answer yet. S6 dispatched; its live part asks/records per the kickoff.

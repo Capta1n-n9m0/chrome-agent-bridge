@@ -53,12 +53,35 @@ Step 8 (2026-10-23 on), for the user at the gate:
 16. "S3.5's outcome and the Step 6 revisit items" (#91), #24 and #27/#28 as final surface
 17. "S4's failure-report details, and how the MCP reaches them" (#93)
 18. "S2b's details: the `selectTab` refusal grep, the marker's edge cases, the handle mark" (#94)
+19. "S5's MCP details: `browser_new_tab` activation, the status lines, the tool schemas, reports" (#95)
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-23 · S5's MCP details: `browser_new_tab` activation, the status lines, the tool schemas, reports (#95)
+**Decided:** accepted as proposed in `…-steps/S5.md` §5: (1) `browser_new_tab` sends `active: true` only
+when the cursor is set and `listTabs` shows its tab as `current`; with no cursor (a session's first
+tab, F26), a lost cursor or a failed `listTabs` it opens in the background and says so (` (in the
+background — browser_focus_tab shows it)`); it always moves the cursor and never sends `focusTab`.
+(2) `browser_status` keeps the Step 7 lines byte-identical (`Active tab:` included) and adds `Cursor:`,
+plus `Human's active tab:` only when it differs; it never claims. (3) `browser_press_key` stays
+untargeted (like `Tab.pressKey`, #92). (4) `browser_wait_for` takes `locator` and `state`, not
+`timeoutMs`. (5) The MCP renders attach-set failures on a `T<n>` handle as `report()`, a `Full
+message:` block and a PNG image block, through `@bridge/sdk/report` (#93); its attach set includes a
+`browser_evaluate` `PAGE_ERROR`, whose report snapshot renumbers refs and whose screenshot may flash a
+background tab ~1.5 s (accepted by 0.5). (6) Wait calls carry their own bound + slack (F22, #90).
+**Why:** (1) phase doc 0.6's activation rule, pre-stated and applied literally (on doubt the human's
+view does not change); a designed 4-line edit to `mcp/test/multi-actor.test.ts` followed. The rest
+follow #83, #90, #92, #93. Built and verified in aa113df (cross-package test over real `ws`).
+**Instead of:** opening a session's first tab in front as Step 7 did (friendlier for "open X in a new
+tab", but a change to 0.6).
+**Revisit if:** E2E (CUR-3 (c), TAB-3) shows a model losing track of a tab it opened in the background,
+or the user wants a session's first tab in front.
+**By:** Claude ((1), (3), (4), (5) — what the human sees and MCP tool schemas — listed under Open
+decisions)
 
 ### 2026-10-23 · S2b's details: the `selectTab` refusal grep, the marker's edge cases, the handle mark (#94)
 **Decided:** accepted as proposed in `…-steps/S2b.md` §"Proposed decisions": (1) S2b.2's daemon check
@@ -604,6 +627,7 @@ changes would fail.
 **By:** Claude
 
 ### 2026-10-22 · T4's MCP cursor and tool details (#59)
+*Updated 2026-10-23 (Step 8 S5, #95): the revisit trigger "Step 8 adds `browser_use_active_tab`" is met, and the decision holds. An explicit `tab` still never moves the cursor; `browser_select_tab`, `browser_new_tab` and `browser_use_active_tab` move it, and only the last follows the human (it claims `{active:true}`). First-touch claim, lost-cursor notice and "not cleared by `TAB_GONE`" unchanged; `browser_status` shows the cursor and never claims.*
 **Decided:** As in T4's report (`…-steps/T4.md` § Proposed decisions): an explicit `tab` never moves
 the cursor (only `browser_select_tab`/`browser_new_tab` do); no `tab` → the cursor, or one shared
 first-touch `tabs.claim {active:true}`; the cursor is lost on a 4002 `reconnected` and on a new

@@ -11,7 +11,7 @@ decisions.md · 2026-10-23: #71 FE stage (amended #78); #72 S2b (amended #81, #8
 required; #74 session marker (amended #80); #75 S3.4 re-exports; #76 `NO_CURSOR`; #78 FE rows and
 table; #79 handles never reused across daemons; #80 marker mechanism; #81 `id` stays, untargeted
 network = active, unlisted untargeted → `BAD_PARAMS`; #82 `__bridgeData`; #83 `{text}` rule, MCP
-`locator` object, exported `BridgeError`; #84 reworded checks; #87 S1 locator details (items 2–4); #90 `Tab` surface and cursor rule (1, 2, 7); #91 final `BridgeClient` surface (#24, #27/#28); #93 report ref rewrite, client options, `@bridge/sdk/report`; #94 S2b details.
+`locator` object, exported `BridgeError`; #84 reworded checks; #87 S1 locator details (items 2–4); #90 `Tab` surface and cursor rule (1, 2, 7); #91 final `BridgeClient` surface (#24, #27/#28); #93 report ref rewrite, client options, `@bridge/sdk/report`; #94 S2b details; #95 S5 MCP details (new_tab activation, schemas, reports).
 
 ## Stage 0 — spec audit · 2026-10-23 · verifier: PASS-with-notes · commit 7fe62f4
 
@@ -260,3 +260,50 @@ Contracts binding forward, at dcb72db:
 - Tests: 11 removed, 69 added (full suite 1435 → 1493 at d72aeda).
 
 - *Session agent 2026-10-23:* #94 records S2b's nine proposals, including the reworded S2b.2 daemon grep. Tests 1435 → 1493 (−11 removed, +69 new; removal list in S2b.md). Gotcha candidates for S7: S2b.md § "New CLAUDE.md gotcha candidates". SM-0 and SM-1 not run (S6). S2b's builder ran `npm run build` in the main tree: `dist/` is the S2b build; the loaded extension is still FE's until S6 reloads.
+
+## S5 — MCP cursor and tools · 2026-10-23 · verifier: PASS-with-notes · commit aa113df
+
+
+### Contracts (binding forward)
+- **Tools:** 23 by `grep -c "server.tool("`. The new tool is `browser_use_active_tab {}`, which sends
+  `tabs.claim {active:true}` and sets the cursor.
+- **Cursor:** it moves only on first touch, `browser_select_tab`, `browser_new_tab` and
+  `browser_use_active_tab`. An explicit `tab` never moves it, and neither does `browser_status`.
+- **`browser_new_tab`:** `active` is true only when cursor = the `current` row of `listTabs`, and false
+  otherwise (no cursor, lost cursor, listing failure). The result then ends ` (in the background —
+  browser_focus_tab shows it)`.
+- **`browser_status`:** the Step 7 lines stay byte-identical, then a `Cursor:` line, then
+  `Human's active tab:` only when it differs. It never claims.
+- **Actions:** click, type, hover and select_option take exactly one of `ref` and
+  `locator {role?, name?: string, exact?, text?, css?, nth?: int ≥ 0}`. Scroll takes either or neither.
+  Both are checked before any call, the claim included. The wire gets `{locator}` without a `ref` key,
+  or the reverse. `browser_press_key` is unchanged.
+- **`browser_wait_for`:** `locator` + `state` stand alone (a locator with `text`, `seconds`,
+  `networkIdle` or `idleMs` is a tool error). The call timeout is 15 000 ms, or `s·1000+5000` for
+  `seconds`.
+- **`browser_evaluate`:** `asRef` is forwarded only when true, and a returned ref prints
+  `[ref=eN] — pass it as ref to browser_click etc.`.
+- **Failure reports:** attach-set code + `T<n>` handle → `attachContext` from `@bridge/sdk/report` →
+  `isError` with `report()` [+ `Full message:`] + a PNG image block. Every other error is rethrown
+  unchanged.
+- **SDK:** `sdk/package.json` `exports["./report"]` points at `sdk/src/report.ts`, which only
+  re-exports. The main entry keeps its 8 values.
+- **`registerTools`:** the signature is `(server, bridge, cursor?, options?: {actorName?,
+  failureReports?, attach?})`.
+
+### Decisions taken
+- §5: six proposed decisions plus the #59 Updated note. Four are for user review: F26's background rule
+  (what the human sees), the status layout, the tool schemas (`browser_press_key`, `browser_wait_for`),
+  and the attach set in the MCP.
+
+### Deviations from the phase doc
+- §4 (1)–(5).
+
+### Estimates vs actuals
+| Item | Estimate | Actual | Source |
+|---|---|---|---|
+| Time | 2.5 h (kickoff) / 3 h (brief) | ≈ 1.3 h | ledger |
+| Tests | ≥ before + new | 1493/78 → 1534/79 (+41) | verifier, clean worktree at 9b903d9 |
+| Fix rounds | ≤ 2 | 1 | S5-verifier.md, S5-fixer1.md |
+
+- *Session agent 2026-10-23:* #95 records S5's proposals; #59 updated. Tests 1493 / 78 → 1534 / 79 (+41) at 9b903d9 (verifier). 23 tools. New rows CUR-1–3, LOC-1, LOC-2, ASREF-1, REP-1 written, not run; STAT-1, MUX-1, MUX-8, TAB-3, LEASE-1, NET-12 re-dated.
