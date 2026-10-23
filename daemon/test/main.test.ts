@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -374,5 +374,22 @@ describe("runDaemon — real WsHost end to end on an ephemeral port", () => {
     expect(h.exit).toHaveBeenCalledWith(0);
     expect(h.lines).toContain('client + "e2e" (1 client)');
     expectClean(h.lines);
+  });
+});
+
+describe("runDaemon — the handle mark (Step 8 S2b.9, decisions.md #79)", () => {
+  it("stateDir wires a handle mark in that directory into the host; without stateDir the host gets none (tests never touch the real one)", async () => {
+    const stateDir = mkdtempSync(path.join(tmpdir(), "bridge-main-state-"));
+    dirs.push(stateDir);
+    const h = harness({ stateDir });
+    await runDaemon(h.deps);
+    const numbers = h.host().opts.handleNumbers;
+    expect(numbers).toBeDefined();
+    expect(numbers!.next()).toBe(1);
+    expect(readFileSync(path.join(stateDir, "handle-mark"), "utf8")).toBe("64\n");
+
+    const h2 = harness();
+    await runDaemon(h2.deps);
+    expect(h2.host().opts.handleNumbers).toBeUndefined();
   });
 });

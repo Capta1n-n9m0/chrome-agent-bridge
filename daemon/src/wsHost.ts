@@ -3,7 +3,8 @@ import type { AddressInfo } from "node:net";
 import { isEvent, type EventMessage, type ExtensionStatusParams, type WelcomeMessage } from "@bridge/shared";
 import { Bridge } from "./bridge.js";
 import { ExtensionConnection } from "./connection.js";
-import { parseHello } from "./handshake.js";
+import type { HandleNumbers } from "./handles.js";
+import { helloSession, parseHello } from "./handshake.js";
 import { TabLayer } from "./intercept.js";
 import { ClientRegistry, DEFAULT_CLIENT_NAME } from "./registry.js";
 import { route, CLOSE_UPGRADING, type RouteContext, type RouteHost } from "./route.js";
@@ -44,6 +45,11 @@ export interface WsHostOptions {
   log?: (msg: string) => void;
   /** The tab layer's wait between url-fill polls (T5b fix 3). Default `setTimeout`; tests inject one. */
   sleep?: (ms: number) => Promise<void>;
+  /**
+   * Where handle numbers come from (Step 8 S2b.9, decisions.md #79). `main.ts` wires the high-water mark
+   * under the state directory; default: T1, T2, … per host (every test that builds a `WsHost` itself).
+   */
+  handleNumbers?: HandleNumbers;
 }
 
 /** Counters for the daemon log (counts only — never URLs, header values, bodies or the token). */
@@ -141,6 +147,7 @@ export class WsHost implements RouteHost {
       log: options.log,
       now: this.now,
       sleep: options.sleep,
+      handleNumbers: options.handleNumbers,
     });
   }
 
@@ -224,13 +231,19 @@ export class WsHost implements RouteHost {
         }
         role = hello.role;
         if (role === "extension") {
-          connection = new ExtensionConnection((d) => ws.send(d));
+          // #42: a hello without `proto` is a stale extension (tab methods get VERSION). Read here,
+          // not from parseHello, whose result shape Step 6 tests pin.
+          const proto = helloProto(data) >= 2;
+          // #73 (S2b.4): a proto:2 extension's error without a code is still delivered (INTERNAL), and
+          // logged once per connection by method only; a no-proto peer keeps today's silent mapping.
+          const log = this.options.log;
+          const onMissingCode = proto && log ? (method: string) => log(`extension error without code: ${method}`) : undefined;
+          connection = new ExtensionConnection((d) => ws.send(d), undefined, { onMissingCode });
           this.bridge.setConnection(connection);
           this.sendWelcome(ws, "extension");
           this.broadcastExtensionStatus(true);
-          // #42: a hello without `proto` is a stale extension (tab methods get VERSION). Read here,
-          // not from parseHello, whose result shape Step 6 tests pin.
-          this.tabs.extensionConnected(connection, helloProto(data) >= 2);
+          // S2b.5 (#74, #80): the session marker decides whether every handle is retired first.
+          this.tabs.extensionConnected(connection, proto, helloSession(data));
         } else {
           const ctx = this.routeContext();
           client = new ClientConnection(ws, ctx, () => this.ignoredClientFrames++);

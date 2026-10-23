@@ -1,4 +1,6 @@
 // Step 7 T2 — the daemon's tab layer (phase doc T2; spec §6, §10; decisions.md #39–#44, #52–#54).
+// Step 8 S2b removed the Step 6 compatibility path (#41, #54, #81, #85): every tab call names its tab;
+// an extension hello with a changed session marker retires every handle (#74, #80).
 //
 // Every client request that is not `daemon.*` passes through `TabLayer.request` (via `route.ts`):
 // handles are resolved to Chrome tab ids, leases are checked (fail fast), the visibility lock is taken
@@ -20,10 +22,10 @@ import {
 } from "@bridge/shared";
 import type { Bridge } from "./bridge.js";
 import type { ExtensionConnection } from "./connection.js";
-import { HandleTable } from "./handles.js";
+import { HandleTable, type HandleNumbers } from "./handles.js";
 import { LeaseTable } from "./leases.js";
 import { VisibilityLock } from "./lock.js";
-import { classify, takesLock, LEGACY_ID_METHODS, NETWORK_METHODS } from "./methods.js";
+import { classify, takesLock, NETWORK_METHODS, REMOVED_METHODS } from "./methods.js";
 import { DAEMON_SLACK_MS, DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, MIN_TIMEOUT_MS } from "./route.js";
 
 export const RELOAD_HINT =
@@ -47,6 +49,8 @@ export interface TabLayerDeps {
   now?: () => number;
   /** The wait between url-fill polls (T5b fix 3). Default: `setTimeout`. */
   sleep?: (ms: number) => Promise<void>;
+  /** Where handle numbers come from (S2b.9, #79). Default: T1, T2, … per instance. */
+  handleNumbers?: HandleNumbers;
 }
 
 export interface StatusTab {
@@ -107,8 +111,11 @@ export class TabLayer {
   private readonly now: () => number;
   /** Extension connections whose hello carried `proto` ≥ 2 (#42). */
   private readonly protoConnections = new WeakSet<ExtensionConnection>();
-  /** Clients that already got their one legacy log line. */
-  private readonly legacyLogged = new Set<string>();
+  /**
+   * The session marker of the last extension hello (S2b.5, #74 as amended by #80): a string, `null` for
+   * a hello without one ("none" is a value), `undefined` before the first hello of this daemon's life.
+   */
+  private lastSession: string | null | undefined = undefined;
   /**
    * In-flight `newTab` calls (F20). While any is in flight, an opener grant is made at once (so the
    * tab is never unheld) but its `leaseGranted` is held back until they settle: a `newTab` that
@@ -123,7 +130,7 @@ export class TabLayer {
   constructor(private readonly deps: TabLayerDeps) {
     this.now = deps.now ?? Date.now;
     this.sleep = deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
-    this.handles = new HandleTable({ now: this.now });
+    this.handles = new HandleTable({ now: this.now, numbers: deps.handleNumbers });
     this.lock = new VisibilityLock({ nameOf: (id) => this.name(id), now: this.now });
   }
 
@@ -138,11 +145,39 @@ export class TabLayer {
 
   // ------------------------------------------------------------------ extension side
 
-  /** A new extension socket said hello. A proto:2 one gets the F15 resync. */
-  extensionConnected(conn: ExtensionConnection, proto: boolean): void {
+  /**
+   * A new extension socket said hello. A changed session marker first retires every handle, synchronously
+   * (S2b.5); then a proto:2 hello gets the F15 resync, which mints anew.
+   */
+  extensionConnected(conn: ExtensionConnection, proto: boolean, session?: string): void {
+    const current = session ?? null;
+    const previous = this.lastSession;
+    this.lastSession = current;
+    // The first hello of the daemon's life retires nothing (today's resync). After that any change of
+    // value retires: A→B (Chrome restarted), A→none, and none→A.
+    if (previous !== undefined && previous !== current) this.retireAll();
     if (!proto) return;
     this.protoConnections.add(conn);
     void this.resync(conn);
+  }
+
+  /**
+   * The extension's session changed (Chrome restarted, so its tab ids may be reused): every live handle
+   * goes gone with its pre-restart url/title, each holder gets `tabGone` once, every lease is dropped.
+   * Runs before the resync, with no await, so no call can resolve an old handle to a reused tab id in
+   * between. The visibility lock is left alone: a holder's forwarded call is on the old socket (it ends
+   * by its answer, its deadline or the socket's close), and a waiter re-resolves its handle when the lock
+   * is granted, which now answers `TAB_GONE`. The marker itself is never logged.
+   */
+  private retireAll(): void {
+    const retired = this.handles.retireAll();
+    for (const handle of retired) {
+      const owner = this.leases.ownerOf(handle);
+      this.leases.release(handle);
+      if (owner) this.sendGone(owner.clientId, handle);
+    }
+    this.closing.clear(); // closer entries name the old session's tab ids
+    this.deps.log?.(`extension session changed: ${retired.length} handles retired`);
   }
 
   private async resync(conn: ExtensionConnection): Promise<void> {
@@ -294,7 +329,6 @@ export class TabLayer {
   clientGone(clientId: string): void {
     this.leases.releaseAll(clientId);
     this.lock.releaseAllOf(clientId);
-    this.legacyLogged.delete(clientId);
   }
 
   status(): { tabs: StatusTab[]; lock: { holder?: string } } {
@@ -314,6 +348,9 @@ export class TabLayer {
    * `BridgeError`. `receivedAt` is taken here, synchronously, for the one deadline (#44).
    */
   async request(caller: Caller, method: string, params: Params | undefined, timeoutMs: number | undefined): Promise<unknown> {
+    // #85 item 4: answered here, before any resolution — a Step 7 extension would still run it.
+    const removed = REMOVED_METHODS.get(method);
+    if (removed !== undefined) throw new BridgeError(ErrorCodes.UNKNOWN_METHOD, `${method} ${removed}`);
     const deadline = this.now() + clampTimeout(timeoutMs);
     this.handles.prune(this.now());
     const cls = classify(method, params);
@@ -329,16 +366,19 @@ export class TabLayer {
       if (!proto) return this.forward(method, params, deadline);
       if (cls === "listTabs") return this.listTabs(without(params, "tab"), deadline);
       if (cls === "newTab") return this.newTab(caller, without(params, "tab"), deadline);
-      if (method === "networkRequests") return this.networkRequests(caller, params ?? {}, deadline);
+      if (method === "networkRequests") return this.networkRequests(params ?? {}, deadline);
       return this.forward(method, without(params, "tab"), deadline);
     }
 
-    // Tab-carrying (incl. closeTab and an unlisted method with a `tab`).
+    // Tab-carrying (incl. closeTab and an unlisted method, which without a `tab` is refused below).
     if (!proto) throw new BridgeError(ErrorCodes.VERSION, RELOAD_HINT);
     const p = params ?? {};
     if (method === "networkClear" && p.tab === "all") return this.networkClearAll(caller, p, deadline);
+    if ((method === "closeTab" || method === "focusTab") && p.id !== undefined) {
+      throw bad(`${method} takes tab (a handle like "T3"), not a Chrome tab id`);
+    }
 
-    const target = await this.resolveTarget(caller, method, p, deadline);
+    const target = await this.resolveTarget(method, p, deadline);
     this.checkLease(target.handle, caller);
 
     let release: (() => void) | undefined;
@@ -357,7 +397,7 @@ export class TabLayer {
         throw err;
       }
     }
-    const forwarded = without(p, "tab", ...(LEGACY_ID_METHODS.has(method) ? ["id"] : []));
+    const forwarded = without(p, "tab");
     forwarded.tabId = tabId;
     if (method === "closeTab") this.closing.set(tabId, caller.clientId);
     try {
@@ -407,62 +447,31 @@ export class TabLayer {
     );
   }
 
-  /** The target of a tab-carrying call: an explicit handle, or (#41/#54) the legacy forms. */
-  private async resolveTarget(
-    caller: Caller,
-    method: string,
-    p: Params,
-    deadline: number,
-  ): Promise<{ handle: string; tabId: number }> {
+  /**
+   * The target of a tab-carrying call: an explicit handle (S2b: `tab` is required). A network call's
+   * `tab` is a scope: absent or "active" is the human's tab (#40, kept by #81), a handle is that tab, and
+   * a Chrome tab id — a number or a numeric string — is refused (#54's form removed).
+   */
+  private async resolveTarget(method: string, p: Params, deadline: number): Promise<{ handle: string; tabId: number }> {
     const tab = p.tab;
     if (NETWORK_METHODS.has(method)) {
-      if (tab === undefined) return this.humanTab(caller, deadline, true);
-      if (tab === "active") return this.humanTab(caller, deadline, false);
-      if (typeof tab === "number") {
-        if (!Number.isInteger(tab)) throw bad(`tab must be a handle, "all" or "active"`);
-        return this.legacyId(caller, tab, deadline);
+      if (tab === undefined || tab === "active") return this.humanTab(deadline);
+      if (typeof tab !== "string" || /^\s*-?\d+(\.\d+)?\s*$/.test(tab)) {
+        throw bad(`tab must be a tab handle like "T3", "all" or "active" — not a Chrome tab id`);
       }
-      if (typeof tab !== "string") throw bad(`tab must be a handle, "all" or "active"`);
       return { handle: tab, tabId: this.resolveHandle(tab) };
     }
-    if (tab !== undefined) {
-      if (typeof tab !== "string") throw bad(`tab must be a tab handle like "T3"`);
-      return { handle: tab, tabId: this.resolveHandle(tab) };
-    }
-    if (LEGACY_ID_METHODS.has(method)) {
-      // Never the human's tab here: closing or focusing "whatever is active" is not a Step 6 behaviour.
-      if (p.id === undefined) throw bad("tab is required");
-      if (typeof p.id !== "number" || !Number.isInteger(p.id)) throw bad("id must be a Chrome tab id (an integer)");
-      return this.legacyId(caller, p.id, deadline);
-    }
-    return this.humanTab(caller, deadline, true);
-  }
-
-  private legacyLog(caller: Caller, what: string): void {
-    if (this.legacyLogged.has(caller.clientId)) return;
-    this.legacyLogged.add(caller.clientId);
-    this.deps.log?.(`legacy client ${JSON.stringify(caller.name)}: ${what}`);
+    if (tab === undefined) throw bad("tab is required");
+    if (typeof tab !== "string") throw bad(`tab must be a tab handle like "T3"`);
+    return { handle: tab, tabId: this.resolveHandle(tab) };
   }
 
   /** The human's tab (#43): the `current: true` tab of a fresh `listTabs`. */
-  private async humanTab(caller: Caller | undefined, deadline: number, legacy: boolean): Promise<{ handle: string; tabId: number }> {
+  private async humanTab(deadline: number): Promise<{ handle: string; tabId: number }> {
     const tabs = this.record(await this.forward("listTabs", undefined, deadline));
     const human = tabs.find((t) => t.current === true);
     if (!human) throw new BridgeError(ErrorCodes.INTERNAL, NO_HUMAN_TAB);
-    if (legacy && caller) this.legacyLog(caller, "no tab — resolved to the active tab");
     return { handle: this.handles.mint(human.id), tabId: human.id };
-  }
-
-  /** A Step 6 client's Chrome tab id → its handle; refresh once from `listTabs` if unseen. */
-  private async legacyId(caller: Caller, tabId: number, deadline: number): Promise<{ handle: string; tabId: number }> {
-    let handle = this.handles.handleOf(tabId);
-    if (!handle) {
-      this.record(await this.forward("listTabs", undefined, deadline));
-      handle = this.handles.handleOf(tabId);
-    }
-    if (!handle) throw new BridgeError(ErrorCodes.TAB_UNKNOWN, `unknown tab id ${tabId} — call listTabs`);
-    this.legacyLog(caller, `Chrome tab id — resolved to ${handle}`);
-    return { handle, tabId };
   }
 
   /** Mint and cache every tab of a `listTabs` result; never marks anything gone. */
@@ -516,12 +525,12 @@ export class TabLayer {
     }
   }
 
-  private async networkRequests(caller: Caller, p: Params, deadline: number): Promise<unknown> {
+  private async networkRequests(p: Params, deadline: number): Promise<unknown> {
     let forwarded: Params;
     if (p.id !== undefined) forwarded = without(p, "tab"); // a request-id lookup is global
     else if (p.tab === "all") forwarded = { ...without(p, "tab"), scope: "all" };
     else {
-      const target = await this.resolveTarget(caller, "networkRequests", p, deadline); // free: no lease check
+      const target = await this.resolveTarget("networkRequests", p, deadline); // free: no lease check
       forwarded = { ...without(p, "tab"), tabId: target.tabId };
     }
     const result = await this.forward("networkRequests", forwarded, deadline);
@@ -563,7 +572,7 @@ export class TabLayer {
     if (p.tab === undefined && p.active === true) {
       if (!this.deps.bridge.isConnected()) throw this.deps.bridge.notConnectedError();
       if (!this.isProto()) throw new BridgeError(ErrorCodes.VERSION, RELOAD_HINT);
-      handle = (await this.humanTab(undefined, deadline, false)).handle;
+      handle = (await this.humanTab(deadline)).handle;
     } else if (typeof p.tab === "string") {
       handle = p.tab;
       this.resolveHandle(handle);

@@ -3,6 +3,10 @@ import { WebSocket } from "ws";
 import { Bridge } from "../src/bridge.js";
 import { WsHost, type WsHostOptions } from "../src/wsHost.js";
 import { TAB_METHODS } from "../src/methods.js";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { createHandleMark } from "../src/handle-mark.js";
 
 /**
  * Step 7 T2 over real `ws` sockets on port 0: handles, leases, the visibility lock and the intercepts
@@ -171,6 +175,10 @@ class FakeExt {
   answer(req: Req, result: unknown): void {
     if (this.peer.ws.readyState === WebSocket.OPEN) this.peer.send({ id: req.id, result });
   }
+  /** S2b: answer with a raw `error` member, exactly as given (it may lack a code). */
+  fail(req: Req, error: unknown): void {
+    if (this.peer.ws.readyState === WebSocket.OPEN) this.peer.send({ id: req.id, error });
+  }
   emit(event: string, params: Record<string, unknown>): void {
     this.peer.send({ event, params });
   }
@@ -225,12 +233,14 @@ describe("Step 7 tab layer over a real WsHost", () => {
   }
 
   /** A proto:2 fake extension, after its resync listTabs has been answered. */
-  async function extension(port: number, setup?: (e: FakeExt) => void, proto = true): Promise<FakeExt> {
+  async function extension(port: number, setup?: (e: FakeExt) => void, proto = true, session?: string): Promise<FakeExt> {
     const p = track(await open(port));
     const ext = new FakeExt(p);
     if (proto) exts.push(ext);
     setup?.(ext);
-    p.send(proto ? { type: "hello", token: TOKEN, role: "extension", proto: 2 } : { type: "hello", token: TOKEN });
+    const hello: Frame = proto ? { type: "hello", token: TOKEN, role: "extension", proto: 2 } : { type: "hello", token: TOKEN };
+    if (session !== undefined) hello.session = session; // S2b: the session marker (#74, #80)
+    p.send(hello);
     await p.frame(isWelcome);
     if (proto) {
       await ext.waitReq("listTabs");
@@ -776,7 +786,9 @@ describe("Step 7 tab layer over a real WsHost", () => {
     expect((await b.frame(response(ib))).result).toEqual({ dataUrl: "b" });
   });
 
-  it("focusTab and selectTab wait while a screenshot holds the lock; cdp and fullPage screenshots do not", async () => {
+  // 2026-10-23 (Step 8 S2b, decisions.md #84 F11, #85 item 4): the second waiter was `selectTab {id: 102}`,
+  // the Step 6 alias with a Chrome id; it is now a second `focusTab {tab}` — the same lock class.
+  it("focusTab (twice) waits while a screenshot holds the lock; cdp and fullPage screenshots do not", async () => {
     const { port } = await start();
     const ext = await extension(port);
     const a = await client(port, "A");
@@ -788,13 +800,12 @@ describe("Step 7 tab layer over a real WsHost", () => {
     send(a, "screenshot", { tab: ta.tab });
     const shot = await ext.waitReq("screenshot");
     const ifocus = send(b, "focusTab", { tab: tb.tab });
-    const iselect = send(b, "selectTab", { id: 102 });
+    const iselect = send(b, "focusTab", { tab: tb.tab });
     send(b, "screenshot", { tab: tb.tab, mode: "cdp" });
     send(b, "screenshot", { tab: tb.tab, fullPage: true });
     await ext.waitReq("screenshot", 3);
     await quiet(100);
     expect(ext.reqs("focusTab")).toHaveLength(0);
-    expect(ext.reqs("selectTab")).toHaveLength(0);
     expect(ext.reqs("screenshot").map((r) => r.params)).toEqual([
       { tabId: 101 },
       { tabId: 102, mode: "cdp" },
@@ -803,9 +814,9 @@ describe("Step 7 tab layer over a real WsHost", () => {
 
     ext.answer(shot, { dataUrl: "a" });
     expect((await b.frame(response(ifocus))).result).toEqual({ ok: true, method: "focusTab" });
-    expect((await b.frame(response(iselect))).result).toEqual({ ok: true, method: "selectTab" });
+    expect((await b.frame(response(iselect))).result).toEqual({ ok: true, method: "focusTab" });
     expect(ext.reqs("focusTab")[0].params).toEqual({ tabId: 102 });
-    expect(ext.reqs("selectTab")[0].params).toEqual({ tabId: 102 });
+    expect(ext.reqs("focusTab")[1].params).toEqual({ tabId: 102 });
   });
 
   it("the lock is taken even when the target is the human's active tab", async () => {
@@ -976,107 +987,9 @@ describe("Step 7 tab layer over a real WsHost", () => {
     15_000,
   );
 
-  // ---------------------------------------------------------------- T2.4 (#41): the legacy path
-
-  it("legacy: no tab → the human's tab, numeric tabId, no lease, one log line per client", async () => {
-    const { port } = await start();
-    const ext = await extension(port);
-    const s6 = await client(port, "claude-code #1");
-    const other = await client(port, "claude-code #2");
-
-    expect((await call(s6, "snapshot")).result).toEqual({ ok: true, method: "snapshot" });
-    expect(ext.reqs("snapshot")[0].params).toEqual({ tabId: 1 });
-    await call(s6, "click", { ref: "e3" });
-    expect(ext.reqs("click")[0].params).toEqual({ ref: "e3", tabId: 1 });
-    await call(other, "snapshot");
-
-    const legacy = logs.filter((l) => l.startsWith("legacy client"));
-    expect(legacy).toEqual([
-      'legacy client "claude-code #1": no tab — resolved to the active tab',
-      'legacy client "claude-code #2": no tab — resolved to the active tab',
-    ]);
-    // No lease was granted.
-    const st = (await call(other, "daemon.status")).result as { tabs: Array<Record<string, unknown>> };
-    expect(st.tabs.find((x) => x.tab === "T1")!.owner).toBeUndefined();
-  });
-
-  it("legacy: the human's tab held by another client → TAB_HELD; no human's tab → INTERNAL", async () => {
-    const { port } = await start();
-    const ext = await extension(port);
-    const a = await client(port, "A");
-    const s6 = await client(port, "S6");
-    await call(a, "tabs.claim", { active: true });
-    const r = await call(s6, "snapshot");
-    expect(errOf(r).message).toMatch(HELD("T1", "A"));
-    expect(ext.reqs("snapshot")).toHaveLength(0);
-    ext.tabs = ext.tabs.map(({ current: _current, ...x }) => x); // no human's tab
-    expect(errOf(await call(s6, "snapshot"))).toEqual({ code: "INTERNAL", message: NO_WINDOW });
-  });
-
-  it("legacy: a screenshot without tab takes the lock (FIFO behind a holder, or LOCK_TIMEOUT)", async () => {
-    const { port } = await start();
-    const ext = await extension(port);
-    const a = await client(port, "A");
-    const s6 = await client(port, "S6");
-    const ta = await newTab(a);
-    ext.hold.add("screenshot");
-    send(a, "screenshot", { tab: ta.tab });
-    const shotA = await ext.waitReq("screenshot");
-
-    const timedOut = await call(s6, "screenshot", { fullPage: false }, 150);
-    expect(errOf(timedOut)).toMatchObject({ code: "LOCK_TIMEOUT", data: { holder: "A" } });
-    const id = send(s6, "screenshot", { fullPage: false });
-    await quiet(100);
-    expect(ext.reqs("screenshot")).toHaveLength(1);
-    ext.answer(shotA, {});
-    const shotL = await ext.waitReq("screenshot", 2);
-    expect(shotL.params).toEqual({ fullPage: false, tabId: 1 });
-    ext.answer(shotL, { dataUrl: "x" });
-    expect((await s6.frame(response(id))).result).toEqual({ dataUrl: "x" });
-  });
-
-  it("legacy: closeTab/selectTab with a Chrome id are resolved and lease-checked; an unknown id refreshes once, then TAB_UNKNOWN", async () => {
-    const { port } = await start();
-    const ext = await extension(port);
-    const a = await client(port, "A");
-    const s6 = await client(port, "S6");
-    const ta = await newTab(a);
-
-    expect(errOf(await call(s6, "closeTab", { id: ta.id })).message).toMatch(HELD(ta.tab, "A"));
-    expect(errOf(await call(s6, "selectTab", { id: ta.id })).message).toMatch(HELD(ta.tab, "A"));
-    expect(ext.reqs("closeTab")).toHaveLength(0);
-
-    await call(s6, "selectTab", { id: 2 });
-    expect(ext.reqs("selectTab")[0].params).toEqual({ tabId: 2 });
-
-    // An id the table has never seen but Chrome has: one refresh mints it.
-    ext.tabs.push({ id: 50, title: "", url: "", active: false });
-    await call(s6, "closeTab", { id: 50 });
-    expect(ext.reqs("closeTab")[0].params).toEqual({ tabId: 50 });
-
-    const before = ext.reqs("listTabs").length;
-    const u = await call(s6, "closeTab", { id: 9999 });
-    expect(errOf(u).code).toBe("TAB_UNKNOWN");
-    expect(ext.reqs("listTabs").length).toBe(before + 1);
-    expect(errOf(await call(s6, "closeTab", {})).code).toBe("BAD_PARAMS");
-    expect(errOf(await call(s6, "closeTab", { id: "x" })).code).toBe("BAD_PARAMS");
-    expect(logs.filter((l) => l.startsWith("legacy client"))).toHaveLength(1);
-  });
-
-  it("legacy: a bare number in a network tab is a Chrome id (#54); unknown → TAB_UNKNOWN", async () => {
-    const { port } = await start();
-    const ext = await extension(port);
-    const a = await client(port, "A");
-    const s6 = await client(port, "S6");
-    const ta = await newTab(a);
-
-    await call(s6, "networkRequests", { tab: 1, limit: 5 });
-    expect(ext.reqs("networkRequests")[0].params).toEqual({ limit: 5, tabId: 1 });
-    expect(errOf(await call(s6, "networkClear", { tab: ta.id })).message).toMatch(HELD(ta.tab, "A"));
-    expect(errOf(await call(s6, "networkRequests", { tab: 9999 })).code).toBe("TAB_UNKNOWN");
-    expect(errOf(await call(s6, "networkRequests", { tab: true })).code).toBe("BAD_PARAMS");
-    expect(errOf(await call(s6, "networkRequests", { tab: 1.5 })).code).toBe("BAD_PARAMS");
-  });
+  // T2.4 (#41)'s legacy-path tests were removed in Step 8 S2b (decisions.md #72, #81; listed in
+  // docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S2b-builder.md); the refusals that replace
+  // them are under "Step 8 S2b: the removals" below.
 
   it("free methods need no lease: downloads, listTabs, networkRequests in every scope, daemon.*, tabs.claim/release", async () => {
     const { port } = await start();
@@ -1208,6 +1121,8 @@ describe("Step 7 tab layer over a real WsHost", () => {
     expect(ext.reqs("networkRequests")).toHaveLength(0);
   });
 
+  // 2026-10-23 (Step 8 S2b, decisions.md #84 F11): the loop also sent each method through the legacy path
+  // (no tab, or a Chrome `id` for focusTab/selectTab); that path is gone, so each method is sent once.
   it("T2.3: every tab-carrying method reaches the extension with a numeric tabId and no tab key", async () => {
     const { port } = await start();
     const ext = await extension(port);
@@ -1217,8 +1132,6 @@ describe("Step 7 tab layer over a real WsHost", () => {
       const params = m === "networkClear" ? { tab: ta.tab } : { tab: ta.tab, ref: "e1" };
       const r = await call(a, m, params);
       expect("result" in r, m).toBe(true);
-      // and through the legacy path
-      await call(a, m, m === "focusTab" || m === "selectTab" ? { id: 2 } : {});
     }
     await call(a, "someNewMethod", { tab: ta.tab, x: 1 });
     expect(ext.reqs("someNewMethod")[0].params).toEqual({ x: 1, tabId: 101 });
@@ -1227,7 +1140,7 @@ describe("Step 7 tab layer over a real WsHost", () => {
       expect(r.params ?? {}).not.toHaveProperty("id", ta.id);
     }
     const tabReqs = ext.reqs().filter((r) => TAB_METHODS.has(r.method));
-    expect(tabReqs).toHaveLength(TAB_METHODS.size * 2);
+    expect(tabReqs).toHaveLength(TAB_METHODS.size);
     for (const r of tabReqs) expect(typeof r.params?.tabId).toBe("number");
   });
 
@@ -1249,6 +1162,9 @@ describe("Step 7 tab layer over a real WsHost", () => {
       ["closeTab", { id: 1 }],
       ["networkClear", { tab: "all" }],
       ["someNewMethod", { tab: "T1" }],
+      // 2026-10-23 (Step 8 S2b, decisions.md #81 F8): an unlisted method without tab was forwarded here as a
+      // free method; it is now a tab call without a tab, so a no-proto extension refuses it like the rest.
+      ["slow", undefined],
     ] as const) {
       expect(errOf(await call(a, m, p as Record<string, unknown> | undefined)), m).toEqual({
         code: "VERSION",
@@ -1257,11 +1173,9 @@ describe("Step 7 tab layer over a real WsHost", () => {
     }
     await call(a, "downloadStart", { url: "u" });
     await call(a, "networkRequests", { tab: "all" });
-    await call(a, "slow");
     expect(ext.reqs().map((r) => [r.method, r.params])).toEqual([
       ["downloadStart", { url: "u" }],
       ["networkRequests", { tab: "all" }],
-      ["slow", undefined],
     ]);
   });
 
@@ -1292,6 +1206,358 @@ describe("Step 7 tab layer over a real WsHost", () => {
     expect(errOf(await call(a, "click", { tab: "T2", ref: "e1" })).code).toBe("TAB_GONE");
     expect(ext2.reqs("listTabs")).toHaveLength(1);
     expect(logs.some((l) => l.startsWith("extension resync"))).toBe(true);
+  });
+
+  // ---------------------------------------------------------------- Step 8 S2b: the removals (#41, #52–#54, #81, #85)
+
+  it("S2b.3: a tab call without tab → BAD_PARAMS 'tab is required'; nothing forwarded; no legacy log line", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    const listBefore = ext.reqs("listTabs").length;
+    const methods = [...TAB_METHODS].filter((m) => m !== "networkClear"); // network calls keep #40's "active"
+    for (const m of [...methods, "closeTab"]) {
+      const r = await call(a, m, m === "locate" ? { locator: { role: "button" } } : { ref: "e1" });
+      expect(errOf(r), m).toEqual({ code: "BAD_PARAMS", message: "tab is required" });
+    }
+    expect(errOf(await call(a, "snapshot"))).toEqual({ code: "BAD_PARAMS", message: "tab is required" });
+    expect(ext.reqs().filter((r) => r.method !== "listTabs")).toEqual([]);
+    expect(ext.reqs("listTabs").length).toBe(listBefore); // no human's-tab lookup either
+    expect(logs.filter((l) => l.includes("legacy"))).toEqual([]);
+  });
+
+  it("S2b.3 (#81 F8): an unlisted method without tab → BAD_PARAMS; with a tab it is resolved and forwarded", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    expect(errOf(await call(a, "someNewMethod", { x: 1 }))).toEqual({ code: "BAD_PARAMS", message: "tab is required" });
+    expect(errOf(await call(a, "someNewMethod"))).toEqual({ code: "BAD_PARAMS", message: "tab is required" });
+    expect(ext.reqs("someNewMethod")).toEqual([]);
+    await call(a, "someNewMethod", { tab: "T2", x: 1 });
+    expect(ext.reqs("someNewMethod").map((r) => r.params)).toEqual([{ x: 1, tabId: 2 }]);
+  });
+
+  it("S2b.3: closeTab/focusTab with a Chrome id (alone or beside a tab) → BAD_PARAMS; nothing forwarded", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    for (const m of ["closeTab", "focusTab"]) {
+      expect(errOf(await call(a, m, { id: 2 })).code, m).toBe("BAD_PARAMS");
+      expect(errOf(await call(a, m, { id: 2, tab: "T2" })).code, m).toBe("BAD_PARAMS");
+      expect(errOf(await call(a, m, {})), m).toEqual({ code: "BAD_PARAMS", message: "tab is required" });
+    }
+    expect(ext.reqs("closeTab")).toEqual([]);
+    expect(ext.reqs("focusTab")).toEqual([]);
+    expect((await call(a, "focusTab", { tab: "T2" })).result).toEqual({ ok: true, method: "focusTab" });
+    expect(ext.reqs("focusTab").map((r) => r.params)).toEqual([{ tabId: 2 }]);
+  });
+
+  it("S2b.3 (#40, #54): a numeric network tab (number or numeric string) → BAD_PARAMS; nothing forwarded", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    const ta = await newTab(a);
+    for (const [m, tab] of [
+      ["networkRequests", 1],
+      ["networkRequests", "1"],
+      ["networkRequests", 1.5],
+      ["networkRequests", true],
+      ["networkClear", ta.id],
+      ["networkClear", String(ta.id)],
+      ["networkClear", 2],
+    ] as const) {
+      expect(errOf(await call(a, m, { tab })).code, `${m} ${String(tab)}`).toBe("BAD_PARAMS");
+    }
+    expect(ext.reqs("networkRequests")).toEqual([]);
+    expect(ext.reqs("networkClear")).toEqual([]);
+  });
+
+  it("S2b (#81): a network call without tab, or 'active', is the human's tab — forwarded with tabId, no log line", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    await call(a, "networkRequests", {});
+    await call(a, "networkRequests", { tab: "active", limit: 2 });
+    await call(a, "networkClear", {});
+    await call(a, "networkClear", { tab: "active" });
+    expect(ext.reqs("networkRequests").map((r) => r.params)).toEqual([{ tabId: 1 }, { limit: 2, tabId: 1 }]);
+    expect(ext.reqs("networkClear").map((r) => r.params)).toEqual([{ tabId: 1 }, { tabId: 1 }]);
+    expect(logs.filter((l) => !l.startsWith("extension resync"))).toEqual([]);
+  });
+
+  it("S2b.3 (#85 item 4): selectTab is refused by the daemon itself (UNKNOWN_METHOD) before any resolution, though the extension would answer it", async () => {
+    const { port } = await start();
+    const a = await client(port, "A");
+    // No extension at all: still UNKNOWN_METHOD, not NOT_CONNECTED.
+    expect(errOf(await call(a, "selectTab", { tab: "T1" })).code).toBe("UNKNOWN_METHOD");
+    const ext = await extension(port); // FakeExt answers every method it is sent, selectTab included
+    const b = await client(port, "B");
+    const ta = await newTab(a);
+    const listBefore = ext.reqs("listTabs").length;
+    for (const [who, p] of [
+      [a, { tab: ta.tab }],
+      [b, { tab: ta.tab }], // held by A: UNKNOWN_METHOD, not TAB_HELD
+      [b, { id: 2 }],
+      [b, {}],
+      [b, { tab: "T999" }], // unknown handle: UNKNOWN_METHOD, not TAB_UNKNOWN
+    ] as const) {
+      expect(errOf(await call(who, "selectTab", p)).code).toBe("UNKNOWN_METHOD");
+    }
+    expect(ext.reqs("selectTab")).toEqual([]);
+    expect(ext.reqs("listTabs").length).toBe(listBefore);
+  });
+
+  // ---------------------------------------------------------------- Step 8 S2b: `code` required on receipt (#73)
+
+  it("S2b.4: a proto:2 extension's error without a usable code is delivered as INTERNAL; one log line per connection naming the method only", async () => {
+    const { port } = await start();
+    const ext = await extension(port);
+    const a = await client(port, "A");
+    ext.hold.add("snapshot");
+    ext.hold.add("click");
+    const bodies: unknown[] = [
+      { message: "boom-SECRET-1" },
+      { code: "", message: "boom-SECRET-2" },
+      { code: 5, message: "boom-SECRET-3" },
+      { code: null, message: "boom-SECRET-4" },
+    ];
+    for (const [i, body] of bodies.entries()) {
+      const id = send(a, "snapshot", { tab: "T1" });
+      ext.fail(await ext.waitReq("snapshot", i + 1), body);
+      const r = await a.frame(response(id));
+      expect(errOf(r)).toEqual({ code: "INTERNAL", message: `boom-SECRET-${i + 1}` });
+    }
+    const idc = send(a, "click", { tab: "T1", ref: "e1" });
+    ext.fail(await ext.waitReq("click"), { message: "boom-SECRET-5" });
+    expect(errOf(await a.frame(response(idc))).code).toBe("INTERNAL");
+    // An unknown code passes through verbatim (Stage 0 F17: today's behaviour, kept).
+    const idw = send(a, "snapshot", { tab: "T1" });
+    ext.fail(await ext.waitReq("snapshot", 5), { code: "WEIRD", message: "w" });
+    expect(errOf(await a.frame(response(idw)))).toEqual({ code: "WEIRD", message: "w" });
+
+    expect(logs.filter((l) => l.startsWith("extension error without code"))).toEqual(["extension error without code: snapshot"]);
+    expect(logs.join("\n")).not.toContain("boom-SECRET");
+
+    // A new extension connection gets its own one line.
+    ext.peer.ws.close();
+    await ext.peer.whenClosed();
+    const ext2 = await extension(port);
+    ext2.hold.add("click");
+    const id2 = send(a, "click", { tab: "T1", ref: "e1" });
+    ext2.fail(await ext2.waitReq("click"), { message: "boom-SECRET-6" });
+    expect(errOf(await a.frame(response(id2)))).toEqual({ code: "INTERNAL", message: "boom-SECRET-6" });
+    expect(logs.filter((l) => l.startsWith("extension error without code"))).toEqual([
+      "extension error without code: snapshot",
+      "extension error without code: click",
+    ]);
+  });
+
+  it("S2b.4: a no-proto extension's codeless error is INTERNAL as before, with no log line", async () => {
+    const { port } = await start();
+    const ext = await extension(port, undefined, false);
+    const a = await client(port, "A");
+    ext.hold.add("downloadStart");
+    const id = send(a, "downloadStart", { url: "u" });
+    ext.fail(await ext.waitReq("downloadStart"), { message: "old-style" });
+    expect(errOf(await a.frame(response(id)))).toEqual({ code: "INTERNAL", message: "old-style" });
+    expect(logs.filter((l) => l.startsWith("extension error without code"))).toEqual([]);
+  });
+
+  // ---------------------------------------------------------------- Step 8 S2b: the session marker (#74, #80)
+
+  const MARK_A = "MARK-A-SENTINEL-7f3e";
+  const MARK_B = "MARK-B-SENTINEL-19c2";
+  const reusedTabs: Tab[] = [
+    { id: 1, title: "Reused One", url: "http://fixture.test/reused-one", active: true, current: true },
+    { id: 2, title: "Reused Two", url: "http://fixture.test/reused-two", active: false },
+  ];
+
+  async function reconnect(port: number, old: FakeExt, session: string | undefined, setup?: (e: FakeExt) => void): Promise<FakeExt> {
+    old.peer.ws.close();
+    await old.peer.whenClosed();
+    return extension(port, setup, true, session);
+  }
+
+  it("S2b.5 same marker: today's resync by id — nothing retired, the lease stays (and the first hello retires nothing)", async () => {
+    const { port } = await start();
+    const ext1 = await extension(port, undefined, true, MARK_A);
+    const a = await client(port, "A");
+    const b = await client(port, "B");
+    await call(a, "tabs.claim", { tab: "T2" });
+    await reconnect(port, ext1, MARK_A);
+    await quiet(50);
+    expect(events(a, "tabGone")).toEqual([]);
+    expect(errOf(await call(b, "click", { tab: "T2", ref: "e1" })).message).toMatch(HELD("T2", "A"));
+    expect(logs.filter((l) => l.startsWith("extension session changed"))).toEqual([]);
+  });
+
+  it("S2b.5 changed marker: every handle retired synchronously before the resync; tabGone once per holder with the pre-restart lastUrl/lastTitle; a reused id gets a new, unheld handle", async () => {
+    const { port } = await start();
+    const ext1 = await extension(port, undefined, true, MARK_A);
+    const a = await client(port, "A");
+    const b = await client(port, "B");
+    await call(a, "tabs.claim", { tab: "T2" });
+    await call(b, "tabs.claim", { tab: "T1" });
+    const ta = await newTab(a); // T3, id 101
+    expect(ta.tab).toBe("T3");
+
+    // The resync's listTabs is held: the retire must not wait for it.
+    const ext2 = await reconnect(port, ext1, MARK_B, (e) => {
+      e.tabs = reusedTabs.map((t) => ({ ...t }));
+      e.hold.add("listTabs");
+    });
+    await a.until(() => events(a, "tabGone").length >= 2);
+    await b.until(() => events(b, "tabGone").length >= 1);
+    expect(events(a, "tabGone").map((f) => f.params)).toEqual([
+      { tab: "T2", lastUrl: "http://fixture.test/two", lastTitle: "Fixture Two" },
+      { tab: "T3" },
+    ]);
+    expect(events(b, "tabGone").map((f) => f.params)).toEqual([
+      { tab: "T1", lastUrl: "http://fixture.test/one", lastTitle: "Fixture One" },
+    ]);
+    expect(logs).toContain("extension session changed: 3 handles retired");
+
+    const resync = ext2.reqs("listTabs")[0];
+    ext2.answer(resync, ext2.auto(resync));
+    ext2.hold.delete("listTabs");
+    await quiet(50);
+
+    // The retired handle answers TAB_GONE with its pre-restart page, never the reused one's; nothing forwarded.
+    const gone = errOf(await call(a, "click", { tab: "T2", ref: "e1" }));
+    expect(gone.code).toBe("TAB_GONE");
+    expect(gone.data).toEqual({ tab: "T2", lastUrl: "http://fixture.test/two", lastTitle: "Fixture Two" });
+    expect(ext2.reqs("click")).toEqual([]);
+
+    // The reused ids carry new handles nobody holds.
+    const listed = (await call(b, "listTabs")).result as { tabs: Array<Record<string, unknown>> };
+    expect(listed.tabs.map((t) => [t.id, t.tab, t.owner])).toEqual([
+      [1, "T4", undefined],
+      [2, "T5", undefined],
+    ]);
+    expect((await call(b, "click", { tab: "T5", ref: "e1" })).result).toEqual({ ok: true, method: "click" });
+    expect(ext2.reqs("click").map((r) => r.params)).toEqual([{ ref: "e1", tabId: 2 }]);
+
+    await quiet(50);
+    expect(events(a, "tabGone")).toHaveLength(2); // exactly once each, the resync added none
+    expect(events(b, "tabGone")).toHaveLength(1);
+    const all = logs.join("\n");
+    expect(all).not.toContain(MARK_A);
+    expect(all).not.toContain(MARK_B);
+    expect(all).not.toContain("SENTINEL");
+  });
+
+  it("S2b.5 changed marker drops every lease (S2b fixer 1, verifier F2): no foreign lease survives the retire, the reused id's new handle is claimable, the retired one answers TAB_GONE", async () => {
+    const { port } = await start();
+    const ext1 = await extension(port, undefined, true, MARK_A);
+    const a = await client(port, "A");
+    const b = await client(port, "B");
+    await call(a, "tabs.claim", { tab: "T2" });
+    // Before the retire, A's lease blocks B's networkClear {tab:"all"} (#40 as amended).
+    expect(errOf(await call(b, "networkClear", { tab: "all" })).code).toBe("TAB_HELD");
+
+    const ext2 = await reconnect(port, ext1, MARK_B, (e) => {
+      e.tabs = reusedTabs.map((t) => ({ ...t }));
+    });
+    await a.until(() => events(a, "tabGone").length >= 1);
+    await quiet(50);
+
+    // A leaked lease on the retired T2 would still be a foreign lease here and refuse with TAB_HELD.
+    expect((await call(b, "networkClear", { tab: "all" })).result).toEqual({ ok: true, method: "networkClear" });
+    expect(ext2.reqs("networkClear").map((r) => r.params)).toEqual([{ scope: "all" }]);
+
+    // The reused tab id 2 has a new handle that B can claim without TAB_HELD.
+    const listed = (await call(b, "listTabs")).result as { tabs: Array<Record<string, unknown>> };
+    const reused = listed.tabs.find((t) => t.id === 2);
+    expect(reused?.tab).not.toBe("T2");
+    expect(reused?.owner).toBeUndefined();
+    expect((await call(b, "tabs.claim", { tab: reused?.tab })).result).toEqual({ tab: reused?.tab });
+
+    // The retired handle answers TAB_GONE to a claim, for its old holder and for anyone else.
+    expect(errOf(await call(a, "tabs.claim", { tab: "T2" })).code).toBe("TAB_GONE");
+    expect(errOf(await call(b, "tabs.claim", { tab: "T2" })).code).toBe("TAB_GONE");
+  });
+
+  it("S2b.5 audit §2 B6: a lease no longer lands on a reused tab id after a changed marker (same marker: resync by id, by design)", async () => {
+    const { port } = await start();
+    const ext1 = await extension(port, undefined, true, MARK_A);
+    const a = await client(port, "A");
+    await call(a, "tabs.claim", { tab: "T2" });
+    const ext2 = await reconnect(port, ext1, MARK_B, (e) => {
+      e.tabs = reusedTabs.map((t) => ({ ...t }));
+    });
+    await quiet(50);
+    expect(errOf(await call(a, "snapshot", { tab: "T2" })).code).toBe("TAB_GONE");
+    expect(ext2.reqs("snapshot")).toEqual([]);
+  });
+
+  it("S2b.5 dropped marker (A → none) retires", async () => {
+    const { port } = await start();
+    const ext1 = await extension(port, undefined, true, MARK_A);
+    const a = await client(port, "A");
+    await call(a, "tabs.claim", { tab: "T2" });
+    await reconnect(port, ext1, undefined);
+    await a.until(() => events(a, "tabGone").length >= 1);
+    expect(events(a, "tabGone").map((f) => (f.params as { tab: string }).tab)).toEqual(["T2"]);
+    expect(logs).toContain("extension session changed: 2 handles retired");
+    expect(logs.join("\n")).not.toContain(MARK_A);
+  });
+
+  it("S2b.5 never a marker (none → none) retires nothing", async () => {
+    const { port } = await start();
+    const ext1 = await extension(port);
+    const a = await client(port, "A");
+    const b = await client(port, "B");
+    await call(a, "tabs.claim", { tab: "T2" });
+    await reconnect(port, ext1, undefined);
+    await quiet(50);
+    expect(events(a, "tabGone")).toEqual([]);
+    expect(errOf(await call(b, "click", { tab: "T2", ref: "e1" })).message).toMatch(HELD("T2", "A"));
+    expect(logs.filter((l) => l.startsWith("extension session changed"))).toEqual([]);
+  });
+
+  it("S2b.5 none → a marker retires (a change of value is a change)", async () => {
+    const { port } = await start();
+    const ext1 = await extension(port);
+    const a = await client(port, "A");
+    await call(a, "tabs.claim", { tab: "T2" });
+    await reconnect(port, ext1, MARK_A);
+    await a.until(() => events(a, "tabGone").length >= 1);
+    expect(events(a, "tabGone").map((f) => f.params)).toEqual([
+      { tab: "T2", lastUrl: "http://fixture.test/two", lastTitle: "Fixture Two" },
+    ]);
+    await quiet(50);
+    expect(events(a, "tabGone")).toHaveLength(1);
+    expect(errOf(await call(a, "click", { tab: "T2", ref: "e1" })).code).toBe("TAB_GONE");
+    expect(logs.join("\n")).not.toContain(MARK_A);
+  });
+
+  // ---------------------------------------------------------------- Step 8 S2b.9: handle numbers never reused (#79)
+
+  it("S2b.9: a second daemon on the first's mark never re-mints a handle number; the first's stale handle → TAB_UNKNOWN", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "s2b-mark-"));
+    try {
+      const first = await start({ handleNumbers: createHandleMark({ dir }) });
+      await extension(first.port);
+      const a = await client(first.port, "A");
+      const ta = await newTab(a);
+      const firstHandles = ((await call(a, "listTabs")).result as { tabs: Array<{ tab: string }> }).tabs.map((t) => t.tab);
+      expect(firstHandles).toContain(ta.tab);
+      for (const p of peers.splice(0)) p.ws.terminate();
+      exts.splice(0);
+      await host!.close();
+
+      const second = await start({ handleNumbers: createHandleMark({ dir }) });
+      const ext = await extension(second.port);
+      const b = await client(second.port, "B");
+      const secondHandles = ((await call(b, "listTabs")).result as { tabs: Array<{ tab: string }> }).tabs.map((t) => t.tab);
+      const num = (h: string) => Number(h.slice(1));
+      expect(Math.min(...secondHandles.map(num))).toBeGreaterThan(Math.max(...firstHandles.map(num)));
+      const stale = errOf(await call(b, "click", { tab: ta.tab, ref: "e1" }));
+      expect(stale.code).toBe("TAB_UNKNOWN");
+      expect(ext.reqs("click")).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   // ---------------------------------------------------------------- daemon.status

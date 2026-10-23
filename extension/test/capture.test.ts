@@ -89,8 +89,10 @@ describe("activateForCapture (plan 0.5, F10, F19)", () => {
     const e = await p.then(() => null, (err: unknown) => err as BridgeError);
     expect(e).toBeInstanceOf(BridgeError);
     expect(e!.code).toBe("WINDOW_MINIMIZED");
+    // Step 8 S2b (decisions.md · 2026-10-23 · T5b's three fixes (#63)): a designed change decided before
+    // the edit — the switch-mode message no longer suggests mode cdp, which refuses a minimized window too.
     expect(e!.message).toBe(
-      `Chrome's window is minimized, so the tab cannot be captured — restore the window, or pass mode:"cdp"`,
+      "Chrome's window is minimized, so the tab cannot be captured — restore the window, or call focusTab first",
     );
     expect(chrome.tabs.query).not.toHaveBeenCalled();
     expect(chrome.tabs.update).not.toHaveBeenCalled();

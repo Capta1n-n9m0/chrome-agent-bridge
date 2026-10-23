@@ -22,7 +22,9 @@ export interface WireErrorOut {
  */
 export function toWireError(err: unknown): WireErrorOut {
   if (err instanceof BridgeError) {
-    const out: WireErrorOut = { code: err.code, message: err.message };
+    // Step 8 S2b.4 (decisions.md #73): a code is never empty on the wire.
+    const code = typeof err.code === "string" && err.code !== "" ? err.code : ErrorCodes.INTERNAL;
+    const out: WireErrorOut = { code, message: err.message };
     if (err.data !== undefined) out.data = err.data;
     return out;
   }

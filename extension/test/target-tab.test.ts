@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { humansTab, targetTab, pageTab, resetFallbackWarnings, resetCaptureState } from "../src/tabs.js";
-import { listTabs, closeTab, selectTab, focusTab, newTab } from "../src/handlers/tabs.js";
+import { humansTab, targetTab, pageTab, resetCaptureState } from "../src/tabs.js";
+import { listTabs, closeTab, focusTab, newTab } from "../src/handlers/tabs.js";
 import { screenshot } from "../src/handlers/perceive.js";
 import { navigate } from "../src/handlers/navigate.js";
 import { resolveNetworkScope } from "../src/network-scope.js";
@@ -76,7 +76,6 @@ async function rejection(p: Promise<unknown>): Promise<BridgeError> {
 }
 
 beforeEach(() => {
-  resetFallbackWarnings();
   resetCaptureState();
 });
 afterEach(() => {
@@ -140,20 +139,20 @@ describe("targetTab (plan 0.1)", () => {
     expect(c.windows.getLastFocused).not.toHaveBeenCalled();
   });
 
-  it("absent → the human's tab, warning once per method with the method name and nothing from params", async () => {
-    fakeChrome();
+  it("absent → BAD_PARAMS (Step 8 S2b, S2.3): no human's-tab fallback, no Chrome call, no warning", async () => {
+    const c = fakeChrome();
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const p = { ref: "e5-secret-ref", url: "http://localhost:8080/secret" };
-    expect((await targetTab(p, "click")).id).toBe(11);
-    await targetTab(p, "click");
-    await targetTab({}, "snapshot");
-    expect(warn).toHaveBeenCalledTimes(2);
-    const first = warn.mock.calls[0]!.map(String).join(" ");
-    expect(first).toContain("click");
-    expect(first).not.toContain("e5-secret-ref");
-    expect(first).not.toContain("http");
-    expect(warn.mock.calls[0]!.length).toBe(1);
-    expect(warn.mock.calls[1]!.map(String).join(" ")).toContain("snapshot");
+    for (const p of [{}, { ref: "e5" }, { tabId: undefined }]) {
+      const e = await rejection(targetTab(p, "click"));
+      expect(e).toBeInstanceOf(BridgeError);
+      expect(e.code).toBe("BAD_PARAMS");
+      expect(e.message).toBe("click requires tabId");
+    }
+    expect(c.windows.getLastFocused).not.toHaveBeenCalled();
+    expect(c.tabs.query).not.toHaveBeenCalled();
+    expect(c.tabs.get).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+    await expect(pageTab({}, "snapshot")).rejects.toMatchObject({ code: "BAD_PARAMS" });
   });
 
   it("pageTab refuses a discarded tab; targetTab does not", async () => {
@@ -166,7 +165,9 @@ describe("targetTab (plan 0.1)", () => {
   });
 });
 
-describe("closeTab / focusTab / selectTab alias (F4)", () => {
+// 2026-10-23 (Step 8 S2b, decisions.md #85 item 4): the Step 6 alias of focusTab is gone from the extension;
+// the alias lines were removed from the tests below and the alias-identity test was removed.
+describe("closeTab / focusTab (F4)", () => {
   it("closeTab with neither tabId nor id → BAD_PARAMS and closes nothing", async () => {
     const c = fakeChrome();
     const e = await rejection(closeTab({}));
@@ -174,38 +175,40 @@ describe("closeTab / focusTab / selectTab alias (F4)", () => {
     expect(c.tabs.remove).not.toHaveBeenCalled();
   });
 
-  it("focusTab (and its selectTab alias) with neither → BAD_PARAMS", async () => {
-    for (const fn of [focusTab, selectTab]) {
+  it("focusTab with neither → BAD_PARAMS", async () => {
+    for (const fn of [focusTab]) {
       const c = fakeChrome();
       expect((await rejection(fn({}))).code).toBe("BAD_PARAMS");
       expect(c.tabs.update).not.toHaveBeenCalled();
     }
   });
 
-  it("reads tabId, else the Step 6 id", async () => {
+  // 2026-10-23 (Step 8 S2b fixer 1, verifier F3): was "reads tabId, else the Step 6 id" — the Step 6 `id`
+  // form is removed; only an integer `tabId` names the tab (the S2b daemon never forwards `id`).
+  it("reads tabId", async () => {
     const c = fakeChrome();
     await closeTab({ tabId: 12 });
     expect(c.tabs.remove).toHaveBeenLastCalledWith(12);
-    await closeTab({ id: 21 });
-    expect(c.tabs.remove).toHaveBeenLastCalledWith(21);
-    await focusTab({ id: 12 });
-    expect(c.tabs.update).toHaveBeenLastCalledWith(12, { active: true });
     await focusTab({ tabId: 21 });
     expect(c.tabs.update).toHaveBeenLastCalledWith(21, { active: true });
-    await selectTab({ id: 12 });
-    expect(c.tabs.update).toHaveBeenLastCalledWith(12, { active: true });
+  });
+
+  it("S2b fixer 1 (F3): a Step 6 id without tabId → BAD_PARAMS 'requires tabId', and nothing is closed or focused", async () => {
+    const c = fakeChrome();
+    const closeErr = await rejection(closeTab({ id: 21 }));
+    expect([closeErr.code, closeErr.message]).toEqual(["BAD_PARAMS", "closeTab requires tabId"]);
+    const focusErr = await rejection(focusTab({ id: 12 }));
+    expect([focusErr.code, focusErr.message]).toEqual(["BAD_PARAMS", "focusTab requires tabId"]);
+    expect(c.tabs.remove).not.toHaveBeenCalled();
+    expect(c.tabs.update).not.toHaveBeenCalled();
+    expect(c.windows.update).not.toHaveBeenCalled();
   });
 
   it("non-integer → BAD_PARAMS; unknown id → TAB_UNKNOWN", async () => {
     fakeChrome();
     expect((await rejection(closeTab({ tabId: "12" }))).code).toBe("BAD_PARAMS");
-    expect((await rejection(closeTab({ id: 999 }))).code).toBe("TAB_UNKNOWN");
+    expect((await rejection(closeTab({ tabId: 999 }))).code).toBe("TAB_UNKNOWN");
     expect((await rejection(focusTab({ tabId: 999 }))).code).toBe("TAB_UNKNOWN");
-    expect((await rejection(selectTab({ tabId: 999 }))).code).toBe("TAB_UNKNOWN");
-  });
-
-  it("selectTab is the same function as focusTab (alias, T3.5)", () => {
-    expect(selectTab).toBe(focusTab);
   });
 
   it("focusTab focuses the tab's window, then activates the tab, and restores nothing", async () => {
@@ -282,14 +285,15 @@ describe("screenshot (viewport) with an explicit background tabId", () => {
     expect(c.tabs.captureVisibleTab.mock.invocationCallOrder[0]!).toBeLessThan(c.tabs.update.mock.invocationCallOrder[1]!);
     expect(c.windows.update).not.toHaveBeenCalled();
   });
-  it("captures an explicit active tab, and the fallback as before", async () => {
+  // 2026-10-23 (Step 8 S2b): was "…, and the fallback as before" (a screenshot with no tabId captured the
+  // human's tab); the fallback is gone, so that half now asserts BAD_PARAMS with nothing captured.
+  it("captures an explicit active tab; no tabId → BAD_PARAMS, nothing captured", async () => {
     const c = fakeChrome();
-    vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(await screenshot({ tabId: 21 })).toEqual({ dataUrl: "data:image/png;base64,AAAA" });
     expect(c.tabs.captureVisibleTab).toHaveBeenLastCalledWith(2, { format: "png" });
     resetCaptureState(); // the 500 ms capture spacing is tested in capture.test.ts; skip its real-time wait here
-    await screenshot({});
-    expect(c.tabs.captureVisibleTab).toHaveBeenLastCalledWith(1, { format: "png" });
+    expect((await rejection(screenshot({}))).code).toBe("BAD_PARAMS");
+    expect(c.tabs.captureVisibleTab).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -310,37 +314,46 @@ describe("navigate codes", () => {
   });
 });
 
+// 2026-10-23 (Step 8 S2b, decisions.md #52): the legacy `tab` forms (form 3) and the 0.1 fallback are gone,
+// so `resolveNetworkScope` takes no fallback; the form 1/2 tests lost only that argument.
 describe("resolveNetworkScope (#40, #52)", () => {
-  const fallback = vi.fn(async () => 11);
-  beforeEach(() => fallback.mockClear());
+  it("form 1: an integer tabId → that tab, label the number", () => {
+    expect(resolveNetworkScope({ tabId: 42 })).toEqual({ scope: 42, label: 42 });
+    expect(resolveNetworkScope({ tabId: 42, scope: "all", tab: "all" })).toEqual({ scope: 42, label: 42 });
+  });
+  it("form 1: a non-integer tabId → BAD_PARAMS", () => {
+    expect(() => resolveNetworkScope({ tabId: "42" })).toThrow(expect.objectContaining({ code: "BAD_PARAMS" }));
+  });
+  it("form 2: scope \"all\" → all", () => {
+    expect(resolveNetworkScope({ scope: "all" })).toEqual({ scope: "all", label: "all" });
+  });
+  it("S2b: anything but tabId or scope \"all\" → BAD_PARAMS — the legacy tab forms and the fallback are gone", () => {
+    for (const p of [{}, { tab: "all" }, { tab: 7 }, { tab: "7" }, { tab: "active" }, { tab: null }, { tab: "T3" }, { scope: "active" }]) {
+      let err: unknown;
+      try {
+        resolveNetworkScope(p);
+      } catch (e) {
+        err = e;
+      }
+      expect(err, JSON.stringify(p)).toBeInstanceOf(BridgeError);
+      expect((err as BridgeError).code).toBe("BAD_PARAMS");
+      expect((err as BridgeError).message).toBe('networkRequests/networkClear need tabId (an integer) or scope "all"');
+    }
+  });
+});
 
-  it("form 1: an integer tabId → that tab, label the number, no fallback", async () => {
-    expect(await resolveNetworkScope({ tabId: 42 }, fallback)).toEqual({ scope: 42, label: 42 });
-    expect(await resolveNetworkScope({ tabId: 42, scope: "all", tab: "all" }, fallback)).toEqual({ scope: 42, label: 42 });
-    expect(fallback).not.toHaveBeenCalled();
-  });
-  it("form 1: a non-integer tabId → BAD_PARAMS", async () => {
-    expect((await rejection(resolveNetworkScope({ tabId: "42" }, fallback))).code).toBe("BAD_PARAMS");
-  });
-  it("form 2: scope \"all\" → all", async () => {
-    expect(await resolveNetworkScope({ scope: "all" }, fallback)).toEqual({ scope: "all", label: "all" });
-    expect(fallback).not.toHaveBeenCalled();
-  });
-  it("form 3 (legacy tab): \"all\", an integer, \"active\"/absent → as before", async () => {
-    expect(await resolveNetworkScope({ tab: "all" }, fallback)).toEqual({ scope: "all", label: "all" });
-    expect(await resolveNetworkScope({ tab: 7 }, fallback)).toEqual({ scope: 7, label: 7 });
-    expect(await resolveNetworkScope({ tab: "active" }, fallback)).toEqual({ scope: 11, label: "active" });
-    expect(await resolveNetworkScope({ tab: null }, fallback)).toEqual({ scope: 11, label: "active" });
-    expect(fallback).toHaveBeenCalledTimes(2);
-  });
-  it("neither tabId nor scope nor tab → the 0.1 fallback", async () => {
-    expect(await resolveNetworkScope({}, fallback)).toEqual({ scope: 11, label: "active" });
-    expect(fallback).toHaveBeenCalledOnce();
-  });
-  it("form 3: anything else → BAD_PARAMS with the unchanged text", async () => {
-    const e = await rejection(resolveNetworkScope({ tab: "T3" }, fallback));
-    expect(e.code).toBe("BAD_PARAMS");
-    expect(e.message).toBe('Invalid tab: T3 — use "active", "all" or a tab id');
+describe("network handlers without tabId (Step 8 S2b)", () => {
+  it("networkRequests/networkClear without tabId or scope → BAD_PARAMS; an id lookup stays global", async () => {
+    vi.stubGlobal("chrome", {
+      storage: { session: { get: vi.fn(async () => ({})), set: vi.fn(async () => {}), remove: vi.fn(async () => {}) } },
+    });
+    const { networkRequests, networkClear } = await import("../src/handlers/network.js");
+    await expect(networkRequests({})).rejects.toMatchObject({ code: "BAD_PARAMS" });
+    await expect(networkRequests({ tab: "active" })).rejects.toMatchObject({ code: "BAD_PARAMS" });
+    await expect(networkClear({})).rejects.toMatchObject({ code: "BAD_PARAMS" });
+    await expect(networkClear({ tab: 5 })).rejects.toMatchObject({ code: "BAD_PARAMS" });
+    // An id lookup is global: it reaches the log (here: no such request), never the scope check.
+    await expect(networkRequests({ id: "1" })).rejects.toThrow("No request with id 1");
   });
 });
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { validateHello } from "../src/handshake.js";
-import { parseHello } from "../src/handshake.js";
+import { parseHello, helloSession } from "../src/handshake.js";
 
 describe("validateHello", () => {
   const token = "secret";
@@ -70,5 +70,15 @@ describe("parseHello (v2 roles)", () => {
   it("validateHello keeps its v1 shape and rejects an unknown role", () => {
     expect(validateHello(hello({ role: "client", name: "x" }), token)).toEqual({ ok: true });
     expect(validateHello(hello({ role: "admin" }), token)).toEqual({ ok: false, reason: "unknown role" });
+  });
+});
+
+describe("helloSession (Step 8 S2b.5, decisions.md #74, #80)", () => {
+  it("is the hello's session marker when it is a non-empty string, else undefined (none)", () => {
+    expect(helloSession(JSON.stringify({ type: "hello", token: "t", role: "extension", proto: 2, session: "m1" }))).toBe("m1");
+    expect(helloSession(JSON.stringify({ type: "hello", token: "t", role: "extension", proto: 2 }))).toBeUndefined();
+    expect(helloSession(JSON.stringify({ type: "hello", token: "t", session: "" }))).toBeUndefined();
+    expect(helloSession(JSON.stringify({ type: "hello", token: "t", session: 5 }))).toBeUndefined();
+    expect(helloSession("not json")).toBeUndefined();
   });
 });

@@ -173,3 +173,25 @@ describe("HandleTable — prune", () => {
     expect(handles.resolve("T1002")).toEqual({ kind: "unknown" });
   });
 });
+
+describe("HandleTable — retireAll (Step 8 S2b.5, decisions.md #74, #80)", () => {
+  it("marks every live handle gone with its cached url/title, frees the tab ids, and returns the handles in mint order", () => {
+    const { handles } = table();
+    handles.mint(1);
+    handles.mint(2);
+    handles.mint(3);
+    handles.note(1, { url: "u1", title: "t1" });
+    handles.remove(3, {});
+    expect(handles.retireAll()).toEqual(["T1", "T2"]);
+    expect(handles.resolve("T1")).toEqual({ kind: "gone", lastUrl: "u1", lastTitle: "t1" });
+    expect(handles.resolve("T2")).toEqual({ kind: "gone" });
+    expect(handles.live()).toEqual([]);
+    expect(handles.handleOf(1)).toBeUndefined();
+    // A reused tab id gets a new handle; the retired one never comes back.
+    expect(handles.mint(1)).toBe("T4");
+    handles.note(1, { url: "reused", title: "reused" });
+    expect(handles.resolve("T1")).toEqual({ kind: "gone", lastUrl: "u1", lastTitle: "t1" });
+    expect(handles.retireAll()).toEqual(["T4"]);
+    expect(handles.retireAll()).toEqual([]);
+  });
+});

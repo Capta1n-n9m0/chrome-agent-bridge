@@ -1,27 +1,25 @@
 /**
- * Which tab(s) a network query or clear covers. Pure apart from the injected `fallback` (the 0.1
- * target-tab fallback), so every form is unit-tested.
+ * Which tab(s) a network query or clear covers. Pure, so every form is unit-tested.
  *
  * Forms, in order (decisions.md · 2026-10-22 · #40, #52):
- *   1. `tabId` (an integer, from a Step 7 daemon) → that tab. No `chrome.tabs.get`: a closed tab's log
+ *   1. `tabId` (an integer, from the daemon) → that tab. No `chrome.tabs.get`: a closed tab's log
  *      stays queryable.
- *   2. `scope: "all"` (a Step 7 daemon never forwards a `tab` key) → every tab, incl. the -1 bucket.
- *   3. the legacy `tab` of a Step 6 daemon, exactly as before: undefined/null/"active" → the fallback
- *      tab; "all"; an integer (or a numeric string, as `Number()` reads it); anything else `BAD_PARAMS`.
+ *   2. `scope: "all"` (the daemon never forwards a `tab` key) → every tab, incl. the -1 bucket.
+ * Anything else → `BAD_PARAMS`. Step 8 S2b removed the Step 6 daemon's legacy `tab` forms and the
+ * human's-tab fallback (#52); the daemon resolves "active"/absent to a `tabId` itself (#40, #81).
  */
 import { BridgeError, ErrorCodes } from "./errors.js";
 import type { Scope } from "./network-log.js";
 
 export interface ResolvedScope {
   scope: Scope;
-  /** What the formatter prints: `"active"` for the legacy fallback, else the scope itself. */
-  label: "active" | Scope;
+  /** The scope itself (kept for the result's callers). */
+  label: Scope;
 }
 
-export async function resolveNetworkScope(
-  p: Record<string, unknown>,
-  fallback: () => Promise<number>,
-): Promise<ResolvedScope> {
+export const SCOPE_REQUIRED = 'networkRequests/networkClear need tabId (an integer) or scope "all"';
+
+export function resolveNetworkScope(p: Record<string, unknown>): ResolvedScope {
   if (p.tabId !== undefined) {
     if (typeof p.tabId !== "number" || !Number.isInteger(p.tabId)) {
       throw new BridgeError(ErrorCodes.BAD_PARAMS, "tabId must be an integer");
@@ -29,14 +27,5 @@ export async function resolveNetworkScope(
     return { scope: p.tabId, label: p.tabId };
   }
   if (p.scope === "all") return { scope: "all", label: "all" };
-  const tab = p.tab;
-  if (tab === undefined || tab === null || tab === "active") {
-    return { scope: await fallback(), label: "active" };
-  }
-  if (tab === "all") return { scope: "all", label: "all" };
-  const n = Number(tab);
-  if (!Number.isInteger(n)) {
-    throw new BridgeError(ErrorCodes.BAD_PARAMS, `Invalid tab: ${String(tab)} — use "active", "all" or a tab id`);
-  }
-  return { scope: n, label: n };
+  throw new BridgeError(ErrorCodes.BAD_PARAMS, SCOPE_REQUIRED);
 }
