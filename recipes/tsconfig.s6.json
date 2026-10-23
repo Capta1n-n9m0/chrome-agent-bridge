@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "sdk-login.ts",
+    "s6.ts",
+    "s6-rules.ts",
+    "t5-lib.ts",
+    "blackboard/*.ts",
+    "test/*.test.ts"
+  ]
+}
