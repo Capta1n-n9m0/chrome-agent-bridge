@@ -1531,6 +1531,9 @@ $ powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\bb-login.ps1   (
 2026-10-23T16:58:36.108Z bb-login: WAITS FOR THE USER - the submit did not end on ada.blackboard.com without a sign-in control (still on the SSO page, MFA, a picker, an error or a second step); nothing more pressed; window 15273146 left open
 bb-login exit 4  16:58:36.131Z
 ```
+*2026-10-23 (#101): the exit 4 above was a too-early post-submit check — the login had succeeded (the user saw the
+page load later); the observed lines and exit stay as recorded.*
+
 Exit 4 ⇒ **SDK-6 and SDK-7 (live) wait for the user** (the row's Part 3 note); the press is never retried, nothing
 was typed. The driver took no snapshot, screenshot or evaluate of that window, did not look at it, read no field or
 value, and left it open for the user (Chrome restored it, with Part 2's bb-login window, after SM-1's restart; neither
@@ -1712,3 +1715,336 @@ written:*
 Counts (Part 3 rows): 5 PASS (S6-STALE, SM-0, LOC-1, REP-1, SM-1; the P3-e' stale check also NEW BUILD), 0 FAIL, 0 not measured,
 2 waits for the user (SDK-6, SDK-7 live); MUX-8 and ASREF-1 not re-run. Reload runs: 1 (exit 0). Chrome restarts: 1.
 No STOP, no permission or classifier denial.
+
+## Part 3 addendum — SDK-6/SDK-7 live (2026-10-23, 18:39–18:41 UTC)
+
+Run by the Part 3 addendum live driver (Claude Opus 5.5), the user not present, under decisions.md · 2026-10-23 ·
+SDK-6/SDK-7 run in the session the login actually opened (#101) and the wave sheet's dated note "Part 3 addendum,
+#101" under P3-h. Pre-run commit `1b429bc` (18:39:50Z), which holds only that note; no row text, rule, recipe or
+sheet line was edited after it. Output directory `%TEMP%\bridge-e2e\s6-run3-addendum` (new). Times UTC.
+
+**Outcome in one paragraph.** **SDK-6 and SDK-7 (live): waits for the user — stopped at set-up.** The bb-login
+window's handle from P3-h (`15273146`) no longer names a window: P3-i's Chrome restart (16:59:04Z quit, 16:59:14Z
+relaunch) came after the login, and session restore brings windows back under new handles. The pre-registered note
+says: handle gone ⇒ record and stop, "waits for the user"; no other window of the user's is used or brought forward,
+and the three Chrome windows now open cannot be told apart by handle and class alone (titles and URLs are not read).
+So nothing was run against Chrome: no stale check, no `boot-bb.ts`, no `export-grades.ts`, no actor, no tab opened,
+no window brought forward. No Blackboard page read, no write, no failure PNG, no permission or classifier denial.
+
+### Set-up
+
+```
+time 18:40:23.913Z
+Test-Path S6_OUT: False
+time 18:40:34.845Z
+S6_OUT = C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s6-run3-addendum (created)
+1b429bc docs(step8): S6 Part 3 addendum — SDK-6/SDK-7 in the opened session (pre-run)
+752a48c docs(step8): S6 Part 3 recorded; SDK-6/SDK-7 in the opened session — decision #101
+a56d198 test(e2e): S6 — Run 12 (S6) Part 3 (verifier: PASS-with-notes)
+status(ext/daemon/shared/sdk/mcp): []
+log --stat 24b5ce5..HEAD (ext/daemon/sdk/shared): []
+driver chain: 25392 32760 34488 2272 256 12176 3220 14556
+mcp procs total: 0; in driver chain: 0
+daemon: (none)
+BRIDGE_TOKEN: False
+bridge.token
+exports/x.json
+597D6C28…34DA3F daemon
+4B07B464…C63153 mcp
+Get-DaemonBuild: 597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f
+8080 listen: 0
+bb window:
+Hwnd      : 15273146
+Class     : (no window)
+Visible   : False
+Minimized : False
+chrome windows (count only): 3
+```
+The window check read the class name of handle `15273146` only (`GetClassName`; empty ⇒ `(no window)`), not its
+title or URL; the Chrome window count comes from the class-and-suffix enumeration in `recipes/t5-win.ps1`, count only.
+Part 3's own record already says Chrome restored the Part 3 bb-login window after SM-1's restart (P3-h, and its
+close-down `chrome windows: 3`), which is why its old handle is gone.
+
+### Not run (stopped at set-up, by the pre-registered rule)
+
+- **S6-STALE (stale check):** not run. Running it would open a fixture tab in whichever Chrome window is
+  last-focused, possibly a window of the user's, for no row; the rows it guards cannot run. No 8080 fixture server
+  was started.
+- **`Set-T5Foreground <bb-login hwnd>`:** not called (no window has that handle).
+- **SDK-6 (live), step 2:** `boot-bb.ts pp1` and the 8765 checks not run. **SDK-7 (live), steps 3–10:** the SDK
+  leg, the plan, actor M, the failures-folder step, `assemble-mcp.ts`, S6.3's byte-compare and `close-bb-tab` not
+  run. Step 11 (data hygiene): no export, actor file or transcript was made.
+- The user's windows (three Chrome windows, including the one where the user opened the pp1 course) were not
+  touched, brought forward, captured, read or closed.
+
+### Hygiene (addendum)
+
+- **Daemon log:** no daemon ran during the addendum (`daemon: (none)`), so its own span is empty. `S6-daemon-log.txt`
+  was extended (append only) by the 2 lines between Part 3's last attached line (16:59:46Z) and now — Part 3's daemon
+  idling out: `idle for 600000 ms with no clients — shutting down` and `exit 0 (shutdown 1001) clients=0
+  extensionEvents=26 ignoredClientFrames=0`, both 17:09:46Z. Now **212 lines**; counts on the whole file (never
+  printed) `://` 0, token 0 (read into a variable, then removed), `[line withheld:` 0, `_\d+_\d+` 0,
+  `ada.blackboard` 0 — the same on the 2 appended lines ⇒ attached.
+- **Failure PNGs:** none made (no row ran). **Exports:** none. **Actors:** none started. **Pre-run commit hygiene:**
+  the added lines of `1b429bc` counted token 0, `_\d+_\d+` 0, `ada.blackboard` 0.
+- **`git status --short`** at the end: below in the step's report (record files only).
+
+### Verdict (addendum)
+
+| Row | Verdict | Observed vs expected |
+|---|---|---|
+| Set-up | held, then stop | HEAD 1b429bc; no change under `extension daemon shared sdk mcp`; dist `597D6C28…34DA3F` / `4B07B464…C63153`; driver not a client; no daemon; bb-login handle `15273146` → `(no window)` ⇒ the note's stop rule |
+| S6-STALE | not run | stopped at set-up |
+| SDK-6 (live) | waits for the user | the bb-login window's handle is gone after P3-i's restart; nothing run |
+| SDK-7 (live) | waits for the user | as SDK-6; MCP leg and S6.3 not run |
+
+**Finding (for the step agent).** The addendum's identification rule (the bb-login window by its P3-h handle) could
+not hold once P3-i restarted Chrome after the login. A re-run needs a way to target the user's pp1 window that
+does not read its title or URL — e.g. the user naming the window (bringing it to the front themselves before the
+run, so `client.newTab` opens there), or a fresh `bb-login.ps1` window (its post-submit wait lengthened, #101's
+"Revisit if"). Proposed, not decided.
+
+### Attempt 2 (2026-10-23, 18:44–18:46 UTC)
+
+Run by the Part 3 addendum live driver, attempt 2 (Claude Opus 5.5), the user not present, under the wave sheet's
+dated note "Part 3 addendum attempt 2" (pre-run commit `b237a3f`, 18:44:04Z, which holds only that note): the step
+agent's ruling — the login lives in the profile's cookies, so the recipes' background tabs open in a new window the
+driver opened itself on a fixture page (`$Wb`, `?t5=s6-bb`), made foreground; no window of the user's was used,
+listed by title or URL, captured or brought forward. `bb-login.ps1` was not run. Output directory
+`%TEMP%\bridge-e2e\s6-run3-addendum2` (new). Times UTC.
+
+**Outcome in one paragraph.** The course lookup confirmed the login (branch (b)), **SDK-6 (live) PASS** and
+**SDK-7 (live) SDK leg PASS** (77 columns, 790 grade records, 418 459 bytes, file sha256 = page sha256). The SDK leg
+printed `measurable: no` (418 406 characters over the pre-registered 240 000 cap), so by step 5 **the MCP leg and
+S6.3's byte-compare are "not measured — 418406 characters over the cap"**: actor M was not started and
+`assemble-mcp.ts` was not run. The plan carries no course id. `close-bb-tab` closed the recipe's own course tab. No
+`REFUSED`, no Blackboard write (only the recipes' GETs), 0 failure PNGs, no permission or classifier denial.
+
+#### Set-up
+
+```
+time 18:44:26.222Z
+Test-Path S6_OUT: False
+S6_OUT = C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s6-run3-addendum2 (created)
+b237a3f docs(step8): S6 Part 3 addendum — SDK-6/SDK-7 from a driver window (pre-run)
+1b429bc docs(step8): S6 Part 3 addendum — SDK-6/SDK-7 in the opened session (pre-run)
+752a48c docs(step8): S6 Part 3 recorded; SDK-6/SDK-7 in the opened session — decision #101
+status(ext/daemon/shared/sdk/mcp): []
+log --stat 24b5ce5..HEAD (ext/daemon/sdk/shared): []
+driver chain: 5128 29668 34488 2272 256 12176 3220 14556
+mcp procs total: 0; in driver chain: 0
+daemon: (none)
+BRIDGE_TOKEN: False
+bridge.token
+exports/x.json
+597D6C28…34DA3F daemon
+4B07B464…C63153 mcp
+Get-DaemonBuild: 597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f
+8080 listen: 0
+fixture server pid 33576
+time 18:44:38.884Z
+8080: 200
+tsc exit 0
+Test Files  4 passed (4)
+Tests  152 passed (152)
+time 18:44:52.025Z
+chrome windows (count only): 3
+Wb: Hwnd 7211964 Title <other window>
+Set-T5Foreground: True
+time 18:44:52.842Z
+T324 fixture
+```
+`Wb`'s title printed `<other window>` because `Open-T5Window` returns the window as soon as it appears, before the
+fixture page has set its title; it is the one new Chrome window (3 before it), and `B1` → `T324 fixture` proves its
+current tab is the driver's fixture. That `B1` was the first client: it spawned the daemon (pid 26052, 18:44:54Z)
+before the stale check.
+
+#### S6-STALE — the first result line
+
+```
+time 18:45:08.850Z
+2026-10-23T18:45:09.390Z s6-stale-check: connected — daemon build 597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f, extension connected
+2026-10-23T18:45:09.447Z s6-stale-check: opened T325 (background) at http://localhost:8080/e2e-playground.html?s6=stale
+2026-10-23T18:45:09.464Z s6-stale-check: locate T325 {role:"button", name:"Sign in"} → ok {"name":"Sign in","ref":"e1","role":"button"} (10 ms)
+2026-10-23T18:45:09.475Z s6-stale-check: STALE-CHECK NEW BUILD — the loaded extension answers locate: it is the S2-or-later build
+exit 0
+```
+**PASS** (R-b: NEW BUILD, exit 0; no reload).
+
+#### Daemon (P3-c)
+
+```
+2026-10-23T18:44:54Z start pid=26052
+2026-10-23T18:44:54Z config pid=26052 port=9234 idleMs=600000 build=597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f
+2026-10-23T18:44:54Z listening on 127.0.0.1:9234
+Get-DaemonBuild: 597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f
+daemon: pid 26052 parent 14024
+```
+`config … build` = `Get-DaemonBuild` = the stale check's `connected — daemon build` = `597d6c28…34da3f` ⇒ held.
+
+#### SDK-6 (live, pp1) — step 2
+
+```
+time 18:45:17.573Z
+T324 fixture
+8765 before: []
+time 18:45:19.256Z
+2026-10-23T18:45:19.824Z boot-bb: course pp1; source bb.js (declares VERSION 2026-10-18, sha256 bea85c39929a…)
+2026-10-23T18:45:20.130Z boot-bb: opened T326 (background) on the ada resolver page for course pp1
+2026-10-23T18:45:20.275Z boot-bb: course lookup by courseId → HTTP 404, no id
+2026-10-23T18:45:20.364Z boot-bb: course confirm by id (from the skill's table) → HTTP 200, the same id
+2026-10-23T18:45:20.364Z boot-bb: course: pp1 (resolved; by the skill's course table, confirmed by GET; the id is not printed)
+2026-10-23T18:45:20.371Z boot-bb: closed T326 (the resolver tab)
+2026-10-23T18:45:24.058Z boot-bb: opened T327 (background) for course pp1
+2026-10-23T18:45:24.072Z boot-bb: T327 loaded; origin and course checked
+2026-10-23T18:45:24.083Z boot-bb: bb.js evaluated: "bb loaded"
+2026-10-23T18:45:24.087Z boot-bb: bb.VERSION = 2026-10-18
+2026-10-23T18:45:24.087Z boot-bb: SDK-6 PASS — bb.VERSION 2026-10-18 from the skill's bb.js, loaded by evaluate (no 8765 server)
+2026-10-23T18:45:24.097Z boot-bb: closed T327
+exit 0
+time 18:45:24.143Z
+8765 after: []
+```
+**Login confirmation:** the resolution lines, **branch (b)** (`HTTP 404, no id`, then the skill's table confirmed by
+GET → `HTTP 200, the same id`); no `REFUSED`. **SDK-6 (live): PASS** — every line of §4.19 SDK-6 (live, pp1) in
+order, `<V>` = `2026-10-18`, exit 0, both 8765 checks empty. (The row's `bb-login.ps1 exit 0` clause is replaced for
+the addendum by #101 and the attempt-2 note: the login is judged by the course lookup.)
+
+#### SDK-7 (live, pp1) — steps 3–10
+
+Step 3, the SDK leg (failures folder before: 0 PNGs):
+```
+time 18:45:31.317Z
+T324 fixture
+failures before (count): 0
+time 18:45:32.426Z
+2026-10-23T18:45:32.951Z export-grades: course pp1; source bb.js (declares VERSION 2026-10-18, sha256 bea85c39929a…)
+2026-10-23T18:45:33.060Z export-grades: opened T328 (background) on the ada resolver page for course pp1
+2026-10-23T18:45:33.208Z export-grades: course lookup by courseId → HTTP 404, no id
+2026-10-23T18:45:33.288Z export-grades: course confirm by id (from the skill's table) → HTTP 200, the same id
+2026-10-23T18:45:33.289Z export-grades: course: pp1 (resolved; by the skill's course table, confirmed by GET; the id is not printed)
+2026-10-23T18:45:33.296Z export-grades: closed T328 (the resolver tab)
+2026-10-23T18:45:37.123Z export-grades: opened T329 (background) for course pp1
+2026-10-23T18:45:37.138Z export-grades: T329 loaded; origin and course checked
+2026-10-23T18:45:37.148Z export-grades: bb.js evaluated: "bb loaded"
+2026-10-23T18:45:37.152Z export-grades: bb.VERSION = 2026-10-18
+2026-10-23T18:45:37.164Z export-grades: export running in the page …
+2026-10-23T18:45:40.202Z export-grades: page export done in 3049 ms: 77 columns, 790 grade records, 418459 bytes, sha256 5a798de75108a9ed7828854ddf563ee87af3d1b3317c04678ec1c6f06d66061f
+2026-10-23T18:45:40.203Z export-grades: MCP leg size: 418406 characters → 53 chunk(s) of 8000; measurable: no (over the pre-registered cap of 240000 characters)
+2026-10-23T18:45:40.253Z export-grades: pulled 5 chunk(s); length, bytes and sha256 equal the page's: yes
+2026-10-23T18:45:40.259Z export-grades: written exports\pp1-2026-10-23.json — 418459 bytes, sha256 5a798de75108a9ed7828854ddf563ee87af3d1b3317c04678ec1c6f06d66061f
+2026-10-23T18:45:40.259Z export-grades: SDK-7 (SDK leg) PASS — 77 columns, 790 grade records; file sha256 = page sha256
+2026-10-23T18:45:40.259Z export-grades: kept T329 open with bb loaded for the MCP leg (run with --mcp-plan for its expressions); released when this script exits
+exit 0
+time 18:45:40.301Z
+```
+The same resolution branch (b) as SDK-6; `<c>` = 77 ≥ 1, `<g>` = 790, `<n>` = 5 = ⌈418406/100000⌉ ⇒ **SDK leg
+PASS**. `<T#>` = `T329`; `<L>` = 418406, `<k>` = 53, **measurable: no**.
+
+Step 4, the plan:
+```
+time 18:45:52.440Z
+plan exit 0
+plan size: 4883 bytes, 91 lines
+course id in plan: False
+ada.blackboard in plan (count): 0
+```
+Step 5: `measurable: no` ⇒ **the MCP leg and S6.3 are recorded "not measured — 418406 characters over the cap"**;
+steps 6–8 skipped (actor M not started, so `A end M` had nothing to end; no `assemble-mcp.ts`; no MCP-leg
+failures-folder step). The REP-0 gate did not apply (REP-0 passed in Part 2); step 5 alone skips the MCP leg.
+
+Step 9 (the SDK leg's file only; no `-mcp.json` was made) and the failures folder after:
+```
+time 18:45:53.021Z
+pp1-2026-10-23.json 418459
+5A798DE75108A9ED7828854DDF563EE87AF3D1B3317C04678EC1C6F06D66061F
+mcp file exists: False
+.gitignore:30:exports/	"exports\\pp1-2026-10-23.json"
+.gitignore:30:exports/	"exports\\pp1-2026-10-23-mcp.json"
+failures after (count): 0; new: 0
+```
+The file's hash = the page's `<H>` (upper-case); both paths are ignored by `.gitignore:30:exports/`; 0 new failure
+PNGs (none deleted).
+
+Step 10:
+```
+time 18:45:59.299Z
+2026-10-23T18:45:59.844Z s6-close-bb-tab: closed T329 (the Blackboard recipe's course tab)
+exit 0
+time 18:45:59.891Z
+T324 fixture
+failures now (count): 0
+```
+Step 11 (data hygiene): no actor ran, so no `out.jsonl` or transcript holds the export; `exports\pp1-2026-10-23.json`
+(418 459 bytes, student data) is outside git, gitignored.
+
+#### Close-down
+
+```
+time 18:46:09.615Z
+A status:
+no actors
+T5_ACTORS exists: False
+Wb closed: True class ''
+chrome windows (count only): 3
+web pid 33576 : python.exe http.server 8080
+safe: the tree of 33576 does not contain the driver
+8080 listen after: 0
+time 18:46:15.114Z
+```
+The daemon (pid 26052) was left running; it idles out 600 s after its last client (18:46:00Z), after this record's
+log span.
+
+#### Hygiene (attempt 2)
+
+- **Daemon log:** `S6-daemon-log.txt` extended (append only) by the 20 lines 18:44:54Z–18:46:00Z (this attempt's
+  daemon: `start`/`config`/`listening`, one `extension resync: 4 tabs, 0 gone` at 18:45:02Z, and eight
+  `client +`/`client -` pairs — four `B1`s, the stale check, `boot-bb.ts`, `export-grades.ts`, `close-bb-tab`;
+  `--mcp-plan` connects to nothing); nothing was logged between 17:09:46Z and 18:44:54Z. Now
+  **232 lines**; counts (never printed) on the 20 lines and on the whole file: `://` 0, token 0 (read into a
+  variable, then removed), `[line withheld:` 0, `_\d+_\d+` 0, `ada.blackboard` 0 ⇒ attached.
+- **Failure PNGs:** 0 before, 0 after. **Writes:** none (the recipes' GETs only). **Denials:** none.
+- **Pre-run commit hygiene:** the 17 added lines of `b237a3f`: token 0, `_\d+_\d+` 0, `ada.blackboard` 0.
+- **Data left outside the repo (the user's call):** `%TEMP%\bridge-e2e\s6-run3-addendum2` (`sdk7-plan.txt` — the
+  recipe's expressions, no id; `http8080.log`; `s6-daemon-addendum2.log`; `web.pid`, `hwnd-Wb.txt`)
+  and `exports\pp1-2026-10-23.json` (gitignored, student data). No actor `out.jsonl` or transcript was made.
+
+#### Verdict (attempt 2)
+
+| Row | Verdict | Observed vs expected |
+|---|---|---|
+| Set-up | held | HEAD b237a3f; no change under `extension daemon shared sdk mcp`; dist `597D6C28…34DA3F` / `4B07B464…C63153`; driver not a client; 152 recipe tests; `Wb` new, foreground `True`, `B1` → `T324 fixture` |
+| S6-STALE | PASS | `STALE-CHECK NEW BUILD`, exit 0; daemon build `597d6c28…34da3f` in all three places |
+| SDK-6 (live) | **PASS** | branch (b); `SDK-6 PASS — bb.VERSION 2026-10-18 …`; exit 0; 8765 empty before and after |
+| SDK-7 (live) | **SDK leg PASS; MCP leg and S6.3 not measured** | 77 columns, 790 grade records, 418459 bytes, sha256 `5a798de7…66061f` = file; `measurable: no` (418406 characters > 240000); plan without a course id; both export paths ignored; 0 new failure PNGs; `close-bb-tab` closed `T329` |
+
+**Finding (for the step agent).** pp1's gradebook (418 406 characters) is over SDK-7's pre-registered 240 000-character
+MCP-leg cap, so S6.3's byte-compare cannot be measured on this course as registered (53 chunks of 8000 through
+`browser_evaluate`). Measuring it needs a row registered before its run — e.g. a higher cap, or a smaller course.
+Proposed, not decided.
+
+#### Dated notes (addendum)
+
+- *2026-10-23 (step agent, live verifier r4 MINOR-1): the recipes' stdout of attempt 2 (the stale check,
+  `boot-bb.ts`, `export-grades.ts`, the plan's exit, `close-bb-tab`) was not saved to files under
+  `s6-run3-addendum2`; the lines above are the driver's terminal output. The recorded lines agree with the daemon
+  log's client spans and times, the plan's size and line count, and the export's size and hash (live verifier r4
+  §2–§3). No recorded line or verdict changes.*
+- *2026-10-23 (step agent, live verifier r4 MINOR-1): S6.4's `git status --short`, run at 18:54:31Z after both
+  attempts, before the addendum commit:*
+  ```
+   M docs/e2e-test-plan.md
+   M docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6-daemon-log.txt
+   M docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6-run-record.md
+   M docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6.ledger.md
+  ?? docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6-live-verifier-r4.md
+  ```
+  *The addendum changed the run record, the daemon log, the ledger and §5 of `docs/e2e-test-plan.md`; the fifth
+  entry is live verifier r4's report. No `exports/`, PNG or `dist/` entry. This replaces attempt 1's "below in the
+  step's report". S6.4 holds.*
+- *2026-10-23 (step agent, live verifier r4 NIT-1): attempt 2's window ruling is the step agent's, stage-local:
+  `S6.ledger.md` 18:42:37Z, and the sheet's dated note "Part 3 addendum attempt 2", committed alone in `b237a3f`
+  (18:44:04Z) before attempt 2's first line. #101's text is unchanged.*
+- *2026-10-23 (step agent, live verifier r4 NIT-3): of the "four `B1`s" in the hygiene list, three are set-up checks
+  before a recipe and the fourth (`t5-find` at 18:46:00Z, after `close-bb-tab`) is the close-down check. The count
+  of `client +`/`client -` pairs (eight) is unchanged.*

@@ -1957,6 +1957,38 @@ Evidence in short (Part 3; the record has every line):
 - **SDK-6 login** — `after load: on ada.blackboard.com: no; SSO page: yes; …`; `allowlisted submit buttons: 1`; `invoked the one allowlisted SSO submit button once …`; `after submit: on ada.blackboard.com: no; sign-in buttons: 1`; exit 4.
 - **SM-1** — `event +8714 ms tabGone {"tab":"T268",…}` at the quit; `snapshot T268 after the restart → TAB_GONE`; `SM-1 (Part 3 rule) PASS — T268 gone by tabGone at the quit (+1539 ms after $Q); …; one session-changed line (0 retired), resync +0 s`.
 
+**Part 3 addendum — 2026-10-23, 18:39–18:41 UTC (SDK-6/SDK-7 in the opened session, #101).** *Run by the addendum
+driver under the wave sheet's dated note "Part 3 addendum, #101" (pre-run commit `1b429bc`): SDK-6/SDK-7 live in the
+window the Part 3 login opened, found by its P3-h handle. Part 3's `bb-login.ps1` exit 4 was a too-early post-submit
+check (#101); its lines stay as recorded. The handle (`15273146`) no longer named a window — P3-i's Chrome restart came
+after the login and restores windows under new handles — so, by the note's rule, the addendum stopped at set-up:
+nothing run against Chrome, no window brought forward, no Blackboard page read, no write, no denial. Record:
+`S6-run-record.md` § "Part 3 addendum"; `S6-daemon-log.txt` now 212 lines (Part 3's daemon's idle-out).*
+
+```
+Date: 2026-10-23 (UTC 18:39–18:41)  HEAD: 1b429bc   daemon: none running   dist: 597D6C28…34DA3F / 4B07B464…C63153 (unchanged)
+Set-up held; bb-login window 15273146 → (no window) ⇒ stop (pre-registered)
+S6-STALE [not run] SDK-6 [waits for the user] SDK-7 [waits for the user] (bb-login window gone after P3-i's restart; MCP leg and S6.3 not run)
+Log hygiene: '://' count 0  token count 0  withheld-line count 0   (212 lines; course ids 0, ada.blackboard 0)
+```
+
+**Part 3 addendum, attempt 2 — 2026-10-23, 18:44–18:46 UTC (from a driver window).** *Run by the addendum driver under
+the wave sheet's dated note "Part 3 addendum attempt 2" (pre-run commit `b237a3f`): the step agent's ruling — the login
+lives in the profile's cookies, so the recipes' background tabs opened in a new window the driver opened on a fixture
+page (`?t5=s6-bb`, `B1` → `T324 fixture`); `bb-login.ps1` not run; no window of the user's used or brought forward.
+The course lookup confirmed the login (branch (b)). SDK-6 passed; SDK-7's SDK leg passed, but pp1's export (418 406
+characters) is over the pre-registered 240 000-character cap of the MCP leg, so the MCP leg and S6.3 are not measured
+(step 5). No write, no denial, 0 failure PNGs. Record: `S6-run-record.md` § "Part 3 addendum" → "Attempt 2";
+`S6-daemon-log.txt` now 232 lines.*
+
+```
+Date: 2026-10-23 (UTC 18:44–18:46)  HEAD: b237a3f   daemon build: 597d6c28…34da3f (pid 26052, spawned by the driver's B1)   dist unchanged
+S6-STALE [P] (STALE-CHECK NEW BUILD, the first result line; no reload)
+SDK-6 [P] (branch (b): courseId lookup 404, the skill's table confirmed by GET 200; bb.VERSION 2026-10-18; 8765 empty before/after)
+SDK-7 [SDK leg P; MCP leg and S6.3 not measured — 418406 characters over the cap] (77 columns, 790 grade records, 418459 bytes, sha256 5a798de7…66061f = file; plan without a course id; both export paths ignored; 0 new failure PNGs; close-bb-tab closed T329)
+Log hygiene: '://' count 0  token count 0  withheld-line count 0   (232 lines; course ids 0, ada.blackboard 0)
+```
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.

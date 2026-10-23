@@ -208,3 +208,25 @@
 2026-10-23T16:59:25Z client - "s6-sm1" (0 clients)
 2026-10-23T16:59:46Z client + "t5-cleanup" (1 client)
 2026-10-23T16:59:46Z client - "t5-cleanup" (0 clients)
+2026-10-23T17:09:46Z idle for 600000 ms with no clients — shutting down
+2026-10-23T17:09:46Z exit 0 (shutdown 1001) clients=0 extensionEvents=26 ignoredClientFrames=0
+2026-10-23T18:44:54Z start pid=26052
+2026-10-23T18:44:54Z config pid=26052 port=9234 idleMs=600000 build=597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f
+2026-10-23T18:44:54Z listening on 127.0.0.1:9234
+2026-10-23T18:44:54Z client + "t5-find" (1 client)
+2026-10-23T18:45:02Z extension resync: 4 tabs, 0 gone
+2026-10-23T18:45:02Z client - "t5-find" (0 clients)
+2026-10-23T18:45:09Z client + "s6-stale-check" (1 client)
+2026-10-23T18:45:09Z client - "s6-stale-check" (0 clients)
+2026-10-23T18:45:18Z client + "t5-find" (1 client)
+2026-10-23T18:45:18Z client - "t5-find" (0 clients)
+2026-10-23T18:45:19Z client + "boot-bb" (1 client)
+2026-10-23T18:45:24Z client - "boot-bb" (0 clients)
+2026-10-23T18:45:32Z client + "t5-find" (1 client)
+2026-10-23T18:45:32Z client - "t5-find" (0 clients)
+2026-10-23T18:45:32Z client + "export-grades" (1 client)
+2026-10-23T18:45:40Z client - "export-grades" (0 clients)
+2026-10-23T18:45:59Z client + "s6-close-bb-tab" (1 client)
+2026-10-23T18:45:59Z client - "s6-close-bb-tab" (0 clients)
+2026-10-23T18:46:00Z client + "t5-find" (1 client)
+2026-10-23T18:46:00Z client - "t5-find" (0 clients)
