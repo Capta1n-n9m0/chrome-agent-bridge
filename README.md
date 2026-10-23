@@ -20,16 +20,23 @@ All documentation lives in [`docs/`](docs/).
 
 ## Status
 
-**21 tools**, implemented and **E2E-validated** against the real default profile: Phases A–D
+**22 tools**, implemented and **E2E-validated** against the real default profile: Phases A–D
 (connection, navigation, perception, action fidelity, robustness) plus `browser_evaluate` and
 network inspection (`browser_network_requests`, `browser_network_clear`, and
-`browser_wait_for({networkIdle:true})`).
+`browser_wait_for({networkIdle:true})`). Since Step 6, a shared localhost daemon sits between the
+extension and its clients (the MCP server and a TypeScript SDK for scripts). Since Step 7, several
+actors work on different tabs at once, through tab handles, one owner per tab, and `browser_focus_tab`.
 
-542 unit tests green (2026-10-22; the Step 6 daemon, SDK and MCP split is code-complete, its
-live E2E pending); live in-browser runs of 29 cases (2026-06-04), Phase C (13), Phase D (7) and
+950 unit tests green in 59 files (`npm test`, 2026-10-23). The Step 6 daemon split was E2E-tested in
+wave W1 (2026-10-22), and Step 7's multi-actor tabs in Runs 8–10 (2026-10-22/23). Before that, live
+in-browser runs of 29 cases (2026-06-04), Phase C (13), Phase D (7) and
 Phase B (6) on 2026-09-03, the evaluate pass (20 of 22) and the network pass (15 of 15) on
 2026-09-07 — 6 runtime bugs found & fixed across them. Details in
 [`docs/progress-and-roadmap.md`](docs/progress-and-roadmap.md).
+
+*Corrected 2026-10-23 (Step 7 propagator): was "21 tools" and "542 unit tests green (2026-10-22; … its
+live E2E pending)"; as built Step 7 added `browser_focus_tab` and the tests, and both live waves ran
+(`docs/plans/2026-10-21-step7-multi-actor-tabs-asbuilt.md`).*
 
 Merged to `main` and published as a public GitHub repo under the MIT license (2026-09-03).
 

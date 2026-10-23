@@ -5,6 +5,11 @@
 **As-built:** docs/plans/2026-10-21-step7-multi-actor-tabs-asbuilt.md (does not exist yet; written at
 stage close) · **Steps dir:** docs/plans/2026-10-21-step7-multi-actor-tabs-steps/ (does not exist yet;
 created at kickoff for ledgers, briefs, reports and evidence)
+*Corrected 2026-10-23 (Step 7 propagator): was "Planned", with the as-built register and the steps dir
+"does not exist yet". As built, both exist. Stages 0 and T0–T6 were built and committed, and the E2E ran
+as Runs 8–10. The gate waits on the user's remaining items (decisions.md · 2026-10-23 · The user rules on
+the Step 7 close-out questions (#68)). The Status line itself is updated at close-out — see as-built
+§ T5, § T5b.*
 
 **Prerequisite:** Step 6 (`2026-10-21-step6-daemon-and-protocol-v2.md`) complete and E2E-passed. This
 step's **Stage-0 spec audit re-examines Step 6's as-built register by execution** — every contract it
@@ -68,6 +73,11 @@ emits **tab lifecycle events** so handles survive Memory-Saver discards and repo
 last URL; errors carry **codes** end to end; the extension returns **data** (snapshot elements, network
 entries) and the text formatters move to the SDK. After this step, a script on T3 and Claude on T1 run
 at the same time, and a screenshot of either flashes the tab for a frame and restores the human's view.
+*Corrected 2026-10-23 (Step 7 propagator): the flash is not a frame. It was measured at about 1.5 s, from
+page-side `visibilitychange` timestamps: median 1493 ms in Run 8 SCREEN-1, and 1557 ms in Run 9
+R9-SCREEN-1. A window fully covered by other windows yields no capture (`TIMEOUT`); since T5b the
+human's tab is restored at the 30 s chain bound (R9-RESTORE) — see as-built § T5, § "RELOAD-AUTO,
+Run 9, BG-FLAGS".*
 
 **Non-goals (this step):** locators, `waitFor({locator})`, node→ref, the typed `Tab` API and
 `BridgeError` enrichment (Step 8); the MCP cursor semantics beyond "pass `tab` through" (Step 8);
@@ -112,6 +122,15 @@ decisions.md · 2026-10-21 · Steps 6–8 run under the long-run contract.
 warning** so a Step 6 daemon still works against a Step 7 extension during the migration. The daemon
 always sends `tabId` after T2. The fallback is removed in Step 8's cleanup. `BAD_PARAMS` if `tabId`
 is present but not a number; `TAB_UNKNOWN` (extension-side) if `chrome.tabs.get` throws "No tab with id".
+*Corrected 2026-10-23 (Step 7 propagator): as built the fallback is the human's tab: `humansTab()` is
+the active tab of the last-focused normal window, and `activeTab()` survives only as a module-private
+wrapper of it (`extension/src/tabs.ts:22`). The warning names the method only, once per method. A
+non-integer `tabId` gets `BAD_PARAMS`, and so does a string `tab` that an old daemon forwarded
+unresolved. Decisions: decisions.md · 2026-10-22 · "The human's tab" is the active tab of the
+last-focused normal window (#43). "The daemon always sends `tabId`" holds for Step 6 clients too: the
+daemon's legacy path resolves their untargeted calls before forwarding (decisions.md · 2026-10-22 · A
+Step 6 client keeps working against a Step 7 daemon for one release, without loosening a lease (#41))
+— see as-built § Stage T1, § Stage T2.*
 
 ### 0.2 Handles (`daemon/src/handles.ts`, pure)
 
@@ -151,6 +170,13 @@ Which methods are lease-checked: every method that carries `tab`. Free: `listTab
 with `tab:"all"` or a tab param (**read**, not RefMap-touching), `daemon.*`, `tabs.claim/release`.
 `networkClear` is **checked** (it clears shared state; the plan's own note marks this as the less
 certain call — see Open items). `newTab` leases its result to the caller. `closeTab` is checked.
+*Corrected 2026-10-23 (Step 7 propagator): as built the method classes are one table,
+`daemon/src/methods.ts`. The download methods are also free (decisions.md · 2026-10-22 · The daemon's
+method classes are one table, and the download methods are free (#39)). `networkRequests` is free in
+every scope. `networkClear {tab:"all"}` is refused with `TAB_HELD` whenever another client holds any
+tab (decisions.md · 2026-10-22 · T2's daemon details (#57), its update). A bare number as a network
+`tab` is a legacy Chrome id (#54). `closeTab`, `selectTab` and `focusTab` with neither `tab` nor `id`
+get `BAD_PARAMS` — see as-built § Stage T2.*
 
 ### 0.4 The visibility lock (`daemon/src/lock.ts`, pure)
 
@@ -163,6 +189,16 @@ activate→capture→restore runs atomically against other screen users.
 reads and clamps (`daemonWaitMs`: `clamp(timeoutMs ?? 30000, 100, 600000) + 5000`) and never forwards
 to the extension, so T2 takes the lock's deadline there; the SDK client gives up 1 s after the daemon's
 wait — see as-built § Stage D2, § Stage D4.*
+*Corrected 2026-10-23 (Step 7 propagator), three changes in the build:*
+- *`selectTab` is also in the lock class (decisions.md · 2026-10-22 · `selectTab` takes the visibility
+  lock, like `focusTab` (#53)).*
+- *`fullPage` is read as truthy, in the daemon and the extension alike (decisions.md · 2026-10-22 · T3's
+  snapshot fields and capture rules (#58)).*
+- *One deadline, `received + clamp(timeoutMs ?? 30000, 100, 600000)`, covers both the lock wait and the
+  forwarded call. A fresh wait is not started after the lock (decisions.md · 2026-10-22 · One deadline
+  per call covers the lock wait and the forwarded call (#44)).*
+
+*See Step 7 as-built § Stage T2, § Stage T3.*
 
 ### 0.5 Activation sequence in the extension (`tabs.ts: activateForCapture`)
 
@@ -178,6 +214,18 @@ before switching anything. The window is **not** focused (no `chrome.windows.upd
 `captureVisibleTab` needs the window visible, not focused, and stealing focus is what we're avoiding.
 `focusTab` is the explicit exception: it does focus the window and activate the tab, and does *not*
 restore.
+*Corrected 2026-10-23 (Step 7 propagator): as built (T3, T5b) the sequence also does four things:*
+- *It reserves a 500 ms capture slot before the switch, and retries once on Chrome's capture-quota
+  error.*
+- *It chains captures per window, released by 30 s.*
+- *It restores the previous tab at most once, when the capture settles or at the 30 s bound. The
+  restore is skipped if the window no longer shows the target, or if `focusTab` touched the window.*
+- *`screenshot {mode:"cdp"}` refuses a background tab (`OFFSCREEN`) or a minimized window
+  (`WINDOW_MINIMIZED`) before attaching.*
+
+*Decisions: decisions.md · 2026-10-22 · T3's snapshot fields and capture rules (#58); · 2026-10-23 ·
+T5b's three fixes (#63). The resulting flash is about 1.5 s (see the Goal note) — see as-built
+§ Stage T3, § Stage T5b.*
 
 ### 0.6 Errors with codes in the extension
 
@@ -189,6 +237,12 @@ RESTRICTED_URL | TIMEOUT`); `unwrapResult` throws `REF_STALE` for a null/undefin
 `navigate` → `NAV_FAILED {error}`; `downloadStart` → `DOWNLOAD_HTTP {status, contentType}`. Content-
 script throws come back as strings through `executeScript`; the content script prefixes them
 `CODE:message` and `unwrapResult` splits — one place, tested.
+*Superseded 2026-10-22, noted 2026-10-23 (Step 7 propagator): was "content-script throws come back as
+strings … prefixes them", because a thrown injected function resolves with `result: null` and the
+string never arrives (Stage 0 F1). As built, page functions return
+`{__bridgeError:"CODE:message"}` through `content/guard.ts`, and `unwrapResult` splits it; a null or
+undefined result is still a failure, `REF_STALE` (decisions.md · 2026-10-22 · Content-script failures
+are returned, not thrown, to carry `CODE:message` (#38)) — see as-built § Stage T1.*
 
 ### 0.7 Snapshot returns elements; the formatter moves
 
@@ -286,6 +340,11 @@ they go on the wire, never into a log line). **Needs the user's keyboard:** yes 
 - [ ] `intercept.ts`: `listTabs` → annotate `{tab: handle, owner?: name, active}`; `newTab` → mint +
       grant; `closeTab` → check, forward, remove; `tabs.claim {tab | active:true}` → grant or `TAB_HELD`;
       `tabs.release`; `screenshot`/`focusTab` → lock.
+      *Corrected 2026-10-23 (Step 7 propagator): as built the human's marker on a `listTabs` entry is
+      `current: true`; `active` keeps Chrome's per-window meaning (decisions.md · 2026-10-22 · T1's
+      extension details (#55)). Entries carry `{id, tab, title, url, active, windowId, openerTabId?,
+      owner?, current?}`. `selectTab` takes the lock too (#53) — see as-built § Stage T1, § Stage T2,
+      § Stage T3.*
 - [ ] `route.ts`: resolve `params.tab` → `params.tabId` (strip `tab`); `TAB_UNKNOWN` / `TAB_GONE`;
       lease check; then forward. Methods with no `tab` and not free → `BAD_PARAMS "tab is required"`.
       *Corrected 2026-10-22: as built `route.ts` answers only `daemon.*` itself (`status`,
@@ -393,6 +452,12 @@ unless the window moved on or `focusTab` touched it. Second, `screenshot {mode:"
 a minimized window with `WINDOW_MINIMIZED` and a background tab with `OFFSCREEN`. Third, the daemon
 fills `leaseGranted.url` by polling `listTabs` for up to 2 s, while the grant itself still takes
 effect at once. Report: `2026-10-21-step7-multi-actor-tabs-steps/T5b.md`.*
+*Corrected 2026-10-23 (Step 7 propagator): from Run 9 on, the extension reload is not the user's
+keyboard step. The driver runs `recipes/reload-extension.ps1` and then the stale-extension check
+(decisions.md · 2026-10-23 · The driver may reload the extension by UI automation, and restart Chrome
+with flags for the background-input test (#64); · Later extension reloads use
+`recipes/reload-extension.ps1` (#65)). The user is asked only when the script exits non-zero — see
+as-built § "RELOAD-AUTO, Run 9, BG-FLAGS".*
 *Corrected 2026-10-22: since Step 6, `npm run build` also changes the daemon's build: the first client
 to connect hands the running daemon over, and every other client reconnects on 4002 without a
 handover; every Claude session in the wave needs `/mcp` (T4 changes the MCP bundle) — see as-built
@@ -408,16 +473,38 @@ handover; every Claude session in the wave needs `/mcp` (T4 changes the MCP bund
 - [ ] **LEASE-5** `TAB_GONE`: close a leased tab by hand → next call reports the last URL/title.
 - [ ] **LEASE-6** `tabReplaced`: discard a leased background tab via `chrome://discards` → reload it →
       the handle still works; the SW console shows the replaced event.
+      *Corrected 2026-10-23 (Step 7 propagator): Stage 0 F7 doubted the premise, and the row was
+      written with both outcomes passing (decisions.md · 2026-10-22 · LEASE-6 measures whether a
+      discard keeps the tab id, with both outcomes pre-written (#45)). Run 8 measured outcome (b): a
+      new Chrome id, `tabReplaced` applied, and the same handle working after the reload. So the plan's
+      premise held, and #45's revisit trigger was met. The SW-console clause was not checked, because
+      the service worker logs no tab event (`docs/e2e-test-plan.md` LEASE-6) — see as-built § T5.*
 - [ ] **LEASE-7** Human-opened tab is unheld; `browser_select_tab` on it claims it.
 - [ ] **SCREEN-1** Screenshot of a background leased tab (default): correct image; the human's tab is
       restored; measure the flash (video or stopwatch).
 - [ ] **SCREEN-2** Same with `mode:"cdp"`: no switch; banner; image matches.
+      *Corrected 2026-10-23 (Step 7 propagator): Run 8 measured `cdp` on a hidden tab never returning
+      (`TIMEOUT` after 35 s, banner up). Since T5b, `cdp` refuses a background tab with `OFFSCREEN` in
+      3 ms, with no banner (R9-SCREEN-2; decisions.md · 2026-10-23 · T5b's three fixes (#63)).
+      R9-SCREEN-2's positive control failed as written (R = 151 > 100) and waits for the user (#68) —
+      see as-built § T5, § "RELOAD-AUTO, Run 9, BG-FLAGS".*
 - [ ] **SCREEN-3** Two actors screenshot simultaneously: both images correct, serialised.
 - [ ] **SCREEN-4** Minimized window → `WINDOW_MINIMIZED`; CDP mode in a minimized window → record.
+      *Corrected 2026-10-23 (Step 7 propagator): recorded. `cdp` in a minimized window hung until
+      `TIMEOUT` after 25 s (Run 8). Since T5b `cdp` answers `WINDOW_MINIMIZED` too, in 3 ms
+      (R9-SCREEN-4); switch mode answered it already in Run 8. The switch-mode message still suggests `mode:"cdp"`; Step 8 rewrites it (#63) —
+      see as-built § T5b.*
 - [ ] **SCREEN-5** Two windows: target in the unfocused window — capture works without focusing it.
 - [ ] **BG-1** Trusted click into a background tab (fixture's `isTrusted` reporter) → record result;
       if it fails, try with `Emulation.setFocusEmulationEnabled` and record.
 - [ ] **BG-2** Trusted typing into a background tab → record.
+      *Corrected 2026-10-23 (Step 7 propagator), for BG-1 and BG-2: both failed in Run 8. The call
+      answered `ok` and the page received nothing; after `focusTab` the same call worked. The
+      `setFocusEmulationEnabled` retry was not run, because no bridge method sends it and a wave may
+      not change the extension (decisions.md · 2026-10-22 · BG-1/BG-2's focus-emulation retry cannot
+      run in this wave (#61)). Run 10 repeated both under Chrome's three anti-throttling flags, with
+      the same result (#66). Step 8 adds and measures focus emulation before it sets
+      `sdk/src/policy.ts` (#62 item 4) — see as-built § T5, § "RELOAD-AUTO, Run 9, BG-FLAGS".*
 - [ ] **BG-3** `evaluate` clipboard write in a background tab → expected `NotAllowedError`; after
       `browser_focus_tab` → works.
 - [ ] **BG-4** `waitFor {text}` and `networkIdle` on a background tab → work (timers throttled but fine).
@@ -618,6 +705,10 @@ step's baseline is Step 6's closing test count (recorded in Step 6's as-built) a
   UI automation, window captures). The gate keeps one keyboard step, the extension reload after
   `npm run build` (#33 keeps "no extension change or reload" with the user); if the user does not
   answer the reload request, the run stops at G7-2 with the package ready.*
+  *Corrected 2026-10-23 (Step 7 propagator): the reload became scripted after Run 8 (#64, #65), so G7-2
+  keeps no keyboard step unless the script exits non-zero. The BG-1/BG-2 outcome reached Step 8 as two
+  FAILs. That is not enough to set `policy.ts`: the user ruled that Step 8 first measures focus
+  emulation (#62 item 4, #66) — see as-built § T5, § "RELOAD-AUTO, Run 9, BG-FLAGS".*
 - **G7-3 — the "open popup" fixture button.** Adding it to `test-fixtures/e2e-playground.html` is in
   the repo and needs no gate (T1 adds it, *ruled 2026-10-21*); serving the fixture (`python -m
   http.server 8080 --directory test-fixtures`) and clicking it in the real profile is part of G7-2.
@@ -699,6 +790,12 @@ conservative rule of `long-run` §3 with the decision listed for the user.
 **Revisit triggers:** a real collision between a script and a Claude session wanting one tab (spec
 §13 → `{wait:true}`); BG-1/BG-2 failing (Step 8 policy); SCREEN-4 showing CDP renders a minimized
 window (then `cdp` mode gains a use the docs should state).
+*Corrected 2026-10-23 (Step 7 propagator):*
+- *BG-1/BG-2 failing: met. Run 8 and Run 10; the trigger passes to Step 8 (#61, #62 item 4, #66).*
+- *SCREEN-4: not met. `cdp` did not render a minimized window; it hung, and since T5b it refuses (#63).*
+- *A further trigger was met: LEASE-6 showed a new id (#45).*
+
+*See as-built § T5, § T5b.*
 
 **Needs the user's keyboard:** extension reload + `/mcp` (G7-1 if taken at T1, and at the start of the
 T5 wave); the whole T5 wave; any push.
@@ -713,3 +810,13 @@ that ran during the phase, and any push.*
 - `tabs.claim {wait:true}` if a real hand-over need appears.
 - Generation-stamped refs (`s7.e12`) → read-only foreign snapshots and stale-ref detection.
 - `daemon.kick {clientId}` for a hung script holding tabs.
+- *Added 2026-10-23 (Step 7 propagator), from the as-built register:*
+  - *The legacy path for Step 6 clients, `selectTab`, and the Chrome `id` beside `tab` are removed in
+    Step 8 S2 (#41, #53, #54, #57).*
+  - *The switch-mode `WINDOW_MINIMIZED` message is rewritten (#63).*
+  - *Focus emulation for trusted background input is measured before `sdk/src/policy.ts` is set (#62
+    item 4, #66).*
+  - *A session marker in the extension's hello would let the daemon retire handles when Chrome restarts
+    and reuses tab ids. This is T2 verifier V4: proposed, not decided, and contract-level.*
+
+  *See as-built § Stage T2, § Stage T5b.*

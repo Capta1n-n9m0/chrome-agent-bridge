@@ -4,7 +4,11 @@
 - **Status:** Approved in discussion (implementation not started). *Corrected 2026-10-22: was
   "implementation not started"; as built Step 6 (§4, §5's daemon/SDK/MCP rows, §9, §10 without tabs,
   §11) is built — stages D0–D5b, 542 tests — and its live E2E waits for the D6 wave; contracts and
-  deviations in `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md`.* Plans: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`, `…step7-multi-actor-tabs.md`, `…step8-sdk-surface-and-mcp-cursor.md`.
+  deviations in `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md`.* *Corrected
+  2026-10-23 (Step 7 propagator): Step 6 closed on 2026-10-22, after wave W1. Step 7 (§5's extension row,
+  §6, §7, §10's tab parts) is built and E2E-run (Runs 8–10). It has 22 tools and 950 tests in 59 files
+  (`npm test` at `9cfc7db`); its gate waits on the user's remaining items. Step 8 (§8) is planned.
+  Contracts and deviations: `docs/plans/2026-10-21-step7-multi-actor-tabs-asbuilt.md`.* Plans: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`, `…step7-multi-actor-tabs.md`, `…step8-sdk-surface-and-mcp-cursor.md`.
 - **Owner:** Abbas Aliyev (@Capta1n-n9m0)
 - **Supersedes in part:** `2026-06-04-chrome-real-profile-agent-bridge-design.md` §3 "Controller: MCP server", §4 topology, and the "Tab targeting: active tab" decision. Everything about the extension's perception/action model stands.
 
@@ -105,6 +109,12 @@ outcomes pre-written).*
 
 The extension still dials out to 9234 and still cannot tell it is talking to a daemon rather than to
 the old server: a v1 hello (no `role`) is treated as `role: "extension"`.
+*Corrected 2026-10-23 (Step 7 propagator): as built since Step 7 T1, the extension's hello is `{type:
+"hello", token, role:"extension", proto:2}`. A Step 6 daemon accepts it. A Step 7 daemon still accepts a
+hello with no `proto`, but it then answers every tab-carrying method with `VERSION` and a reload hint,
+because such an extension ignores `tabId` and would act past every lease (decisions.md · 2026-10-22 · A
+stale extension is refused for tab calls, detected by its hello (#42)) — see Step 7 as-built § Stage T1,
+§ Stage T2.*
 
 ## 5. Layer contract — who returns what
 
@@ -116,6 +126,18 @@ the old server: a v1 hello (no `role`) is treated as `role: "extension"`.
 | **MCP** | *Is an SDK client.* Tool schemas, text rendering, the active-tab-on-first-touch convenience, exit-with-session lifecycle (today's `lifecycle.ts` moves here unchanged). | Any protocol code. |
 
 Consequence: `mcp/` shrinks to "SDK call → render", and one client path is tested by both consumers.
+
+*Corrected 2026-10-23 (Step 7 propagator), on the as-built state of the four rows:*
+- *Extension: "every method takes an explicit `tabId`" holds on the wire from the Step 7 daemon. The
+  extension still falls back to the human's tab, with a warning, when `tabId` is absent, for one
+  release; Step 8 S2 removes the fallback.*
+- *SDK: the formatters `formatSnapshot` and `formatNetwork` exist in `sdk/src/format/`. They are exported
+  through the `@bridge/sdk/format` subpath, not the main entry (decisions.md · 2026-10-22 · The
+  formatters reach the MCP through a `@bridge/sdk/format` subpath (#46), open for the user).*
+- *SDK: the typed `Tab`, locators and failure enrichment are Step 8's.*
+- *MCP: the active-tab-on-first-touch cursor is built (`mcp/src/cursor.ts`).*
+
+*See Step 7 as-built § Stage T1, § Stage T4.*
 
 ## 6. Multi-actor control
 
@@ -187,6 +209,19 @@ confirmed the remap on a Memory-Saver discard (see the note under §3).*
 - `tabs.release {tab}` gives a tab up; `tabs.claim {tab}` on an unheld tab takes it; `tabs.claim
   {active: true}` claims whatever the human is looking at (the MCP's first-touch move).
 
+*Corrected 2026-10-23 (Step 7 propagator), on what was built:*
+- *The free list also holds `downloadStart`, `downloadChunk` and `downloadEnd` (decisions.md ·
+  2026-10-22 · The daemon's method classes are one table, and the download methods are free (#39)).*
+- *`networkClear {tab:"all"}` is refused with `TAB_HELD` while any other client holds any tab (#40 as
+  amended by #57).*
+- *"Whatever the human is looking at" is the active tab of the last-focused **normal** window
+  (decisions.md · 2026-10-22 · "The human's tab" is the active tab of the last-focused normal window
+  (#43)).*
+- *For one release a Step 6 client's untargeted call goes through a legacy path: it is resolved to
+  the human's tab and lease-checked, but grants no lease (#41, #54).*
+
+*See Step 7 as-built § Stage T2.*
+
 ### 6.4 The visibility lock
 
 - One daemon-wide async mutex. Taken for the duration of a single call by methods flagged
@@ -195,6 +230,15 @@ confirmed the remap on a Memory-Saver discard (see the note under §3).*
   connection closing releases it, so a hung screenshot cannot wedge everyone.
 - Always taken, even if the target happens to be active — uncontended it costs nothing, and the
   extension skips the switch when the tab is already active.
+- *Corrected 2026-10-23 (Step 7 propagator), on what was built:*
+  - *`selectTab`, the one-release alias of `focusTab`, takes the lock too (decisions.md · 2026-10-22 ·
+    `selectTab` takes the visibility lock, like `focusTab` (#53)).*
+  - *`mode:"cdp"` and a truthy `fullPage` do not take it.*
+  - *One deadline per call bounds the lock wait and the forwarded call together (decisions.md ·
+    2026-10-22 · One deadline per call covers the lock wait and the forwarded call (#44)).*
+  - *"Costs nothing" holds for the lock. The switch itself costs about 1.5 s of flash (see §7).*
+
+  *See Step 7 as-built § Stage T2.*
 
 ### 6.5 The human
 
@@ -310,6 +354,18 @@ renders the same fields as text. Nothing here needs a model in the loop.
 - `browser_status` reports the cursor, its lease, and whether it differs from the human's active tab.
 - `browser_list_tabs` shows handles, owners (actor names) and the human's active marker.
 
+*Corrected 2026-10-23 (Step 7 propagator): Step 7 T4 built these parts:*
+- *the first-touch claim, and the cursor staying put;*
+- *the optional `tab` on 18 tools;*
+- *`browser_focus_tab`;*
+- *`browser_select_tab` claiming without activating;*
+- *`browser_list_tabs` printing `T3* [owner] Title — url`;*
+- *a cursor lost on a 4002 reconnect or a new client, with a one-line notice (decisions.md ·
+  2026-10-22 · T4's MCP cursor and tool details (#59)).*
+
+*`browser_status` reports only the human's tab (`Active tab: [T<n>] …`). `browser_use_active_tab` and
+the cursor/divergence lines are Step 8's. The tool count is 22 — see Step 7 as-built § Stage T4.*
+
 ## 9. Daemon lifecycle
 
 1. **Knock.** A client connects to `127.0.0.1:9234`. `ECONNREFUSED` → it spawns the daemon.
@@ -404,6 +460,21 @@ event    D→C  {event, params}   tabGone | leaseGranted | extensionStatus
   extension hello and `false` only when the current extension socket closes. Close codes, not listed
   above: 4001 on a failed hello, 4002 "upgrading" after `daemon.shutdown`, 1001 on idle exit or a
   signal — see as-built § Stage D0, § Stage D2, § Stage D3.
+- *Corrected 2026-10-23 (Step 7 propagator): as built in Step 7, on the wire.*
+  - *Hello: the extension sends `role:"extension", proto:2`. Without `proto` its tab calls get
+    `VERSION` (#42).*
+  - *Daemon-handled methods: `tabs.claim {tab | active:true}` → `{tab}` and `tabs.release` →
+    `{ok:true}` are now handled.*
+  - *Annotations: `newTab` → `{id, tab}`, in the background unless `active:true`. `listTabs` entries add
+    `tab`, `owner?`, `current?`, `windowId` and `openerTabId?`. `daemon.status` adds `tabs` and `lock`.*
+  - *The network "all" scope is forwarded as `{scope:"all"}` (#52).*
+  - *Content-script errors travel as a returned `{__bridgeError:"CODE:message"}`, never a throw (#38).*
+  - *The code count is unchanged at 22; `code` stays optional on the wire (decisions.md · 2026-10-22 ·
+    v2 peers do not yet require `code` (#51)).*
+  - *Compatibility: a Step 6 client keeps a legacy path for one release (#41, #54), which Step 8 S2
+    removes.*
+
+  *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
 ## 11. Repository layout after the work
 
@@ -426,6 +497,15 @@ the bind) and adds `main.ts`, `route.ts` and `build.ts`; `sdk/` has `connect.ts`
 (the no-crash 5 s retry). `npm run build` builds daemon, mcp and extension only: `sdk/` has no build
 step and is consumed as TypeScript source (bundled into the MCP; scripts run it with `tsx`) — see
 as-built § Stage D1, § Stage D3, § Stage D5.*
+*Corrected 2026-10-23 (Step 7 propagator): Step 7 added these files:*
+- *`daemon/src/{handles,leases,lock,methods,intercept}.ts`;*
+- *`sdk/src/format/{snapshot,network,index}.ts`;*
+- *`mcp/src/cursor.ts`;*
+- *in the extension, `errors.ts`, `tab-events.ts`, `network-scope.ts` and `content/guard.ts`;*
+- *in `recipes/`, `reload-extension.ps1` and the E2E helpers.*
+
+*The locator types in `shared/` are still Step 8's — see Step 7 as-built § Stage T1–T4,
+§ "RELOAD-AUTO, Run 9, BG-FLAGS".*
 
 ## 12. Risks and what E2E must settle
 
@@ -440,6 +520,20 @@ as-built § Stage D1, § Stage D3, § Stage D5.*
 | Idle exit while a long script sleeps between calls | Idle counts *connections*, not calls; a connected client is never idle. |
 | Handles leak | Dead handles are kept for the error message only and pruned after 1 h / 1 000 entries. |
 
+*Corrected 2026-10-23 (Step 7 propagator), on what Step 7 measured:*
+- *Row 1: trusted CDP input into a background tab answers `ok` and does nothing (Run 8 BG-1/BG-2). With
+  the three launch flags of §7.3 it does the same (Run 10). Focus emulation is unmeasured. Step 8
+  measures it before choosing between it and the `focus()` fallback (decisions.md · 2026-10-23 · The
+  user rules on Run 8: fix stage T5b, then Run 9 (#62) item 4; · Chrome's anti-throttling flags do not
+  fix background input (#66)).*
+- *Row 3: the switch flashes for about 1.5 s. `cdp` mode is not an escape for a background tab, since
+  it refuses one (§7 notes).*
+- *A new risk, found by reading (T2 verifier V4): handles are keyed by Chrome tab id, and ids restart
+  with each Chrome session. A daemon that outlives a Chrome restart can keep a leased handle live on a
+  reused id, which may be the human's tab.*
+
+*See Step 7 as-built § T5, § Stage T2.*
+
 ## 13. Open questions (not blocking)
 
 - Should `tabs.claim` on a held tab offer `{wait: true}` for the rare legitimate hand-over between a
@@ -448,3 +542,10 @@ as-built § Stage D1, § Stage D3, § Stage D5.*
 - Generation-stamped refs (`s7.e12`) for stale-ref detection and read-only foreign snapshots.
 - **Chrome launch flags for live background tabs** (§7.3) — a step of its own after Step 8: a
   documented shortcut change, plus `daemon.status` detecting whether Chrome runs with them.
+  *Corrected 2026-10-23 (Step 7 propagator): Run 10 measured that the flags do not make trusted input
+  work in a background tab (#66). If this step happens, its case rests on timers, media and
+  `visibilityState`, and not on input.*
+- *Added 2026-10-23 (Step 7 propagator):* should the extension's hello carry a session marker? On a
+  new marker the daemon would retire every handle with `tabGone`, so that a handle never lands on a tab
+  id that Chrome reused after a restart. This is T2 verifier V4, a proposal that is not yet decided and
+  is contract-level (`docs/plans/2026-10-21-step7-multi-actor-tabs-steps/T2-verifier.md` V4).

@@ -81,7 +81,10 @@ machine that used the bridge before:
 4. **Reconnect:** run `/mcp` in Claude Code (or start a new session).
 5. **Check:** `browser_status` now starts with `Daemon: connected on 127.0.0.1:9234 (build …)` and
    lists this session as `claude-code #<pid>` under `Clients`. The extension needs **no** reload:
-   it is unchanged in Step 6.
+   it is unchanged in Step 6. *Corrected 2026-10-23 (Step 7 propagator): that holds only for Step 6.
+   Step 7 changed the extension, so after upgrading past Step 7, reload it (§4). An unreloaded
+   extension gets every tab call refused with `VERSION` and a reload hint (decisions.md · 2026-10-22 ·
+   A stale extension is refused for tab calls, detected by its hello).*
 
 Every client on a machine must use the same `BRIDGE_PORT`; see [The daemon](#the-daemon).
 

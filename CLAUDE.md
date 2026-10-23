@@ -114,7 +114,7 @@ the tab tools switch it", because Step 7 gave every method a `tabId` and the cli
 ```bash
 npm install
 npm run build        # daemon/dist/index.js + mcp/dist/index.js + extension/dist/{sw,options,offscreen,content}.js
-npm test             # vitest — 950 passed, 59 files (`npm test` 2026-10-23 on 6c5c603 + Step 7 T6's tree; 965 before T6 removed 15 dead formatter tests)
+npm test             # vitest — 950 passed, 59 files (`npm test` 2026-10-23 at 9cfc7db; T6 is 430e6fe; 965 before T6 removed 15 dead formatter tests)
 npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
@@ -466,7 +466,9 @@ as-built in `…-asbuilt.md`). **Step 7 built and E2E-run (2026-10-22/23, Runs 8
 different tabs in parallel — handles, leases, the visibility lock, tab events, error codes, data
 results with the formatters in the SDK, `browser_focus_tab`, the MCP cursor
 (`docs/plans/2026-10-21-step7-multi-actor-tabs.md`, as-built `…-asbuilt.md`); its gate waits for the
-user's rulings. Next: Step 8 (SDK surface, cursor tools, the background-input policy) —
+user on R9-SCREEN-2's positive control and the open decisions #37, #40, #46, #51, #54 (decisions.md ·
+2026-10-23 · The user rules on the Step 7 close-out questions). *Corrected 2026-10-23 (Step 7
+propagator): was "waits for the user's rulings", because #68 ruled the rest.* Next: Step 8 (SDK surface, cursor tools, the background-input policy) —
 `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`, plan `docs/plans/2026-10-21-step8…`.
 *Superseded 2026-10-23: was "its live E2E waits for the D6 wave … they all drive the one active tab:
 actors on different tabs in parallel is Step 7", because W1 ran and Step 7 was built.*

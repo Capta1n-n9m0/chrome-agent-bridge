@@ -11,6 +11,18 @@ written at stage close) · **Steps dir:** docs/plans/2026-10-21-step8-sdk-surfac
 call `focus()` first. This step's **Stage-0 spec audit re-examines Step 7's as-built register by
 execution** — handles, leases, the lock, the `CODE:message` convention and the structured snapshot are
 exercised, not read, before S0 starts.
+*Corrected 2026-10-23 (Step 7 propagator): was "Steps 6 and 7 complete and E2E-passed" and a BG-1/BG-2
+outcome that decides the policy by itself. As built Step 7 is built and E2E-run (Runs 8–10), and its gate
+waits only on the user: R9-SCREEN-2's positive control, plus open decisions #37, #40, #46, #51 and #54
+(decisions.md · 2026-10-23 · The user rules on the Step 7 close-out questions (#68)). BG-1/BG-2 **failed**:
+trusted input into a background tab answers `ok` and does nothing (Run 8). Chrome's anti-throttling flags
+did not change that (Run 10 BGF-1/2). Focus emulation was never measured, because no bridge method sends
+`Emulation.setFocusEmulationEnabled` (decisions.md · 2026-10-22 · BG-1/BG-2's focus-emulation retry cannot
+run in this wave (#61); · 2026-10-23 · Chrome's anti-throttling flags do not fix background input (#66)).
+The user ruled that Step 8 first adds a focus-emulation option and measures it, and only then sets the
+policy (decisions.md · 2026-10-23 · The user rules on Run 8: fix stage T5b, then Run 9 (#62) item 4). See
+G8-1. Step 7's closing count is 950 tests in 59 files (`npm test` at `9cfc7db`, 2026-10-23), with 22 tools
+— see Step 7 as-built § T5, § "RELOAD-AUTO, Run 9, BG-FLAGS".*
 
 ## Outcome
 
@@ -26,7 +38,9 @@ Targets at planning time; rewritten as results when the step closes.
 - The MCP cursor does **not follow the human** unless told to (`browser_use_active_tab`); tool count
   22 → 23 (baseline 22 at Step 7's close; 21 today per `server/src/tools/registry.ts`). *Corrected
   2026-10-22: was `server/src/tools/registry.ts`; as built `mcp/src/tools/registry.ts` (Step 6 D1) —
-  see Step 6 as-built § Stage D1.*
+  see Step 6 as-built § Stage D1.* *Corrected 2026-10-23 (Step 7 propagator): "21 today" is stale; as
+  built Step 7 T4 left 22 (`browser_focus_tab` added; `grep -c "server.tool(" mcp/src/tools/registry.ts`
+  → 22 at `9cfc7db`) — see Step 7 as-built § Stage T4.*
 - The first two recipes — a one-line `bb.js` boot and a read-only Blackboard grade export — run as the
   dogfood; tests and typecheck green at every stage close, counts recorded per stage.
 
@@ -66,6 +80,27 @@ XPath locators; drag; file upload (D3, still separate); a recipes runner/schedul
   (decisions.md · 2026-10-22 · D1's interim wiring: daemon skipped by the build until D3, a
   `./connection` export, a hand-edited lockfile); S6 adds only the `recipe` script — see Step 6
   as-built § Stage D1, § Stage D6.*
+- *Corrected 2026-10-23 (Step 7 propagator): was no `daemon/` files. As built, the removals S2 owns are
+  partly in the daemon:
+  - the legacy path for Step 6 clients: no `tab` → the human's tab, and a Chrome `id` or number → its
+    handle (`daemon/src/intercept.ts`; `LEGACY_ID_METHODS` in `daemon/src/methods.ts:36`). Decisions:
+    decisions.md · 2026-10-22 · A Step 6 client keeps working against a Step 7 daemon for one release,
+    without loosening a lease (#41); · A bare number in a network `tab` is a legacy Chrome id, not
+    `BAD_PARAMS` (#54). Both say "Step 8 S2 removes it".
+  - `selectTab` in the lock class (`methods.ts:21`, `:63`; decisions.md · 2026-10-22 · `selectTab` takes
+    the visibility lock, like `focusTab` (#53)).
+  - the Chrome `id` that `newTab`/`listTabs` results carry beside `tab` for one release (decisions.md ·
+    2026-10-22 · T2's daemon details (#57)).
+  - in the extension, the old `tab:"all"` scope that `extension/src/network-scope.ts` still accepts from
+    a Step 6 daemon (decisions.md · 2026-10-22 · The daemon sends the network "all" scope as `scope`, and
+    two Step 6 test fakes speak the new hello (#52)).
+  - the switch-mode `WINDOW_MINIMIZED` message (`extension/src/tabs.ts:196`), which still suggests
+    `mode:"cdp"` even though `cdp` now refuses a minimized window too. Step 8 rewrites it
+    (decisions.md · 2026-10-23 · T5b's three fixes (#63)).
+  The formatters already exist: `sdk/src/format/{snapshot,network,index}.ts` export `formatSnapshot` and
+  `formatNetwork`. They are reached through the `./format` subpath in `sdk/package.json`, not through
+  `index.ts` (decisions.md · 2026-10-22 · The formatters reach the MCP through a `@bridge/sdk/format`
+  subpath (#46), open for the user) — see Step 7 as-built § Stage T2, § Stage T4, § Stage T5b.*
 
 **Order of work:** S0 (types) → S1 (content `locate`, TDD) → S2 (extension handlers accept locators;
 node→ref) → S3 (sdk `Tab`, cursor, locator normalisation, TDD) → S4 (sdk failure enrichment, TDD) →
@@ -83,6 +118,10 @@ decision taken while building goes to `docs/decisions.md` (cited by date + title
 section; the run itself is governed by decisions.md · 2026-10-21 · Steps 6–8 run under the long-run
 contract. The one value this plan leaves to a measurement — the `trusted` → `focus()` policy of 0.4 —
 is set from Step 7's BG-1/BG-2 findings and recorded in `docs/decisions.md` at S3.
+*Corrected 2026-10-23 (Step 7 propagator): BG-1/BG-2 failed, and the user ruled that the policy is set
+only after a focus-emulation option has been added and measured (decisions.md · 2026-10-23 · The user
+rules on Run 8: fix stage T5b, then Run 9 (#62) item 4). That measurement needs an extension change, and
+a live run after the reload. No stage of this plan holds it yet — see G8-1.*
 
 ### 0.1 Locators are resolved by the snapshot's rules, in the content script
 
@@ -102,6 +141,14 @@ by name similarity (simple normalised Levenshtein / token overlap — pure, test
 without `nth` → `LOCATOR_AMBIGUOUS {matches: [{ref, name}…]}`. A `{css}` locator matches any element
 (not only interactive ones) and the ref is minted on the spot. `locate` does **not** reset the RefMap
 (it adds), so refs from the last snapshot stay valid.
+*Corrected 2026-10-23 (Step 7 propagator): was `roleOf` at `snapshot.ts:50` and `hasLayout` at line 74.
+At `9cfc7db` they are at `:52` and `:76` (Step 7 T3 rewrote `buildSnapshot`, `:260`). The `LOCATOR_*`
+failures cannot be thrown from the page as `CODE:message` strings, because a thrown injected function
+arrives as `result: null`. As built, page functions `throw codedError(code, msg)`. The `guard` wrapper
+in `content/guard.ts` turns that into a returned `{__bridgeError:"CODE:message"}`, and `unwrapResult`
+splits it (decisions.md · 2026-10-22 · Content-script failures are returned, not thrown, to carry
+`CODE:message` (#38)). `locate` must be a guarded `window.__agentBridge` method — see Step 7 as-built
+§ Stage T1, § Stage T3.*
 
 ### 0.2 Actions take `ref | locator`
 
@@ -157,6 +204,25 @@ step's). A 4002 reconnect never hands the daemon over and rejects with `VERSION`
 the client fails and does not reconnect (decisions.md · 2026-10-22 · What clients do on a close code
 other than 4002) — see Step 6 as-built § Stage D4.*
 
+*Corrected 2026-10-23 (Step 7 propagator), three points:*
+- *The `trusted` branch: BG-1/BG-2 failed (Run 8). With the anti-throttling flags they failed again
+  (Run 10). The "if they failed, `focus()` first" branch is therefore not taken automatically. The user
+  ruled that a focus-emulation option is added and measured first (decisions.md · 2026-10-23 · The user
+  rules on Run 8: fix stage T5b, then Run 9 (#62) item 4); `focus()` first stays the fallback if that
+  measurement also fails (decisions.md · 2026-10-23 · Chrome's anti-throttling flags do not fix
+  background input (#66), "Revisit if").*
+- *`tabs()`: as built a `listTabs` entry is `{id, tab, title, url, active, windowId, openerTabId?,
+  owner?, current?}`. Here `active` keeps Chrome's per-window meaning, and the human's tab is marked
+  `current: true` (decisions.md · 2026-10-22 · "The human's tab" is the active tab of the last-focused
+  normal window (#43); · T1's extension details (#55)). So the human's-tab flag in `tabs()` is
+  `current`, not `active`.*
+- *`screenshot({mode})`: `mode:"cdp"` captures only a tab that is already in front of a window that is
+  not minimized. A background tab is refused with `OFFSCREEN` and a minimized window with
+  `WINDOW_MINIMIZED`, before the debugger attaches (decisions.md · 2026-10-23 · T5b's three fixes (#63);
+  Run 9 R9-SCREEN-2/-4). No mode captures a background tab without switching to it.*
+
+*All three: see Step 7 as-built § T5, § T5b.*
+
 ### 0.5 Failure reports (`sdk/src/error.ts`)
 
 Every SDK call wraps the wire `BridgeError`. For codes where a page state helps —
@@ -176,6 +242,19 @@ requireExtension?, port?, env?, startDir?, io?, timers?}`. Configuration failure
 port), the 10 s give-up and close 4001 already reject with `NOT_CONNECTED` (decisions.md · 2026-10-22 ·
 The SDK reports configuration and connection failures as NOT_CONNECTED), so the attach set's exclusion
 of `NOT_CONNECTED` covers them — see Step 6 as-built § Stage D4, § Stage D5b.*
+
+*Corrected 2026-10-23 (Step 7 propagator), measured facts for the attached screenshot:*
+- *The default-mode flash is about 1.5 s, not a frame: median 1493 ms in Run 8 SCREEN-1 and 1557 ms in
+  Run 9 R9-SCREEN-1.*
+- *A minimized window is refused with `WINDOW_MINIMIZED`; per this section that lands in
+  `attachErrors`.*
+- *A window fully covered by other windows does not yield a capture. R9-RESTORE measured `TIMEOUT`
+  at 35 119 ms, and the previous tab came back only at +30 026 ms. So the 5 s attach cut ends the SDK's
+  wait, but not the extension's switch: the human may see the failed tab for up to 30 s. S4 should
+  state this.*
+- *`formatSnapshot` is imported from `@bridge/sdk/format` (#46).*
+
+*See Step 7 as-built § T5, § T5b, § "RELOAD-AUTO, Run 9, BG-FLAGS".*
 
 ### 0.6 MCP cursor: does not follow the human
 
@@ -200,6 +279,15 @@ of `NOT_CONNECTED` covers them — see Step 6 as-built § Stage D4, § Stage D5b
   (the human's active tab), or `Daemon: not connected` + `Problem: <reason>`; E2E rows STAT-1, MUX-1
   and MUX-8 expect that text, so S5 says how `Cursor:` and `Human's active tab:` relate to the
   existing `Active tab:` line and updates those rows — see Step 6 as-built § Stage D5, § Stage D5b.*
+  *Corrected 2026-10-23 (Step 7 propagator): as built Step 7 T4 already ships part of this section.
+  The MCP cursor lives in `mcp/src/cursor.ts`: it is claimed on the first untargeted touch, moved only by
+  `browser_select_tab` and `browser_new_tab`, and lost on a 4002 reconnect or a new client, with a
+  one-time notice. `browser_select_tab {tab}` claims without activating. `browser_focus_tab` exists.
+  `browser_status` prints `Active tab: [T<n>] title — url` from the `current` marker. The rows STAT-1,
+  MUX-1 and MUX-8 carry dated notes for that. Decision: decisions.md · 2026-10-22 · T4's MCP cursor and
+  tool details (#59). `browser_new_tab` always sends `active: true` today (`mcp/src/tools/registry.ts:320`).
+  S5 therefore adds only `browser_use_active_tab`, the `Cursor:` and divergence lines, the `active` rule
+  of `browser_new_tab`, and the locator fields — see Step 7 as-built § Stage T4.*
 - `browser_new_tab`: `active: true` **only if** the cursor's tab is currently the human's active tab
   (the human was watching Claude; keep them watching); otherwise background. `browser_select_tab {tab}`
   → claim + cursor, no activation; `browser_focus_tab` brings the cursor on screen.
@@ -265,6 +353,19 @@ no `import`/`export` (`grep -c "^import\|^export" extension/dist/content.js` →
       2026-10-21*; decisions.md · 2026-10-21 · selectTab stays as an alias of focusTab for one release).
 - [ ] `router.test.ts` / `actions.test.ts` cover the resolution path with a fake `locate`.
 
+*Corrected 2026-10-23 (Step 7 propagator): was an extension-only removal. As built the fallback in
+`targetTab` is `activeTab()`, a module-private wrapper of `humansTab()` (`extension/src/tabs.ts:22`,
+`:69`), with one `console.warn` per method. The counterparts S2 must remove with it are in the daemon:
+the legacy path (#41, #54), `selectTab` in `methods.ts`'s lock class and `LEGACY_ID_METHODS` (#53), and
+the Chrome `id` beside `tab` (#57). Two more removals are in the extension: the old `tab:"all"` scope
+(#52), and the `WINDOW_MINIMIZED` message rewrite (#63). The list is under Files touched. If the daemon
+keeps forwarding `selectTab` after the extension drops it, a Step 6 client gets `UNKNOWN_METHOD`
+instead of a refusal. S2's lane names no `daemon/` path, so the Stage-0 audit must grant
+`daemon/src/` and `daemon/test/`, or move these removals to a stage of their own; this is a lane
+question for the session agent. Removing the legacy path also meets the revisit trigger of
+decisions.md · 2026-10-22 · v2 peers do not yet require `code` (#51) — see Step 7 as-built § Stage T1,
+§ Stage T2.*
+
 **Lane:** `extension/src/handlers/`, `extension/src/tabs.ts`, `extension/src/evaluate/`,
 `extension/src/content/index.ts`, `extension/test/`. **Parallel with:** sequential after S1 (and after
 S3's cursor shape is known, since the daemon always sends `tabId` after Step 7 T2 — no file overlap,
@@ -287,6 +388,9 @@ work; the extension must be reloaded before S6 (G8-2).
       semantics; `NO_CURSOR`; a 4002 reconnect clears the cursor (*added 2026-10-21*); `trusted` →
       `focus()` first *iff* the BG flag says so (a constant in `sdk/src/policy.ts`, set from the Step 7
       findings).
+      *Corrected 2026-10-23 (Step 7 propagator): the findings exist, and both are FAIL: BG-1/BG-2 in
+      Run 8, BGF-1/2 in Run 10. They are not enough to set the constant on their own, because the user
+      ruled that a focus-emulation option is measured first (#62 item 4). See G8-1.*
 
 **Lane:** `sdk/src/`, `sdk/test/`. **Parallel with:** S1. **Verifier focus:** the `policy.ts` constant
 cites the Step 7 E2E rows (BG-1/BG-2) it was set from, in a comment and in the stage report — if the
@@ -331,6 +435,13 @@ This stage is a **wave run with the user** after the autonomous phase closes (hu
 opens with `npm run build` → `chrome://extensions` ↻ → `/mcp`; an `unknown method` error means the
 loaded extension is stale. The autonomous run writes the recipes, the README, the `tsx` script and the
 SDK rows with expected results beforehand; the measurements are taken with the user.
+*Corrected 2026-10-23 (Step 7 propagator): live waves are run by the driver end to end (decisions.md ·
+2026-10-22 · Live E2E waves are run by Claude end to end (#33)). The extension reload is scripted:
+`recipes/reload-extension.ps1`, followed by the stale-extension check (decisions.md · 2026-10-23 · Later
+extension reloads use `recipes/reload-extension.ps1` (#65)). The user's keyboard is needed for the
+reload only when that script exits non-zero. Rows on the user's own data (SDK-6, SDK-7) still need the
+user, who names the course. A Chrome restart with flags needs a fresh grant (#66) — see Step 7 as-built
+§ "RELOAD-AUTO, Run 9, BG-FLAGS".*
 
 - [ ] `recipes/README.md`, `recipes/hello.ts` (connect, newTab to the fixture, locate the login button,
       click, waitFor text, print, close).
@@ -359,6 +470,12 @@ SDK rows with expected results beforehand; the measurements are taken with the u
 - [ ] Regression smoke across Steps 6–8: MUX-2, LEASE-1, SCREEN-1, ACT-1…3, TRUST-2, EVAL-1, NET-1, DL-1
       (DL-1 is written by Step 6's D6; decisions.md · 2026-10-21 · Step 6 writes the DL rows for
       browser_download before its D6 wave).
+      *Corrected 2026-10-23 (Step 7 propagator): "their last recorded run" is now Step 7's Run 9 for
+      the rows it re-ran. SCREEN-1 is R9-SCREEN-1 (flash median 1557 ms). NET-1 expects `12.8 KB`
+      (decisions.md · 2026-10-22 · NET-1's expected size follows the fixture to `12.8 KB` (#56)), and
+      after a hard reload `showing 2 of 2`, because `favicon.ico` is re-fetched (R9-NET-1, accepted in
+      #68). LEASE-1's expected text is Run 8's — see Step 7 as-built § T5, § "RELOAD-AUTO, Run 9,
+      BG-FLAGS".*
 
 **Lane:** `recipes/`, root `package.json` (`tsx`, `recipe` script), `docs/e2e-test-plan.md`,
 `.gitignore` (`exports/` — see Human gates). **Parallel with:** sequential, after S5. **Verifier focus
@@ -404,6 +521,10 @@ typecheck); the roadmap entry names the Phase F items by the roadmap's own wordi
 
 "Before" is the stage's starting commit, "after" its closing commit; counts come from `npm test`. The
 step's baseline is Step 7's closing test count (recorded in Step 7's as-built) and 22 tools.
+*Corrected 2026-10-23 (Step 7 propagator): that count is 950 passed in 59 files (`npm test` at `9cfc7db`,
+2026-10-23). It was 965 at T5b; T6 removed 15 dead formatter tests (decisions.md · 2026-10-23 · T6
+removes the extension's dead network formatters with their 15 tests (#67)) — see Step 7 as-built
+§ Stage T5b.*
 
 **S0**
 - S0.1 `npm test` after ≥ before; `npm run typecheck` green for all five packages.
@@ -443,6 +564,11 @@ step's baseline is Step 7's closing test count (recorded in Step 7's as-built) a
   friendly message.
 - S3.4 `sdk/src/index.ts` exports `Tab`, `connect`, `BridgeClient`, `BridgeError`, `ErrorCodes`,
   `downloadToFile`, `formatSnapshot`, `formatNetwork` (the Step 6 and Step 7 exports stay).
+  *Corrected 2026-10-23 (Step 7 propagator): as built Step 7 exports `formatSnapshot` and `formatNetwork`
+  through the `@bridge/sdk/format` subpath only; `index.ts` keeps its five exports. Whether they join
+  `index.ts` is an open contract decision for the user (decisions.md · 2026-10-22 · The formatters reach
+  the MCP through a `@bridge/sdk/format` subpath (#46)). S3.4 as written presumes the answer, so the
+  Stage-0 audit takes it up — see Step 7 as-built § Stage T4.*
 
 **S4**
 - S4.1 `npm test` after ≥ before + the enrichment tests; typecheck green.
@@ -490,6 +616,18 @@ step's baseline is Step 7's closing test count (recorded in Step 7's as-built) a
   background tab) and BG-2 (trusted typing). The Stage-0 audit checks they exist in Step 7's as-built
   or `docs/e2e-test-plan.md`. If they are missing, the run stops **before S3's `policy.ts` item** and
   asks; it does not guess a default.
+  *Corrected 2026-10-23 (Step 7 propagator): the findings exist and are FAIL. BG-1/BG-2 (Run 8) answered
+  `ok` in 5–10 ms with nothing received by the page, and worked after `focusTab`. BGF-1/2 (Run 10) gave
+  the same result with Chrome's three anti-throttling flags. The retry with
+  `Emulation.setFocusEmulationEnabled` was not run (decisions.md · 2026-10-22 · BG-1/BG-2's
+  focus-emulation retry cannot run in this wave (#61)). The user's ruling makes the input "BG-1/BG-2
+  plus a focus-emulation measurement Step 8 adds". The method or option that sends focus emulation is
+  an extension change (a CDP pass-through, or a `focusEmulation` option on trusted input, #61), and
+  measuring it needs a reload and a live row before S3 can set `policy.ts` (decisions.md · 2026-10-23 ·
+  The user rules on Run 8: fix stage T5b, then Run 9 (#62) item 4; · Chrome's anti-throttling flags do
+  not fix background input (#66)). This plan has no stage for that option or that row. The kickoff
+  places it, and the Stage-0 audit checks that it is placed — see Step 7 as-built § T5,
+  § "RELOAD-AUTO, Run 9, BG-FLAGS".*
 - **G8-2 — S6 is a wave run with the user.** The S1/S2 extension changes are invisible until the user
   reloads the extension; the S5 MCP schema changes need an MCP reconnect. The wave opens with the
   reload sequence and the stale-extension check (`unknown method` ⇒ reload again). Rows needing the
@@ -499,6 +637,12 @@ step's baseline is Step 7's closing test count (recorded in Step 7's as-built) a
   `./exports/*.json` contain real-site content and student data: they stay out of the repo and out of
   the evidence folder (guide rule 8: the repo is public). `exports/` is added to `.gitignore` before
   SDK-7 runs.
+  *Corrected 2026-10-23 (Step 7 propagator): the reload is scripted (`recipes/reload-extension.ps1`,
+  #65), and the driver runs the session and window rows itself (#33). Step 7 ran its two-session rows
+  (LEASE-1, LEASE-4) with headless `claude -p` actors, and the window rows in windows the driver
+  opened itself. The user is needed
+  for a non-zero reload exit, for SDK-6/SDK-7 (the user's own course), and for anything the kickoff
+  keeps with them — see Step 7 as-built § T5.*
 - **G8-3 — editing the `blackboard-ultra` skill.** It lives in a separate repository
   (`~/.claude/skills/blackboard-ultra`), outside this run's outputs; an edit there needs the user's
   explicit grant in the kickoff or at S7, otherwise it is listed as needing the user's keyboard.
@@ -557,7 +701,10 @@ re-checks each ruling's premise by execution and raises a finding only if a prem
 - `Tab.network({…} | {id})` mirrors `browser_network_requests`'s parameters including `id`
   (`server/src/tools/registry.ts:247–252`) — consistent. *Corrected 2026-10-22: was
   `server/src/tools/registry.ts:247–252`; as built `mcp/src/tools/registry.ts:270–279` (Step 6 D1
-  move) — see Step 6 as-built § Stage D1.*
+  move) — see Step 6 as-built § Stage D1.* *Corrected 2026-10-23 (Step 7 propagator): was `:270–279`;
+  at `9cfc7db` the parameters are at `mcp/src/tools/registry.ts:424–430`, and `tab` there is a string
+  (a handle, `"all"` or `"active"`): the numeric form was dropped from the MCP schema (decisions.md ·
+  2026-10-22 · T4's MCP cursor and tool details (#59)) — see Step 7 as-built § Stage T4.*
 - 0.4 lists `Tab.release()` and `close()`; the daemon's `tabs.release` and `closeTab` come from Step 7
   T2 — verified by execution in the audit.
 - *Ruled 2026-10-21:* `BridgeClient` clears the cursor on a 4002 reconnect; `NO_CURSOR` tells the
@@ -578,6 +725,25 @@ re-checks each ruling's premise by execution and raises a finding only if a prem
   process, with no stop script" (a stop command in the SDK); "A Step 6 client gives up with VERSION
   when no welcome arrives" (once v1 servers can no longer exist) — see Step 6 as-built § Stage D4,
   § Stage D5, § Stage D5b, § Stage D7.*
+- *Corrected 2026-10-23 (Step 7 propagator): was no Step 7 items. As built, these Step 7 decisions and
+  findings name this step, and the Stage-0 audit takes them up:*
+  - *S2's removals in the daemon: #41, #53, #54, #57 (see S2).*
+  - *#46: do the formatters join `index.ts`? (see S3.4)*
+  - *#51: do v2 peers now require `code`? Its trigger is the fallback removal.*
+  - *#62 item 4 and #66: the focus-emulation measurement before `policy.ts` (see G8-1).*
+  - *#63: the `WINDOW_MINIMIZED` message rewrite.*
+  - *#59's revisit trigger: `browser_use_active_tab`.*
+  - *#40's revisit trigger, if S5 redesigns the network tools.*
+  - *T2 verifier V4, a proposal not yet decided. The daemon's resync after an extension hello marks a
+    handle gone only when its Chrome id is missing. Tab ids restart with each Chrome session, so a
+    daemon that outlives a Chrome restart can keep a leased handle live on a reused id, which is a
+    different tab, possibly the human's. The proposed fix is a session marker in the extension's hello
+    (a new marker → retire every handle, sending `tabGone`). It is a wire and lease change, so it is
+    contract-level (`…step7-multi-actor-tabs-steps/T2-verifier.md` V4; `T2.md` § Findings).*
+  - *T3 verifier V4 and T5b verifier N1: a late restore can undo a `focusTab` or spoil the next capture
+    (a residual race, still open).*
+
+  *See Step 7 as-built § Stage T2 ("Open decisions for the user"), § Stage T4, § Stage T5b.*
 
 **Left open by design:** console capture, D3 upload as `Tab.upload`, a Python SDK, generation-stamped
 refs, `tabs.claim {wait:true}`, session recording (follow-ups).
