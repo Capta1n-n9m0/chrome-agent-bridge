@@ -11,7 +11,7 @@ decisions.md · 2026-10-23: #71 FE stage (amended #78); #72 S2b (amended #81, #8
 required; #74 session marker (amended #80); #75 S3.4 re-exports; #76 `NO_CURSOR`; #78 FE rows and
 table; #79 handles never reused across daemons; #80 marker mechanism; #81 `id` stays, untargeted
 network = active, unlisted untargeted → `BAD_PARAMS`; #82 `__bridgeData`; #83 `{text}` rule, MCP
-`locator` object, exported `BridgeError`; #84 reworded checks; #87 S1 locator details (items 2–4); #90 `Tab` surface and cursor rule (1, 2, 7); #91 final `BridgeClient` surface (#24, #27/#28); #93 report ref rewrite, client options, `@bridge/sdk/report`; #94 S2b details; #95 S5 MCP details (new_tab activation, schemas, reports).
+`locator` object, exported `BridgeError`; #84 reworded checks; #87 S1 locator details (items 2–4); #90 `Tab` surface and cursor rule (1, 2, 7); #91 final `BridgeClient` surface (#24, #27/#28); #93 report ref rewrite, client options, `@bridge/sdk/report`; #94 S2b details; #95 S5 MCP details (new_tab activation, schemas, reports); #99 item 6 (ASREF-1 keeps the observed text); #100 failure report with an image is a non-error result.
 
 ## Stage 0 — spec audit · 2026-10-23 · verifier: PASS-with-notes · commit 7fe62f4
 
@@ -307,3 +307,14 @@ Contracts binding forward, at dcb72db:
 | Fix rounds | ≤ 2 | 1 | S5-verifier.md, S5-fixer1.md |
 
 - *Session agent 2026-10-23:* #95 records S5's proposals; #59 updated. Tests 1493 / 78 → 1534 / 79 (+41) at 9b903d9 (verifier). 23 tools. New rows CUR-1–3, LOC-1, LOC-2, ASREF-1, REP-1 written, not run; STAT-1, MUX-1, MUX-8, TAB-3, LEASE-1, NET-12 re-dated.
+
+## S6b — the MCP failure report's image reaches the model · 2026-10-23 · verifier: PASS-with-notes · commits 201f5c8 (probe rows), 03254d9 (fix)
+
+
+- S6b: an attach-eligible MCP failure report **with** a screenshot is a non-error result `[text, image]`
+  (line 1 `<CODE>: …`, last report line `failedLine(code)`); **without** one it stays `isError: true`, one text
+  item; the cursor notice is the report text's last line (`mcp/src/tools/registry.ts`: `failureReport`,
+  `withNotice`, `failedLine`, `isFailureReport`). Cause measured by the S6b probe (outcome A). Tests 1679 → 1683
+  (84 files). Proposed for the user's ruling (§5).
+
+- Probe (Claude Code 2.1.309): isError [text,image], [image,text], [image], [text,resource] → 0 images each; non-error [image], [text,image] → 1 each. Decision #100. Gotcha candidate for S7: S6b.md last section.

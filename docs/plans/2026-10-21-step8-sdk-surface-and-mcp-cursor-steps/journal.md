@@ -127,3 +127,9 @@
   showed the user's bookmark bar — deleted, never kept.
 - User: SSO login allowed; exit-2 reload re-runs standing; fix REP-1 now. #99 records it all; S6b
   (mcp/ REP-1 fix) dispatched; then S6 Part 3 (SM-0, SM-1, LOC-1, REP-1, SDK-6/7).
+
+## 2026-10-23 — S6b closed (201f5c8, 03254d9); #100; S6 Part 3 dispatched
+
+- Cause of REP-1 measured: Claude Code 2.1.309 drops images from isError results. Fix: a report with a
+  screenshot is a non-error result with the code line first and a failure line (#100, open for the
+  user). Tests 1679 → 1683 (84 files). mcp/dist already rebuilt; no daemon/extension change.

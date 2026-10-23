@@ -55,12 +55,31 @@ Step 8 (2026-10-23 on), for the user at the gate:
 18. "S2b's details: the `selectTab` refusal grep, the marker's edge cases, the handle mark" (#94)
 19. "S5's MCP details: `browser_new_tab` activation, the status lines, the tool schemas, reports" (#95)
 20. "S6's findings ruled: the user's answers, stage S6b for REP-1, re-registered rows" (#99), items 6 and S6b's error-result change
+21. "An MCP failure report with a screenshot is returned as a non-error result" (#100)
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-23 · An MCP failure report with a screenshot is returned as a non-error result (#100)
+**Decided:** accepted as proposed in `…-steps/S6b.md` §5: an attach-eligible failure whose report carries
+the screenshot is returned with no `isError` flag, content `[text, image]`; the text's first line is
+`<CODE>: …` as before, then `Full message:`, then `The call failed (<CODE>). This result is not flagged
+as an error only so that the screenshot reaches you (some MCP clients, Claude Code 2.1.309 among them,
+drop images from error results).` A report without a screenshot stays `isError: true`, one text item.
+REP-1 is re-registered before its re-run (the code line and the failure line mark the error; ≥ 1 image
+part in that call's own `tool_result`).
+**Why:** the S6b probe (pre-registered, `…-steps/S6b-probe-record.md`): on Claude Code 2.1.309 every
+`isError` variant delivered 0 images (text+image, image+text, image alone, embedded resource), both
+non-error variants delivered theirs, and the model still read the error in V2. S5.3 requires the model
+to see what the script saw. The flag is dropped only when an image is present; undoable in one function.
+**Instead of:** keeping `isError` and losing the image; a second tool call to fetch it; a
+`resource_link`.
+**Revisit if:** a Claude Code upgrade passes images in `isError` results — re-run the probe and restore
+the flag.
+**By:** Claude (contract-level, how MCP tool errors are returned — listed under Open decisions)
 
 ### 2026-10-23 · S6's findings ruled: the user's answers, stage S6b for REP-1, re-registered rows (#99)
 **Decided:** (1) **By the user:** the Blackboard login goes through ADA's SSO (ada.blackboard.com
