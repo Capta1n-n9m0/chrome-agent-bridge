@@ -1258,3 +1258,457 @@ With Part 1: SDK-2…5, SDK-6D, SDK-7D PASS (Part 1); SDK-1 now PASS.
 *2026-10-23 (step agent, live verifier r2 N1) — corrected count (the step agent's): Part 2 rows: 23 PASS, 4 FAIL
 (LOC-1, ASREF-1, REP-1, SM-1), 1 not measured (SM-0), 2 waits for the user (SDK-6, SDK-7 live). ASREF-1 moves
 from PASS to FAIL (optional clause; required clauses PASS).*
+
+## Part 3 — 2026-10-23, 16:52–17:01 UTC
+
+Run by the Part 3 live driver (Claude Opus 5.5), the user not present (decisions.md #33), under the sheet's
+"Part 3 (2026-10-23, after S6b)" section (P3-a … P3-i) and decisions.md #96–#100. Parts 1 and 2 (above) were not
+redone. Pre-run commit `036909f` (16:49:46Z); no row text, rule, recipe or sheet line was edited during the run.
+Output directory `%TEMP%\bridge-e2e\s6-run3` (new). Times UTC. Shell set-up: one scratch prelude dot-sourced in every
+PowerShell block (the sheet's set-up block with `Rcp`, `S6_OUT` = `s6-run3`, the §1 item 8 helpers, plus `TS`,
+`SaveW`/`W` for window handles); actor prompts with JSON sent from Git Bash. No driver window was made topmost.
+In the background recipes' files (`sm0.out`, `sm1.out`) PowerShell 5.1 wrote `—`, `→` and `…` as `ΓÇö`, `ΓåÆ` and
+`ΓÇª` (A9); they are shown restored here, and nothing else in a copied line was changed.
+
+**Outcome in one paragraph.** Stale check NEW BUILD, no reload needed for it. **SM-0 PASS** (one reload run, exit
+0), stale check after it NEW BUILD. **LOC-1 PASS** and **REP-1 PASS** under their Part 3 text (REP-1: one image part
+in the call's own `tool_result`, `is_error` false). **SDK-6/SDK-7 live: waits for the user** — `bb-login.ps1`
+reached ADA's SSO page, pressed the one allowlisted submit button once, and did not end on ada.blackboard.com
+without a sign-in control (exit 4); nothing retried; no Blackboard page read, no write. **SM-1 PASS (Part 3 rule)**,
+one Chrome restart, counts equal, the extension back without a reload. MUX-8 and ASREF-1 not re-run (as the sheet
+says). No permission or classifier denial. No STOP.
+
+### Set-up (P3-a)
+
+```
+time 16:52:03.713Z
+S6_OUT = C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s6-run3
+Test-Path S6_OUT: False
+036909f docs(step8): S6 Part 3 — re-registered rows, SSO login (pre-run)
+0a6c82c docs(step8): S6b closed — decision #100; as-built S6b
+03254d9 fix(mcp): S6b — failure-report image reaches the model (verifier: PASS-with-notes)
+status(ext/daemon/shared/sdk/mcp): []
+log --stat 24b5ce5..HEAD (ext/daemon/sdk/shared): []
+driver chain: 18996 12092 34488 2272 256 12176 3220 14556
+mcp procs total: 0
+daemon:            (none)
+9234 listen:       (none)
+BRIDGE_TOKEN: False
+bridge.token
+exports/x.json
+8080 listen:       (none)
+node v25.2.1
+chrome procs: 10
+597D6C28ABD12541EB51C43266F3504F18305CFEEEDFD90E5AE5A9EF4434DA3F  daemon
+4B07B4643EA78C82146952BBA66A23D9788049B6A481D79A740A01E714C63153  mcp
+fixture server pid 23388
+fixture 200 13106
+tsc exit 0
+ Test Files  4 passed (4)
+      Tests  152 passed (152)
+vitest exit 0
+time 16:52:22.457Z
+```
+Every P3-a item holds: HEAD is the Part 3 pre-run commit; nothing under `extension/ daemon/ sdk/ shared/` since
+24b5ce5; the driver is not a client (no `mcp\dist\index.js` process at all); no daemon running; both dist hashes as
+the sheet names; 152 tests in 4 files. No build, no handover.
+
+### S6-STALE (P3-b) — the first recorded result line of Part 3: NEW BUILD
+
+```
+$ Rcp recipes/s6.ts stale-check   (16:52:28.313Z)
+2026-10-23T16:52:30.289Z s6-stale-check: connected — daemon build 597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f, extension connected
+2026-10-23T16:52:30.355Z s6-stale-check: opened T259 (background) at http://localhost:8080/e2e-playground.html?s6=stale
+2026-10-23T16:52:30.371Z s6-stale-check: locate T259 {role:"button", name:"Sign in"} → ok {"name":"Sign in","ref":"e1","role":"button"} (9 ms)
+2026-10-23T16:52:30.379Z s6-stale-check: STALE-CHECK NEW BUILD — the loaded extension answers locate: it is the S2-or-later build
+exit 0
+```
+No reload for the stale check (P3-b: NEW BUILD ⇒ go on).
+
+### Daemon (P3-c) — PASS · Driver window (P3-d)
+
+```
+$ Get-BridgeLog 8   (16:52:37.999Z)
+2026-10-23T15:19:54Z idle for 600000 ms with no clients — shutting down
+2026-10-23T15:19:54Z exit 0 (shutdown 1001) clients=0 extensionEvents=52 ignoredClientFrames=0
+2026-10-23T16:52:29Z start pid=18192
+2026-10-23T16:52:29Z config pid=18192 port=9234 idleMs=600000 build=597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f
+2026-10-23T16:52:29Z listening on 127.0.0.1:9234
+2026-10-23T16:52:29Z client + "s6-stale-check" (1 client)
+2026-10-23T16:52:30Z extension resync: 2 tabs, 0 gone
+2026-10-23T16:52:30Z client - "s6-stale-check" (0 clients)
+Get-BridgeDaemon → ProcessId 18192, ParentProcessId 2720; 9234 listener: 18192
+build file: 597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f
+chrome windows before (count): 2   (not the driver's; not touched)
+$ $Ws = Open-T5Window "${U}s6-human"   (16:52:49.280Z) → Ws = 14879930; foreground: True (not topmost); B1 → T260 fixture
+```
+`config` build = `Get-DaemonBuild` = the stale check's sha = `597d6c28…34da3f`.
+
+### SM-0 (P3-e) — PASS (reload run 1, exit 0)
+
+```
+$ B1   (16:53:00.492Z) → T260 fixture
+sm0.ps1:
+  Set-Location 'C:\Users\aliev\Projects\chrome-remote-extention'
+  $env:Path = "$env:LOCALAPPDATA\Author Software\nvm\.nodejs;$env:Path"
+  npm run -s recipe -- recipes/s6.ts sm0 --hold 120 *> "C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s6-run3\sm0.out"
+$ Start-Process -WindowStyle Hidden powershell -File s6-run3\sm0.ps1   (16:53:01.588Z)
+  (holding line seen 16:53:02.708Z)
+$ Set-T5Topmost Ws -Off   (16:53:08.365Z)
+$ powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\reload-extension.ps1   (16:53:08.369Z)   — reload run 1 of at most 3
+2026-10-23T16:53:08.871Z reload-extension: extension Chrome Agent Bridge, ID cpnemjbgecfbeicldpaaegbhjgjgjfep (from C:\Users\aliev\Projects\chrome-remote-extention\extension)
+2026-10-23T16:53:09.038Z reload-extension: daemon running: yes (pid 18192)
+2026-10-23T16:53:09.474Z reload-extension: own window 6032752 opened
+2026-10-23T16:53:10.413Z reload-extension: card found: ID cpnemjbgecfbeicldpaaegbhjgjgjfep, 1 reload button ('Reload', AutomationId dev-reload-button); inspect views: service worker, |  1 more…
+2026-10-23T16:53:10.423Z reload-extension: pressed the reload button of the card
+2026-10-23T16:53:14.013Z reload-extension: UIA: the card's service worker restart seen: yes; inspect views now: service worker, |  1 more…
+2026-10-23T16:53:14.343Z reload-extension: daemon.log: new line '2026-10-23T16:53:12Z extension resync: 5 tabs, 0 gone'
+2026-10-23T16:53:14.347Z reload-extension: RELOAD OK - the extension reconnected to the daemon after the press at 16:53:10.415Z; now run the stale-extension check
+2026-10-23T16:53:14.554Z reload-extension: own window 6032752 closed
+reload exit 0  16:53:14.578Z
+sm0.out:
+2026-10-23T16:53:02.557Z s6-sm0: opened T261 (background) at http://localhost:8080/e2e-playground.html?s6=sm0
+2026-10-23T16:53:02.564Z s6-sm0: holding T261 for 120 s — run recipes/reload-extension.ps1 now
+2026-10-23T16:53:10.432Z s6-sm0: event +7945 ms extensionStatus {"connected":false}
+2026-10-23T16:53:12.577Z s6-sm0: event +10090 ms extensionStatus {"connected":true}
+2026-10-23T16:53:32.564Z s6-sm0: still holding T261 (+30 s; extension connected)
+2026-10-23T16:54:02.579Z s6-sm0: still holding T261 (+60 s; extension connected)
+2026-10-23T16:54:32.580Z s6-sm0: still holding T261 (+90 s; extension connected)
+2026-10-23T16:55:02.581Z s6-sm0: still holding T261 (+120 s; extension connected)
+2026-10-23T16:55:02.591Z s6-sm0: snapshot T261 after the hold → ok (29 elements), url http://localhost:8080/e2e-playground.html?s6=sm0
+2026-10-23T16:55:02.593Z s6-sm0: listTabs: T261 owner "s6-sm0"
+2026-10-23T16:55:02.593Z s6-sm0: SM-0 PASS — the reload kept T261: no tabGone, the snapshot answered, still owned by s6-sm0
+2026-10-23T16:55:02.601Z s6-sm0: closed T261 (its own fixture tab)
+$ Get-BridgeLog 12   (after the verdict)
+2026-10-23T16:52:29Z config pid=18192 port=9234 idleMs=600000 build=597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f
+2026-10-23T16:52:29Z listening on 127.0.0.1:9234
+2026-10-23T16:52:29Z client + "s6-stale-check" (1 client)
+2026-10-23T16:52:30Z extension resync: 2 tabs, 0 gone
+2026-10-23T16:52:30Z client - "s6-stale-check" (0 clients)
+2026-10-23T16:52:51Z client + "t5-find" (1 client)
+2026-10-23T16:52:51Z client - "t5-find" (0 clients)
+2026-10-23T16:53:01Z client + "t5-find" (1 client)
+2026-10-23T16:53:01Z client - "t5-find" (0 clients)
+2026-10-23T16:53:02Z client + "s6-sm0" (1 client)
+2026-10-23T16:53:12Z extension resync: 5 tabs, 0 gone
+2026-10-23T16:55:02Z client - "s6-sm0" (0 clients)
+```
+Every clause of the rule: a reload run with exit `0` (the first; no exit 2 this time); `SM-0 PASS` with the
+disconnect and reconnect seen, no `tabGone` line, the snapshot ok, owner `s6-sm0`; the log from the reload on has a
+new `extension resync: 5 tabs, 0 gone` (16:53:12Z) and **no** `extension session changed` line. The informational
+`closed T261 (its own fixture tab)` line is present. Watch item (reload proof timing): press 16:53:10.415Z, resync
+line stamped 16:53:12Z (2 s later, not the same second), reload exit 16:53:14.578Z.
+
+### Stale check again (P3-e') — NEW BUILD
+
+```
+$ Rcp recipes/s6.ts stale-check   (16:55:10.884Z)
+2026-10-23T16:55:11.420Z s6-stale-check: connected — daemon build 597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f, extension connected
+2026-10-23T16:55:11.483Z s6-stale-check: opened T263 (background) at http://localhost:8080/e2e-playground.html?s6=stale
+2026-10-23T16:55:11.497Z s6-stale-check: locate T263 {role:"button", name:"Sign in"} → ok {"name":"Sign in","ref":"e1","role":"button"} (8 ms)
+2026-10-23T16:55:11.506Z s6-stale-check: STALE-CHECK NEW BUILD — the loaded extension answers locate: it is the S2-or-later build
+exit 0
+```
+
+### LOC-1 (P3-f) — PASS
+
+```
+$ Close-T5Window Ws   (16:55:27.475Z)
+$ $Wl = Open-T5Window 'http://localhost:8080/e2e-playground.html'   (16:55:28.291Z) → Wl = 3411136; foreground: True; B1 → T264 fixture
+$ A start LO3 --tools 'browser_type,browser_click,browser_snapshot,browser_wait_for,browser_evaluate'   (16:55:30.155Z)
+2026-10-23T16:55:31.322Z actor LO3: started — host pid 19744, claude pid 12300, model sonnet, tools mcp__chrome-agent-bridge__browser_type mcp__chrome-agent-bridge__browser_click mcp__chrome-agent-bridge__browser_snapshot mcp__chrome-agent-bridge__browser_wait_for mcp__chrome-agent-bridge__browser_evaluate; files in C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s6-run3\actors\LO3
+$ A send LO3 "<P0> <P-LOC1 (Part 3)>"   (16:55:44.205Z, from Git Bash; the prompt as the sheet's table, verbatim)
+2026-10-23T16:55:45.489Z INIT session 63530c86-5f5d-4a57-9aa6-d8e14ecbcf97 · mcp [{"name":"chrome-agent-bridge","status":"connected",…}, …]
+2026-10-23T16:55:49.187Z TOOL ToolSearch {"query":"select:mcp__chrome-agent-bridge__browser_type,mcp__chrome-agent-bridge__browser_evaluate,mcp__chrome-agent-bridge__browser_click,mcp__chrome-agent-bridge__browser_snapshot","max_results":4}
+2026-10-23T16:55:50.997Z TOOL mcp__chrome-agent-bridge__browser_type {"locator":{"role":"textbox","name":"Email address"},"text":"a@b.com"}
+2026-10-23T16:55:51.022Z OUTPUT:
+    Typed into textbox "Email address"
+2026-10-23T16:55:53.136Z TOOL mcp__chrome-agent-bridge__browser_evaluate {"expression":"document.getElementById('email').value"}
+2026-10-23T16:55:53.153Z OUTPUT:
+    a@b.com
+2026-10-23T16:55:59.917Z TOOL mcp__chrome-agent-bridge__browser_click {"locator":{"role":"button","name":"Click counter"}}
+2026-10-23T16:55:59.930Z OUTPUT:
+    Clicked button "Click counter"
+2026-10-23T16:56:07.261Z TOOL mcp__chrome-agent-bridge__browser_snapshot {}
+2026-10-23T16:56:07.275Z OUTPUT:
+    url: http://localhost:8080/e2e-playground.html   title: "Agent Bridge E2E Playground"
+    - textbox "Email address" [ref=e1]
+    - textbox "Password" [ref=e2]
+    - textbox "Search query" [ref=e3]
+    - combobox "Favorite fruit" [ref=e4]
+    - button "Sign in" [ref=e5]
+    - button "Click counter: 1" [ref=e6]
+    … (23 more element lines, e7–e29, the fixture's)
+2026-10-23T16:56:09.521Z TOOL mcp__chrome-agent-bridge__browser_click {"ref":"e1","locator":{"text":"Sign in"}}
+2026-10-23T16:56:09.529Z OUTPUT (isError):
+    browser_click takes ref or locator, not both
+2026-10-23T16:56:14.587Z RESULT-OF-TURN success · DONE
+$ A end LO3 → 2026-10-23T16:56:30.455Z actor LO3 ended after 513 ms: … exit code 0
+$ Close-T5Window Wl   (16:56:30.510Z)
+```
+Every clause of the Part 3 note: `Typed into textbox "Email address"`; call 2's output exactly the one line
+`a@b.com`; `Clicked button "Click counter"`; the snapshot has `button "Click counter: 1"`; call 5 `OUTPUT (isError):`
+exactly `browser_click takes ref or locator, not both`; the five bridge calls in the prompt's order with its
+arguments and no other bridge call (`ToolSearch` is the headless session loading the deferred tools' schemas, not a
+bridge call — as Parts 1/2 recorded). Read from the `OUTPUT:` blocks only; no OS-level frame was taken.
+
+### REP-1 (P3-g) — PASS
+
+```
+$ $Wp = Open-T5Window "${U}rep1"   (16:56:31.321Z) → Wp = 6425510; foreground: True; B1 → T265 fixture
+$ A start RP --tools 'browser_snapshot,browser_click'   (16:56:33.178Z; after the S6b build: mcp/dist/index.js 4b07b464…3153 at P3-a)
+2026-10-23T16:56:34.322Z actor RP: started — host pid 13180, claude pid 28992, model sonnet, tools mcp__chrome-agent-bridge__browser_snapshot mcp__chrome-agent-bridge__browser_click; files in C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s6-run3\actors\RP
+$ A send RP "<P0> 1. browser_snapshot with {}"   (P-REP1-a, 16:56:39.451Z)
+2026-10-23T16:56:44.456Z INIT session 4f4e8134-3ab0-4e0b-a759-06cfc578741e · …
+2026-10-23T16:56:49.138Z TOOL ToolSearch {"query":"select:mcp__chrome-agent-bridge__browser_snapshot","max_results":1}
+2026-10-23T16:56:51.576Z TOOL mcp__chrome-agent-bridge__browser_snapshot {}
+2026-10-23T16:56:51.602Z OUTPUT:
+    url: http://localhost:8080/e2e-playground.html?t5=rep1   title: "Agent Bridge E2E Playground"
+    … (29 element lines, - button "Sign in" [ref=e5] among them)
+2026-10-23T16:56:55.219Z RESULT-OF-TURN success · DONE
+$ [UI] Set-T5Foreground Wp → True; Open-T5Tab "${U}rep1-front"   (16:57:03.076Z); foreground still Wp; B1 → T266 fixture
+$ t5.ts info rep1 rep1-front   (16:57:16.938Z)
+rep1: T265 (chrome id 1108128073, background, owner "claude-code #31432"), window 1108128072
+rep1-front: T266 (chrome id 1108128077, active in its window, current, owner "claude-code #31432"), window 1108128072
+$ FailPng → F0 count: 0   (16:57:27.504Z)
+$ A send RP "<P0> 1. browser_click with {"locator":{"role":"button","name":"No such button"}}"   (P-REP1, 16:57:32.659Z)
+2026-10-23T16:57:35.545Z TOOL ToolSearch {"query":"select:mcp__chrome-agent-bridge__browser_click","max_results":1}
+2026-10-23T16:57:37.464Z TOOL mcp__chrome-agent-bridge__browser_click {"locator":{"role":"button","name":"No such button"}}
+2026-10-23T16:57:39.084Z OUTPUT:
+    LOCATOR_NOT_FOUND: no button named "No such button". Nearest: button "Shadow button", button "Iframe button", button "Trusted-only button", button "Fetch JSON", button "Disabled action".
+    Nearest candidates:
+      - button "Shadow button" [ref=e13]
+      - button "Iframe button" [ref=e14]
+      - button "Trusted-only button" [ref=e7]
+      - button "Fetch JSON" [ref=e22]
+      - button "Disabled action" [ref=e20]
+    Refs: this snapshot renumbered the tab's refs — refs from before the failure are void; use the refs shown.
+    url: http://localhost:8080/e2e-playground.html?t5=rep1   title: "Agent Bridge E2E Playground"
+    - textbox "Email address" [ref=e1]
+    - textbox "Password" [ref=e2]
+    - textbox "Search query" [ref=e3]
+    - combobox "Favorite fruit" [ref=e4]
+    - button "Sign in" [ref=e5]
+    - button "Click counter: 0" [ref=e6]
+    … (23 more element lines, e7–e29, the fixture's)
+    Screenshot: C:\Users\aliev\.chrome-agent-bridge\failures\2026-10-23T16-57-37-476Z-T265.png
+    Network: no failed requests among the tab's last 1 entry.
+    The call failed (LOCATOR_NOT_FOUND). This result is not flagged as an error only so that the screenshot reaches you (some MCP clients, Claude Code 2.1.309 among them, drop images from error results).
+    [image 47372 base64 chars]
+    [Image: source: C:\Users\aliev\.claude\projects\C--Users-aliev-Projects-chrome-remote-extention\4f4e8134-3ab0-4e0b-a759-06cfc578741e\tool-results\mcp-chrome-agent-bridge-blob-1792774659072-znz0nv.png]
+2026-10-23T16:57:41.406Z RESULT-OF-TURN success · DONE
+$ FailPng → F1 count: 1; new: 1: 2026-10-23T16-57-37-476Z-T265.png (35528 bytes) — the path the report printed; deleted, never opened; FailPng after: 0   (16:57:51.027Z)
+$ B1   (16:57:51.041Z) → T266 fixture (the rep1-front tab: the previous tab came back)
+$ node mcp\test\probe\count-images.mjs <transcript 4f4e8134-….jsonl> mcp__chrome-agent-bridge__browser_click
+{"file":"<proj>/4f4e8134-3ab0-4e0b-a759-06cfc578741e.jsonl","tool":"mcp__chrome-agent-bridge__browser_click","session_id":"4f4e8134-3ab0-4e0b-a759-06cfc578741e","lines":68,"bad_lines":0,"tool_uses":1,"tool_results":[{"tool_use_id":"toolu_01WF5GBVH69975eRYyUZjz54","is_error":false,"content_types":["text","image","text"],"image_parts":1}],"images_in_tool_results":1,"images_in_toolUseResult":1,"raw_image_tokens":2,"answers":[]}
+$ node mcp\test\probe\count-images.mjs "$env:T5_ACTORS\RP\out.jsonl" mcp__chrome-agent-bridge__browser_click
+{"file":"C:\\Users\\aliev\\AppData\\Local\\Temp\\bridge-e2e\\s6-run3\\actors\\RP\\out.jsonl","tool":"mcp__chrome-agent-bridge__browser_click","session_id":null,"lines":17,"bad_lines":0,"tool_uses":1,"tool_results":[{"tool_use_id":"toolu_01WF5GBVH69975eRYyUZjz54","is_error":false,"content_types":["text","image","text"],"image_parts":1}],"images_in_tool_results":1,"images_in_toolUseResult":0,"raw_image_tokens":2,"answers":[]}
+$ @(Get-ChildItem "$HOME\.claude\projects\*\<id>\tool-results" -Filter *.png -ErrorAction SilentlyContinue).Count → 0
+  (direct check, Test-Path only: the session's tool-results directory exists and the printed `[Image: source: …]` path exists; 1 .png file in the session directory — finding 2)
+$ A end RP → 2026-10-23T16:58:11.542Z actor RP ended after 507 ms: … exit code 0
+$ Close-T5Window Wp   (16:58:11.598Z)
+```
+Every clause of the Part 3 note: line 1 `LOCATOR_NOT_FOUND: no button named "No such button".…`; `Nearest
+candidates:`, five candidate lines, the `Refs:` line, the snapshot window with `- button "Sign in" [ref=e5]`; the
+`Screenshot:` line under `<home>\.chrome-agent-bridge\failures\`; the `Network:` line; the last report line exactly
+`failedLine("LOCATOR_NOT_FOUND")`, with no notice line after it (the cursor was not re-claimed) and no `Full
+message:`; `OUTPUT:` without `(isError)`, then `[image 47372 base64 chars]` and Claude Code's `[Image: source: …]`
+part; the transcript counter `images_in_tool_results` 1 with `is_error` false (the actor's `out.jsonl` agrees: 1,
+false); 1 new PNG at the printed path (deleted unopened); B1 after = T266 `rep1-front`. The ~1.5 s flash was not
+measured page-side (informational; REP-0 measured the same path, 1331 ms). Observed: `rep1-front` (T266), opened by
+the driver through `chrome.exe` into Wp, was leased to RP (`owner "claude-code #31432"`) before the click (finding 1).
+
+### SDK-6/SDK-7 live on pp1 (P3-h) — waits for the user
+
+```
+$ A status → LO3 ended, RP ended; chrome windows: 2; 8765 listeners before: 0; exports pp1 files before: 0
+$ powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\bb-login.ps1   (16:58:20.775Z)
+2026-10-23T16:58:21.678Z bb-login: own window 15273146 opened
+2026-10-23T16:58:27.968Z bb-login: after load: on ada.blackboard.com: no; SSO page: yes; host under ada.edu.az: yes; host: eis-prod.ec.ada.edu.az; https: assumed (scheme hidden, no Not secure chip)
+2026-10-23T16:58:27.968Z bb-login: SSO scan: document: yes; Edit controls: 2; Button controls: 1; allowlisted submit buttons: 1 (scans: 2)
+2026-10-23T16:58:27.985Z bb-login: invoked the one allowlisted SSO submit button once (the autofilled form submitted; nothing typed, nothing read)
+2026-10-23T16:58:36.106Z bb-login: after submit: on ada.blackboard.com: no; sign-in buttons: 1 (document: yes; scans: 2)
+2026-10-23T16:58:36.108Z bb-login: WAITS FOR THE USER - the submit did not end on ada.blackboard.com without a sign-in control (still on the SSO page, MFA, a picker, an error or a second step); nothing more pressed; window 15273146 left open
+bb-login exit 4  16:58:36.131Z
+```
+Exit 4 ⇒ **SDK-6 and SDK-7 (live) wait for the user** (the row's Part 3 note); the press is never retried, nothing
+was typed. The driver took no snapshot, screenshot or evaluate of that window, did not look at it, read no field or
+value, and left it open for the user (Chrome restored it, with Part 2's bb-login window, after SM-1's restart; neither
+was touched). `boot-bb.ts pp1`, `export-grades.ts pp1`, the plan, actor M, `assemble-mcp.ts`, S6.3's byte-compare and
+`close-bb-tab` were **not run** (no login, no course tab). No Blackboard page was read; #98's write clause: no write
+happened (the one press was the SSO page's submit, not a Blackboard action). `exports\pp1-*` count: 0. The SSO host
+printed above is the script's allowlisted-host line (the sheet's evidence rule allows it); no URL, path, title or
+field is recorded.
+
+### SM-1 (P3-i) — PASS (Part 3 rule) · the one restart of this part
+
+MUX-8: not re-run in Part 3 (Part 2's PASS stands); actor X not started; steps 5 and 10 skipped.
+```
+$ A status → all ended; driver windows: none open (chrome windows 3: none the driver's); no recipe running
+$ Get-BridgeDaemon   (16:58:52.476Z) → D = 18192 (parent 2720)
+$ Count (C0, before step 2)  2026-10-23T16:58:53.422Z bgf-count: chrome.exe processes 14; browser processes 1; browser windows 3 (minimized 0); tabs 3 (per window, sorted: 1,1,1); blank windows 0; browser switches: [--restore-last-session]
+$ $Wm = Open-T5Window "${U}sm1"   (16:58:53.449Z) → Wm = 4328452
+$ Count (C1)                 2026-10-23T16:58:54.580Z bgf-count: chrome.exe processes 15; browser processes 1; browser windows 4 (minimized 0); tabs 4 (per window, sorted: 1,1,1,1); blank windows 0; browser switches: [--restore-last-session]
+$ Test-Path sm1-observed.json → False
+sm1.ps1:
+  Set-Location 'C:\Users\aliev\Projects\chrome-remote-extention'
+  $env:Path = "$env:LOCALAPPDATA\Author Software\nvm\.nodejs;$env:Path"
+  npm run -s recipe -- recipes/s6.ts sm1 --observed "C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s6-run3\sm1-observed.json" *> "C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s6-run3\sm1.out"
+$ Start-Process -WindowStyle Hidden powershell -File s6-run3\sm1.ps1   (16:58:54.637Z)
+$ $Q = 2026-10-23T16:59:02.6537526Z
+$ powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\bgf-quit.ps1
+2026-10-23T16:59:03.584Z bgf-quit: own window 789616 opened
+2026-10-23T16:59:04.020Z bgf-quit: sent Enter on chrome://quit in my own window
+2026-10-23T16:59:04.540Z bgf-quit: QUIT OK - no chrome.exe process remains, 0.5 s after the Enter
+quit exit 0  16:59:04.564Z;  chrome procs: 0
+$ powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\bgf-launch.ps1 -Exe $Chrome -ArgLine '--restore-last-session'   (16:59:13.806Z)
+bgf-launch: started pid 21256 (parent 20628, this script, which now exits); in job: False; user default environment; args: --restore-last-session
+launch exit 0  16:59:14.306Z
+$ Count every 2 s:
+2026-10-23T16:59:17.089Z bgf-count: chrome.exe processes 13; browser processes 1; browser windows 5 (minimized 0); tabs 5 (per window, sorted: 1,1,1,1,1); blank windows 1; browser switches: [--restore-last-session]
+2026-10-23T16:59:19.955Z bgf-count: chrome.exe processes 13; browser processes 1; browser windows 5 (minimized 0); tabs 5 (per window, sorted: 1,1,1,1,1); blank windows 1; browser switches: [--restore-last-session]
+$ Count -CloseBlank -Expect 4   (16:59:26.961Z)
+2026-10-23T16:59:27.700Z bgf-count: chrome.exe processes 14; browser processes 1; browser windows 5 (minimized 0); tabs 5 (per window, sorted: 1,1,1,1,1); blank windows 1; browser switches: [--restore-last-session]
+bgf-count: -CloseBlank: closed the blank window 13176108 (WM_CLOSE); gone: yes
+2026-10-23T16:59:28.062Z bgf-count: chrome.exe processes 13; browser processes 1; browser windows 4 (minimized 0); tabs 4 (per window, sorted: 1,1,1,1); blank windows 0; browser switches: [--restore-last-session]
+sm1.out (read 16:59:30.097Z):
+2026-10-23T16:58:55.496Z s6-sm1: daemon.status before: T268 tabId 1108128089 owner "s6-sm1" url http://localhost:8080/e2e-playground.html?t5=sm1; 4 live handle(s), highest T268; uptime 386263 ms; build 597d6c28abd1…
+2026-10-23T16:58:55.497Z s6-sm1: holding T268 — quit Chrome now (chrome://quit), run MUX-8, relaunch; waiting up to 900 s for the extension to go and come back
+2026-10-23T16:59:04.192Z s6-sm1: event +8714 ms tabGone {"tab":"T268","lastUrl":"http://localhost:8080/e2e-playground.html?t5=sm1","lastTitle":"Agent Bridge E2E Playground"}
+2026-10-23T16:59:04.238Z s6-sm1: event +8760 ms extensionStatus {"connected":false}
+2026-10-23T16:59:15.607Z s6-sm1: event +20129 ms extensionStatus {"connected":true}
+2026-10-23T16:59:15.789Z s6-sm1: extension back at +20311 ms; waiting up to 30 s for tabGone T268
+2026-10-23T16:59:25.795Z s6-sm1: snapshot T268 after the restart → TAB_GONE: tab T268 was closed — call listTabs to pick another tab
+2026-10-23T16:59:25.798Z s6-sm1: listTabs after: 5 tab(s); handles T270, T271, T272, T273, T274; owned by s6-sm1: 0
+2026-10-23T16:59:25.798Z s6-sm1: daemon.status after: uptime 416565 ms (+30302 ms over 30301 ms); build 597d6c28abd1…; reconnected: no
+2026-10-23T16:59:25.799Z s6-sm1: observations written to C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s6-run3\sm1-observed.json (held tab's events, handles, counts; no URL or title)
+2026-10-23T16:59:25.799Z s6-sm1: the verdict is sm1-log's "SM-1 (Part 3 rule)" line (run sm1-log --since $Q --observed <this file>)
+$ Rcp recipes/s6.ts sm1-log --since 2026-10-23T16:59:02.6537526Z --observed "$env:S6_OUT\sm1-observed.json"   (16:59:38.347Z)
+2026-10-23T16:59:15Z extension session changed: 0 handles retired
+2026-10-23T16:59:15Z extension resync: 5 tabs, 0 gone
+2026-10-23T16:59:38.868Z s6-sm1-log: SM-1 (Part 3 rule) PASS — T268 gone by tabGone at the quit (+1539 ms after $Q); snapshot → TAB_GONE; no handle ≤ T268 listed after the restart; none owned by s6-sm1; same daemon (build 597d6c28abd1…, no reconnect, uptime kept counting); one session-changed line (0 retired), resync +0 s
+exit 0
+$ Get-BridgeDaemon → daemon 18192 parent 2720 (unchanged)
+$ Get-BridgeLog 12
+2026-10-23T16:57:06Z client - "t5-find" (1 client)
+2026-10-23T16:57:18Z client + "t5-info" (2 clients)
+2026-10-23T16:57:18Z client - "t5-info" (1 client)
+2026-10-23T16:57:52Z client + "t5-find" (2 clients)
+2026-10-23T16:57:52Z client - "t5-find" (1 client)
+2026-10-23T16:57:53Z client + "t5-info" (2 clients)
+2026-10-23T16:57:53Z client - "t5-info" (1 client)
+2026-10-23T16:58:11Z client - "claude-code #31432" (0 clients)
+2026-10-23T16:58:55Z client + "s6-sm1" (1 client)
+2026-10-23T16:59:15Z extension session changed: 0 handles retired
+2026-10-23T16:59:15Z extension resync: 5 tabs, 0 gone
+2026-10-23T16:59:25Z client - "s6-sm1" (0 clients)
+$ npx tsx recipes/t5.ts cleanup   (16:59:45.491Z) → 2026-10-23T16:59:46.573Z t5-cleanup: closed T273 (sm1)
+$ Count  2026-10-23T16:59:49.358Z bgf-count: chrome.exe processes 12; browser processes 1; browser windows 3 (minimized 0); tabs 3 (per window, sorted: 1,1,1); blank windows 0; browser switches: [--restore-last-session]
+```
+**SM-1 — PASS (Part 3 rule):** the `SM-1 (Part 3 rule) PASS` line (clauses (a)–(e): `T268` gone by `tabGone` at the
+quit with the pre-restart `lastUrl`, +1539 ms after `$Q`, one `tabGone` for it; snapshot → `TAB_GONE`; no handle ≤
+T268 listed after the restart; none owned by `s6-sm1`; same build, `reconnected: no`, uptime kept counting; exactly
+one session-changed line, 0 retired, resync +0 s); daemon pid 18192 before = after; counts after `-CloseBlank` = C1
+(4 windows, 1,1,1,1, switches `[--restore-last-session]`) and after cleanup = C0 (3 windows, 1,1,1). No `SM-1 PASS/FAIL`
+line from `sm1 --observed`, as the Part 3 procedure says. The recipe's exit code is not in `sm1.out` (the `*>`
+redirect carries no exit line; the sheet waits for the lines, which came). The extension came back without a reload
+(`extension back at +20311 ms`; connected 16:59:15.607Z, ~1.3 s after the launch's exit).
+**Chrome restart** (#98): one — `chrome://quit` at 16:59:04Z via `bgf-quit.ps1` (exit 0), relaunch at 16:59:14Z via
+`bgf-launch.ps1 --restore-last-session` (exit 0, no behaviour flags); counts equal as above; extension back, no reload.
+
+### Close-down and hygiene (Part 3)
+
+```
+$ Test-SafeToKill 23388 (python, the fixture server this part started; the 8080 listener) → safe: the tree of 23388 does not contain the driver
+$ Stop-Process 23388 → 8080 listen after: []
+mcp procs: 0; claude -p procs: 0; every actor ended (A status: LO3, RP ended, exit code 0)
+FailPng: 0
+chrome windows: 3 (the user's window and the two bb-login windows of Parts 2 and 3, restored by session restore; none touched)
+exports pp1 files: 0
+Get-BridgeDaemon → daemon 18192 (left running; exits on idle)
+```
+- **Daemon log:** `S6-daemon-log.txt` extended (append only, 39 lines) with `daemon.log` from the line after Part 2's
+  last attached line (15:09:54Z) to the end of Part 3 (16:59:46Z): Part 2's daemon idling out at 15:19:54Z (2 lines),
+  then Part 3's daemon from `start pid=18192`. Now **210 lines**; counts on the whole file (never printed) `://` 0,
+  token 0 (read into a variable, then `Remove-Variable`), `[line withheld:` 0, `_\d+_\d+` 0, `ada.blackboard` 0 — the
+  same on the 39 appended lines ⇒ attached.
+- **Failure PNGs:** REP-1 made one (`2026-10-23T16-57-37-476Z-T265.png`, a fixture page; deleted unopened). No other
+  row this part can write a report. `FailPng` at the end: 0.
+- **Other images:** none taken; no OS-level frame (`Save-T5Frame`) this part. Claude Code's own copy of REP-1's
+  failure PNG is in RP's session store (`~/.claude/projects/<proj>/4f4e8134-…/tool-results/`, a fixture page; never
+  opened, copied or attached).
+- **Exports:** none created (no login); `git check-ignore exports/x.json` printed it at set-up.
+- **Transcripts:** LO3's and RP's `out.jsonl` (`s6-run3\actors\*`) and their session transcripts
+  (`63530c86-….jsonl`, `4f4e8134-….jsonl`) hold fixture text only; outside the repo.
+- **S6.3:** not run (SDK-7 did not run).
+- **S6.4 `git status --short`** after this record and the plan block were written: below.
+
+*2026-10-23 (step agent, live verifier r3 MINOR-1): the block promised above was not written. `git status
+--short`, run by the writer/committer at 17:11:06Z, before the completion commit and before this note and S6.md were
+written:*
+```
+ M docs/e2e-test-plan.md
+ M docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6-daemon-log.txt
+ M docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6-run-record.md
+ M docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6.ledger.md
+?? docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6-live-verifier-r3.md
+```
+*The run itself changed three of these: `docs/e2e-test-plan.md` (the §5 Run 12 (S6) Part 3 paragraph),
+`S6-daemon-log.txt` (39 lines appended) and `S6-run-record.md` (this Part 3). `S6.ledger.md` is the step agent's;
+`S6-live-verifier-r3.md` is the live verifier's file. No PNG, `exports/` or `dist/` path is listed.*
+
+### Watch items (Part 3)
+
+- Late-restore race: not seen (no capture timed out).
+- `waitFor {text}` past its bound on a hidden tab: not tested (no wait in Part 3's rows).
+- Navigation onto an error page ending a `waitFor {locator}` in `TIMEOUT`: not tested.
+- Residual `data-__bridge-mark` after `asRef`: not tested (no `asRef` call).
+- `onStartup` > 2 s after `onInstalled` / a spurious `extension session changed` on a plain reload: **not seen** — SM-0's
+  reload produced `extension resync: 5 tabs, 0 gone` and no session-changed line.
+- Reload "same second" proof vs the up-to-2 s marker wait: press at 16:53:10.415Z, extension disconnect seen by the
+  recipe 16:53:10.432Z, reconnect 16:53:12.577Z, resync line stamped **16:53:12Z** (2 s after the press, not the same
+  second); the reload script still found the line and exited 0 at 16:53:14.578Z.
+- A model losing track of a background tab: not seen.
+- SM-1 needing a reload after the relaunch: not needed (`extension back at +20311 ms`).
+
+### Findings (Part 3)
+
+1. **A driver-opened tab got the holder's lease.** `Open-T5Tab "${U}rep1-front"` (a `chrome.exe <url>` into Wp while
+   RP held Wp's `rep1` tab T265) produced T266 with `owner "claude-code #31432"` (RP) — presumably the daemon's opener
+   rule, with Chrome recording the held active tab as the new tab's opener (not established). No effect on REP-1:
+   RP's cursor stayed on T265 (the report names T265) and T266 stayed in front; RP's lease on T266 ended with RP.
+2. **The sheet's tool-results count command undercounts:** `@(Get-ChildItem "$HOME\.claude\projects\*\<id>\tool-results"
+   -Filter *.png …).Count` printed 0, while `Test-Path` on the `[Image: source: …]` path printed True and the session
+   directory holds 1 `.png`. The count recorded is 1 (by the direct check); the command's output is kept above.
+   *2026-10-23 (step agent, live verifier r3 NIT b): the cause is Windows PowerShell 5.1, where a wildcard in the
+   middle of the path combined with `-Filter` returns nothing. The verifier's test: the sheet's command 0; the literal
+   path with `-Filter *.png` 1; `…\tool-results\*.png` without `-Filter` 1. That one file is Claude Code's copy of
+   REP-1's failure PNG (a fixture page), outside the repo.*
+3. **SSO login did not complete with one submit:** on `eis-prod.ec.ada.edu.az` (2 Edit controls, 1 Button, 1
+   allowlisted submit) the one press did not lead back to ada.blackboard.com without a sign-in control (`sign-in
+   buttons: 1` after it). What the page showed is not known and was not looked at (MFA, an error, a second step, or the
+   autofill not filling are all possible). SDK-6/SDK-7 live wait for the user; the window is left open for them.
+4. **`sm1 --observed` leaves no exit code in `sm1.out`** (as Part 2's `mux8-2.out`): the exit 0 the procedure names
+   cannot be checked from the file; the lines it waits for are there.
+5. Every actor called `ToolSearch` before its first bridge tool (deferred tool schemas), as in Parts 1/2.
+
+### Verdict per row (Part 3)
+
+| Row | Verdict | Observed vs expected |
+|---|---|---|
+| Set-up (P3-a) | held | HEAD 036909f; no change under `extension daemon sdk shared` since 24b5ce5; dist hashes `597D6C28…34DA3F` / `4B07B464…3153`; recipes 152 tests in 4 files passed; tsc 0; driver not a client |
+| S6-STALE (P3-b) | PASS | `STALE-CHECK NEW BUILD …`, exit 0 (no reload) |
+| Daemon (P3-c) | PASS | config build = `Get-DaemonBuild` = stale check's sha `597d6c28…34da3f` |
+| SM-0 (P3-e) | PASS | reload run 1 exit 0; `SM-0 PASS — the reload kept T261 …`; log `extension resync: 5 tabs, 0 gone`, no session-changed line |
+| S6-STALE again (P3-e') | PASS | `STALE-CHECK NEW BUILD …`, exit 0 |
+| LOC-1 (P3-f) | PASS | `Typed into textbox "Email address"`; `a@b.com`; `Clicked button "Click counter"`; `button "Click counter: 1"`; `OUTPUT (isError): browser_click takes ref or locator, not both` |
+| REP-1 (P3-g) | PASS | line 1 `LOCATOR_NOT_FOUND: no button named "No such button".…`; `Screenshot:` + snapshot window; last line `failedLine`; `OUTPUT:` not isError; transcript `images_in_tool_results` 1, `is_error` false; 1 PNG deleted; B1 after T266 `rep1-front` |
+| SDK-6 login (P3-h step 1) | exit 4 | SSO page, one allowlisted submit pressed once, `after submit: on ada.blackboard.com: no; sign-in buttons: 1` ⇒ `WAITS FOR THE USER` |
+| SDK-6 (live), SDK-7 (live) | waits for the user | login exit 4; boot-bb, export-grades, MCP leg, S6.3, close-bb-tab not run; no Blackboard page read, no write |
+| SM-1 (P3-i) | PASS (Part 3 rule) | `SM-1 (Part 3 rule) PASS — T268 gone by tabGone at the quit (+1539 ms after $Q); …; one session-changed line (0 retired), resync +0 s`; pid 18192 same; counts = C1 after `-CloseBlank`, = C0 after cleanup |
+| MUX-8 | not re-run | Part 2's PASS stands |
+| ASREF-1 | not re-run | #99 (6); Run 12's FAIL stays |
+
+Counts (Part 3 rows): 5 PASS (S6-STALE, SM-0, LOC-1, REP-1, SM-1; the P3-e' stale check also NEW BUILD), 0 FAIL, 0 not measured,
+2 waits for the user (SDK-6, SDK-7 live); MUX-8 and ASREF-1 not re-run. Reload runs: 1 (exit 0). Chrome restarts: 1.
+No STOP, no permission or classifier denial.

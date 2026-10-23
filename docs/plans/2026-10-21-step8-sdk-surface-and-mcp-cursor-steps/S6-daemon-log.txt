@@ -169,3 +169,42 @@
 2026-10-23T15:09:51Z client - "t5-cleanup" (0 clients)
 2026-10-23T15:09:54Z client + "s6-driver-list" (1 client)
 2026-10-23T15:09:54Z client - "s6-driver-list" (0 clients)
+2026-10-23T15:19:54Z idle for 600000 ms with no clients — shutting down
+2026-10-23T15:19:54Z exit 0 (shutdown 1001) clients=0 extensionEvents=52 ignoredClientFrames=0
+2026-10-23T16:52:29Z start pid=18192
+2026-10-23T16:52:29Z config pid=18192 port=9234 idleMs=600000 build=597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f
+2026-10-23T16:52:29Z listening on 127.0.0.1:9234
+2026-10-23T16:52:29Z client + "s6-stale-check" (1 client)
+2026-10-23T16:52:30Z extension resync: 2 tabs, 0 gone
+2026-10-23T16:52:30Z client - "s6-stale-check" (0 clients)
+2026-10-23T16:52:51Z client + "t5-find" (1 client)
+2026-10-23T16:52:51Z client - "t5-find" (0 clients)
+2026-10-23T16:53:01Z client + "t5-find" (1 client)
+2026-10-23T16:53:01Z client - "t5-find" (0 clients)
+2026-10-23T16:53:02Z client + "s6-sm0" (1 client)
+2026-10-23T16:53:12Z extension resync: 5 tabs, 0 gone
+2026-10-23T16:55:02Z client - "s6-sm0" (0 clients)
+2026-10-23T16:55:11Z client + "s6-stale-check" (1 client)
+2026-10-23T16:55:11Z client - "s6-stale-check" (0 clients)
+2026-10-23T16:55:30Z client + "t5-find" (1 client)
+2026-10-23T16:55:30Z client - "t5-find" (0 clients)
+2026-10-23T16:55:32Z client + "claude-code #24912" (1 client)
+2026-10-23T16:56:29Z client - "claude-code #24912" (0 clients)
+2026-10-23T16:56:33Z client + "t5-find" (1 client)
+2026-10-23T16:56:33Z client - "t5-find" (0 clients)
+2026-10-23T16:56:35Z client + "claude-code #31432" (1 client)
+2026-10-23T16:57:06Z client + "t5-find" (2 clients)
+2026-10-23T16:57:06Z client - "t5-find" (1 client)
+2026-10-23T16:57:18Z client + "t5-info" (2 clients)
+2026-10-23T16:57:18Z client - "t5-info" (1 client)
+2026-10-23T16:57:52Z client + "t5-find" (2 clients)
+2026-10-23T16:57:52Z client - "t5-find" (1 client)
+2026-10-23T16:57:53Z client + "t5-info" (2 clients)
+2026-10-23T16:57:53Z client - "t5-info" (1 client)
+2026-10-23T16:58:11Z client - "claude-code #31432" (0 clients)
+2026-10-23T16:58:55Z client + "s6-sm1" (1 client)
+2026-10-23T16:59:15Z extension session changed: 0 handles retired
+2026-10-23T16:59:15Z extension resync: 5 tabs, 0 gone
+2026-10-23T16:59:25Z client - "s6-sm1" (0 clients)
+2026-10-23T16:59:46Z client + "t5-cleanup" (1 client)
+2026-10-23T16:59:46Z client - "t5-cleanup" (0 clients)

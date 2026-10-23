@@ -1929,6 +1929,34 @@ Evidence in short (Part 2; the record has every line):
 - **LOC-1** — `Typed into textbox "Email address"`, `Clicked button "Click counter"`, `button "Click counter: 1"`, `browser_click takes ref or locator, not both`; the snapshot prints no values and the status line read `status: counter = 1`.
 - **MUX-8** — `FAILED after 15020 ms — NOT_CONNECTED: …`, exit 1; X: `Extension: not connected — …`; run 2 `closed after 19 ms — OK`.
 
+**Part 3 — 2026-10-23, 16:52–17:01 UTC (after S6b).** *Run by the Part 3 driver under the wave sheet's "Part 3"
+section (decisions.md #96–#100); rows re-registered before the run at `036909f`; no code change since 24b5ce5 under
+`extension daemon sdk shared` and the dist hashes as named, so no build; the first recorded result line is the stale
+check (NEW BUILD). No driver window topmost. SM-0's reload exited 0 on its first run. The SSO login pressed its one
+submit and exited 4. One Chrome restart (SM-1). No permission or classifier denial; no STOP. Record:
+`S6-run-record.md` § "Part 3"; `S6-daemon-log.txt` now covers Parts 1–3 (210 lines).*
+
+```
+Date: 2026-10-23 (UTC 16:52–17:01)  Chrome 156  Node v25.2.1  OS Windows 11 Pro 10.0.26300  HEAD: 036909f (Part 3 rows at 036909f)
+Daemon build: 597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f   mcp/dist: 4b07b464…3153   reload: none needed (S6-STALE: STALE-CHECK NEW BUILD, the first recorded line)
+
+S6-STALE [P] SM-0 [P] (reload run 1 of ≤ 3, exit 0; resync, no session change) S6-STALE again [P]
+LOC-1 [P] (Part 3 text: evaluate → a@b.com) REP-1 [P] (Part 3 text: OUTPUT not isError; transcript images_in_tool_results 1, is_error false)
+SDK-6 [waits for the user] SDK-7 [waits for the user] (bb-login.ps1: SSO page, one submit, exit 4; MCP leg and S6.3 not run)
+SM-1 [P] (Part 3 rule: tabGone at the quit +1539 ms; snapshot TAB_GONE; one session-changed line, 0 retired; pid same; counts equal)
+MUX-8 [not re-run] ASREF-1 [not re-run]
+Chrome restart: 1 (chrome://quit 16:59:04Z, relaunch --restore-last-session 16:59:14Z; counts equal; no reload needed)
+Log hygiene: '://' count 0  token count 0  withheld-line count 0   (210 lines; course ids 0, ada.blackboard 0)
+S6.4 git status: only the record, the log .txt, this plan and S6.ledger.md (no exports/, no PNG)
+```
+
+Evidence in short (Part 3; the record has every line):
+- **SM-0** — `event +7945 ms extensionStatus {"connected":false}`, `event +10090 ms extensionStatus {"connected":true}`; `SM-0 PASS — the reload kept T261: no tabGone, the snapshot answered, still owned by s6-sm0`; log `16:53:12Z extension resync: 5 tabs, 0 gone`, no `extension session changed`.
+- **LOC-1** — `Typed into textbox "Email address"`; `a@b.com`; `Clicked button "Click counter"`; `button "Click counter: 1"`; `browser_click takes ref or locator, not both` (isError).
+- **REP-1** — `LOCATOR_NOT_FOUND: no button named "No such button". …`, `Screenshot: …\failures\…-T265.png` (deleted), last line `The call failed (LOCATOR_NOT_FOUND). This result is not flagged as an error only so that the screenshot reaches you …`, `[image 47372 base64 chars]`; `count-images.mjs` on the transcript: `"is_error":false,"content_types":["text","image","text"],"image_parts":1`.
+- **SDK-6 login** — `after load: on ada.blackboard.com: no; SSO page: yes; …`; `allowlisted submit buttons: 1`; `invoked the one allowlisted SSO submit button once …`; `after submit: on ada.blackboard.com: no; sign-in buttons: 1`; exit 4.
+- **SM-1** — `event +8714 ms tabGone {"tab":"T268",…}` at the quit; `snapshot T268 after the restart → TAB_GONE`; `SM-1 (Part 3 rule) PASS — T268 gone by tabGone at the quit (+1539 ms after $Q); …; one session-changed line (0 retired), resync +0 s`.
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.
