@@ -48,12 +48,34 @@ Step 8 (2026-10-23 on), for the user at the gate:
 11. "Page-function failures may carry `data` beside the marker" (#82)
 12. "Locator rules, the MCP locator schema and the exported `BridgeError`" (#83)
 13. "Pre-registered checks reworded where they could not hold or could not fail" (#84)
+14. "S1's locator details" (#87), items 2–4
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-23 · S1's locator details (#87)
+**Decided:** accepted as proposed in `…-steps/S1.md` §5: (1) one walk (`a11y.ts` `walkElements`) serves
+`buildSnapshot` and every `locate` variant; (2) `{role, name}` matches the snapshot's name as shown
+(capped at 120 chars with `…`), substring case-insensitive, `exact` = case-sensitive equality after
+whitespace normalisation, role by exact equality; `{regex}` on the same string, non-stateful, invalid →
+`BAD_PARAMS`; (3) `locate` walks past the snapshot's 800-element output cap, `nth` in walk order;
+`{css}` matches any element that survives the pruning and zero-size gates, invalid → `BAD_PARAMS`;
+(4) `{text}` reads visible light-DOM text, innermost match wins, blocks join with no separator;
+(5) failure data: `LOCATOR_NOT_FOUND {candidates ≤ 5 by nearest()}`, `LOCATOR_AMBIGUOUS {matches ≤ 20}`,
+refs minted through the RefMap; (6) `refOfMarked`: `data-__bridge-mark`, compared by `getAttribute`,
+removed from every carrier on every path, none → `REF_STALE`, several → `INTERNAL`; (7) `__bridgeData` is
+a JSON copy of `data`.
+**Why:** each keeps 0.1's invariant literally (one name computation, one walk, what the snapshot shows is
+what matches); a truncated snapshot must not make a locator miss; hidden elements must not match, or
+`waitFor {state:"hidden"}` could never resolve. Built and verified in S1 (e9e5e8c; pre-S1 capture over
+46 fixtures byte-identical).
+**Instead of:** an uncapped second name computation; case-insensitive `exact`; an 800-element search cap;
+`{css}` over hidden elements; `textContent`.
+**Revisit if:** a real page needs `exact` on a name over 120 characters, or block joins hide a needle (S6).
+**By:** Claude (items 2–4 refine locator rules #83 left open — listed under Open decisions)
 
 ### 2026-10-23 · S0's rulings: bounded bundle diff, `WaitForParams`, 0-based `nth`, #79's S2b check (#86)
 **Decided:** (1) The kickoff's S0 verifier focus "daemon and extension bundles byte-identical after S0"
