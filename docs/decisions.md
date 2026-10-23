@@ -67,6 +67,21 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-24 · The user grants the skill edit, the data deletion and the push at Step 8's close (#105)
+**Decided:** (1) G8-3 is granted: this session and the next may edit the `blackboard-ultra` skill
+(`~/.claude/skills/blackboard-ultra`, its own repo) — the change proposed in
+`…-steps/S7.md` §7. (2) The student-data files left outside the repo were deleted on 2026-10-24: the
+five `exports/pp1-2026-10-23*.json` files, `%TEMP%\bridge-e2e\s6-run3*` (five folders) and the four
+actor transcripts S6.md names (`4f4e8134-…` with its folder, `5c3fc37b-…`, `63530c86-…`,
+`b7835b60-…`); a check found none left. (3) Push is allowed. (4) No other Claude session is running,
+so no `/mcp` reconnect is owed. (5) The 25 Step 8 open decisions are reviewed in the next session (wave
+W2 in `docs/plans/handoffs.md`), one by one: why it is needed, the options, the recommendation and why.
+**Why:** the user (2026-10-24): "You and the next session have my permission to edit blackboard ultra
+skill. No other claude session is running. Data mentioned in 4 may be deleted. Push is allowed"; and
+"I will need help making these 25 decisions with why we need this decision, what are the options we
+have, what is the recommended option, and why."
+**By:** user
+
 ### 2026-10-24 · S7's doc rulings: the setup snippet, grouped wave gotchas, S7.3 by the commit map (#104)
 **Decided:** accepted as proposed in `…-steps/S7.md` §5: (1) `docs/setup.md`'s "Writing a script" shows a
 21-line typechecked snippet following `recipes/sdk-login.ts` (a failing control proves the typecheck

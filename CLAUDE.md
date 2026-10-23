@@ -24,6 +24,8 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
   decisions (decisions.md → Open decisions, Step 8) and G8-3 (the `blackboard-ultra` skill edit).
 - **Reloads need no human:** `recipes/reload-extension.ps1` reloads the extension by UI automation
   and proves it (#65); an exit-2 reload may be re-run during waves (#99).
+- **Resume:** wave W2 in `docs/plans/handoffs.md` — rule the 25 open decisions with the user, the
+  `blackboard-ultra` skill edit (G8-3, granted #105), close Step 8, then the next kickoff.
 - **Next:** after the gate, the roadmap's next item (Phase E safety, D3 file upload, or the open Phase F
   items — `docs/progress-and-roadmap.md` §5); the kickoff waits for the user's choice. Carried inputs:
   the MCP's trusted tools on a background tab still answer `ok` and do nothing; failure reports are on

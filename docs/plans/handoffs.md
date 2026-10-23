@@ -3,6 +3,46 @@
 Format: `.claude/skills/phase-kickoff/template-wave.md`. Phase kickoffs live in
 `next-session-prompt.md`, not here.
 
+## W2 — rule Step 8's 25 open decisions; the blackboard-ultra skill edit; then the next kickoff (written 2026-10-24; precondition: Step 8 close-out committed and pushed)
+
+```
+Dear Claude, let's run wave W2: close Step 8's gate (the SDK surface: locators, the typed Tab,
+failure reports, the MCP cursor, the background-input policy, first recipes) of the
+chrome-agent-bridge repo. Working dir: C:\Users\aliev\Projects\chrome-remote-extention (Git Bash;
+node is not on PATH — prefix `export PATH="$(cygpath "$LOCALAPPDATA")/Author Software/nvm/.nodejs:$PATH"`;
+checks: npm run typecheck, npm test, npm run build). I am present. Read CLAUDE.md first (its Current
+state block and Runtime gotchas), then docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-asbuilt.md
+(the gate checklist at its end) and docs/decisions.md (→ Open decisions, "Step 8" items 1–25, and each
+cited entry #71–#104 in the Log).
+
+Part 1 — the 25 decisions, with me. Take them one at a time (group only items that share one
+question). For each, from the decision entry and the step report it cites (docs/plans/
+2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/): (a) why the decision is needed, in plain words —
+what would go wrong or stay undecided without it; (b) the options, including the one taken and the
+rejected ones the entry names; (c) your recommendation; (d) why — evidence first (measured rows, tests,
+code), then reasoning. Ask with AskUserQuestion (recommended option first, marked "(Recommended)").
+Verify any code claim by reading the code before you present it. Record each ruling in
+docs/decisions.md as a dated entry "By: user" (quote me), strike it through in the Open list with a
+pointer, and add a dated *Ruled* note to the as-built register. A ruling that changes behaviour is
+NOT built in this wave: list it as a work item for the next phase kickoff. Unanswered items: apply the
+recommendation as a default and flag it for veto.
+
+Part 2 — G8-3 (granted, decisions.md · 2026-10-24 · #105): edit the blackboard-ultra skill
+(~/.claude/skills/blackboard-ultra, its own git repo; use the skill-sync skill for its commit/push)
+per S7.md §7: boot with `npm run recipe -- recipes/blackboard/boot-bb.ts <course> --keep-open`, the old
+local-server path kept as a fallback for one release. Show me the diff before committing.
+
+Part 3 — close Step 8: once every item is ruled, mark the phase doc's Status "Closed 2026-10-2x",
+update CLAUDE.md's Current state and docs/progress-and-roadmap.md, commit (explicit paths; trailers
+per the session), push (allowed, #105). Then ask me which roadmap item comes next (Phase E safety,
+D3 file upload, or the open Phase F items) and write its phase kickoff with the phase-kickoff skill
+into docs/plans/next-session-prompt.md, carrying the work items from Part 1 and the carried inputs in
+CLAUDE.md's Current state.
+
+Limits: no code change in this wave (rulings become work items); never commit bridge.token, .env,
+dist/, exports/ or a screenshot; the repo is public — no Blackboard content or student data in any doc.
+```
+
 ## W1 — the Step 6 live E2E wave: MUX and DL rows (written 2026-10-22; precondition: the D7 docs commit is made, `npm run build` is run, and the MCP config points at `<repo>/mcp/dist/index.js`)
 
 *Run 2026-10-22: done — as-built in `2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md` § "W1 as-built", Run 7 in `docs/e2e-test-plan.md`; six proposals wait in `docs/decisions.md` → Open decisions.*
