@@ -165,3 +165,10 @@
 
 - Docs updated (CLAUDE.md sections, setup.md "Writing a script", roadmap, spec notes, README). S7.3 by
   the commit map (#104, open). G8-3 proposed text in S7.md §7. Propagator dispatched.
+
+## 2026-10-24 — propagator (fa241b2, 33 corrections); close-out
+
+- Phase doc Status/Outcome rewritten as results; as-built Open-decisions line corrected and the gate
+  checklist appended (every item met, S7.3 per #104); decisions.md Open list items 23–25 (#99 item 5,
+  #102, #103); CLAUDE.md Current state and the stale Step 7 Docs line. Step 8 is built and E2E-run;
+  the gate waits for the user (25 open decisions, G8-3). Next kickoff waits for the user's roadmap choice.

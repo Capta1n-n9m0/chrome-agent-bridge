@@ -7,11 +7,16 @@ Format: `.claude/skills/phase-kickoff/asbuilt.md`.
 
 ## Open decisions (for the user at the gate)
 
-decisions.md · 2026-10-23: #71 FE stage (amended #78); #72 S2b (amended #81, #85); #73 `code`
-required; #74 session marker (amended #80); #75 S3.4 re-exports; #76 `NO_CURSOR`; #78 FE rows and
-table; #79 handles never reused across daemons; #80 marker mechanism; #81 `id` stays, untargeted
-network = active, unlisted untargeted → `BAD_PARAMS`; #82 `__bridgeData`; #83 `{text}` rule, MCP
-`locator` object, exported `BridgeError`; #84 reworded checks; #87 S1 locator details (items 2–4); #90 `Tab` surface and cursor rule (1, 2, 7); #91 final `BridgeClient` surface (#24, #27/#28); #93 report ref rewrite, client options, `@bridge/sdk/report`; #94 S2b details; #95 S5 MCP details (new_tab activation, schemas, reports); #99 item 6 (ASREF-1 keeps the observed text); #100 failure report with an image is a non-error result.
+decisions.md · 2026-10-23/24 (the list in decisions.md → Open decisions, Step 8 items 1–25): #71 FE stage
+(amended #78); #72 S2b; #73 `code` required; #74 session marker (amended #80); #75 S3.4 re-exports; #76
+`NO_CURSOR`; #78 FE rows and table; #79 handles never reused across daemons; #80 marker mechanism; #81
+`id` stays, untargeted network = active, unlisted untargeted → `BAD_PARAMS`; #82 `__bridgeData`; #83
+`{text}` rule, MCP `locator` object, exported `BridgeError`; #84 reworded checks; #87 items 2–4; #90 items
+1, 2, 7; #91 #24 and #27/#28 as the final surface; #93 report ref rewrite, client options,
+`@bridge/sdk/report`; #94 S2b details; #95 S5 MCP details; #99 items 5–6 and S6b's error-result change;
+#100 failure report with an image is a non-error result; #102 SDK-7 cap re-registered; #103 S6.3 on one
+held export; #104 item 3 (S7.3 by the commit map). *Corrected 2026-10-24 (close-out, propagator ledger):
+the earlier line named #85 (build-level) and lacked #99 item 5, #102, #103 and #104.*
 
 ## Stage 0 — spec audit · 2026-10-23 · verifier: PASS-with-notes · commit 7fe62f4
 
@@ -381,3 +386,38 @@ Contracts binding forward, at dcb72db:
   keyboard (G8-3, not granted):** the `blackboard-ultra` skill's boot sequence → `npm run recipe --
   recipes/blackboard/boot-bb.ts <course> --keep-open`, the old local-server path kept as a fallback for
   one release — exact text in S7.md §7.
+
+## Gate checklist · 2026-10-24 · session agent
+
+Item → met? → evidence (step reports in `…-steps/`; decisions by number in `docs/decisions.md`).
+
+| Item | Met? | Evidence |
+|---|---|---|
+| Stage 0 findings resolved before S0 | yes | stage0-audit.md (35 findings); #78–#85 |
+| S0.1–S0.4 | yes (S0's bundle check per #86) | S0.md; 1008 / 60; 23 codes |
+| S1.1–S1.5 | yes | S1.md; 46-fixture capture byte-identical; greps empty, exit 1 |
+| FE.1–FE.3 | yes | FE.md; CDP log = `fe-cdp-baseline.json`; greps empty |
+| FE.4 (rows before build) | yes | 6398f27 before 6742c1f |
+| FE.5 (reload exit 0, FE-0 first) | yes | FE-run-record.md |
+| FE.6 (policy decision names outcome and rows) | yes | #89, outcome (B) |
+| S2.1, S2.3–S2.6 | yes (S2.3's `targetTab` clause in S2b) | S2.md; S2b.md |
+| S2.2 / S2b.2 greps | yes (daemon grep per #94 (1)) | S2b.md |
+| S2b.1, S2b.3–S2b.9 | yes (S2b.3 per #84) | S2b.md; 11 removals listed |
+| S3.1–S3.4 (S3.4 per #75) | yes | S3.md; `index.ts` 8 values |
+| S3.5 | yes, outcome (1) | S3.md; #91 |
+| S4.1–S4.3 | yes | S4.md; attach set 7 codes; 5 s cut by injected clock |
+| S5.1–S5.4 | yes | S5.md; 23 tools; cross-package test |
+| S6b (#99) | yes | S6b.md; probe outcome (A); #100 |
+| S6.1–S6.5 (as amended by #84, #99, #102, #103) | yes | S6.md; Run 12 (S6); S6.3 equal hashes `b1f8ef6f…` |
+| S7.1, S7.2, S7.4 | yes (S7.4: G8-3 listed below, not granted) | S7.md |
+| S7.3 | yes per #104 (commit map) | S7.md §4 |
+| Propagator | yes | propagator.md; fa241b2 (33 corrections) |
+| STOP rules fired | none | journal.md (two interruptions were a classifier denial and an API error, both resumed) |
+| One commit per stage close, no `dist/`, token, `exports/` or failure screenshot | yes | every stage's commit by pathspec; hygiene counts 0 in FE and S6 records |
+| Test count never dropped undocumented | yes | 950 → 1714 / 85; S2b's 11 removals listed (S2b.8) |
+
+**Open for the user:** the 25 items in decisions.md → Open decisions (Step 8). **Needs the user's keyboard:**
+(1) G8-3, the `blackboard-ultra` skill edit (exact text in S7.md §7); (2) `/mcp` or a restart of any
+interactive Claude session that ran during the phase (its MCP bundle predates S5/S6b); (3) the rulings
+on the open decisions; (4) any push; (5) deleting the student-data files left outside the repo
+(`exports\pp1-2026-10-23*.json`, `%TEMP%\bridge-e2e\s6-run3-*`, the actor transcripts named in S6.md).

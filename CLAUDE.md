@@ -9,24 +9,26 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-23)
+## Current state (2026-10-24)
 
-- **Shipped:** Steps 1–6 (Step 6: the daemon, the SDK and the MCP as an SDK client, closed
-  2026-10-22, as-built `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md`). Public on
-  GitHub (MIT).
-- **Step 7 — multi-actor tabs: closed 2026-10-23.** Handles `T<n>`, one lease per tab (`TAB_HELD`),
-  the FIFO visibility lock, `tabId` on every extension method, tab events, error codes, data results
-  with the formatters in `sdk/src/format/`, the MCP cursor, `browser_focus_tab` — **22 tools, 950
-  tests in 59 files**. E2E Runs 8–10 in `docs/e2e-test-plan.md` §5; as-built with the gate checklist
-  `docs/plans/2026-10-21-step7-multi-actor-tabs-asbuilt.md`. Every decision ruled (decisions.md
-  · 2026-10-23 · #68, #69).
+- **Shipped:** Steps 1–7 (Step 6 closed 2026-10-22; Step 7 — multi-actor tabs — closed 2026-10-23,
+  as-built `docs/plans/2026-10-21-step7-multi-actor-tabs-asbuilt.md`). Public on GitHub (MIT).
+- **Step 8 — the SDK surface: built and E2E-run 2026-10-23/24; the gate waits for the user.**
+  Locators by the snapshot's rules, `waitFor {locator}`, `evaluate {asRef}`, the typed `Tab` with the
+  client's cursor, failure reports (`report()` + screenshot), the MCP's `browser_use_active_tab`,
+  the background-input policy `focusFirst` (focus emulation measured and failed, Run 11; #89), the
+  Step 6 compatibility path removed, `code` required, the session marker, handle numbers never reused,
+  the first recipes — **23 tools, 1714 tests in 85 files** (`npm test` at `e963bff`). Runs 11 (FE) and
+  12 (S6) in `docs/e2e-test-plan.md` §5; as-built with the gate checklist
+  `docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-asbuilt.md`. Waiting for the user: the 25 open
+  decisions (decisions.md → Open decisions, Step 8) and G8-3 (the `blackboard-ultra` skill edit).
 - **Reloads need no human:** `recipes/reload-extension.ps1` reloads the extension by UI automation
-  and proves it (decisions.md · 2026-10-23 · Later extension reloads use `recipes/reload-extension.ps1`).
-- **Next:** Step 8 (SDK surface + MCP cursor tools + the background-input policy) from
-  `docs/plans/next-session-prompt.md`. Its inputs from Step 7: trusted input into a background tab
-  answers `ok` and does nothing, flags do not help, so Step 8 measures focus emulation first (#62, #66);
-  S2 removes the Step 6 compatibility path (#41, #54) and needs a `daemon/` lane; the session marker
-  for Chrome restarts (T2 verifier V4). Live waves run autonomously (#33).
+  and proves it (#65); an exit-2 reload may be re-run during waves (#99).
+- **Next:** after the gate, the roadmap's next item (Phase E safety, D3 file upload, or the open Phase F
+  items — `docs/progress-and-roadmap.md` §5); the kickoff waits for the user's choice. Carried inputs:
+  the MCP's trusted tools on a background tab still answer `ok` and do nothing; failure reports are on
+  by default and switch the human's view ~1.5 s; `bb-login.ps1` needs a condition-based post-submit
+  wait (#102); Step 8 propagator's questions (`…-steps/propagator.md`). Live waves run autonomously (#33).
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
 
@@ -699,10 +701,11 @@ and `…-steps/` once a phase runs), `docs/decisions.md` (decision log), `docs/d
 as-built in `…-asbuilt.md`). **Step 7 built and E2E-run (2026-10-22/23, Runs 8–10):** actors on
 different tabs in parallel — handles, leases, the visibility lock, tab events, error codes, data
 results with the formatters in the SDK, `browser_focus_tab`, the MCP cursor
-(`docs/plans/2026-10-21-step7-multi-actor-tabs.md`, as-built `…-asbuilt.md`); its gate waits for the
-user on R9-SCREEN-2's positive control and the open decisions #37, #40, #46, #51, #54 (decisions.md ·
-2026-10-23 · The user rules on the Step 7 close-out questions). *Corrected 2026-10-23 (Step 7
-propagator): was "waits for the user's rulings", because #68 ruled the rest.* **Step 8 built and
+(`docs/plans/2026-10-21-step7-multi-actor-tabs.md`, as-built `…-asbuilt.md`); closed, every decision
+ruled (decisions.md · 2026-10-23 · The user rules on R9-SCREEN-2 and the last five Step 7 open
+decisions (#69)). *Superseded 2026-10-24 (Step 8 propagator): was "its gate waits for the user on
+R9-SCREEN-2's positive control and the open decisions #37, #40, #46, #51, #54", because #69 ruled them.*
+*Corrected 2026-10-23 (Step 7 propagator): was "waits for the user's rulings", because #68 ruled the rest.* **Step 8 built and
 E2E-run (2026-10-23/24, Runs 11 (FE) and 12 (S6)):** locators resolved by the snapshot's rules,
 `waitFor {locator}`, `evaluate {asRef}`, the typed `Tab` with the client's cursor, failure reports,
 the background-input policy `focusFirst`, the Step 6 compatibility path removed, `code` required, the

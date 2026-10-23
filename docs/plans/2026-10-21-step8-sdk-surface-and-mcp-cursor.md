@@ -1,6 +1,7 @@
 # Step 8 — The SDK surface: locators, typed `Tab`, failure reports, MCP cursor, first recipes
 
-**Date:** 2026-10-21 · **Status:** Planned
+**Date:** 2026-10-21 · **Status:** Built and E2E-run 2026-10-23/24 (Runs 11 (FE) and 12 (S6)); the gate
+waits for the user's rulings on the Step 8 open decisions and on G8-3 *(Updated 2026-10-24 at close-out: was "Planned".)*
 **Design of record:** docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md (§8) ·
 **As-built:** docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-asbuilt.md (does not exist yet;
 written at stage close) · **Steps dir:** docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/
@@ -30,7 +31,34 @@ G8-1. Step 7's closing count is 950 tests in 59 files (`npm test` at `9cfc7db`, 
 
 ## Outcome
 
-Targets at planning time; rewritten as results when the step closes.
+Results at close (2026-10-24; contracts in the as-built register; decisions cited by number in
+`docs/decisions.md`):
+- Locators (`{role, name}`, `{text}`, `{css}`, 0-based `nth`) are resolved in the content script by
+  the snapshot's own walk (`extension/src/content/a11y.ts`). A pre-S1 capture of 46 fixtures stayed
+  byte-identical. `{text}` matches any element past the pruning gates (#83). `waitFor({locator,
+  state})` exists, and `evaluate {asRef}` / `Tab.evaluateRef` turn an Element result into a ref
+  (SDK-4, SDK-5, LOC-2 PASS).
+- A typed `Tab` API with the client's cursor (`newTab`, `claim`, `tab()`; `NO_CURSOR` is the 23rd
+  code). For the seven attach codes, a `BridgeError` carries a snapshot, a screenshot path, the last 20
+  network entries and `report()` (SDK-2, SDK-3, REP-0 PASS). Its screenshot switches to the failed tab.
+- The MCP cursor does not follow the human except through `browser_use_active_tab` and the first
+  touch: 23 tools (CUR-1–3 PASS). A failure report with an image is a non-error result, so the image
+  reaches the model (#100; REP-1 PASS on re-run).
+- The background-input policy was measured: CDP focus emulation does not deliver trusted input to a
+  background tab (Run 11: click 0/3, type 2/3, pressKey 0/3; FE-4 9/9). So the policy is `focusFirst`
+  for the SDK's `Tab`, and the MCP is unchanged (#89).
+- The Step 6 compatibility path is removed and `code` is required on error frames. A session marker
+  retires every handle when Chrome restarts, and a new daemon never reuses a handle number (S2b; SM-0,
+  SM-1 PASS).
+- First recipes: `recipes/sdk-login.ts` (SDK-1), `recipes/blackboard/boot-bb.ts` (SDK-6 PASS on the
+  user's course) and the read-only `export-grades.ts` (SDK-7; S6.3 on one held export, equal hashes).
+- Tests went from 950 / 59 to 1714 / 85 (`npm test` at `e963bff`), and typecheck was green at every
+  stage close. Run 12 (S6): 35 PASS, 1 FAIL by each row's latest result.
+- Not done: the `blackboard-ultra` skill edit (G8-3, not granted). ASREF-1 stands as FAIL on its
+  optional clause (#99 item 6).
+
+*Superseded 2026-10-24 (close-out): the planning-time targets below, kept for the record.*
+
 
 - Claude can write a working script against the SDK from its types alone, and fix a failing one from
   the error alone (spec §8.2).

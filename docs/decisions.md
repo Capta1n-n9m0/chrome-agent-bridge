@@ -57,6 +57,9 @@ Step 8 (2026-10-23 on), for the user at the gate:
 20. "S6's findings ruled: the user's answers, stage S6b for REP-1, re-registered rows" (#99), items 6 and S6b's error-result change
 21. "An MCP failure report with a screenshot is returned as a non-error result" (#100)
 22. "S7's doc rulings: the setup snippet, grouped wave gotchas, S7.3 by the commit map" (#104), item 3
+23. "S6's findings ruled: …" (#99), item 5 (SM-1 and LOC-1 re-registered before their re-run)
+24. "SDK-7's MCP leg is re-registered with a cap that fits pp1's export" (#102)
+25. "S6.3 compares one in-page export read through both paths" (#103)
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
