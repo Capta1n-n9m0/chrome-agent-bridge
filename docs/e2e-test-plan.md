@@ -2015,6 +2015,25 @@ above and "finding: the course's gradebook changed between the reads" in the sum
 fact. It is consistent with two SDK reads 20 minutes apart also differing, and with the differing entries differing by
 value, not by order; it is not proven (no content was read). No recorded line or verdict is changed.*
 
+**Part 3 addendum, S6.3 on one held export — 2026-10-23, 20:03–20:15 UTC (#103).** *Run by the S6.3 live driver under the
+wave sheet's dated note "S6.3 re-run on one held export, #103", steps (1)–(11) (pre-run commit `75f0bd6`). The driver
+opened a fixture window (`?t5=s6-bb`, `B1` → `T516 fixture`); `bb-login.ps1` was not run; the stale check was the first
+result line; the course lookup confirmed the login (branch (b)). The #102 run's two export files were renamed aside first
+(`*.run102.json`, gitignored). The SDK leg (`--hold`) built the export once and held it in `T519`; actor M (fresh, `node
+--import tsx`) sent no START: M1 = select + STATUS (done, the SDK leg's values), then 53 chunks, all in shape; assemble
+`--held` found 0 bad results, `= the page's: yes`; the two files' hashes are equal. The held export was dropped (`gone
+(null)`) and the course tab closed. No write, no denial, 0 failure PNGs. Record: `S6-run-record.md` § "Part 3 addendum" →
+"S6.3 on one held export"; `S6-daemon-log.txt` now 340 lines.*
+
+```
+Date: 2026-10-23 (UTC 20:03–20:15)  HEAD: 75f0bd6   daemon build: 597d6c28…34da3f (pid 13756, spawned by the driver's B1)   dist unchanged
+S6-STALE [P] (STALE-CHECK NEW BUILD, the first result line; no reload)
+SDK-7 SDK leg [P] (--hold; branch (b); 77 columns, 792 grade records, 418999 bytes, sha256 b1f8ef6f…46b6a8 = file; held-pp1 in T519; MCP leg size 418946 → 53 chunks, measurable: yes)
+SDK-7 MCP leg [P] (select exact; no START; STATUS done in M1 with the SDK leg's length/bytes/sha256/columns/grades, 1 STATUS call; 53/53 chunks in shape; assemble --held 53 chunks, 0 bad, = the page's: yes; 0 new failure PNGs)
+S6.3 [P] (B1F8EF6F…46B6A8 = B1F8EF6F…46B6A8, one held export read by both legs; both paths ignored, neither committed; drop → gone (null))
+Log hygiene: '://' count 0  token count 0  withheld-line count 0   (340 lines; course ids 0, ada.blackboard 0)
+```
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.

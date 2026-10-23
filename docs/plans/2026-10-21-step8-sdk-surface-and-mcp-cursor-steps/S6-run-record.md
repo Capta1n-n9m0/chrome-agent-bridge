@@ -2364,3 +2364,299 @@ record. So SDK-7's S6.3 byte-compare of two separate page exports cannot pass on
 runs, even with an intact transport (the MCP leg's own transfer checked whole). It could be measured with the MCP leg
 reading the SDK leg's in-page export: both legs pulling one `__bridgeExport` entry, so START runs once. Another option is
 a course or time with no grading activity. Either needs a row registered before its run. Proposed, not decided.
+
+### S6.3 on one held export (#103; 2026-10-23, 20:03–20:15 UTC)
+
+Run by the S6.3 live driver (Claude Opus 5.5, builder role), the user not present, under decisions.md · 2026-10-23 ·
+S6.3 compares one in-page export read through both paths (#103) and the wave sheet's dated note "S6.3 re-run on one held
+export, #103", steps (1)–(11) (pre-run commit `75f0bd6`, 19:55:16Z; this run's first line is 20:03:46Z; no row text, rule,
+recipe or sheet line was edited after it). Output directory `%TEMP%\bridge-e2e\s6-run3-held103` (new). Every recipe's
+stdout was saved to a file there (`setup.txt`, `setup2.txt`, `window.txt`, `stale-check.out`, `exports-aside.txt`,
+`sdk-leg.out`, `plan.out`, `prompts.out`, `f0.txt`, `loop.log`, `send-*.out`, `f1.txt`, `check-m.txt`, `assemble.out`,
+`s63.out`, `drop-close.out`, `closedown.out`, `logspan.out`, `logspan-append.out`). Times UTC; the whole run is on the UTC
+date 2026-10-23 (local time had passed midnight; the files are named by the UTC date).
+
+**Outcome in one paragraph.** The stale check was the first result line (`STALE-CHECK NEW BUILD`, exit 0). The course
+lookup confirmed the login (branch (b), no `REFUSED`). **SDK-7's SDK leg PASS** in hold mode (77 columns, 792 grade
+records, 418 999 bytes, sha256 `b1f8ef6f…46b6a8`, file = page; held under `held-pp1` in `T519`; `MCP leg size: 418946
+characters → 53 chunk(s) of 8000; measurable: yes`). Actor M (fresh, `browser_select_tab,browser_evaluate`, started and fed
+with `node --import tsx`) sent **no START**: M1 selected `T519` and ran the first STATUS, which was `"state": "done"` with
+**the SDK leg's length, bytes, sha256, columns and grades** (1 STATUS call in all); then **53 chunk sends, 53 of 53 in the
+expected shape**. `assemble-mcp.ts --held`: `53 chunk result(s), 0 bad result(s)`, `(= the page's: yes)`. **S6.3: the two
+files' hashes are equal** (`B1F8EF6F…46B6A8`, both 418 999 bytes), both paths gitignored. The drop answered `dropped …
+STATUS on held-pp1 now: gone (null)`; `close-bb-tab T519` closed the recipe's course tab. By the written rule: **SDK-7 SDK
+leg PASS, MCP leg PASS, S6.3 PASS.** No Blackboard write, 0 failure PNGs, no permission or classifier denial, no
+truncated chunk, no context limit, nothing re-run or re-tuned.
+
+#### Set-up (step 1)
+
+```
+time 20:03:46.854Z
+Test-Path S6_OUT: False
+S6_OUT = C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s6-run3-held103 (created)
+75f0bd6 docs(step8): S6 — S6.3 on one held export (pre-run, #103)
+9b15ad4 docs(step8): S6.3 re-registered on one held export — decision #103
+bff51ec test(e2e): S6 — SDK-7 MCP leg and S6.3 (verifier: PASS-with-notes)
+status(ext/daemon/shared/sdk/mcp): []
+log --stat 24b5ce5..HEAD (ext/daemon/sdk/shared): []
+driver chain: 9500 25084 34488 2272 256 12176 3220 14556
+mcp procs total: 0; in driver chain: 0
+daemon: (none)
+BRIDGE_TOKEN: False
+bridge.token
+exports/x.json
+597D6C28…34DA3F daemon
+4B07B464…C63153 mcp
+Get-DaemonBuild: 597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f
+8080 listen: 0
+9234 listen: 0
+8765 listen: 0
+fixture server pid 23864
+time 20:03:59.076Z
+8080: 200
+tsc exit 0
+Test Files  5 passed (5)
+Tests  169 passed (169)
+time 20:04:06.119Z
+time 20:04:12.530Z
+Wb: Hwnd 789926
+Set-T5Foreground: True
+time 20:04:13.333Z
+T516 fixture
+```
+`Wb` is the driver's own new window on `?t5=s6-bb`; no other window was touched, listed or brought forward. That `B1` was
+the first client and spawned the daemon (pid 13756, 20:04:14Z). The recipe tests are 169 in 5 files (builder r5's count).
+
+#### S6-STALE — the first result line
+
+```
+time 20:04:25.836Z
+2026-10-23T20:04:26.367Z s6-stale-check: connected — daemon build 597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f, extension connected
+2026-10-23T20:04:26.425Z s6-stale-check: opened T517 (background) at http://localhost:8080/e2e-playground.html?s6=stale
+2026-10-23T20:04:26.439Z s6-stale-check: locate T517 {role:"button", name:"Sign in"} → ok {"name":"Sign in","ref":"e1","role":"button"} (8 ms)
+2026-10-23T20:04:26.447Z s6-stale-check: STALE-CHECK NEW BUILD — the loaded extension answers locate: it is the S2-or-later build
+exit 0
+time 20:04:26.491Z
+---
+2026-10-23T20:04:14Z start pid=13756
+2026-10-23T20:04:14Z config pid=13756 port=9234 idleMs=600000 build=597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f
+2026-10-23T20:04:14Z listening on 127.0.0.1:9234
+Get-DaemonBuild: 597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f
+daemon: pid 13756 parent 6900
+```
+**PASS** (NEW BUILD, exit 0, no reload). The daemon build is the same in the `config` line, `Get-DaemonBuild` and the
+stale check (P3-c held).
+
+#### Earlier export files moved aside (step 2)
+
+Both files of the #102 run existed for the same UTC date; each was renamed in `exports\` (never deleted or overwritten):
+```
+time 20:04:36.166Z
+UTC date: 2026-10-23
+exports before: pp1-2026-10-23-mcp.json 418642; pp1-2026-10-23.attempt2.json 418459; pp1-2026-10-23.json 418614
+existing: pp1-2026-10-23.json 418614 bytes, sha256 08169D21C018F00733082BD78F0781EA9CCFC53F24136123001CC20185BA190B
+renamed to exports\pp1-2026-10-23.run102.json (kept, gitignored): True; pp1-2026-10-23.json exists: False; sha256 after: True
+.gitignore:30:exports/	"exports\\pp1-2026-10-23.run102.json"
+existing: pp1-2026-10-23-mcp.json 418642 bytes, sha256 BB4D7A0831EECFCCC0B22B361A7BE10C29081DAE243A5E80BCA9B486C7AC9395
+renamed to exports\pp1-2026-10-23-mcp.run102.json (kept, gitignored): True; pp1-2026-10-23-mcp.json exists: False; sha256 after: True
+.gitignore:30:exports/	"exports\\pp1-2026-10-23-mcp.run102.json"
+exports after: pp1-2026-10-23-mcp.run102.json 418642; pp1-2026-10-23.attempt2.json 418459; pp1-2026-10-23.run102.json 418614
+```
+
+#### SDK-7 SDK leg, hold mode (step 3)
+
+```
+time 20:04:43.922Z
+T516 fixture
+failures before (count): 0
+time 20:04:45.012Z
+2026-10-23T20:04:45.524Z export-grades: course pp1; source bb.js (declares VERSION 2026-10-18, sha256 bea85c39929a…)
+2026-10-23T20:04:45.803Z export-grades: opened T518 (background) on the ada resolver page for course pp1
+2026-10-23T20:04:45.957Z export-grades: course lookup by courseId → HTTP 404, no id
+2026-10-23T20:04:46.044Z export-grades: course confirm by id (from the skill's table) → HTTP 200, the same id
+2026-10-23T20:04:46.044Z export-grades: course: pp1 (resolved; by the skill's course table, confirmed by GET; the id is not printed)
+2026-10-23T20:04:46.051Z export-grades: closed T518 (the resolver tab)
+2026-10-23T20:04:49.692Z export-grades: opened T519 (background) for course pp1
+2026-10-23T20:04:49.706Z export-grades: T519 loaded; origin and course checked
+2026-10-23T20:04:49.718Z export-grades: bb.js evaluated: "bb loaded"
+2026-10-23T20:04:49.722Z export-grades: bb.VERSION = 2026-10-18
+2026-10-23T20:04:49.733Z export-grades: export running in the page …
+2026-10-23T20:04:52.771Z export-grades: page export done in 3049 ms: 77 columns, 792 grade records, 418999 bytes, sha256 b1f8ef6f1785207d5bcfefaae955d506a6cfb3aa1d5ba4cc13eee2e3bd46b6a8
+2026-10-23T20:04:52.771Z export-grades: MCP leg size: 418946 characters → 53 chunk(s) of 8000; measurable: yes
+2026-10-23T20:04:52.821Z export-grades: pulled 5 chunk(s); length, bytes and sha256 equal the page's: yes
+2026-10-23T20:04:52.824Z export-grades: written exports\pp1-2026-10-23.json — 418999 bytes, sha256 b1f8ef6f1785207d5bcfefaae955d506a6cfb3aa1d5ba4cc13eee2e3bd46b6a8
+2026-10-23T20:04:52.824Z export-grades: SDK-7 (SDK leg) PASS — 77 columns, 792 grade records; file sha256 = page sha256
+2026-10-23T20:04:52.824Z export-grades: held export under key held-pp1 in T519 (page memory, built once; the MCP leg reads it: --mcp-plan --hold; drop it after both reads: pp1 --drop-held T519)
+2026-10-23T20:04:52.825Z export-grades: kept T519 open with bb loaded and the export held for the MCP leg; released when this script exits
+exit 0
+time 20:04:52.870Z
+```
+**Login confirmed** by the resolution lines (branch (b)), with no `REFUSED`. **SDK leg PASS** (`<c>` 77, `<g>` 792, `<n>` 5
+= ⌈418946/100000⌉). `<T#>` = `T519`; key `held-pp1`; `<L>` = 418 946 (one grade record more than the #102 run; recorded as
+observed, judged by the cap: ≤ 600 000 ⇒ `measurable: yes`), `<k>` = 53.
+
+#### The plan (step 4)
+
+```
+time 20:05:04.240Z
+plan exit 0
+course id in plan: False
+START in plan: False
+plan size: 985 bytes; first bytes: ef bb bf 23
+encoding read as: utf-8
+plan lines (non-empty): 8
+held-pp1 lines: 3; ada.blackboard count: 0; bridgeGradesExport: 0
+line kinds: # | # | # | STATUS: | expr | CHUNK (…): | expr | expr
+# SDK-7 MCP leg for course pp1, held export (#103) — paste into the actor's prompt (S6-wave-sheet.md, SDK-7)
+# key held-pp1; chunk size 8000 characters (the MCP prints a string result raw, capped at 20 000); at most 600000 characters (75 chunks), else the MCP leg is not measured
+# no START: the SDK leg (--hold) built the export once and holds it in its tab; this leg only reads it (M1 = select the tab + the first STATUS)
+time 20:05:04.896Z
+```
+The file was UTF-8 with a BOM (read from its first bytes, as step (4) says). The prompts were built from it by
+`ConvertTo-Json` (driver script `bp103.ps1`, outside the repo): M1 = P0 + select `T519` + the STATUS line; STATUS alone;
+each CHUNK = the first CHUNK line with `slice(0, 8000)` → `slice(a, a+8000)`, which reproduces the plan's second CHUNK line.
+```
+time 20:05:23.535Z
+plan encoding: utf-8; STATUS 189 characters; CHUNK template 131 characters (reproduces the plan's second CHUNK line: yes); no START line: yes
+prompts: m1 473 bytes; status 431 bytes; chunks 53
+```
+
+#### Actor M (steps 5–7)
+
+```
+time 20:05:57.636Z
+failures before M (count): 0
+T516 fixture
+UTC date: 2026-10-23
+2026-10-23T20:06:04.455Z actor M: started — host pid 32068, claude pid 18344, model sonnet, tools mcp__chrome-agent-bridge__browser_select_tab mcp__chrome-agent-bridge__browser_evaluate; files in C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s6-run3-held103\actors\M
+```
+The loop (`loop103.sh`, Git Bash, outside the repo) started M and sent every prompt with `node --import tsx
+recipes/t5-actor.ts …`, one `send` per block, stopping at the first non-zero send exit (none occurred). Every send's stdout
+is a `send-*.out` file in `S6_OUT`. `loop.log`: `start exit 0`; `send m1 exit 0`; `status 01 (in M1): done`; `status loop
+ended: done after 1 STATUS call(s)`; `send c00` … `send c52` each `exit 0` (20:06:38Z–20:13:52Z); `end exit 0`. Per send,
+from `check-m.txt` (it reads M's `out.jsonl` and prints no output; session `b7835b60-58fe-4f7c-a4a8-7b7889a73632`, 54 turns):
+
+| Send | Calls | Exit | Output length (chars) | Expected shape |
+|---|---|---|---|---|
+| M1 (20:06:04–20:06:30Z) | 3: `ToolSearch` (the headless session loading the deferred tool schemas, as in earlier parts; not a bridge call), `browser_select_tab {"tab":"T519"}` (args exact), `browser_evaluate` STATUS (= the plan's line) | 0 | 94; 198 | select: `Selected tab T519 (now this session's tab; not brought on screen — browser_focus_tab shows it)` exactly — yes; STATUS: `"state": "done"` with length/bytes/sha256/columns/grades = the SDK leg's (418946 / 418999 / `b1f8ef6f…46b6a8` / 77 / 792) — **yes**; reply `DONE` |
+| STATUS-only sends | — | — | — | none needed (M1's STATUS was done): **1 STATUS call in all** (≤ 60) |
+| M3 CHUNK ×53 (20:06:30–20:13:52Z) | 1 each, expression = the plan's template for that start | 0 ×53 | 8000 ×52; 2946 (start 416000) | **53 of 53 yes** (not an error, one line, the expected length); reply `DONE` each |
+
+No START was sent (no turn has a START expression; `check-m.txt` lists no other tool and no unknown expression). No chunk
+was truncated; no compaction line, no context limit and no denial. `send-c*.out` sizes 9293–9314 bytes for full chunks,
+4256 for the last; `send-m1.out` 2264 bytes. End:
+```
+2026-10-23T20:13:52.727Z actor M ended after 510 ms: 2026-10-23T20:13:52.721Z exit code 0
+time 20:14:11.398Z
+failures after M (count): 0; new: 0
+```
+
+#### assemble-mcp (step 8)
+
+```
+time 20:14:31.455Z
+2026-10-23T20:14:34.620Z assemble-mcp: held export: key held-pp1 (no START expected)
+2026-10-23T20:14:34.621Z assemble-mcp: transcript: status found, 53 chunk result(s), 0 bad result(s)
+2026-10-23T20:14:34.625Z assemble-mcp: written exports\pp1-2026-10-23-mcp.json — 418999 bytes, sha256 b1f8ef6f1785207d5bcfefaae955d506a6cfb3aa1d5ba4cc13eee2e3bd46b6a8 (= the page's: yes)
+exit 0
+time 20:14:34.664Z
+```
+Judged by its `0 bad result(s)` line (pre-run verifier r5 MINOR-1), not by the exit code alone: 0 bad.
+
+#### S6.3 (step 9)
+
+```
+time 20:14:42.497Z
+B1F8EF6F1785207D5BCFEFAAE955D506A6CFB3AA1D5BA4CC13EEE2E3BD46B6A8  pp1-2026-10-23.json  418999 bytes
+B1F8EF6F1785207D5BCFEFAAE955D506A6CFB3AA1D5BA4CC13EEE2E3BD46B6A8  pp1-2026-10-23-mcp.json  418999 bytes
+equal: yes; = <H> upper-case: True
+.gitignore:30:exports/	"exports\\pp1-2026-10-23.json"
+.gitignore:30:exports/	"exports\\pp1-2026-10-23-mcp.json"
+time 20:14:42.653Z
+```
+The hashes are **equal** and equal `<H>`. Both paths are ignored; neither file is committed.
+
+#### Drop and close (steps 10–11)
+
+```
+time 20:14:48.681Z
+2026-10-23T20:14:49.984Z export-grades: held export held-pp1 in T519: done, 418946 characters, 418999 bytes, sha256 b1f8ef6f1785207d5bcfefaae955d506a6cfb3aa1d5ba4cc13eee2e3bd46b6a8
+2026-10-23T20:14:50.038Z export-grades: dropped the held export held-pp1 from T519; STATUS on held-pp1 now: gone (null)
+2026-10-23T20:14:50.038Z export-grades: released T519 (left open: close it with s6.ts close-bb-tab T519)
+exit 0
+time 20:14:50.084Z
+2026-10-23T20:14:50.714Z s6-close-bb-tab: closed T519 (the Blackboard recipe's course tab)
+exit 0
+time 20:14:50.762Z
+T516 fixture
+failures now (count): 0
+```
+The held export was still `done` with the same length, bytes and hash at the drop (no navigation or reload in between);
+after the drop it is gone (null).
+
+#### Close-down
+
+```
+time 20:15:10.727Z
+A status:
+M: {"host":32068,"claude":18344,"model":"sonnet","started":"2026-10-23T20:06:04.364Z"} · ended (2026-10-23T20:13:52.721Z exit code 0)
+web pid 23864 : python.exe http.server 8080
+safe: the tree of 23864 does not contain the driver
+8080 listen after: 0
+daemon: pid 13756 (left to idle out)
+time 20:15:15.241Z
+Wb window still exists: False
+```
+(`A status`'s tool list is elided above.) `Close-T5Window` closed the driver's `Wb`; the fixture server was stopped by its
+PID after `safe: …`; the daemon is left to exit on idle, as in earlier runs.
+
+#### Hygiene (S6.3 on one held export)
+
+- **Daemon log:** `S6-daemon-log.txt` extended (append only) by the 84 lines 19:39:54Z–20:15:01Z: the #102 run's daemon
+  idling out, builder r5's localhost dry runs (`t5-find`, `s6-stale-check`, `export-grades`, `dry-mcp-leg`,
+  `s6-close-bb-tab` clients; their daemon's idle-out), then this run's daemon (22 lines from 20:04: `start`/`config`/
+  `listening`, `extension resync: 4 tabs, 0 gone`, and `client +`/`client -` pairs of `t5-find`, `s6-stale-check`,
+  `export-grades` (SDK leg, plan, drop), `claude-code #34780` (actor M, 20:06:05–20:13:52Z) and `s6-close-bb-tab`). Counts,
+  never printed, on the 84 lines and on the whole file (now **340 lines**): `://` 0, token 0 (read into a variable, then
+  removed), `[line withheld:` 0, `_\d+_\d+` 0, `ada.blackboard` 0 ⇒ attached.
+- **Failure PNGs:** 0 before the SDK leg, 0 before M, 0 after M (0 new), 0 at the end. None deleted.
+- **Writes:** none on Blackboard — only the recipes' GETs, the SDK leg's one in-page export (`bb.all` GETs), and actor M's
+  read-only STATUS and CHUNK expressions; the drop deleted only the recipe's own page-memory key. **Denials:** none.
+- **This record** adds handles, counts, sizes, hashes and the label `pp1` only.
+- **S6.4 `git status --short`** (20:17:21Z, after this record, §5 and the log were written; the ledger line and
+  `S6-verifier-r5pre.md` are the step agent's and the pre-run verifier's, uncommitted before this run):
+  ```
+   M docs/e2e-test-plan.md
+   M docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6-daemon-log.txt
+   M docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6-run-record.md
+   M docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6.ledger.md
+  ?? docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6-verifier-r5pre.md
+  ```
+  No `exports/` path, nothing from `~/.chrome-agent-bridge/`, no PNG.
+- **Data left outside the repo (the user's call):** `%TEMP%\bridge-e2e\s6-run3-held103` — its `actors\M\out.jsonl`
+  (1 528 206 bytes) and every `send-c*.out` hold the export's text (student data); `send-m1.out`, `prompts\`,
+  `sdk7-plan.txt`, the logs and the driver outputs hold counts and hashes only. M's transcript
+  `~/.claude/projects/C--Users-aliev-Projects-chrome-remote-extention/b7835b60-58fe-4f7c-a4a8-7b7889a73632.jsonl`
+  (1 956 356 bytes, student data). In `exports\` (all gitignored, student data): `pp1-2026-10-23.json`,
+  `pp1-2026-10-23-mcp.json` (this run), `pp1-2026-10-23.run102.json`, `pp1-2026-10-23-mcp.run102.json` (the #102 run's,
+  renamed in step 2) and `pp1-2026-10-23.attempt2.json`. Driver scripts `h103.ps1`, `bp103.ps1`, `loop103.sh`,
+  `check103.mjs`, `logspan103.ps1` in the session scratchpad (no data).
+
+*2026-10-23 (step agent, live verifier r6 NIT): the Daemon-log bullet above lists the run's daemon clients as
+"`export-grades` (SDK leg, plan, drop)", which counts one connection too many. The plan (`--mcp-plan --hold`) connects to
+nothing (`export-grades.ts:25`); the daemon log shows **2** `export-grades` connections, the SDK leg and the drop. The 9
+`client +` / `client -` pairs are 4 `t5-find`, 1 `s6-stale-check`, 2 `export-grades`, 1 `claude-code #34780` and 1
+`s6-close-bb-tab` (4 + 1 + 2 + 1 + 1 = 9). No recorded line or verdict changes.*
+
+#### Verdict (S6.3 on one held export)
+
+| Row | Verdict | Observed vs expected |
+|---|---|---|
+| Set-up | held | HEAD 75f0bd6; no change under `extension daemon shared sdk mcp`; dist `597D6C28…34DA3F` / `4B07B464…C63153`; driver not a client; 169 recipe tests; `Wb` new, foreground `True`, `B1` → `T516 fixture`; the #102 files renamed aside |
+| S6-STALE | PASS | `STALE-CHECK NEW BUILD`, exit 0, the first result line; daemon build `597d6c28…34da3f` in all three places |
+| SDK-7 SDK leg | **PASS** | branch (b); 77 columns, 792 grade records, 418999 bytes, sha256 `b1f8ef6f…46b6a8` = file; the held-export and `kept …` lines as registered; `MCP leg size: 418946 … measurable: yes` |
+| SDK-7 MCP leg | **PASS** | select line exact; no START; STATUS `done` in M1 with the SDK leg's length/bytes/sha256/columns/grades (1 STATUS call); 53/53 chunks in shape; assemble `held export: key held-pp1 (no START expected)`, `53 chunk result(s), 0 bad result(s)`, `(= the page's: yes)`; 0 new failure PNGs |
+| S6.3 | **PASS** | `B1F8EF6F…46B6A8` = `B1F8EF6F…46B6A8` (= `<H>`); both paths `.gitignore:30:exports/`; neither committed |
+| Drop | as registered | `held export held-pp1 in T519: done, 418946 characters, 418999 bytes, sha256 b1f8ef6f…`; `dropped … gone (null)`; `released T519 …`; exit 0; then `closed T519 (the Blackboard recipe's course tab)`, exit 0 |
+
+Run 12's earlier S6.3 FAIL (two separate exports, #102 run) stays recorded; this result is S6.3 as re-registered by #103.
