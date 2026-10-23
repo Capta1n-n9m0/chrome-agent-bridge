@@ -58,6 +58,28 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-23 · S2's handler details: the mark rides the serialiser, `pressKey` takes a target, `waitFor {locator}` rules (#92)
+**Decided:** accepted as proposed in `…-steps/S2.md` §5: (1) `asRef` marks through the serialiser's own
+`Runtime.callFunctionOn` — `SERIALIZER_SRC` becomes a closure-free composite that, only with a mark,
+marks a connected, reachable Element after serialising; a lost reply or failed content call sweeps the
+mark; without a mark its output equals today's; `debugger.ts` unchanged. (2) The extension's `pressKey`
+accepts an optional `ref`/`locator`, focused with a plain `el.focus()` before today's path; without a
+target it is byte-identical; the SDK's `Tab.pressKey(key)` (0.4) and `PressKeyParams` stay untargeted
+this step (phase doc 0.2/S2.3 vs 0.4: the extension carries the addition, the SDK surface does not
+grow). (3) `waitFor {locator}`: validated before any call; `timeoutMs` default 10 000, clamped
+[0, 60 000]; service-worker poll every 100 ms without overlap; visible resolves on found and rejects at
+once on `AMBIGUOUS`; hidden resolves on `LOCATOR_NOT_FOUND` only; `REF_STALE` and frame-teardown
+`INTERNAL` re-inject and poll; timeout → `TIMEOUT` with the last candidates as `data`.
+**Why:** F21 (the objectId lives only inside that callback), the CLAUDE.md closure-free rule kept;
+pre-registered S2.3 names `pressKey`; S1 measured ~1.4 s per `{text}` miss on 5 000 elements (no
+overlap matters). Also accepted: S2 used the phase doc's lane, which includes `extension/src/evaluate/`,
+where the step brief had omitted it.
+**Instead of:** a third CDP hook in `debugger.ts`; leaving `pressKey` untargeted (S2.3 would fail);
+growing `Tab.pressKey` now; a page-side poll.
+**Revisit if:** S6 sees a residual `data-__bridge-mark`; a navigation error string not covered; 0.4
+gains a `pressKey` target.
+**By:** Claude
+
 ### 2026-10-23 · S3.5's outcome and the Step 6 revisit items (#91)
 **Decided:** (1) S3.5 read pre-written outcome (1) of #85: `spawnDaemon` inherits no pipe (node parent,
 `sdk/test/spawn-inherit.test.ts`, EOF 3–6 ms before the child's exit with the stand-in alive in 6 runs;

@@ -180,3 +180,24 @@ Contracts binding forward, at dcb72db:
 | Time | 3.5 h | ≈ 0.6 h | ledger |
 | Tests | ≥ 1135 + new | 1135/66 → 1229/70 (+94) | verifier, clean worktree |
 | Fix rounds | ≤ 2 | 1 | S3-verifier.md |
+
+## S2 — handlers: `ref | locator`, `waitFor`, node → ref, `locate` · 2026-10-23 · verifier: PASS-with-notes · commit 357f776
+
+
+- `extension/src/handlers/target.ts:33` `checkTarget(p)` (sync: both `ref`+`locator` → `BAD_PARAMS`, invalid
+  locator → `BAD_PARAMS`), called before `pageTab`; `:22` `resolveTarget(tabId, p) → string | undefined`
+  (locator → `locateInPage` `:13`, the locator as its own `callInPage` argument; else `p.ref` unchanged).
+  `handlers/actions.ts`: click/type/hover/scroll/selectOption/pressKey resolve before the content-path try —
+  `LOCATOR_*` never escalates to trusted input; a `ref` call's sequence is byte-identical (FE fixture).
+- `extension/src/handlers/locate.ts:12` `locate(p) → {ref, role, name}`; `sw.ts:38` `router.on("locate")`;
+  `daemon/src/methods.ts:19` `"locate"` in `TAB_METHODS` (lease-checked; without `tab` today the legacy path).
+- `extension/src/handlers/locator-wait.ts:43` `pollLocator` (pure; `DEFAULT_POLL_MS = 100` `:25`);
+  `handlers/wait.ts:53` `locatorWaitParams`, `:99`/`:106` the frame-teardown → `REF_STALE` mapping.
+- `extension/src/evaluate/mark.ts:14` `MARK_ATTR` (= `content/marked.ts`'s, pinned by a test), `:103`
+  `MARK_SRC`, `:106` `UNMARK_SRC`, `:109` `unmarkExpression`, `:114` `newMark`; `evaluate/serialize.ts:402`
+  composite `SERIALIZER_SRC` (serialise, then mark when `limits.mark`; `__mark` internal, deleted by the
+  handler); `handlers/evaluate.ts` `evaluateAsRef` + `sweepMark`.
+- `extension/src/content/actions.ts:61` `focusRef`; `content/index.ts:48` guarded `focus(ref)`.
+- `extension/src/inject.ts`: the two injection messages say "the target tab" (F33).
+
+- *Session agent 2026-10-23:* decision #92 records S2's three proposals; S2.3's `targetTab` → `BAD_PARAMS` clause is S2b's (#72). Tests 1135 / 66 → 1276 / 71 with S2 alone (+141).

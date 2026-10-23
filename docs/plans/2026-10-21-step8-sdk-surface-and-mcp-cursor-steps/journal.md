@@ -58,3 +58,8 @@
 - S3: PASS-with-notes, +94 tests (1135/66 → 1229/70 with S3 alone); policy.ts = focusFirst (#89);
   #90 (Tab surface, cursor rule — open), #91 (S3.5 outcome (1), Step 6 revisit items kept).
 - S4 dispatched (sdk/, after S3), parallel with S2 (still running).
+
+## 2026-10-23 — S2 closed (357f776); S2b dispatched (∥ S4)
+
+- S2: PASS-with-notes, +141 tests (with S2 alone, 1276/71); #92. Open: F22 call timeouts (S5);
+  navigation onto an error page ends `waitFor {locator}` in TIMEOUT (S6 row).
