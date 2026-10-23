@@ -1,6 +1,7 @@
 // Tests for recipes/s6-rules.ts — the pass rules of the S6 rows that recipes/s6.ts and
 // recipes/sdk-login.ts print (docs/e2e-test-plan.md §4.19), dry-run on known-good and known-bad inputs
 // before the wave (LESSONS: "pre-registered checks can be wrong themselves").
+import { deflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import {
   describeEvent,
@@ -17,7 +18,16 @@ import {
   sm1LogVerdict,
   sm1Verdict,
   staleVerdict,
+  rep0Verdict,
+  visibleIn,
+  REP0_HUMAN_COLOUR,
+  REP0_PROBE_COLOUR,
+  REP0_SLACK_MS,
+  type Rep0Input,
+  type VisLog,
 } from "../s6-rules.js";
+import { COLOURS } from "../t5-lib.js";
+import { describeBar, hueName } from "../t5-png.js";
 
 const REPO = "C:\\Users\\me\\Projects\\chrome-remote-extention";
 const SHOT = "C:\\Users\\me\\.chrome-agent-bridge\\failures\\2026-10-23T12-00-00-000Z-T70.png";
@@ -278,5 +288,194 @@ describe("describeEvent", () => {
     expect(line).not.toContain("mail.example.com");
     expect(line).not.toContain("Inbox");
     expect(line).toContain("<non-fixture url withheld>");
+  });
+});
+
+// ── REP-0 (added 2026-10-23, S6 resume, #97; written before its run) ─────────────────────────────
+describe("rep0Verdict (the failure-report screenshot probe)", () => {
+  const T0 = 1_000_000;
+  const hiddenStart = (t: number): VisLog => [["hidden", t - 400, "start"]];
+  /** The probe tab: hidden at install, visible +60 ms into the call, hidden again +170 ms. */
+  const switched = (t0: number): VisLog => [...hiddenStart(t0), ["visible", t0 + 60, "change"], ["hidden", t0 + 170, "change"]];
+  const good = (): Rep0Input => ({
+    report: {
+      t0: T0,
+      t1: T0 + 190,
+      code: "LOCATOR_NOT_FOUND",
+      screenshotPath: "C:\\Users\\me\\AppData\\Local\\Temp\\bridge-e2e\\s6-run2\\rep0-failures-1\\x-T9.png",
+      attachErrors: [],
+      probeVis: switched(T0),
+      pngColour: "magenta",
+    },
+    control: { t0: T0 + 5000, t1: T0 + 6600, probeVis: switched(T0 + 5000), pngColour: "magenta" },
+    human: { pngColour: "blue" },
+  });
+
+  it("PASS on known-good input: the probe went visible inside the call and the PNG is magenta", () => {
+    const v = rep0Verdict(good());
+    expect(v.why).toEqual([]);
+    expect(v.result).toBe("PASS");
+  });
+  it("PASS within the 50 ms clock slack on either side of the call", () => {
+    const i = good();
+    i.report.probeVis = [...hiddenStart(T0), ["visible", T0 - REP0_SLACK_MS, "change"]];
+    expect(rep0Verdict(i).result).toBe("PASS");
+    i.report.probeVis = [...hiddenStart(T0), ["visible", i.report.t1 + REP0_SLACK_MS, "change"]];
+    expect(rep0Verdict(i).result).toBe("PASS");
+  });
+  it("FAIL when the probe tab never went visible (the capture did not switch)", () => {
+    const i = good();
+    i.report.probeVis = hiddenStart(T0);
+    const v = rep0Verdict(i);
+    expect(v.result).toBe("FAIL");
+    expect(v.why.join(" ")).toMatch(/did not switch/);
+  });
+  it("FAIL when the only visible change is outside the call window", () => {
+    const i = good();
+    i.report.probeVis = [...hiddenStart(T0), ["visible", T0 - 200, "change"]];
+    expect(rep0Verdict(i).result).toBe("FAIL");
+    i.report.probeVis = [...hiddenStart(T0), ["visible", i.report.t1 + 400, "change"]];
+    expect(rep0Verdict(i).result).toBe("FAIL");
+  });
+  it("a 'start' entry that reads visible is not a switch", () => {
+    const i = good();
+    i.report.probeVis = [["visible", T0 + 10, "start"]];
+    expect(rep0Verdict(i).result).not.toBe("PASS");
+  });
+  it("FAIL when the report PNG shows the human's blue bar (or anything but magenta)", () => {
+    const i = good();
+    i.report.pngColour = "blue";
+    const v = rep0Verdict(i);
+    expect(v.result).toBe("FAIL");
+    expect(v.why.join(" ")).toMatch(/blue.*human/);
+    for (const c of ["mixed", "other", "unreadable"]) {
+      const j = good();
+      j.report.pngColour = c;
+      expect(rep0Verdict(j).result).toBe("FAIL");
+    }
+  });
+  it("FAIL on a missing screenshot: no path, a screenshot attach error, or an unread PNG", () => {
+    const a = good();
+    delete a.report.screenshotPath;
+    a.report.pngColour = undefined;
+    expect(rep0Verdict(a).result).toBe("FAIL");
+    expect(rep0Verdict(a).why.join(" ")).toMatch(/no screenshot/);
+    const b = good();
+    b.report.attachErrors = ["screenshot: not attached within 5 s"];
+    expect(rep0Verdict(b).result).toBe("FAIL");
+    expect(rep0Verdict(b).why.join(" ")).toMatch(/screenshot: not attached/);
+    const c = good();
+    c.report.pngColour = undefined;
+    expect(rep0Verdict(c).result).toBe("FAIL");
+  });
+  it("a non-screenshot attach error alone does not decide", () => {
+    const i = good();
+    i.report.attachErrors = ["network: not attached within 5 s"];
+    expect(rep0Verdict(i).result).toBe("PASS");
+  });
+  it("FAIL when the trigger was not LOCATOR_NOT_FOUND", () => {
+    const i = good();
+    i.report.code = "TAB_HELD";
+    expect(rep0Verdict(i).result).toBe("FAIL");
+  });
+  it("NOT DISCRIMINATING when the switch control did not switch, or its PNG is not magenta, or it failed", () => {
+    const a = good();
+    a.control.probeVis = hiddenStart(a.control.t0);
+    expect(rep0Verdict(a).result).toBe("NOT DISCRIMINATING");
+    const b = good();
+    b.control.pngColour = "blue";
+    expect(rep0Verdict(b).result).toBe("NOT DISCRIMINATING");
+    const c = good();
+    c.control.error = "TIMEOUT: x";
+    c.control.pngColour = undefined;
+    expect(rep0Verdict(c).result).toBe("NOT DISCRIMINATING");
+  });
+  it("NOT DISCRIMINATING when the human tab does not read blue (the hue rule does not tell the tabs apart)", () => {
+    for (const c of ["magenta", "cyan", "other", undefined]) {
+      const i = good();
+      i.human.pngColour = c;
+      expect(rep0Verdict(i).result).toBe("NOT DISCRIMINATING");
+    }
+  });
+  it("NOT DISCRIMINATING when the probe was not hidden before the call", () => {
+    const i = good();
+    i.report.probeVis = [["visible", T0 - 400, "start"], ["visible", T0 + 60, "change"]];
+    expect(rep0Verdict(i).result).toBe("NOT DISCRIMINATING");
+  });
+  it("a failing control outranks a failing probe, and the probe's reasons are still listed", () => {
+    const i = good();
+    i.report.pngColour = "blue";
+    i.human.pngColour = "other";
+    const v = rep0Verdict(i);
+    expect(v.result).toBe("NOT DISCRIMINATING");
+    expect(v.why.join(" ")).toMatch(/also/);
+  });
+  it("visibleIn finds the first visible change inside [t0 − slack, t1 + slack]", () => {
+    const log: VisLog = [["hidden", 0, "start"], ["visible", 50, "change"], ["hidden", 90, "change"], ["visible", 300, "change"]];
+    expect(visibleIn(log, 200, 400)).toBe(300);
+    expect(visibleIn(log, 120, 140)).toBeUndefined(); // [70, 190]: the change at 50 is outside
+    expect(visibleIn(log, 100, 120)).toBe(50); // [50, 170]: inside by the slack
+  });
+});
+
+// ── REP-0's colours through a colour-managed capture (added 2026-10-23, S6 fixer 2, verifier r2 MAJOR-1) ──
+/** A solid-colour 8-bit RGB PNG (CRCs left 0: decodePng does not check them). */
+function solidPng(hex: string, width = 1920, height = 60): Buffer {
+  const n = parseInt(hex.slice(1), 16);
+  const px = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const row = Buffer.alloc(1 + width * 3);
+  for (let x = 0; x < width; x++) row.set(px, 1 + x * 3);
+  const raw = Buffer.concat(Array.from({ length: height }, () => row));
+  const chunk = (type: string, data: Buffer): Buffer => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    return Buffer.concat([len, Buffer.from(type, "ascii"), data, Buffer.alloc(4)]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", ihdr),
+    chunk("IDAT", deflateSync(raw)),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+/**
+ * What Run 9's default-mode (`captureVisibleTab`) captures read for the T5 bars, measured off the label:
+ * docs/plans/2026-10-21-step7-multi-actor-tabs-steps/T5-run9-record.md:72 (magenta → #dd00fa) and :84-86
+ * (red → #d92424, lime → #8fff3d, blue → #3300f8). Cyan was never captured in default mode; through CDP it
+ * read #97fdfd (R9-SCREEN-2), and default captures lift R on green-bearing colours the same way (lime).
+ */
+const DEFAULT_CAPTURE_READING: Record<string, string> = {
+  magenta: "#dd00fa",
+  red: "#d92424",
+  lime: "#8fff3d",
+  blue: "#3300f8",
+};
+
+describe("REP-0's bar colours under the hue rule (colour-managed captures)", () => {
+  it("the human tab's colour is blue and differs from the probe's magenta", () => {
+    expect(REP0_HUMAN_COLOUR).toBe("blue");
+    expect(REP0_PROBE_COLOUR).toBe("magenta");
+  });
+  it("both REP-0 colours, as Run 9's default captures read them, still read their own names", () => {
+    for (const name of [REP0_PROBE_COLOUR, REP0_HUMAN_COLOUR]) {
+      const measured = DEFAULT_CAPTURE_READING[name];
+      expect(measured, `no default-capture reading of ${name}`).toBeDefined();
+      expect(hueName(measured)).toBe(name);
+      expect(describeBar(solidPng(measured)).name).toBe(name);
+    }
+    expect(describeBar(solidPng("#dd00fa")).name).toBe("magenta");
+    expect(describeBar(solidPng("#3300f8")).name).toBe("blue");
+  });
+  it("the painted colours (t5-lib COLOURS) read their own names too", () => {
+    for (const name of [REP0_PROBE_COLOUR, REP0_HUMAN_COLOUR]) expect(describeBar(solidPng(COLOURS[name])).name).toBe(name);
+  });
+  it("why not cyan: the colour-managed cyan reading #97fdfd falls outside the hue rule", () => {
+    expect(hueName("#97fdfd")).toBe("other");
   });
 });

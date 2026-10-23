@@ -38,6 +38,9 @@ never tree-killed (B6); kill only identified PIDs after `Test-SafeToKill <pid>` 
   behaviour flags (`recipes/bgf-launch.ps1 … -ArgLine '--restore-last-session'`); counts before and after
   as in Run 10 (`recipes/bgf-count.ps1`); the extension must come back (`reload-extension.ps1` only if it
   does not, recorded). No second restart for any reason: a row that would need one is "not measured".
+  *2026-10-23: superseded for the resumed run by #98 — see the dated note in "Resumed run" below (decisions.md ·
+  2026-10-23 · The user allows unlimited Chrome restarts and unpublished Blackboard writes (#98)); the
+  sentence above is kept as written.*
 
 **Actors (accepted by the step agent, S6.ledger).** Every actor is Step 7's persistent host,
 `npx tsx recipes/t5-actor.ts start <name> --tools <list> [--model sonnet]` (which runs exactly
@@ -64,12 +67,14 @@ $env:T5_ACTORS = "$env:S6_OUT\actors"
 $U = 'http://localhost:8080/e2e-playground.html?t5='
 $Chrome = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe').'(default)'
 $Fail = "$HOME\.chrome-agent-bridge\failures"
-function R  { npm run -s recipe -- @args; "exit $LASTEXITCODE" }     # R recipes/s6.ts sdk2
+function Rcp { npm run -s recipe -- @args; "exit $LASTEXITCODE" }     # Rcp recipes/s6.ts sdk2
 function A  { npx tsx recipes/t5-actor.ts @args }                   # A start C --tools '…' | A send C "…" | A end C
 function B1 { npx tsx recipes/t5.ts find --current }                # must print '<T#> fixture'
 function Count { powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\bgf-count.ps1 @args }
 function FailPng { @(Get-ChildItem $Fail -Filter *.png -ErrorAction SilentlyContinue | ForEach-Object { $_.Name }) }
 ```
+*2026-10-23 (S6 resume, #97): the helper was `R`, renamed `Rcp` because PowerShell 5.1's built-in alias `R` (Invoke-History) shadows it; no row text or rule changed.*
+
 Fixture servers (hidden, never `-NoNewWindow`, CLAUDE.md MUX-6):
 `Start-Process -WindowStyle Hidden -FilePath "$HOME\miniconda3\python.exe" -ArgumentList '-I','-m','http.server','8080','--bind','127.0.0.1','--directory','test-fixtures' -RedirectStandardError "$env:S6_OUT\http8080.log"`.
 No row of this wave needs 8081 (DL-1 and NET-12 use 8080; the redirect rows are not in this wave), so
@@ -80,6 +85,75 @@ SDK-7's MCP leg), `$F0 = FailPng` before and `$F1 = FailPng` after; the row's fi
 Record their count and, for SDK-2/SDK-3/REP-1, the one path the row printed; delete exactly those files
 (`Remove-Item (Join-Path $Fail <name>)` each — outside the repo, the driver's own output); never open,
 attach or copy one. For a Blackboard row the names are not recorded either, only the count.
+
+## Resumed run (2026-10-23, after the classifier denial)
+
+*Added 2026-10-23 by S6 builder r2 (S6 resume; decisions.md · 2026-10-23 · A probe of the failure-report
+screenshot runs before any row that could attach a non-fixture tab (#97)), before Part 2 ran. The live
+driver follows this section; "Order of work" below is unchanged except where this section says so. No
+row's expected text or rule changed (REP-0 is a new row, pre-registered in `docs/e2e-test-plan.md` §4.19
+"REP-0 — added 2026-10-23").*
+
+**Part 1 is done and is not redone.** Steps 0–7 ran in Part 1 (8d77a35, `S6-run-record.md`): the reload
+(exit 0), S6-STALE, SDK-6D, SDK-7D and SDK-2…5. Part 2 starts at R-a. Run the set-up block above again in
+a fresh PowerShell (with `Rcp`, not `R`) and a **new** `$env:S6_OUT` (e.g. `"$env:TEMP\bridge-e2e\s6-run2"`;
+`Test-Path` must print `False`), and start the 8080 fixture server again (Part 1 stopped it).
+
+- **R-a. Set-up checks [SH]** (set-up lines, recorded under Part 2's "Set-up"): step 0's list as written
+  (`git log --oneline -3`; `git status --short -- extension daemon shared sdk mcp` → nothing; the driver is
+  not a client; `Get-BridgeDaemon` (none, or one — pid and build); `Test-Path Env:BRIDGE_TOKEN` → `False`;
+  `git check-ignore bridge.token exports/x.json` → both; 8080 → `200`; `npx tsc --noEmit -p
+  recipes/tsconfig.s6.json` → exit 0; `npx vitest run recipes/` → all passed, **134 tests** at builder r2),
+  plus `git log --stat 23b878f..HEAD -- extension daemon mcp sdk shared` → **nothing**. Nothing there ⇒
+  no build: step 1 is not run, and the loaded extension and `daemon/dist` are Part 1's. Anything there ⇒
+  STOP and report (a build is not in this plan).
+- **R-b. Stale check [SH] — the FIRST recorded result line of Part 2:** `Rcp recipes/s6.ts stale-check`.
+  `STALE-CHECK NEW BUILD` (exit 0) ⇒ go on; no reload. `STALE-CHECK STALE` ⇒ step 2's reload command
+  (exit `0` required, else STOP the live part and ask the user — integrity floor), then the stale check once
+  more; a second `STALE` ⇒ STOP. `STALE-CHECK FAILED — …` or `STALE-CHECK UNEXPECTED — …` ⇒ STOP and
+  report; no rerun.
+- **R-c. Daemon [SH]** — step 4 as written (`Get-DaemonBuild` = the newest `config … build=<sha>` = the
+  stale check's `connected — daemon build <sha>`; with no daemon code change since 23b878f this is Part 1's
+  `597d6c28…34da3f`). A different build ⇒ STOP.
+- **R-d. Driver window [UI]** — step 5 as written (`$Ws`, `Set-T5Topmost`, `Set-T5Foreground` → `True`,
+  `B1` → `<T#> fixture`).
+- **R-e. REP-0 [SH]** — under the failures-folder rule: `$F0 = FailPng`; `B1`; `Rcp recipes/s6.ts rep0`;
+  `$F1 = FailPng` (0 new names expected: the report goes to `$env:S6_OUT\rep0-failures-<epoch>`, which the
+  recipe empties and removes itself; any new name in `$Fail` is recorded by count and deleted by the rule).
+  Expected text and rule: §4.19 REP-0. Outcomes: `REP-0 PASS` (exit 0) ⇒ go on. `REP-0 FAIL` (exit 1) or
+  `REP-0 NOT DISCRIMINATING` (exit 3) ⇒ recorded as is, never rerun or re-tuned; **the gate applies** (below)
+  and the failure goes to the step agent as a proposed decision; the other rows go on. Exit `2` (set-up) ⇒
+  fix the set-up (usually `Set-T5Foreground $Ws.Hwnd`; B1) and run it again, both recorded. Only a verdict
+  line (`REP-0 PASS`, `REP-0 FAIL` or `REP-0 NOT DISCRIMINATING`) is a result: a `FAILED — …` line with no
+  such verdict line (exit 1 or 2: a set-up or bridge error before the verdict) measured nothing, so the
+  set-up is fixed and REP-0 rerun, both runs recorded; never gate on the exit code alone. *(2026-10-23, S6
+  fixer 2, verifier r2 MINOR-3.)* The human tab's bar is blue, not cyan *(2026-10-23, S6 fixer 2, verifier
+  r2 MAJOR-1, before any REP-0 run; §4.19 REP-0's disclosure)*. Then
+  `Set-T5Foreground $Ws.Hwnd`; B1.
+- **Then step 8 (SDK-1) onward, unchanged.** SDK-1 is rerun **whole** with a fresh actor SA (`A start SA …`
+  again, new window `$W1`): Part 1's attempt was not measured (SA's second snapshot was never sent), so
+  nothing of it counts. Steps 9–17 follow as written.
+- **The gate (REP-0 FAIL or NOT DISCRIMINATING only):** these are **not run** and are recorded
+  `not run — gated by REP-0`: **REP-1** and **TAB-3** (step 12), and **SDK-7's MCP leg** (SDK-6/SDK-7 live
+  steps 4–8: the plan, actor M, the failures-folder step for M, `assemble-mcp.ts`) with S6.3's byte-compare
+  (step 9 hashes only the SDK leg's file). SDK-6 live, SDK-7's SDK leg (both `failureReports: false`) and
+  step 10's `close-bb-tab` (reports off since builder r2) still run. Reasons per row: §4.19 REP-0 and
+  `S6-builder-r2.md` §3.
+- **Permission or classifier denials:** if any actor send or any other call is denied by the permission
+  system or the classifier, do not retry it and do not work around it (no other shell, wording, tool or
+  route); record the denial verbatim with its time, stop that line of work, and report to the step agent.
+- **The record continues Part 1, it does not replace it:** Part 2 is appended to `S6-run-record.md` under
+  `## Part 2 — resumed run (<date>, <UTC times>)`, opening with R-a's set-up lines and then R-b's stale check
+  as its first result line; the "Run 12 (S6)" block in `docs/e2e-test-plan.md` §5 gains a Part 2 paragraph
+  and summary lines below Part 1's, whose lines stay as they are.
+
+*2026-10-23 (#98, the user): Chrome restarts are no longer limited to one — still only `chrome://quit`,
+session restore, counts before/after, extension back (reload script, exit 0). A Blackboard write is no longer
+a STOP if the content is never visible to students, or is hidden shortly after if it briefly was; the recipes
+and rows stay read-only as pre-registered (no write rows, no expected-text change) — this only lifts the STOP
+for an accidental or needed write; any write is recorded (kind, when, when hidden) with no course content or
+student data.* (decisions.md · 2026-10-23 · The user allows unlimited Chrome restarts and unpublished
+Blackboard writes (#98).)
 
 ## Order of work
 
@@ -96,7 +170,7 @@ attach or copy one. For a Blackboard row the names are not recorded either, only
 2. **Reload [SH]** — `powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\reload-extension.ps1; $LASTEXITCODE`
    → `0`. Anything else ⇒ **STOP the live part and ask the user** (integrity floor); no row runs.
 3. **S6-STALE [SH] — the first recorded line after the reload exit** (S6.1 as reworded by #84) —
-   `R recipes/s6.ts stale-check`. Outcomes (MINOR-3):
+   `Rcp recipes/s6.ts stale-check`. Outcomes (MINOR-3):
    - `STALE-CHECK NEW BUILD` (exit 0) ⇒ go on.
    - `STALE-CHECK STALE` ⇒ step 2 once more (exit `0` required) and step 3 once more; a second `STALE` ⇒ STOP.
    - `STALE-CHECK UNEXPECTED` ⇒ STOP and escalate.
@@ -111,22 +185,22 @@ attach or copy one. For a Blackboard row the names are not recorded either, only
 5. **Driver window [UI]** — `$Ws = Open-T5Window "${U}s6-human"`; `Set-T5Topmost $Ws.Hwnd`;
    `Set-T5Foreground $Ws.Hwnd` → `True`; `B1` → `<T#> fixture`. Repeat `B1` before every script below that
    needs Ws current; on `not a fixture page`, `Set-T5Foreground $Ws.Hwnd` and check again.
-6. **SDK-6D, SDK-7D [SH]** (localhost only) — `R recipes/blackboard/boot-bb.ts _1_1 --dry-run`;
-   `R recipes/blackboard/export-grades.ts _1_1 --dry-run`; `Get-FileHash exports\dry-_1_1-*.json -Algorithm SHA256`
+6. **SDK-6D, SDK-7D [SH]** (localhost only) — `Rcp recipes/blackboard/boot-bb.ts _1_1 --dry-run`;
+   `Rcp recipes/blackboard/export-grades.ts _1_1 --dry-run`; `Get-FileHash exports\dry-_1_1-*.json -Algorithm SHA256`
    (= `92FE62AB…A49C`); then `Remove-Item exports\dry-_1_1-*.json` (inside the repo, gitignored; the
    driver's own output).
-7. **SDK-2, SDK-3, SDK-4, SDK-5 [SH]** — `$F0 = FailPng`; B1, `R recipes/s6.ts sdk2`; B1, `… sdk3`;
+7. **SDK-2, SDK-3, SDK-4, SDK-5 [SH]** — `$F0 = FailPng`; B1, `Rcp recipes/s6.ts sdk2`; B1, `… sdk3`;
    `$F1 = FailPng` (2 new names expected: the two `screenshotPath:` lines); delete those two (failures-folder
    rule). B1, `… sdk4`; B1, `… sdk5`, then `Set-T5Foreground $Ws.Hwnd`.
 8. **SDK-1 [SH, UI]** — `$W1 = Open-T5Window "${U}sdk1-claude"`; B1 (prints the `sdk1-claude` tab);
-   `A start SA --tools 'browser_snapshot'`; `A send SA "<P-SDK1>"`; `R recipes/sdk-login.ts`;
+   `A start SA --tools 'browser_snapshot'`; `A send SA "<P-SDK1>"`; `Rcp recipes/sdk-login.ts`;
    `A send SA "<P-SDK1>"`; `Get-BridgeLog 4`; `A end SA`; `Close-T5Window $W1.Hwnd`; `Set-T5Foreground $Ws.Hwnd`.
 9. **SM-0 [SH]** — `Start-Process -WindowStyle Hidden -FilePath powershell -ArgumentList '-NoProfile','-File',"$env:S6_OUT\sm0.ps1"`
    where `sm0.ps1` holds `npm run -s recipe -- recipes/s6.ts sm0 --hold 120 *> "$env:S6_OUT\sm0.out"`
    (PowerShell 5.1 splits `-Command` strings: LESSONS); when `sm0.out` shows `holding <T#a> for 120 s`,
    step 2's reload command (exit `0`); wait for `SM-0 PASS|FAIL|NOT MEASURED` in `sm0.out`; `Get-BridgeLog 12`.
 10. **MUX-1, STAT-1, MUX-2 [SH, UI]** — no actor or script running (`A status`: all ended).
-    `R recipes/s6.ts daemon-shutdown` (refuses while another client is connected); `Get-BridgeDaemon` →
+    `Rcp recipes/s6.ts daemon-shutdown` (refuses while another client is connected); `Get-BridgeDaemon` →
     nothing within 5 s. B1 (Ws current). `A start S1 --tools 'browser_status,browser_navigate,browser_snapshot,browser_list_tabs'`;
     `A send S1 "<P-MUX1>"`; `Get-BridgeDaemon`; `Get-BridgeProcs`; `Get-BridgeLog 8`. Then MUX-2:
     `A start S2 --tools 'browser_status,browser_snapshot'`;
@@ -167,7 +241,9 @@ attach or copy one. For a Blackboard row the names are not recorded either, only
 
 **Re-runs.** A command that exits `2` (set-up) or `3` (not measured) measured nothing: fix the set-up and
 run it again, recording both — except SM-1 and anything else that would need a second Chrome restart,
-which is recorded "not measured", and the Blackboard login, which is never retried. Exit `1` is a result:
+which is recorded "not measured", and the Blackboard login, which is never retried. *(2026-10-23: the
+"second Chrome restart" limit is lifted by #98 — see the dated note in "Resumed run" below; the text above is kept
+as written.)* Exit `1` is a result:
 recorded as is. An actor that calls a tool outside its prompt, or retypes an expression it was given
 (SDK-7's MCP leg: START is checked by the page and the hash, STATUS/CHUNK are matched character for
 character by `assemble-mcp.ts`), makes that step invalid (recorded; the step is rerun once in a fresh
@@ -232,14 +308,15 @@ actor's `OUTPUT:` block into `S6-run-record.md`.
 
 | Row | Command(s) | Pass rule (written now) | Evidence |
 |---|---|---|---|
-| S6-STALE | `R recipes/s6.ts stale-check` | `STALE-CHECK NEW BUILD` and exit 0 (`staleVerdict`); `STALE-CHECK FAILED` is a STOP (step 3) | stdout verbatim |
-| SDK-6D | `R recipes/blackboard/boot-bb.ts _1_1 --dry-run` | `SDK-6 (dry run) PASS — bb.VERSION stub-2026-10-23 …`, exit 0 | stdout |
-| SDK-7D | `R recipes/blackboard/export-grades.ts _1_1 --dry-run`; `Get-FileHash` | `page export done … 2 columns, 4 grade records, 627 bytes, sha256 92fe62ab…a49c`; `MCP leg size: 626 characters → 1 chunk(s) of 8000; measurable: yes`; `… equal the page's: yes`; `SDK-7 (SDK leg, dry run) PASS`; `Get-FileHash` = `92FE62ABC12D1AC759E6B29F287520A7A486BE9150666372028E1027D389A49C` | stdout, hash |
-| SDK-2 | `R recipes/s6.ts sdk2` | its `SDK-2 PASS` line (`sdk2Verdict`): code, message start, first candidate `button "Sign in"`, the report's candidate / snapshot (`- button "Sign in" [ref=e<N>]`) / `Screenshot:` lines, ≤ 60 lines, PNG exists outside the repo, `attachErrors: []`. Candidates 2–5 differing = `finding:`, recorded | stdout incl. the report block; the PNG path (file deleted) |
-| SDK-3 | `R recipes/s6.ts sdk3` | `SDK-3 PASS` (`sdk3Verdict`): exact message, the 7 matches in order, `Matches (7):` + 7 lines in the report, nth:1 = `Fetch 404`, status `status: fetch ok.json -> 200` | stdout |
-| SDK-4 | `R recipes/s6.ts sdk4` | `SDK-4 PASS`: visible 1200–5000 ms, hidden ≤ 1000 ms | stdout |
-| SDK-5 | `R recipes/s6.ts sdk5` | `SDK-5 PASS`: ref `e<N>`; status matches `^status: hit at -?\d+,-?\d+ exp -?\d+,-?\d+ on=email \(isTrusted=true\)$`; activeElement `#email`; mark count 0 | stdout |
-| SDK-1 | `R recipes/sdk-login.ts` with SA holding `?t5=sdk1-claude` | `SDK-1 PASS` + exit 0, and SA's two snapshots both of `?t5=sdk1-claude` with no error, and the log's `client + "sdk-login"` / `client - "sdk-login"` pair (S6.2 records this command and its output) | stdout; SA's two `OUTPUT:` blocks (first lines); log lines |
+| S6-STALE | `Rcp recipes/s6.ts stale-check` | `STALE-CHECK NEW BUILD` and exit 0 (`staleVerdict`); `STALE-CHECK FAILED` is a STOP (step 3) | stdout verbatim |
+| REP-0 *(added 2026-10-23, S6 resume, #97, before its run)* | `Rcp recipes/s6.ts rep0` (R-e, under the failures-folder rule) | `REP-0 PASS` and exit 0 (`rep0Verdict`): a probe `visible` change inside the report call ± 50 ms and the report PNG magenta, with control B (explicit screenshot: visible + magenta) and control A (human tab blue) holding; `REP-0 FAIL` (exit 1) or `NOT DISCRIMINATING` (exit 3) ⇒ the gate in "Resumed run" | stdout verbatim (sizes and hue lines only; the PNG is deleted by the recipe) |
+| SDK-6D | `Rcp recipes/blackboard/boot-bb.ts _1_1 --dry-run` | `SDK-6 (dry run) PASS — bb.VERSION stub-2026-10-23 …`, exit 0 | stdout |
+| SDK-7D | `Rcp recipes/blackboard/export-grades.ts _1_1 --dry-run`; `Get-FileHash` | `page export done … 2 columns, 4 grade records, 627 bytes, sha256 92fe62ab…a49c`; `MCP leg size: 626 characters → 1 chunk(s) of 8000; measurable: yes`; `… equal the page's: yes`; `SDK-7 (SDK leg, dry run) PASS`; `Get-FileHash` = `92FE62ABC12D1AC759E6B29F287520A7A486BE9150666372028E1027D389A49C` | stdout, hash |
+| SDK-2 | `Rcp recipes/s6.ts sdk2` | its `SDK-2 PASS` line (`sdk2Verdict`): code, message start, first candidate `button "Sign in"`, the report's candidate / snapshot (`- button "Sign in" [ref=e<N>]`) / `Screenshot:` lines, ≤ 60 lines, PNG exists outside the repo, `attachErrors: []`. Candidates 2–5 differing = `finding:`, recorded | stdout incl. the report block; the PNG path (file deleted) |
+| SDK-3 | `Rcp recipes/s6.ts sdk3` | `SDK-3 PASS` (`sdk3Verdict`): exact message, the 7 matches in order, `Matches (7):` + 7 lines in the report, nth:1 = `Fetch 404`, status `status: fetch ok.json -> 200` | stdout |
+| SDK-4 | `Rcp recipes/s6.ts sdk4` | `SDK-4 PASS`: visible 1200–5000 ms, hidden ≤ 1000 ms | stdout |
+| SDK-5 | `Rcp recipes/s6.ts sdk5` | `SDK-5 PASS`: ref `e<N>`; status matches `^status: hit at -?\d+,-?\d+ exp -?\d+,-?\d+ on=email \(isTrusted=true\)$`; activeElement `#email`; mark count 0 | stdout |
+| SDK-1 | `Rcp recipes/sdk-login.ts` with SA holding `?t5=sdk1-claude` | `SDK-1 PASS` + exit 0, and SA's two snapshots both of `?t5=sdk1-claude` with no error, and the log's `client + "sdk-login"` / `client - "sdk-login"` pair (S6.2 records this command and its output) | stdout; SA's two `OUTPUT:` blocks (first lines); log lines |
 | SM-0 | `s6.ts sm0 --hold 120` + reload | reload exit 0; `SM-0 PASS` (`sm0Verdict`: disconnect and reconnect seen, no `tabGone` for `<T#a>`, snapshot ok, owner `s6-sm0`); and the log, from the reload on, has a new `extension resync:` line and no `extension session changed` line. `NOT MEASURED` = rerun | `sm0.out`; reload output; log lines |
 | MUX-1 | as step 10 | §4.12 MUX-1 with its S5 note: five status lines ending `Cursor: none yet — the first tab tool claims the human's active tab`; one daemon with `ParentProcessId` = `<M>`; log `start` / `config … build=<sha>` / `listening` / `client + "claude-code #<M>" (1 client)` | S1 `OUTPUT:`; process listings; log |
 | STAT-1 | `A send S1 "<P-STATUS>"` after MUX-2 | §4.3 STAT-1 with its S5 note: the four lines + `Cursor: <T#> "Agent Bridge E2E Playground" — http://localhost:8080/e2e-playground.html?t5=mux2 (held by me)`; a sixth line only if the human's tab differs | `OUTPUT:` |
@@ -249,7 +326,7 @@ actor's `OUTPUT:` block into `S6-run-record.md`.
 | TAB-3 | P-TAB3 on a session whose tab is not on screen | TAB-3's S5 note: `Opened tab <T#> (in the background — browser_focus_tab shows it)` (or `Opened tab <T#>` if run with the session's tab on screen — record which); the snapshot acts on the new tab | `OUTPUT:` (example.com's snapshot url line only) |
 | NET-12 | P-NET12 | NET-12 with its S5 note: the second tab's entries with a `tab:<T#>` column, gone after the close; the first tab's intact | `OUTPUT:` (fixture rows only) |
 | SDK-8 | §4.19 SDK-8 | every clause of §4.19 SDK-8's Expected, including the `browser_use_active_tab` call in P-S8-4's transcript and `peek` → `Click counter: 0` | `OUTPUT:` blocks; peek stdout; the P-S8-4 `TOOL` lines |
-| SDK-6 (live) | login step; `R recipes/blackboard/boot-bb.ts pp1` | §4.19 SDK-6 (live, pp1): `bb-login.ps1` exit 0; the resolution lines (branch recorded); `SDK-6 PASS — bb.VERSION <V> …`, exit 0; 8765 checks empty. `bb-login.ps1` exit 4 or any `REFUSED` ⇒ "waits for the user" | stdout (no id, title or URL in it) |
+| SDK-6 (live) | login step; `Rcp recipes/blackboard/boot-bb.ts pp1` | §4.19 SDK-6 (live, pp1): `bb-login.ps1` exit 0; the resolution lines (branch recorded); `SDK-6 PASS — bb.VERSION <V> …`, exit 0; 8765 checks empty. `bb-login.ps1` exit 4 or any `REFUSED` ⇒ "waits for the user" | stdout (no id, title or URL in it) |
 | SDK-7 (live) | "SDK-6/SDK-7 live" steps 4–10 | §4.19 SDK-7 (live, pp1): SDK leg PASS; plan has no id; MCP leg (if measurable) STATUS = the SDK leg's values, assemble 0 bad, `(= the page's: yes)`; S6.3 hashes equal; both paths ignored; 0 new failure PNGs (else a finding) | stdout (counts and hashes only); hashes; PNG counts |
 | SM-1 | "SM-1 and MUX-8" | §4.19 SM-1 (pre-registered, copied verbatim; R1–R6): `SM-1 PASS` (`sm1Verdict`), `SM-1 LOG PASS` (`sm1LogVerdict`), daemon pid unchanged, counts equal. `NOT MEASURED` ⇒ recorded, not rerun | `sm1.out`; `sm1-log` stdout; listings; counts |
 | MUX-8 | inside SM-1's quit window | §4.12 MUX-8 with its S5 correction (§4.19 "Also run"): first run `FAILED after <ms> ms — NOT_CONNECTED: …` (15000–16500 ms), exit 1; X's two status lines; second run `… — OK`, exit 0; the optional run not run | `mux8-1.out`, `mux8-2.out`; X's `OUTPUT:`; log lines |
@@ -263,9 +340,9 @@ actor's `OUTPUT:` block into `S6-run-record.md`.
    for the user; go to "SM-1 and MUX-8". Exit `2` (nothing touched) ⇒ once more; a second `2` ⇒ as `4`.
    The driver never takes a screenshot, snapshot or evaluate of that window, and never types into it.
 2. **SDK-6 [SH]** — `Get-NetTCPConnection -LocalPort 8765 -State Listen -ErrorAction SilentlyContinue`;
-   `R recipes/blackboard/boot-bb.ts pp1`; the 8765 check again. A `REFUSED — not logged in …` here means
+   `Rcp recipes/blackboard/boot-bb.ts pp1`; the 8765 check again. A `REFUSED — not logged in …` here means
    the login did not take: "waits for the user" for both rows (no second login).
-3. **SDK-7 SDK leg [SH]** — `R recipes/blackboard/export-grades.ts pp1 --keep-open` → note `<T#>` and the
+3. **SDK-7 SDK leg [SH]** — `Rcp recipes/blackboard/export-grades.ts pp1 --keep-open` → note `<T#>` and the
    `MCP leg size:` line (`<L>`, `<k>`, measurable).
 4. **The plan [SH]** — `npm run -s recipe -- recipes/blackboard/export-grades.ts pp1 --mcp-plan > "$env:S6_OUT\sdk7-plan.txt"`;
    `Select-String -Path "$env:S6_OUT\sdk7-plan.txt" -Pattern '_\d+_\d+' -Quiet` → `False` (no course id in it).
@@ -275,10 +352,10 @@ actor's `OUTPUT:` block into `S6-run-record.md`.
    or error (at most 60), then M3… one chunk per `send` (P-SDK7-M, chunks of 8000); `A end M`; `$F1 = FailPng`.
 7. **Failures folder [SH]** — the new names (`$F1` minus `$F0`): count recorded (expected 0); each deleted;
    the names are not recorded (a Blackboard page).
-8. `R recipes/blackboard/assemble-mcp.ts "$env:T5_ACTORS\M\out.jsonl" pp1`.
+8. `Rcp recipes/blackboard/assemble-mcp.ts "$env:T5_ACTORS\M\out.jsonl" pp1`.
 9. `Get-FileHash exports\pp1-<date>.json, exports\pp1-<date>-mcp.json -Algorithm SHA256` → equal;
    `git check-ignore -v exports\pp1-<date>.json exports\pp1-<date>-mcp.json` → both printed.
-10. `R recipes/s6.ts close-bb-tab <T#>` — closes the recipe's own course tab (unheld after `A end M`, or
+10. `Rcp recipes/s6.ts close-bb-tab <T#>` — closes the recipe's own course tab (unheld after `A end M`, or
     after step 3 if the MCP leg did not run), only if it is on an ada course page (checked in memory, never
     printed); `closed <T#> (the Blackboard recipe's course tab)`, exit 0. A refusal (exit 2) leaves it open
     and is recorded; the driver closes nothing else.
@@ -305,7 +382,7 @@ no recipe running. Steps as §4.19 SM-1 (1)–(12), with MUX-8 inside:
    `[--restore-last-session]`.
 8. Wait for `sm1.out`'s `extension back` line; none 120 s after step 6 ⇒ `reload-extension.ps1` once (exit
    `0`, else STOP), its time recorded. Then wait for `SM-1 PASS|FAIL|NOT MEASURED`.
-9. `R recipes/s6.ts sm1-log --since $Q`; `Get-BridgeDaemon` → the same pid `<D>`.
+9. `Rcp recipes/s6.ts sm1-log --since $Q`; `Get-BridgeDaemon` → the same pid `<D>`.
 10. **MUX-8, second run:** `$W8 = Open-T5Window "${U}mux8"`; `Set-T5Foreground $W8.Hwnd` → `True`; B1 →
     `<T#> fixture`; `npx tsx recipes/hello.ts *> "$env:S6_OUT\mux8-2.out"; $LASTEXITCODE`; `Close-T5Window $W8.Hwnd`;
     `A end X`; `Get-BridgeLog 12` (both `hello-recipe` pairs, the session-changed and resync lines).

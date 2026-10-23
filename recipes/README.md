@@ -20,7 +20,7 @@ The SDK finds, starts or hands over the daemon itself; the token comes from `BRI
 |---|---|
 | `hello.ts` | The smallest SDK script: connect, `daemon.status`, `listTabs`, optional hold. The instrument of rows MUX-3/5/6/8/10 — its output is pinned by those rows, so do not change it. |
 | `sdk-login.ts` | Row SDK-1: `newTab` to the fixture → `locate({role:"button", name:"Sign in"})` → `click` → `waitFor({text})` → print the page's status line → close. |
-| `s6.ts` | Step 8 S6's SDK rows, one subcommand each: `stale-check` (first line after a reload), `sdk2`…`sdk5`, `sm0`, `sm1` and `sm1-log` (SM-1 across a Chrome restart), and the helpers `peek`, `daemon-shutdown`, `close-bb-tab`. `--help` lists them. |
+| `s6.ts` | Step 8 S6's SDK rows, one subcommand each: `stale-check` (first line after a reload), `sdk2`…`sdk5`, `sm0`, `sm1` and `sm1-log` (SM-1 across a Chrome restart), `rep0` (REP-0, #97: does a failure report's screenshot switch to the failed tab; added 2026-10-23), and the helpers `peek`, `daemon-shutdown`, `close-bb-tab`. `--help` lists them. |
 | `s6-rules.ts` | The pure pass rules `s6.ts` and `sdk-login.ts` print (tested in `test/s6-rules.test.ts`). |
 | `blackboard/boot-bb.ts` | Row SDK-6: open the named course in its own tab, load the blackboard-ultra skill's `bb.js` by `evaluate`, print `bb.VERSION`. |
 | `blackboard/export-grades.ts` | Row SDK-7: the course gradebook, read-only, into `exports/<course>-<date>.json` (gitignored); prints counts and sha256 only. `--mcp-plan` prints the MCP leg's expressions. |

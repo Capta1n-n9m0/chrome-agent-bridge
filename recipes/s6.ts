@@ -22,22 +22,29 @@
 //                      reads, releases; refuses a held tab)
 //   daemon-shutdown    MUX-1 set-up: `daemon.shutdown`, refused while any other client is connected
 //   close-bb-tab <T#>  SDK-7 clean-up: close the unheld ada course tab export-grades --keep-open left
+//   rep0               REP-0 (#97): does the failure report's screenshot switch to the failed tab? A
+//                      LOCATOR_NOT_FOUND on a background probe tab (magenta bar) with the human fixture tab
+//                      ?t5=s6-human (blue bar) current; page-side visibilitychange logs on both; the report
+//                      PNG judged by the hue rule, then deleted; positive controls in the same run (added
+//                      2026-10-23, S6 resume, before its run)
 //   --help             this text (connects to nothing)
 //
 // Every tab it acts on is one it opened itself (`?s6=<marker>`, in the background) or, for `peek`, the
 // driver's own `?t5=` fixture tab; it prints only fixture URLs and titles, never the token.
 // Exit codes: 0 = PASS (or the helper did its job), 1 = FAIL / a bridge error (`FAILED — …`),
-// 2 = set-up or refusal (nothing measured), 3 = not measured (SM-0 saw no reload).
-import { existsSync, readFileSync } from "node:fs";
+// 2 = set-up or refusal (nothing measured), 3 = not measured (SM-0 saw no reload; REP-0: NOT DISCRIMINATING).
+import { existsSync, readdirSync, readFileSync, rmdirSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BridgeError, connect, type BridgeClient, type Tab } from "@bridge/sdk";
 import { isInside } from "./blackboard/export-file.js";
 import { isAdaCoursePage } from "./blackboard/guard.js";
-import { byMarker, listTabs, showUrl, urlOf } from "./t5-lib.js";
+import { barExpression, byMarker, COLOURS, evalJson, listTabs, showUrl, urlOf, VISLOG_INSTALL, VISLOG_READ } from "./t5-lib.js";
+import { describeBar } from "./t5-png.js";
 import {
   describeEvent,
+  rep0Verdict,
   s6Url,
   sdk2Verdict,
   sdk3Verdict,
@@ -50,6 +57,11 @@ import {
   SDK2_LOCATOR,
   SDK3_LOCATOR,
   SDK4_TEXT,
+  REP0_HUMAN_COLOUR,
+  REP0_LOCATOR,
+  REP0_PROBE_COLOUR,
+  REP0_SLACK_MS,
+  type VisLog,
   type SeenEvent,
   type StaleInput,
   type Verdict,
@@ -64,8 +76,8 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 
 const HELP = `recipes/s6.ts — Step 8 S6 rows (docs/e2e-test-plan.md §4.19)
   stale-check | sdk2 | sdk3 | sdk4 | sdk5 | sm0 [--hold <s>] | sm1 [--hold <s>] [--marker <t5-marker>]
-  | sm1-log --since <iso> | peek <t5-marker> | daemon-shutdown | close-bb-tab <T#> | --help
-Exit: 0 PASS, 1 FAIL or bridge error, 2 set-up/refusal, 3 not measured.`;
+  | sm1-log --since <iso> | peek <t5-marker> | daemon-shutdown | close-bb-tab <T#> | rep0 | --help
+Exit: 0 PASS, 1 FAIL or bridge error, 2 set-up/refusal, 3 not measured (REP-0: not discriminating).`;
 
 class SetUp extends Error {}
 
@@ -270,6 +282,7 @@ const PRECHECKS: Record<string, () => unknown> = {
   sm1: sm1Args,
   "sm1-log": sm1LogSince,
   "close-bb-tab": bbTabHandle,
+  rep0: rep0FailuresDir,
 };
 
 /**
@@ -445,6 +458,196 @@ async function daemonShutdown(client: BridgeClient): Promise<void> {
   say(`daemon.shutdown sent (build ${status.build ?? "?"})`);
 }
 
+// ── REP-0 (added 2026-10-23, S6 resume, before its run — decisions.md · 2026-10-23 · A probe of the ──
+// failure-report screenshot runs before any row that could attach a non-fixture tab (#97); the live
+// verifier's MINOR-1: SDK-2/SDK-3's reports came back 180–190 ms after the call, where a switch capture
+// took ~1.5 s in Runs 8/9). Rule: `rep0Verdict` (recipes/s6-rules.ts).
+
+let rep0Dir: string | undefined;
+
+/**
+ * Run before connect(): the report's screenshot goes to a fresh directory under $S6_OUT (outside the
+ * repo), via BRIDGE_FAILURES_DIR, so the user's ~/.chrome-agent-bridge/failures is never touched and
+ * everything in that directory is this run's own.
+ */
+function rep0FailuresDir(): string {
+  if (rep0Dir !== undefined) return rep0Dir;
+  const out = process.env.S6_OUT?.trim();
+  if (!out || !isAbsolute(out) || !existsSync(out)) throw new SetUp("SET-UP: rep0 needs $env:S6_OUT, an existing absolute directory outside the repo (the wave sheet's set-up)");
+  const dir = join(out, `rep0-failures-${Date.now()}`);
+  // The directory, not $S6_OUT, is checked: isInside(root, root) is false (export-file.ts), so S6_OUT = the
+  // repo root itself would pass a check of S6_OUT (found by the builder's set-up dry run).
+  if (isInside(REPO, dir)) throw new SetUp("SET-UP: $env:S6_OUT is inside the repo — the report PNG must be written outside it");
+  if (existsSync(dir)) throw new SetUp(`SET-UP: ${dir} exists already — rerun for a fresh directory`);
+  process.env.BRIDGE_FAILURES_DIR = dir;
+  rep0Dir = dir;
+  return dir;
+}
+
+/** The bar colour of a PNG by the hue rule (t5-png.ts `describeBar`, Run 9's rule), as name + line. */
+function hue(buf: Buffer): { name: string; line: string } {
+  try {
+    return describeBar(buf);
+  } catch (err) {
+    return { name: "unreadable", line: `unreadable image (${err instanceof Error ? err.message : String(err)})` };
+  }
+}
+
+const rel = (t: number | undefined, t0: number): string => (t === undefined ? "never" : `${t - t0 >= 0 ? "+" : ""}${Math.round(t - t0)} ms`);
+const firstChange = (log: VisLog, state: string, from: number): number | undefined =>
+  log.find((e) => e[2] === "change" && e[0] === state && e[1] >= from)?.[1];
+
+/** Deletes every file in the run's own failures directory, then the directory; prints counts only. */
+function rep0Cleanup(dir: string): void {
+  if (!existsSync(dir)) {
+    say(`failures directory: not created (nothing written)`);
+    return;
+  }
+  const names = readdirSync(dir);
+  for (const n of names) rmSync(join(dir, n), { force: true });
+  rmdirSync(dir);
+  say(`failures directory: ${names.length} file(s) deleted, directory removed`);
+}
+
+/**
+ * REP-0. Set-up: the human's tab (current) must be the driver's `?t5=s6-human` fixture tab (the sheet's
+ * step 5), else exit 2 with nothing opened. Opens its own probe tab `?s6=rep0` in the background, which
+ * must be inactive and in the human tab's window (a capture that fails to switch then can only show the
+ * fixture on screen, never a tab of the user's). Bars and visibility logs go in by `evaluate` (CDP: the
+ * "debugging this browser" banner shows while each runs), on both tabs, as t5.ts screen1 does.
+ * Order: (1) the analysis control — a capture of the human tab, which is on screen, so nothing switches —
+ * must read blue; (2) the probe — the report of an attach-set failure on the background probe tab, the
+ * first capture that switches to it, as in SDK-2/SDK-3 (a freshly opened tab), with no earlier
+ * switch's restore in flight; (3) the positive control — an explicit default-mode `tab.screenshot()` of
+ * the same background probe tab (known to switch, R9-SCREEN-1), judged by the same rule. The report PNG
+ * is read and deleted at once; the control images stay in memory. Closes only its probe tab.
+ */
+async function rep0(client: BridgeClient): Promise<void> {
+  const dir = rep0FailuresDir();
+  // Everything after the directory is chosen runs inside the try, so the probe tab (once newTab returned)
+  // is closed and the run's directory emptied and removed on every path, a failed waitFor included
+  // (S6 fixer 2, verifier r2 MINOR-2).
+  let opened: Tab | undefined;
+  try {
+    say(`connected — daemon build ${client.welcome?.build ?? "?"}, extension ${client.extensionConnected ? "connected" : "not connected"}; failure reports on, BRIDGE_FAILURES_DIR = ${dir}`);
+    const human = (await listTabs(client)).find((t) => t.current === true);
+    if (!human || human.url !== urlOf("s6-human")) {
+      throw new SetUp("SET-UP: the human's tab (current) is not the ?t5=s6-human fixture — run the sheet's step 5 (Set-T5Foreground $Ws.Hwnd; B1) and retry; nothing opened");
+    }
+    if (human.owner !== undefined) throw new SetUp(`SET-UP: the s6-human tab ${human.tab} is held by ${JSON.stringify(human.owner)} — end that client first; nothing opened`);
+    // openFixture, inlined so the handle is kept before its waitFor can throw.
+    const probeUrl = s6Url("rep0");
+    const probe = await client.newTab(probeUrl);
+    opened = probe;
+    say(`opened ${probe.handle} (background) at ${probeUrl}`);
+    await probe.waitFor({ text: "Agent Bridge E2E Playground" });
+    const row = (await listTabs(client)).find((t) => t.tab === probe.handle);
+    if (!row) throw new SetUp(`SET-UP: the probe tab ${probe.handle} is not listed`);
+    if (row.active) throw new SetUp(`SET-UP: the probe tab ${probe.handle} is active in its window — it must be in the background; nothing measured`);
+    if (row.windowId !== human.windowId) throw new SetUp(`SET-UP: the probe tab ${probe.handle} opened in another window than the s6-human tab — nothing measured`);
+    say(`human ${human.tab} (?t5=s6-human, current); probe ${probe.handle} (background, same window, leased to ${who})`);
+    const hState = await evalJson<string>(client, human.tab, barExpression(COLOURS[REP0_HUMAN_COLOUR], "REP-0 HUMAN"));
+    const pState = await evalJson<string>(client, probe.handle, barExpression(COLOURS.magenta, "REP-0 PROBE"));
+    say(`bars: human ${human.tab} ${REP0_HUMAN_COLOUR} (visibilityState ${hState}); probe ${probe.handle} magenta (visibilityState ${pState})`);
+    if (hState !== "visible") throw new SetUp("SET-UP: the s6-human tab is not visible — the driver's window is minimized or covered (Set-T5Topmost $Ws.Hwnd) — nothing measured");
+    if (pState !== "hidden") throw new SetUp(`SET-UP: the probe tab reads ${pState}, not hidden — nothing measured`);
+
+    // (1) Analysis control: the human tab, on screen (no switch).
+    let humanColour: string | undefined;
+    let humanError: string | undefined;
+    try {
+      const { dataUrl } = (await client.call("screenshot", { tab: human.tab })) as { dataUrl: string };
+      const buf = Buffer.from(dataUrl.replace(/^data:image\/png;base64,/, ""), "base64");
+      const h = hue(buf);
+      humanColour = h.name;
+      say(`control A (the human tab ${human.tab}, on screen): ${buf.length} bytes, ${h.line} (expected ${REP0_HUMAN_COLOUR}; kept in memory only)`);
+    } catch (err) {
+      humanError = err instanceof BridgeError ? `${err.code}: ${err.message}` : String(err);
+      say(`control A (the human tab ${human.tab}): screenshot → ${humanError}`);
+    }
+    await sleep(1000);
+
+    // (2) The probe: an attach-set failure on the background probe tab, failure reports on.
+    await evalJson(client, human.tab, VISLOG_INSTALL);
+    await evalJson(client, probe.handle, VISLOG_INSTALL);
+    await sleep(500);
+    const t0 = Date.now();
+    const err = await expectError("click", () => probe.click({ ...REP0_LOCATOR }));
+    const t1 = Date.now();
+    say(`click {role:"button", name:"No such button"} → ${err.code}: ${err.message.split("\n")[0]} (${t1 - t0} ms, report included)`);
+    const shot = err.screenshotPath;
+    const attachErrors = err.attachErrors ?? [];
+    say(`screenshotPath: ${shot ?? "(none)"}; attachErrors: ${JSON.stringify(attachErrors)}`);
+    await sleep(2500);
+    const hl = await evalJson<VisLog>(client, human.tab, VISLOG_READ);
+    const pl = await evalJson<VisLog>(client, probe.handle, VISLOG_READ);
+    let reportColour: string | undefined;
+    if (shot !== undefined && existsSync(shot)) {
+      const buf = readFileSync(shot);
+      const h = hue(buf);
+      reportColour = h.name;
+      rmSync(shot, { force: true });
+      say(`report PNG: ${buf.length} bytes, ${h.line} (expected ${REP0_PROBE_COLOUR}); deleted: ${existsSync(shot) ? "no" : "yes"}`);
+    } else if (shot !== undefined) say("report PNG: the named file does not exist");
+    const pVis = firstChange(pl, "visible", t0 - REP0_SLACK_MS);
+    const pHid = pVis === undefined ? undefined : firstChange(pl, "hidden", pVis);
+    const hHid = firstChange(hl, "hidden", t0 - REP0_SLACK_MS);
+    const hVis = hHid === undefined ? undefined : firstChange(hl, "visible", hHid);
+    say(`report call: probe ${probe.handle} visible ${rel(pVis, t0)}, hidden again ${rel(pHid, t0)}; human ${human.tab} hidden ${rel(hHid, t0)}, visible again ${rel(hVis, t0)} → flash ${hHid !== undefined && hVis !== undefined ? `${Math.round(hVis - hHid)} ms` : "?"} (informational; call ${t1 - t0} ms)`);
+    const mid = (await listTabs(client)).filter((t) => t.tab === human.tab || t.tab === probe.handle);
+    const hNow = mid.find((t) => t.tab === human.tab);
+    const pNow = mid.find((t) => t.tab === probe.handle);
+    say(`after the report: human ${hNow?.active ? "active" : "not active"}${hNow?.current ? ", current" : ""}; probe ${pNow?.active ? "active" : "background"} (informational)`);
+
+    // (3) Positive control: an explicit default-mode screenshot of the same background probe tab.
+    await evalJson(client, human.tab, VISLOG_INSTALL);
+    await evalJson(client, probe.handle, VISLOG_INSTALL);
+    await sleep(1000);
+    let controlColour: string | undefined;
+    let controlError: string | undefined;
+    const c0 = Date.now();
+    try {
+      const buf = await probe.screenshot();
+      const h = hue(buf);
+      controlColour = h.name;
+      say(`control B (tab.screenshot() of the background probe ${probe.handle}): ${buf.length} bytes, ${h.line} (expected ${REP0_PROBE_COLOUR}; kept in memory only)`);
+    } catch (e) {
+      controlError = e instanceof BridgeError ? `${e.code}: ${e.message.split("\n")[0]}` : String(e);
+      say(`control B: tab.screenshot() → ${controlError}`);
+    }
+    const c1 = Date.now();
+    await sleep(2500);
+    const hl2 = await evalJson<VisLog>(client, human.tab, VISLOG_READ);
+    const pl2 = await evalJson<VisLog>(client, probe.handle, VISLOG_READ);
+    const cVis = firstChange(pl2, "visible", c0 - REP0_SLACK_MS);
+    const cHid = firstChange(hl2, "hidden", c0 - REP0_SLACK_MS);
+    const cHVis = cHid === undefined ? undefined : firstChange(hl2, "visible", cHid);
+    say(`control B call: ${c1 - c0} ms; probe visible ${rel(cVis, c0)}; human hidden ${rel(cHid, c0)}, visible again ${rel(cHVis, c0)} (informational)`);
+
+    const v = rep0Verdict({
+      report: { t0, t1, code: String(err.code), screenshotPath: shot, attachErrors, probeVis: pl, pngColour: reportColour },
+      control: { t0: c0, t1: c1, probeVis: pl2, pngColour: controlColour, error: controlError },
+      human: { pngColour: humanColour, error: humanError },
+    });
+    for (const w of v.why) say(`  - ${w}`);
+    if (v.result === "PASS") {
+      say(`REP-0 PASS — the report's capture switched to the failed tab (visible ${rel(pVis, t0)} inside the ${t1 - t0} ms call) and its PNG shows the probe's ${REP0_PROBE_COLOUR} bar; controls: the explicit screenshot switched and read ${REP0_PROBE_COLOUR}, the human tab read ${REP0_HUMAN_COLOUR}`);
+    } else if (v.result === "FAIL") {
+      say(`REP-0 FAIL — ${v.why.join("; ")}`);
+      process.exitCode = 1;
+    } else {
+      say(`REP-0 NOT DISCRIMINATING — ${v.why.join("; ")}`);
+      process.exitCode = 3;
+    }
+  } finally {
+    if (opened !== undefined) {
+      await opened.close().catch(() => {});
+      say(`closed ${opened.handle} (the probe tab)`);
+    }
+    rep0Cleanup(dir);
+  }
+}
+
 const COMMANDS: Record<string, (c: BridgeClient) => Promise<void>> = {
   "stale-check": staleCheck,
   sdk2,
@@ -456,6 +659,7 @@ const COMMANDS: Record<string, (c: BridgeClient) => Promise<void>> = {
   peek,
   "daemon-shutdown": daemonShutdown,
   "close-bb-tab": closeBbTab,
+  rep0,
 };
 
 async function main(): Promise<void> {
@@ -475,7 +679,10 @@ async function main(): Promise<void> {
   }
   who = `s6-${command}`;
   PRECHECKS[command]?.();
-  const client = await connect({ name: who });
+  // close-bb-tab acts on a Blackboard tab: failure reports off, as in the Blackboard recipes, so no
+  // report could ever save a screenshot or snapshot of it (added 2026-10-23 by S6 builder r2, #97's row
+  // audit; no printed line changes).
+  const client = await connect({ name: who, ...(command === "close-bb-tab" ? { failureReports: false } : {}) });
   try {
     await fn(client);
   } finally {

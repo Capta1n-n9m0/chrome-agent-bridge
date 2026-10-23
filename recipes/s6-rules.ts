@@ -298,6 +298,109 @@ export function sm1LogVerdict(lines: string[], since: string): Verdict {
   return verdict(fails);
 }
 
+// ── REP-0 (added 2026-10-23, S6 resume, before its run — decisions.md · 2026-10-23 · A probe of the ──
+// failure-report screenshot runs before any row that could attach a non-fixture tab (#97)).
+// Method: Run 9's — page-side `visibilitychange` timestamps (t5-lib.ts VISLOG_INSTALL, epoch ms from
+// `performance.timeOrigin + performance.now()`) and the hue rule on the bar (t5-png.ts `describeBar`).
+// The probe tab carries a magenta bar, the human fixture tab a blue one. *2026-10-23 (S6 fixer 2, verifier
+// r2 MAJOR-1, before any REP-0 run): the human's colour was cyan (t5.ts screen1's); default captures lift
+// cyan/lime's red channel past the hue rule (Run 9 lime → #8fff3d; CDP cyan → #97fdfd), while blue read
+// blue (#3300f8) and magenta read magenta (#dd00fa) through Run 9's default captures (T5-run9-record.md:72,86).*
+
+export const REP0_LOCATOR = { role: "button", name: "No such button" } as const;
+export const REP0_PROBE_COLOUR = "magenta";
+export const REP0_HUMAN_COLOUR = "blue";
+/**
+ * Clock slack between Node's `Date.now()` around a call and the page's epoch timestamps, on each side
+ * of the call window. 50 ms is t5.ts screen1's `t0 - 50` (Run 8/9), chosen before REP-0 ran.
+ */
+export const REP0_SLACK_MS = 50;
+
+export type VisLog = Array<[state: string, epochMs: number, kind: string]>;
+
+/** The first `visible` *change* (not the install's `start` entry) inside [t0 − slack, t1 + slack]. */
+export function visibleIn(log: VisLog, t0: number, t1: number, slack = REP0_SLACK_MS): number | undefined {
+  return log.find((e) => e[2] === "change" && e[0] === "visible" && e[1] >= t0 - slack && e[1] <= t1 + slack)?.[1];
+}
+
+/** The state the log was installed in (its `start` entry), or undefined. */
+function startState(log: VisLog): string | undefined {
+  return log.find((e) => e[2] === "start")?.[0];
+}
+
+export interface Rep0Capture {
+  /** Epoch ms just before and just after the call. */
+  t0: number;
+  t1: number;
+  /** The probe tab's visibility log, installed just before the call. */
+  probeVis: VisLog;
+  /** `describeBar`'s name for the image ("magenta", "blue", "mixed", "other", "unreadable"); undefined = no image. */
+  pngColour: string | undefined;
+}
+
+export interface Rep0Input {
+  /** The attach-set failure on the probe tab, with failure reports on. */
+  report: Rep0Capture & { code: string; screenshotPath?: string; attachErrors: string[] };
+  /** The positive control: an explicit default-mode screenshot of the same background probe tab. */
+  control: Rep0Capture & { error?: string };
+  /** The analysis-side control: a capture of the human fixture tab (current, on screen). */
+  human: { pngColour: string | undefined; error?: string };
+}
+
+export interface Rep0Result {
+  result: "PASS" | "FAIL" | "NOT DISCRIMINATING";
+  why: string[];
+}
+
+const at = (t: number, t0: number): string => `${t - t0 >= 0 ? "+" : ""}${Math.round(t - t0)} ms`;
+
+/**
+ * REP-0's pre-registered rule (#97). PASS = the probe tab went `visible` inside the report call's window
+ * AND the report PNG shows the probe tab's (magenta) bar. FAIL = no such `visible` (the capture did not
+ * switch), the PNG shows another colour (blue = the human's tab), no screenshot (no path, a `screenshot:`
+ * attach error, an unread PNG), or a trigger other than LOCATOR_NOT_FOUND. NOT DISCRIMINATING = a
+ * control failed (the explicit screenshot did not switch to the probe or did not read magenta; the human
+ * tab did not read blue) or the probe was not hidden before the call; it outranks FAIL, and the probe's
+ * own reasons are then listed after "also:".
+ */
+export function rep0Verdict(o: Rep0Input): Rep0Result {
+  const notDisc: string[] = [];
+  const fails: string[] = [];
+  // Controls and preconditions.
+  const r = o.report;
+  if (startState(r.probeVis) !== "hidden") notDisc.push(`the probe tab was not hidden before the report call (its log started ${startState(r.probeVis) ?? "empty"})`);
+  const c = o.control;
+  if (c.error !== undefined) notDisc.push(`the control screenshot failed: ${c.error}`);
+  else {
+    if (startState(c.probeVis) !== "hidden") notDisc.push(`the probe tab was not hidden before the control screenshot (its log started ${startState(c.probeVis) ?? "empty"})`);
+    else if (visibleIn(c.probeVis, c.t0, c.t1) === undefined) notDisc.push("the control screenshot did not make the probe tab visible inside its call — the method does not see a switch");
+    if (c.pngColour !== REP0_PROBE_COLOUR) notDisc.push(`the control PNG reads ${c.pngColour ?? "no image"}, not ${REP0_PROBE_COLOUR}`);
+  }
+  if (o.human.error !== undefined) notDisc.push(`the human-tab capture failed: ${o.human.error}`);
+  else if (o.human.pngColour !== REP0_HUMAN_COLOUR) {
+    notDisc.push(`the human tab reads ${o.human.pngColour ?? "no image"}, not ${REP0_HUMAN_COLOUR} — the hue rule does not tell the two tabs apart`);
+  }
+  // The probe.
+  if (r.code !== "LOCATOR_NOT_FOUND") fails.push(`the trigger answered ${r.code}, not LOCATOR_NOT_FOUND`);
+  const shotErrors = r.attachErrors.filter((e) => /^screenshot:/.test(e));
+  if (shotErrors.length > 0) fails.push(`attachErrors: ${shotErrors.join(" | ")}`);
+  if (r.screenshotPath === undefined) fails.push("no screenshot attached (no screenshotPath)");
+  else if (r.pngColour === undefined) fails.push("the report PNG was not read");
+  else if (r.pngColour !== REP0_PROBE_COLOUR) {
+    const whose = r.pngColour === REP0_HUMAN_COLOUR ? " — the human's tab, not the failed one" : "";
+    fails.push(`the report PNG shows ${r.pngColour}, not ${REP0_PROBE_COLOUR} (the probe tab's bar)${whose}`);
+  }
+  if (visibleIn(r.probeVis, r.t0, r.t1) === undefined) {
+    const any = r.probeVis.find((e) => e[2] === "change" && e[0] === "visible");
+    const outside = any ? ` (its first visible change was at ${at(any[1], r.t0)}, outside [0, ${Math.round(r.t1 - r.t0)}] ms ± ${REP0_SLACK_MS} ms)` : "";
+    fails.push(`the probe tab never went visible during the report call — the capture did not switch${outside}`);
+  }
+  if (notDisc.length > 0) {
+    return { result: "NOT DISCRIMINATING", why: [...notDisc, ...fails.map((f) => `also: ${f}`)] };
+  }
+  return { result: fails.length === 0 ? "PASS" : "FAIL", why: fails };
+}
+
 /** An event as one line; non-fixture URLs and titles withheld (B2; the repo is public). */
 export function describeEvent(e: SeenEvent): string {
   const p: Record<string, unknown> = {};
