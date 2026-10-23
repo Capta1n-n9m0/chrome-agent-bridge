@@ -49,12 +49,50 @@ Step 8 (2026-10-23 on), for the user at the gate:
 12. "Locator rules, the MCP locator schema and the exported `BridgeError`" (#83)
 13. "Pre-registered checks reworded where they could not hold or could not fail" (#84)
 14. "S1's locator details" (#87), items 2–4
+15. "The SDK `Tab` surface details and the cursor rule as built" (#90), items 1, 2, 7
+16. "S3.5's outcome and the Step 6 revisit items" (#91), #24 and #27/#28 as final surface
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-23 · S3.5's outcome and the Step 6 revisit items (#91)
+**Decided:** (1) S3.5 read pre-written outcome (1) of #85: `spawnDaemon` inherits no pipe (node parent,
+`sdk/test/spawn-inherit.test.ts`, EOF 3–6 ms before the child's exit with the stand-in alive in 6 runs;
+the `stdio:"inherit"` control held the pipe every run; npx parent one ad-hoc trial); `spawn.ts` is
+unchanged; S7 adds a dated note to the MUX-6 gotcha: the MUX-6 cause remains unmeasured. (2) The Step 6
+decisions naming Step 8 as their revisit point are each kept as they are: #21 (`NOT_CONNECTED`), #24
+(`welcome`, `extensionConnected`, `on("reconnected")` — the final `BridgeClient` surface), #22 (a 4002
+reconnect never hands over), #15/#26 (no reconnect on other close codes), #27/#28
+(`requireExtension`, `connectOptions()`), #29 (no stop command), #13 (`VERSION` after 2 s; revisit once
+every machine runs Step 8).
+**Why:** S3 report §5: Step 8's surface adds none of the things those triggers name; keeping them
+changes no tool, test or doc.
+**Instead of:** an auth code, a public failure event, reconnecting on other codes (forbidden), a stop
+command.
+**By:** Claude (S3.5: pre-stated rule; (2) confirms the SDK's surface — #24 and #27/#28 listed under
+Open decisions)
+
+### 2026-10-23 · The SDK `Tab` surface details and the cursor rule as built (#90)
+**Decided:** (1) `BridgeClient.close()` keeps closing the client; the client mirrors every `Tab` method
+but `close` (the cursor tab closes with `client.tab().close()`). (2) `tabs()` returns `{handle, title,
+url, owner?, current}`, `current` from `listTabs` only (#43). (3) `scroll` takes `"up" | "down"` only;
+anything else is a local `BAD_PARAMS` (the content script scrolls down for any other value and answers
+ok). (4) `evaluate` returns the value; `evaluateRef` throws `BAD_PARAMS` with no ref. (5) `waitFor`'s
+call timeout is the wait's own bound + 5 s (locator `(timeoutMs ?? 10000) + 5000`, seconds
+`s·1000 + 5000`, text/networkIdle 15 000); `evaluate`'s is the page timeout + 5 s. (6) Local validation
+throws the shared `BridgeError(BAD_PARAMS)` with no call. (7) The cursor changes only on
+`newTab`/`claim` and a 4002 reconnect (0.4 literally); `release()`, `close()` and `tabGone` leave it,
+and the next call gets the daemon's answer (`TAB_GONE`, or the unheld-tab refusal); the cursor and the
+generation reset synchronously at the top of the 4002 branch, before pending calls are rejected.
+**Why:** S3 report §5; (1) every existing caller uses `client.close()`; (7) the cursor rule is
+contract-level and 0.4 names only those three events, so the literal rule is the pre-stated one.
+**Instead of:** mirroring `close`; `active` in `tabs()`; silent horizontal scroll; clearing the cursor
+on `release`/`close`/`tabGone` (friendlier, but a change to the cursor rule — the user's choice).
+**Revisit if:** S6 shows a script acting on an unheld tab after `release()`.
+**By:** Claude (items 1, 2 and 7 — SDK surface and cursor rule — listed under Open decisions)
 
 ### 2026-10-23 · The background-input policy (#89)
 *Updated 2026-10-23: the FE live record is committed (829368e) after the user approved the commit the classifier had denied.*

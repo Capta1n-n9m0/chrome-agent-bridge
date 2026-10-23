@@ -11,7 +11,7 @@ decisions.md · 2026-10-23: #71 FE stage (amended #78); #72 S2b (amended #81, #8
 required; #74 session marker (amended #80); #75 S3.4 re-exports; #76 `NO_CURSOR`; #78 FE rows and
 table; #79 handles never reused across daemons; #80 marker mechanism; #81 `id` stays, untargeted
 network = active, unlisted untargeted → `BAD_PARAMS`; #82 `__bridgeData`; #83 `{text}` rule, MCP
-`locator` object, exported `BridgeError`; #84 reworded checks; #87 S1 locator details (items 2–4).
+`locator` object, exported `BridgeError`; #84 reworded checks; #87 S1 locator details (items 2–4); #90 `Tab` surface and cursor rule (1, 2, 7); #91 final `BridgeClient` surface (#24, #27/#28).
 
 ## Stage 0 — spec audit · 2026-10-23 · verifier: PASS-with-notes · commit 7fe62f4
 
@@ -146,3 +146,37 @@ Contracts binding forward, at dcb72db:
 | Build | 1.75 h | ~0.9 h agent time (+ verifier/fix) | FE.md |
 | Live | 1.5 h | ~1.2 h agent time | task duration |
 | Tests | — | 1080 / 64 → 1135 / 66 (+55) | verifier, clean worktree at 682f73d |
+
+## S3 — SDK `Tab`, cursor, locators, policy · 2026-10-23 · verifier: PASS-with-notes · commit db242b6
+
+### Contracts (binding forward)
+- `sdk/src/tab.ts` `class Tab {readonly handle}`: every method stale-guarded by the client's
+  connection generation (`TAB_UNKNOWN`, no call, #79); wire calls as in the table above; trusted
+  click/type/pressKey send `focusTab` first under `TRUSTED_INPUT_POLICY === "focusFirst"`; never
+  `focusEmulation`.
+- `sdk/src/client.ts` `BridgeClient`: `newTab`, `claim`, `tab()` (`NO_CURSOR "No tab cursor: call
+  newTab() or claim() first"`), `tabs()` → `TabInfo {handle, title, url, owner?, current}`, 20 mirrored
+  methods (all Tab methods but `close`); generation and cursor reset synchronously at the top of the
+  4002 branch of `handleClose`; nothing else on the client changed.
+- `sdk/src/policy.ts`: `TrustedInputPolicy = "none" | "focusFirst"`, `TRUSTED_INPUT_POLICY =
+  "focusFirst"` (#89).
+- `sdk/src/locator.ts`: `Target = string | Locator`; `normalizeTarget` → `{ref}` | `{locator}`, local
+  `BAD_PARAMS` ("use {text} or add role" for `{name}` alone).
+- `sdk/src/index.ts`: values exactly `Tab, connect, BridgeClient, BridgeError, ErrorCodes,
+  downloadToFile, formatSnapshot, formatNetwork`; `BridgeError` the shared class; `./format` subpath
+  kept; externals `@bridge/shared`, `node:*`, `ws`.
+- S3.5: `sdk/test/spawn-inherit.test.ts` pins that `spawnDaemon` inherits no pipe, with its inheriting
+  control.
+
+### Decisions taken
+- #90 (`Tab` surface, cursor rule as built), #91 (S3.5 outcome (1); Step 6 revisit items kept).
+
+### Deviations from the phase doc
+- See S3.md §4.
+
+### Estimates vs actuals
+| Item | Estimate | Actual | Source |
+|---|---|---|---|
+| Time | 3.5 h | ≈ 0.6 h | ledger |
+| Tests | ≥ 1135 + new | 1135/66 → 1229/70 (+94) | verifier, clean worktree |
+| Fix rounds | ≤ 2 | 1 | S3-verifier.md |

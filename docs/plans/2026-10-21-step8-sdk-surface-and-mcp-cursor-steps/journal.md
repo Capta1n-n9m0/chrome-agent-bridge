@@ -51,3 +51,10 @@
   retried, not worked around. Waits for the user (integrity floor). Files stay uncommitted in the
   main tree; later stages commit by explicit pathspec and must not include them.
 - Next: S2 ∥ S3 (S3 sets policy.ts = focusFirst from #89).
+
+## 2026-10-23 — FE live committed (829368e, user's green light); S3 closed (db242b6)
+
+- The user approved the FE live commit the classifier had denied; committed 829368e; as-built FE.
+- S3: PASS-with-notes, +94 tests (1135/66 → 1229/70 with S3 alone); policy.ts = focusFirst (#89);
+  #90 (Tab surface, cursor rule — open), #91 (S3.5 outcome (1), Step 6 revisit items kept).
+- S4 dispatched (sdk/, after S3), parallel with S2 (still running).
