@@ -148,3 +148,9 @@
   MCP leg not measured (export 418 406 chars > the 240 000 recipe cap). #102 raises the cap to 600 000
   before a re-run; S6 agent resumed for the MCP leg and S6.3.
 - Data outside the repo for the user: exports\pp1-2026-10-23.json (student data), %TEMP%\bridge-e2e\s6-*.
+
+## 2026-10-23 — SDK-7 MCP leg ran (7c16a00, bff51ec): S6.3 FAIL on a changing gradebook; #103
+
+- MCP transport whole (53/53 chunks, hash = its in-page hash); the two separate exports differed (3 of
+  77 columns; SDK reads 20 min apart differed too). #103 re-registers S6.3 on one held export; re-run
+  dispatched.

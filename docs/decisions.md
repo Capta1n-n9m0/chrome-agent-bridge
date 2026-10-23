@@ -63,6 +63,20 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-23 · S6.3 compares one in-page export read through both paths (#103)
+**Decided:** S6.3 is re-registered before a re-run: the page builds the export once and holds it in
+page memory; the SDK leg and the MCP leg then each read that same held export (SDK: one read; MCP: the
+53-chunk transport of #102), and the two files are compared by hash. Read-only as before; the held copy
+is dropped from the page after both reads. Run 12's S6.3 FAIL (two separate exports minutes apart, 3 of
+77 column entries differing) stays recorded.
+**Why:** S6 addendum 2 (7c16a00, bff51ec): both transports were whole (MCP file hash = its own in-page
+hash, rebuilt byte-identical by the verifier), but two separate in-page exports differed, and two SDK
+reads 20 minutes apart differed too — the live gradebook changed (inference, recorded as one). The
+phase doc's S6 text asks for "the same data pulled through the MCP `browser_evaluate` path"; one held
+export is that same data, so the check tests what it was written for.
+**Instead of:** re-reading the failed compare as a pass; a frozen or smaller course.
+**By:** Claude
+
 ### 2026-10-23 · SDK-7's MCP leg is re-registered with a cap that fits pp1's export (#102)
 **Decided:** before SDK-7's MCP leg runs again, its transport cap (240 000 characters, registered in
 23b878f by S6's predecessor proposal 4) is raised to 600 000 characters with the same 8 000-character
