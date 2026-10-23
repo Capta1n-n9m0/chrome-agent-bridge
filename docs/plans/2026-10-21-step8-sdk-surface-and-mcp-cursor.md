@@ -106,6 +106,12 @@ XPath locators; drag; file upload (D3, still separate); a recipes runner/schedul
 node→ref) → S3 (sdk `Tab`, cursor, locator normalisation, TDD) → S4 (sdk failure enrichment, TDD) →
 S5 (mcp cursor + tools) → S6 (recipes, E2E) → S7 (docs). S1 and S3 are independent. S2 needs S1.
 S4 needs S3. S5 needs S3+S4. S6 needs everything.
+*Added 2026-10-23 (Stage 0): two stages join the order, both from kickoff §7: **FE** (focus emulation
+for trusted input, measured live) and **S2b** (the Step 6 compatibility removals, `code` required, the
+session marker). Order: Stage 0 → S0 → (S1 ∥ FE build) → FE live part, alone → S2 → (S2b ∥ S3) → S4 →
+S5 → S6 → S7 (decisions.md · 2026-10-23 · Stage FE measures focus emulation before `policy.ts` is set
+(#71); · S2's daemon half becomes stage S2b (#72)). The Stage 0 findings are in
+`…-steps/stage0-audit.md` (F1–F35); none is resolved until the session agent records it.*
 
 ---
 
@@ -149,6 +155,15 @@ in `content/guard.ts` turns that into a returned `{__bridgeError:"CODE:message"}
 splits it (decisions.md · 2026-10-22 · Content-script failures are returned, not thrown, to carry
 `CODE:message` (#38)). `locate` must be a guarded `window.__agentBridge` method — see Step 7 as-built
 § Stage T1, § Stage T3.*
+*Added 2026-10-23 (Stage 0): two open points, for the session agent before S1. (1) The marker carries
+`CODE:message` only: `guard.ts:26-31` `toMarker` drops `err.data`, and `inject.ts:64-67` builds the
+error without data, so `LOCATOR_NOT_FOUND {candidates}` and `LOCATOR_AMBIGUOUS {matches}` cannot cross
+it today (executed; stage0-audit.md F6, an escalation because the marker is a `CLAUDE.md` invariant).
+(2) `{text}` has no snapshot rule to reuse: the snapshot lists no plain text, and SDK-4's target is a
+role-less `<div id="async-area">` (`test-fixtures/e2e-playground.html:121`). The rule for `{text}`,
+`nth` in walk order, the 120-character name cap and the 800-element cap are unstated (F13). Also:
+`buildSnapshot` stays exported from `snapshot.ts`, since `sdk/test/format-baseline.test.ts:9` and
+`sdk/test/format-snapshot.test.ts:8` import it.*
 
 ### 0.2 Actions take `ref | locator`
 
@@ -223,6 +238,26 @@ other than 4002) — see Step 6 as-built § Stage D4.*
 
 *All three: see Step 7 as-built § T5, § T5b.*
 
+*Added 2026-10-23 (Stage 0): the amended note's "an explicit stale handle returns `TAB_UNKNOWN`" does
+not hold once the new daemon has minted that number again: handles start at `T1` in every daemon
+instance (`daemon/src/handles.ts:44`), and a stale `T3` resolved to another, unheld tab with the lease
+check answering `{"ok":true}` (executed on the pure modules; stage0-audit.md F2, CRITICAL). Proposed: S3
+voids a `Tab` from before a 4002 reconnect locally with `TAB_UNKNOWN`; a daemon epoch in handles is the
+wire alternative, for the user. Separately, 0.5's `BridgeError` subclass must not take the exported name
+from the shared class, or every `instanceof BridgeError` on an unwrapped error breaks (F14).*
+
+*Corrected 2026-10-23 (Stage 0, fixer round 1): was "S3 voids a `Tab` … locally; a daemon epoch in
+handles is the wire alternative", because that guard covers only an SDK `Tab` object (stage0-verifier.md
+V1). Claude passes `tab` through the MCP as a plain string (`mcp/src/tools/registry.ts:182-185`), and raw
+`call()` scripts and Step 7 bundles pass it too. Run end to end on two real daemons, a stale `click
+{tab:"T3"}` reached the extension as `{"ref":"e1","tabId":1}`, the human's tab. Proposed now
+(stage0-audit.md F2, an Open decision for the user): (a) a new daemon never re-mints a handle number an
+earlier daemon used (a high-water mark under `~/.chrome-agent-bridge/`, start-time fallback, `T<n>`
+unchanged, no wire change), so a stale handle answers `TAB_UNKNOWN` for every client — home S2b; (b) the
+S3 `Tab` guard plus an MCP-local guard in S5, which leave raw `call()`, Step 7 bundles and a restarted MCP
+exposed; (c) both. Recommended: (a) + the S3 `Tab` guard. Conservative rule until the user rules: S2b
+builds (a) behind an injectable base, and S3 builds its guard.*
+
 ### 0.5 Failure reports (`sdk/src/error.ts`)
 
 Every SDK call wraps the wire `BridgeError`. For codes where a page state helps —
@@ -255,6 +290,11 @@ of `NOT_CONNECTED` covers them — see Step 6 as-built § Stage D4, § Stage D5b
 - *`formatSnapshot` is imported from `@bridge/sdk/format` (#46).*
 
 *See Step 7 as-built § T5, § T5b, § "RELOAD-AUTO, Run 9, BG-FLAGS".*
+
+*Added 2026-10-23 (Stage 0): unstated so far (stage0-audit.md F25): a failing `screenshot` (its
+`TIMEOUT` is in the attach set) would attach a second switch-mode screenshot; another actor's lock can
+turn the attach into `LOCK_TIMEOUT` in `attachErrors`; the 60-line window has no anchor for the five
+codes without candidates; and whether raw `call()`, which the MCP uses, is enriched.*
 
 ### 0.6 MCP cursor: does not follow the human
 
@@ -293,6 +333,11 @@ of `NOT_CONNECTED` covers them — see Step 6 as-built § Stage D4, § Stage D5b
   → claim + cursor, no activation; `browser_focus_tab` brings the cursor on screen.
 - Actions take `ref` **or** the locator fields (`role`, `name`, `text`, `css`) so Claude can act
   without a fresh snapshot when it knows the name — fewer tokens per step. Tool count 22 → 23.
+  *Added 2026-10-23 (Stage 0): two schema points for the session agent before S5. The field `text`
+  already means the value to type on `browser_type` (`mcp/src/tools/registry.ts:195`) and the body text
+  on `browser_wait_for` (`:342`), and `ref` is required today (stage0-audit.md F12; proposed: a nested
+  `locator` object, `ref` optional). And with no cursor yet, the `browser_new_tab` rule above opens the
+  session's first tab in the background, a change rows TAB-1…4 and MUX-1 observe (F26).*
 
 ### 0.7 Recipes
 
@@ -316,11 +361,24 @@ list. **Parallel with** follows "Order of work". S1 and S3 may run concurrently:
 
 - [ ] `shared`: `Locator`, `LocateResult`, `WaitForParams` (discriminated), `EvalEnvelope.ref?`,
       `SnapshotElement` reuse. Guards only where something crosses the wire untyped.
+- [ ] *Added 2026-10-23 (Stage 0), from kickoff §7 S0:* `NO_CURSOR` in `shared/src/codes.ts` (23 codes;
+      raised by the SDK only; spec §10 gets a dated note in or before this commit — decisions.md ·
+      2026-10-23 · `NO_CURSOR` enters `shared/src/codes.ts` as the 23rd code (#76)); `focusEmulation?:
+      boolean` on the trusted-input params (`click`/`type`/`pressKey`); the extension hello's optional
+      `session?: string` (decisions.md · 2026-10-23 · The extension hello carries an optional session
+      marker (#74)); `asRef?` on the evaluate params. Exit check S0.4 below.
+      *Stage 0 notes:* `codes.ts` types `ErrorCode` as the union of the daemon and extension lists and
+      its header says "exactly these 22", so `NO_CURSOR` needs a third list (`SDK_ERROR_CODES`) and a
+      new header (stage0-audit.md F27). `WaitForParams` as written in 0.4 makes `{}` a valid `{text?}`
+      arm and omits 0.2's `timeoutMs` on the locator arm (F28, proposed `{text: string}`, `{locator,
+      state?, timeoutMs?}`, pending the session agent).
 
 **Lane:** `shared/src/`, `shared/test/`. **Parallel with:** sequential, first. **Verifier focus:**
 `LOCATOR_NOT_FOUND` and `LOCATOR_AMBIGUOUS` are present in `shared/src/codes.ts` from Step 6 (the plan
 says "verify"); the `Locator` union matches 0.1 exactly (three variants, `nth` on all, `exact` on two);
 the `WaitForParams` discriminated union has the four arms of 0.4's `waitFor`.
+*Added 2026-10-23 (Stage 0), from kickoff §7:* the daemon and extension bundles are byte-identical
+after S0 (types only, so no build-id handover).
 **Needs the user's keyboard:** no.
 
 ### Stage S1 — Content-script `locate` (TDD, jsdom)
@@ -343,6 +401,68 @@ filter stays gated on `hasLayout(doc)` (`CLAUDE.md`); the content bundle is stil
 no `import`/`export` (`grep -c "^import\|^export" extension/dist/content.js` → 0 after build).
 **Needs the user's keyboard:** no (invisible until reload; the live check is S6).
 
+### Stage FE — Focus emulation for trusted input, measured
+
+*Added 2026-10-23 (Stage 0): this stage is copied from kickoff §7 (decisions.md · 2026-10-23 · Stage FE
+measures focus emulation before `policy.ts` is set (#71)); it resolves G8-1. The text below is the
+kickoff's, unchanged; Stage 0's flags follow it. Its exit checks FE.1–FE.6 are under "Exit checks".*
+
+(lane: `extension/src/debugger.ts`, the trusted branch of `extension/src/handlers/actions.ts`, a pure
+helper module under `extension/src/` if needed, `extension/test/`, `recipes/` for the measurement
+script, `docs/e2e-test-plan.md` for a new §4.17):
+- [ ] A `focusEmulation: true` param on `click`/`type`/`pressKey` that take the trusted path (explicit
+      `trusted:true`, or the escalation after a content-action failure): inside the same `withDebugger`
+      session, send `Emulation.setFocusEmulationEnabled {enabled: true}` before the `Input.*` commands
+      and `{enabled: false}` after them, in a `finally`. No `chrome.windows.update`, no `tabs.update`,
+      no `focusTab` inside it. The result carries `focusEmulation: "on"`, so a stale extension (which
+      ignores the unknown param) is detectable. Without the param, today's command sequence is unchanged.
+- [ ] Rows (pre-registered, committed before the build is loaded): **FE-0** the stale check
+      (`focusEmulation: "on"` in a result); **FE-1** BG-1 with `focusEmulation:true`; **FE-2** BG-2 with
+      it; **FE-3** a trusted `pressKey` into the background tab's trusted-only input with it (the
+      fixture's keydown reporter, `test-fixtures/e2e-playground.html:168`, PASS = `status: TRUSTED key = <key>`); **FE-4** the
+      human's side during FE-1…3 — the human's tab stays `current` and never `hidden`, the foreground
+      window is unchanged, the target stays `hidden` (window capture and page timestamps as Run 8/9);
+      **FE-5** BG-1/BG-2 without the option on the same build (control: expected FAIL as in Runs 8 and 10,
+      which makes FE-1/FE-2 discriminating). PASS rules are BG-1's and BG-2's (§4.14), copied, with the
+      option added; three trials each.
+- [ ] The live part: commit; main-tree `npm run build` of committed code; `recipes/reload-extension.ps1`
+      (exit 0, else stop and ask me); FE-0 first; then the rows; `FE-run-record.md` with every command
+      and its text; daemon log attached as `.txt`; a fresh verifier re-reads the record against the
+      pre-written rules.
+- **Outcome table** (written now; the session agent records the matching decision, "The background-input
+  policy", citing the rows, and S3 sets `sdk/src/policy.ts` from it):
+  - **(A) FE-1, FE-2, FE-3 PASS in all trials and FE-4 PASS** → policy `"focusEmulation"`: the SDK's
+    trusted actions send `focusEmulation: true`; no `focus()`, no flash; the MCP's trusted tools do the
+    same (S5).
+  - **(B) FE-1 and FE-2 FAIL, or FE-4 FAIL** (the human saw something) → policy `"focusFirst"`: the
+    plan's fallback (0.4; #66 "Revisit if") — `Tab.click/type/pressKey({trusted:true})` call `focus()`
+    first, and the docs say the tab comes to the front and stays there.
+  - **(C) mixed** (one input kind passes all trials, another fails; FE-4 PASS) → per kind: the passing
+    kinds use emulation, the failing kinds `focus()` first; recorded per kind.
+  - A trial that passes once and fails once counts as FAIL for that kind (no best-of-three).
+  - FE-5 passing (the control no longer fails) voids the comparison: record it, read the policy as (B),
+    and list it for me.
+
+*Stage 0 flags these clauses: see stage0-audit.md F1, F3 and F4; the session agent rules before
+FE-0…FE-5 are committed.*
+- *FE-4's "the target stays `hidden`", and the "target visibilityState hidden" that FE-1/FE-2 copy from
+  BG-1/BG-2 (`docs/e2e-test-plan.md:679-680`): Chromium's `EmulationHandler::SetFocusEmulationEnabled`
+  raises a visible capturer (`IncrementCapturerCount(…, /*stay_hidden=*/false, …)`), and
+  `CalculatePageVisibilityState` returns `kVisible` while one exists. So the target's page reads
+  `visible` while the option is on, and the clause fails for a reason the human never sees (F1,
+  CRITICAL; Chromium `main`, unconfirmed for Chrome 156).*
+- *The outcome table is not total: FE-1/FE-2 FAIL with FE-3 PASS matches both (B) and (C); FE-0 FAIL,
+  "FE-5 passing" across trials, trial independence and the debugging banner (shown on every trusted
+  call) are unstated; FE-4 has no positive control (F3).*
+- *Trusted `type` focuses the field through the content script before `withDebugger`
+  (`handlers/actions.ts:67-71`), so the focus step runs without emulation; FE-3 (`pressKey`, which has no
+  focus step) must name how `#trusted-input` is focused first (F4).*
+
+**Parallel with:** the build part with S1 (file-disjoint); the live part alone, after the build part is
+committed and no other stage has uncommitted code in the main tree. **Verifier focus** (kickoff §7):
+the option's CDP sequence; no window focus; the outcome read off the table. **Needs the user's
+keyboard:** only if `recipes/reload-extension.ps1` exits non-zero.
+
 ### Stage S2 — Extension handlers: `ref | locator`, `waitFor({locator})`, node→ref
 
 - [ ] `handlers/actions.ts`: `resolveTarget(tabId, p) → ref` (locator → `locate`); every action uses it.
@@ -352,6 +472,23 @@ no `import`/`export` (`grep -c "^import\|^export" extension/dist/content.js` →
       `tabId` is missing. Also remove the `selectTab` alias of `focusTab` from `sw.ts` (*added
       2026-10-21*; decisions.md · 2026-10-21 · selectTab stays as an alias of focusTab for one release).
 - [ ] `router.test.ts` / `actions.test.ts` cover the resolution path with a fake `locate`.
+- [ ] *Added 2026-10-23 (Stage 0), from kickoff §7 S2:* a `locate` extension method — router entry in
+      `extension/src/sw.ts`, and a row in `daemon/src/methods.ts` as a tab method (lease-checked) — in
+      the **same commit** (decisions.md · 2026-10-22 · The daemon's method classes are one table, and the
+      download methods are free (#39)). Exit check S2.6.
+
+*Corrected 2026-10-23 (Stage 0): was the `tabs.ts` checkbox above (delete the `activeTab()` fallback,
+remove the `selectTab` alias) as S2 work; now both move to stage S2b with the daemon's half, because
+the removals are one compatibility contract across three packages (decisions.md · 2026-10-23 · S2's
+daemon half becomes stage S2b (#72); stage0-audit.md § 3). S2 keeps the handlers, `waitFor`, `asRef`
+and `locate`. Stage 0 adds, for the session agent: an unlisted method without `tab` is forwarded free
+with no `tabId` (`daemon/src/methods.ts:54-55`), so until S2b `locate` without `tab` would land on the
+extension's human's-tab fallback (executed, stage0-audit.md F8); `daemon/test/methods.test.ts:8` asserts
+the exact sorted `TAB_METHODS` list, so S2 needs that one test file granted (proposed, mechanical); and
+the `asRef` details of F21 (the objectId is released inside the serializer callback,
+`extension/src/debugger.ts:186`; `kind:"node"` also covers `window` and text nodes; `refOfMarked` must
+search open shadow roots and same-origin frames) and the locator-failure rules of F23 (no escalation to
+trusted input on `LOCATOR_*`; the poll runs in the service worker).*
 
 *Corrected 2026-10-23 (Step 7 propagator): was an extension-only removal. As built the fallback in
 `targetTab` is `activeTab()`, a module-private wrapper of `humansTab()` (`extension/src/tabs.ts:22`,
@@ -377,6 +514,92 @@ attribute is removed after the ref is minted (test on the pure part); `waitFor {
 "hidden"}` resolves on `LOCATOR_NOT_FOUND` and on nothing else; `toSerializableArgs` still turns an
 undefined `locator` into null (`CLAUDE.md` gotcha). **Needs the user's keyboard:** no for the unit
 work; the extension must be reloaded before S6 (G8-2).
+*Corrected 2026-10-23 (Stage 0): was a lane without `daemon/`, and the verifier-focus grep `grep -n
+"activeTab" extension/src`; now the lane also grants `extension/src/sw.ts` and `daemon/src/methods.ts`
+for the `locate` method (kickoff §7), and the `activeTab` grep moves to S2b's close as `grep -rn`,
+because without `-r` grep on a directory prints `grep: extension/src: Is a directory`, exits 2 and can
+never find anything (executed; stage0-audit.md F16). Also from kickoff §7: `markScript` closure-free,
+the attribute removed, a unique mark; `hidden` resolves on `LOCATOR_NOT_FOUND` only.
+`toSerializableArgs` maps only top-level `undefined` (executed: `{locator: undefined}` stays
+`undefined`), so pass `locator` as its own argument (F34).*
+
+### Stage S2b — The Step 6 compatibility path, `code` required, the session marker, the minimized-window message
+
+*Added 2026-10-23 (Stage 0): this stage is copied from kickoff §7 (decisions.md · 2026-10-23 · S2's
+daemon half becomes stage S2b (#72); · S2b makes `code` required on error frames (#73); · The extension
+hello carries an optional session marker (#74)). The checkboxes below are the kickoff's, unchanged;
+Stage 0's notes follow them. Its exit checks S2b.1–S2b.8 are under "Exit checks"; S2.2 is checked here.*
+
+**Lane** (kickoff §7 item 1): `daemon/src/` (`intercept.ts`, `methods.ts`, `handshake.ts`, `route.ts`
+as needed), `daemon/test/`, and in the extension `tabs.ts`, `sw.ts`, `network-scope.ts`, `offscreen.ts`
+(the hello), `errors.ts`, `extension/test/`; `shared/src/error.ts` for `code`; plus one grant per
+consumer Stage 0 finds of a removed form.
+*Stage 0 (stage0-audit.md F9, F7), proposed grants pending the session agent:* the hello is built in
+`extension/src/client.ts:8-9` (sent `:50`), not in `offscreen.ts`; `extension/src/handlers/tabs.ts:70`
+(`export const selectTab = focusTab;`, which S2b.2's grep hits); `extension/src/handlers/network.ts:12`
+(`targetTab({}, method)`, a human's-tab fallback the `activeTab` grep cannot see). If the Chrome `id`
+beside `tab` is removed (F7, option (b)): `recipes/hello.ts`, `recipes/t5.ts`, `recipes/t5-lib.ts`,
+`mcp/src/tools/registry.ts` (the three `?? id` fallbacks at `:140`, `:284`, `:321`) and dated notes on
+MUX-3/5/6/8/10 and LEASE-5/6.
+
+- [ ] Daemon: remove the legacy path (#41: no `tab` → the human's tab; a Chrome `id` on
+      `closeTab`/`focusTab` → its handle; #54: a bare number in a network `tab`); a non-free call
+      without `tab` → `BAD_PARAMS "tab is required"` (T2.4's original clause, superseded by #41, returns);
+      a numeric network `tab` → `BAD_PARAMS` (#40's original rule); `LEGACY_ID_METHODS` gone; `selectTab`
+      out of the method table and the lock class (#53), so a `selectTab` call is answered as an unknown
+      method; `newTab`/`listTabs` results without the Chrome `id` beside `tab` (#57) — *unless* Stage 0
+      finds a consumer that needs it, then a dated decision.
+- [ ] Extension: delete the `activeTab()` fallback in `targetTab` (`tabs.ts:22`, `:69`) → `BAD_PARAMS`
+      when `tabId` is missing; remove `router.on("selectTab", …)` (`sw.ts:32`); drop the old `tab:"all"`
+      scope from `network-scope.ts` (#52); rewrite the switch-mode `WINDOW_MINIMIZED` message
+      (`tabs.ts:196`, #63) to stop suggesting `mode:"cdp"` — proposed text: `Chrome's window is
+      minimized, so the tab cannot be captured — restore the window, or call focusTab first` (cdp's
+      refusal already says "restore the window, or call focusTab first"). The test asserting the old
+      text is replaced in the same commit, citing #63 (a designed change decided before the edit, not a
+      test edited to match), and the SCREEN-4 row in `docs/e2e-test-plan.md` gets a dated
+      *Superseded* note on its expected text; its recorded result is not touched.
+- [ ] `code` required (#51's trigger; *proposed by the kickoff*, conservative rule): `WireError.code`
+      becomes required in the type; the extension's every error path sends a code (a test over
+      `router.ts`'s paths); on receipt, a proto:2 peer's error without a non-empty string code is still
+      delivered as `INTERNAL` (never dropped, never turned into a timeout) with one log line per
+      connection naming the method only; a no-proto peer keeps today's mapping. Rejected: refusing or
+      dropping the frame.
+- [ ] The session marker (item 4 above).
+
+*Stage 0 notes on the checkboxes (stage0-audit.md), for the session agent:*
+- *Consumers of the Chrome `id` exist (F7): `recipes/hello.ts:81` prints `[${active.id}]` (MUX-3 expects
+  `active: [<id>] <title>`); `recipes/t5.ts:552-553` decides LEASE-6's (a)/(b) from it; `recipes/t5-lib.ts:100`
+  prints it; five daemon lease tests read it. This is the "consumer that needs it" case: a dated
+  decision is required (keep `id` this step, or remove it with the grants above).*
+- *A `selectTab` dropped from `methods.ts` alone falls into the "unlisted with a `tab`" class and is
+  forwarded **without the visibility lock** (executed, F10). Between S2b's daemon build and the extension
+  reload a Step 7 extension still runs it as `focusTab`. Proposed: the daemon refuses `selectTab` itself
+  (`UNKNOWN_METHOD`) before resolution.*
+- *"A non-free call without `tab`" does not cover `networkRequests`, which is free; today a network call
+  with no `tab` takes the legacy resolver (`daemon/src/intercept.ts:419`), while #40 gives absent/"active"
+  the human's tab by design. The rule after S2b is undecided (F9).*
+- *#73's receipt half is already today's behaviour: codeless, empty, numeric, string and `null` errors
+  arrive as `INTERNAL` within 1 ms from both peer kinds, with no log line; `{code:"WEIRD"}` passes through
+  verbatim (executed, F17). The new parts are the type, the every-path test and the log line.*
+- *"Item 4 above" is kickoff §7 item 4, recorded as #74. Its mechanism is not achievable as worded (F5):
+  `chrome.storage.session` is cleared by an extension reload; a value written on `runtime.onStartup` races
+  the worker's top-level `void connect()` (`extension/src/sw.ts:199`), so the first hello after a Chrome
+  start can carry the old marker; the hello is built in the offscreen document, which can use only
+  `chrome.runtime`, so the marker travels in the `connect` message (`sw.ts:154`); and
+  `extension/src/offscreen.ts:10-15` keys the client on port and token only. Proposed: a marker promise
+  awaited by `connect()` (reuse `storage.session`'s; else wait, bounded, for `onStartup` → fresh or
+  `onInstalled` → reuse `storage.local`'s; neither → fresh), the marker part of the offscreen key, and a
+  comparison with the last hello's marker so that none → none does not retire again.*
+- *Removing an unlisted-method loophole: an unlisted method without `tab` is forwarded free with no
+  `tabId` (`daemon/src/methods.ts:54-55`, executed). Proposed for S2b: refuse it `BAD_PARAMS "tab is
+  required"` (F8; #39 is contract-level).*
+- *After a marker change retires every handle, the MCP's cursor answers each untargeted call with
+  `TAB_GONE "tab T1 was closed …"` although nothing closed (`mcp/src/cursor.ts:10-11`, `intercept.ts:394`;
+  F24).*
+
+**Parallel with:** after S2 (both touch `sw.ts` and `daemon/src/methods.ts`); with S3. **Verifier focus**
+(kickoff §7): the removals are stricter, never looser; the Step 7 MCP still works; the documented test
+removals. **Needs the user's keyboard:** no.
 
 ### Stage S3 — SDK: `Tab`, cursor, locator normalisation (TDD with a fake client)
 
@@ -391,6 +614,32 @@ work; the extension must be reloaded before S6 (G8-2).
       *Corrected 2026-10-23 (Step 7 propagator): the findings exist, and both are FAIL: BG-1/BG-2 in
       Run 8, BGF-1/2 in Run 10. They are not enough to set the constant on their own, because the user
       ruled that a focus-emulation option is measured first (#62 item 4). See G8-1.*
+      *Added 2026-10-23 (Stage 0): the constant is read off stage FE's outcome table, through the
+      decision "The background-input policy" that names (A), (B) or (C) and the FE rows (FE.6); outcome
+      (C) makes it a per-kind map (`click`/`type`/`pressKey`). S3 reaches `policy.ts` only after that
+      decision is recorded (kickoff §9 STOP rules).*
+- [ ] *Added 2026-10-23 (Stage 0), from kickoff §7:* **S3.5 — the inherited handles** (#36; lane
+      `sdk/src/spawn.ts`, `sdk/test/`; decisions.md · 2026-10-23 · The inherited-handles check runs in S3
+      as S3.5 (#77)): a test spawns, through `spawnDaemon`'s options, a stand-in long-lived node script
+      (never the real daemon, never port 9234) from a child process whose stdout is a pipe; the child
+      exits; PASS = the reader sees end-of-file within 2 s while the stand-in is still alive (then killed
+      by its recorded pid). Both outcomes written now: if the test **passes at the baseline**, nothing
+      changes and the MUX-6 gotcha gets a dated note that `spawnDaemon` inherits no pipe (the hold came
+      from `Start-Process -NoNewWindow` itself); if it **fails**, S3 fixes the spawn so nothing is
+      inherited, and the test is the proof.
+      *Stricter (Stage 0, stage0-audit.md F15): a positive control runs in the same harness — the stand-in
+      spawned with `stdio: "inherit"` must **not** see end-of-file within 2 s while it lives; without it a
+      broken harness passes. The test spawns without a `tsx` layer between the reader and `spawnDaemon`.*
+      *Stage 0 flags the outcome text: see stage0-audit.md F15; the session agent rules before S3.5 is
+      run. Executed at the baseline by two auditors, the test passes (EOF −5 ms and −4 ms before the
+      child's `exit`, stand-in alive) and the inheriting control holds the pipe; the MUX-6 chain
+      (PowerShell `Start-Process -NoNewWindow`) was not run, so "the hold came from `Start-Process
+      -NoNewWindow` itself" is a cause the test does not measure, and a third outcome ("fails and no
+      Node-level option removes it") is missing.*
+- [ ] *Added 2026-10-23 (Stage 0), for the session agent:* the SDK's `waitFor` sends a call `timeoutMs`
+      above the wait's own (`browser_wait_for {seconds: 45}` already outlives today's 30 s default call,
+      `mcp/src/tools/registry.ts:359`; stage0-audit.md F22); the cursor clear runs inside the reconnect
+      path before any queued call (F24); a `Tab` from before a 4002 reconnect is void (F2).
 
 **Lane:** `sdk/src/`, `sdk/test/`. **Parallel with:** S1. **Verifier focus:** the `policy.ts` constant
 cites the Step 7 E2E rows (BG-1/BG-2) it was set from, in a comment and in the stage report — if the
@@ -398,6 +647,11 @@ findings are absent, the stage stops at that item (G8-1); every `Tab` method in 
 asserting the exact `{method, params}` sent, including `tab: handle`; `b.<method>()` without a cursor
 throws `NO_CURSOR` with the "call newTab() or claim() first" text; `normalizeTarget` rejects `{name}`
 alone with the friendly message. **Needs the user's keyboard:** no.
+*Corrected 2026-10-23 (Stage 0): was "Parallel with: S1" and a `policy.ts` cited from BG-1/BG-2 alone;
+now S3 runs after FE's outcome is recorded, in parallel with S2/S2b (kickoff §7; S3 may start earlier on
+everything but `policy.ts`), and `policy.ts` cites BG-1/BG-2 **and** the FE rows and the decision "The
+background-input policy", because G8-1 is resolved by stage FE (decisions.md · 2026-10-23 · Stage FE
+measures focus emulation before `policy.ts` is set (#71)).*
 
 ### Stage S4 — SDK failure reports (TDD)
 
@@ -451,6 +705,16 @@ user, who names the course. A Chrome restart with flags needs a fresh grant (#66
       Step 6 as-built § Stage D6.*
 - [ ] **SDK-1** `hello.ts` end to end against the fixture while a Claude session is connected on
       another tab.
+      *Added 2026-10-23 (Stage 0) — proposed (design-local), pending the session agent's decision:
+      write the SDK-1 flow (connect → `newTab` to the fixture → `locate({role:"button", name:"Sign
+      in"})` → `click` → `waitFor({text:…})` → print → close) as a **new** recipe (working name
+      `recipes/sdk-login.ts`; the name is the session agent's), and amend S6.2 with a dated note to
+      record `npm run recipe -- recipes/sdk-login.ts`. Why: `recipes/hello.ts` is the instrument of
+      MUX-3/5/6/8/10 (a tab-free connect-and-list run, including MUX-8's run with no Chrome), so
+      rewriting it would void five recorded expected texts and change MUX-3's client and hold semantics.
+      Rejected: rewriting `hello.ts` and re-dating those rows. Independently, if S2b removes the Chrome
+      `id`, `hello.ts:81` changes and those rows get dated notes before any run (stage0-audit.md F7).
+      The new recipe prints no tab title or URL but the fixture's (F31).*
 - [ ] **SDK-2** `LOCATOR_NOT_FOUND` report: misspell a name → the report names the nearest candidates,
       saves a screenshot, prints the snapshot window.
 - [ ] **SDK-3** `LOCATOR_AMBIGUOUS` → matches listed; `nth` fixes it.
@@ -467,6 +731,14 @@ user, who names the course. A Chrome restart with flags needs a fresh grant (#66
       the MCP `browser_evaluate` path.
 - [ ] **SDK-8** MCP cursor: Claude working on T1, human switches to Gmail, Claude clicks → lands on T1;
       user says "use this tab" → Claude calls `browser_use_active_tab` → status shows the new cursor.
+      *Added 2026-10-23 (Stage 0): the "human's tab" is a fixture tab the driver opens itself, never the
+      user's Gmail or any tab of theirs, as LEASE-7 did (the repo is public; the driver never touches
+      the user's tabs). Window Wh = `Open-T5Window http://localhost:8080/e2e-playground.html?t5=sdk8-human`,
+      made current with `Set-T5Foreground <Wh>`. A headless actor works on its own `T<n>` (claimed on
+      first touch in its window Wa); the driver then foregrounds Wh (the "switch to Gmail"); the actor's
+      `browser_click` must land on `T<n>` (its page's status line); `browser_status` must print the
+      `Human's active tab: T<h> … not mine` line; then the prompt "use this tab" → the actor calls
+      `browser_use_active_tab` → `Cursor: T<h> …`. Evidence shows only fixture pages.*
 - [ ] Regression smoke across Steps 6–8: MUX-2, LEASE-1, SCREEN-1, ACT-1…3, TRUST-2, EVAL-1, NET-1, DL-1
       (DL-1 is written by Step 6's D6; decisions.md · 2026-10-21 · Step 6 writes the DL rows for
       browser_download before its D6 wave).
@@ -476,6 +748,27 @@ user, who names the course. A Chrome restart with flags needs a fresh grant (#66
       after a hard reload `showing 2 of 2`, because `favicon.ico` is re-fetched (R9-NET-1, accepted in
       #68). LEASE-1's expected text is Run 8's — see Step 7 as-built § T5, § "RELOAD-AUTO, Run 9,
       BG-FLAGS".*
+- [ ] *Added 2026-10-23 (Stage 0), from kickoff §7 S6 item 3 (decisions.md · 2026-10-23 · The extension
+      hello carries an optional session marker (#74)):* **SM-1** — a held handle across a Chrome restart
+      → `tabGone`, never a live handle on a reused id. Needs a fresh Chrome restart grant from the user
+      (`chrome://quit`, session restore, counts checked as in Run 10); without it, "not run — needs a
+      Chrome restart grant". Pre-registered text (proposed by Stage 0, stage0-audit.md F5; the session
+      agent fixes it before the run): a recipe holds fixture tab `T<a>` and records `daemon.status`
+      (tab, tabId, owner); `chrome://quit` typed into the driver's window; relaunch with
+      `recipes/bgf-launch.ps1` **without flags**; `bgf-count.ps1` equal before and after. PASS = within
+      30 s of the extension's hello, `daemon.log` has exactly one `extension session changed: <n> handles
+      retired` with `<n>` ≥ 1 and no marker value; the recipe receives exactly one `tabGone {tab: T<a>}`,
+      whose `lastUrl` is the pre-restart page's; its next `snapshot {tab: T<a>}` → `TAB_GONE`; `listTabs`
+      shows no tab owned by the recipe, and every handle is greater than every pre-restart handle; the
+      daemon's pid is unchanged. FAIL on any live `T<a>` after the restart, whatever tab it names.
+- [ ] *Added 2026-10-23 (Stage 0) — proposed, pending the session agent (stage0-audit.md F5; auditor C
+      calls it SM-0, auditor A SM-2):* **SM-0** — the marker survives an extension reload (no grant
+      needed). A recipe holds fixture tab `T<a>` (hold ≥ 120 s, printing every event);
+      `recipes/reload-extension.ps1` (exit 0). PASS = `daemon.log` has a new `extension resync: …` line
+      and **no** `extension session changed` line; the recipe prints no `tabGone`; `snapshot {tab: T<a>}`
+      after the reload answers; `listTabs` shows `T<a>` owned by the recipe. It makes SM-1
+      discriminating. If #74 is amended to a marker that changes on reload, SM-0's expected text flips,
+      and it is rewritten before the run.
 
 **Lane:** `recipes/`, root `package.json` (`tsx`, `recipe` script), `docs/e2e-test-plan.md`,
 `.gitignore` (`exports/` — see Human gates). **Parallel with:** sequential, after S5. **Verifier focus
@@ -530,6 +823,12 @@ removes the extension's dead network formatters with their 15 tests (#67)) — s
 - S0.1 `npm test` after ≥ before; `npm run typecheck` green for all five packages.
 - S0.2 `grep -n "LOCATOR_NOT_FOUND\|LOCATOR_AMBIGUOUS" shared/src/codes.ts` → both present.
 - S0.3 The `Locator` type has the three variants of 0.1 and `WaitForParams` the four arms of 0.4.
+- S0.4 *Added 2026-10-23 (Stage 0), from kickoff §7:* `grep -c` of codes → 23 with `NO_CURSOR`; the
+  hello guard accepts a hello with and without `session` and rejects a non-string one. *Stricter (Stage
+  0, stage0-audit.md F27): the count is `grep -cE '^  [A-Z_]+: "[A-Z_]+",$' shared/src/codes.ts` → `23`
+  (`22` at `1a62620`), and `grep -c NO_CURSOR shared/src/codes.ts` ≥ 1 (`0` at `1a62620`).*
+  *Stage 0 note: S0.2 cannot fail — both codes are present since Step 6 (`shared/src/codes.ts:23-24`); it
+  is a confirmation.*
 
 **S1**
 - S1.1 `npm test` after ≥ before + the `locate` tests; typecheck green.
@@ -552,11 +851,79 @@ removes the extension's dead network formatters with their 15 tests (#67)) — s
   when `tabId` is missing.
 - S2.4 `grep -rnE "console\.(log|warn|error)\(.*(url|href)" extension/src` returns nothing.
 - S2.5 `unwrapResult` still treats null **or** undefined as failure (test unchanged and green).
+- S2.6 *Added 2026-10-23 (Stage 0), from kickoff §7:* `locate` is in the daemon's method table and
+  lease-checked. *Stricter (Stage 0, stage0-audit.md F8): the table row and the `sw.ts` router entry land
+  in the same commit, and a test sends `locate` without `tab` and asserts today's legacy handling (after
+  S2b: `BAD_PARAMS`), so an unlisted, free `locate` cannot slip through.*
+
+*Corrected 2026-10-23 (Stage 0): was S2.2 checked at S2's close; now S2.2 is checked at S2b's close
+(S2b.2), because the `activeTab` fallback and the `selectTab` alias are removed in S2b (decisions.md ·
+2026-10-23 · S2's daemon half becomes stage S2b (#72)). S2.2's second grep, `grep -n "selectTab"
+extension/src`, cannot fail: executed at `1a62620` it prints `grep: extension/src: Is a directory`,
+exits 2 and prints nothing on stdout, while `grep -rn` finds `extension/src/handlers/tabs.ts:70` and
+`extension/src/sw.ts:32` (stage0-audit.md F16, the class of Step 7's T6.1 grep, #48). S2b.2 runs both
+greps as `grep -rn`, and passes only on empty stdout with exit 1.*
+
+**FE** *(added 2026-10-23 (Stage 0), copied from kickoff §7; stricter clauses marked)*
+- FE.1 `npm test` after ≥ before + the new tests; typecheck green.
+- FE.2 a pure, tested function builds the CDP command list: with the option, enable → the input
+  commands → disable, and disable also after a failing input command; without it, the list equals
+  today's (asserted against a recorded list). *Stricter (Stage 0, stage0-audit.md F19): "today's list"
+  is recorded on the FE parent commit with a stub `chrome.debugger` (click; `type` of `"a.\n"` with
+  `submit`; `pressKey("Tab")`) and stored as a fixture before the change; and a runner test with a mocked
+  `sendCommand` that throws on an `Input.*` command asserts the sequence `attach, enable, …, disable,
+  detach`, since "disable after a failing command" is a property of the runner, not of a pure list.*
+- FE.3 `grep -nE "windows\.update|focused\s*:" extension/src/debugger.ts` → nothing new; the option
+  path calls no `focusTab`. *Stricter (Stage 0, F20): also `grep -rnE
+  "windows\.update|tabs\.update|focused\s*:|focusTab|active\s*:\s*true"` over `extension/src/debugger.ts`,
+  `extension/src/handlers/actions.ts` and any FE helper module prints the same lines as at the FE parent
+  commit.*
+- FE.4 rows FE-0…FE-5 committed before the build is loaded (`git log` order).
+- FE.5 the live run's first recorded line is the reload's exit 0 and FE-0 PASS.
+- FE.6 the decision "The background-input policy" names the outcome (A)/(B)/(C) and the rows.
+  *Stage 0 note: FE.6 needs the outcome table made total first (stage0-audit.md F3).*
+
+**S2b** *(added 2026-10-23 (Stage 0), copied from kickoff §7; stricter clauses marked)*
+- S2b.1 `npm test` after = before − the listed removed tests + the new tests; typecheck green.
+- S2b.2 S2.2 (`grep -rn "activeTab" extension/src`, `grep -rn "selectTab" extension/src` → nothing) and
+  `grep -rn "LEGACY_ID_METHODS\|selectTab" daemon/src` → nothing. *Stricter (Stage 0, F9, F16): each grep
+  passes only on empty stdout **and** exit 1; also `grep -rn "targetTab({}" extension/src` → nothing
+  (the hidden fallback at `extension/src/handlers/network.ts:12`). The daemon grep also hits the comments
+  `daemon/src/methods.ts:1` and `:60`, which S2b rewords.*
+- S2b.3 tests: no `tab` → `BAD_PARAMS`; numeric network `tab` → `BAD_PARAMS`; `selectTab` →
+  `UNKNOWN_METHOD`; `closeTab`/`focusTab` with `id` only → `BAD_PARAMS`; every lease and lock test from
+  Step 7 still green unchanged. *Stricter (Stage 0, F10): the `selectTab` → `UNKNOWN_METHOD` test runs
+  against a fake extension that **would** answer `selectTab`, so only a daemon-side refusal passes.*
+  *Stage 0 flags this clause: see stage0-audit.md F11; the session agent rules before S2b is committed.
+  "Every lease and lock test … unchanged" cannot hold as written: with the removals simulated
+  (`daemon/test` → `17 failed | 202 passed (219)`), 8 tests cover a removed form itself, and 9 lease, lock
+  or intercept tests only use one along the way (`daemon/test/tabs.test.ts:249`, `:276`, `:386`, `:406`,
+  `:435` read the Chrome `id`; `:779` sends `selectTab`; `:1081` `networkRequests {}`; `:1143`
+  `networkClear {}`; `:1211` T2.3's legacy loop). `:1016` is itself a legacy lock test.*
+- S2b.4 the `code` rule's tests, both peer kinds. *Stricter (Stage 0, F17): the receipt half already
+  holds at `1a62620`, so the test asserts the new log line — once per proto:2 connection, naming the
+  method only, never for a no-proto peer — and labels the code-presence test a regression guard.*
+- S2b.5 the marker's four branches tested (same; changed; dropped; never), `tabGone` to each holder
+  exactly once; the marker is never logged (the log says `extension session changed: <n> handles
+  retired`). *Stricter (Stage 0, F5): a fifth branch, none after none, retires nothing; and a retired
+  handle's `tabGone` carries the pre-restart `lastUrl`/`lastTitle`, never the reused page's.*
+- S2b.6 the new `WINDOW_MINIMIZED` text in `extension/src/tabs.ts` and nowhere the old `pass mode:"cdp"`
+  hint. *Stage 0 flags this clause: see stage0-audit.md F18; the session agent rules before S2b is
+  committed. Unscoped, "nowhere" cannot pass: `docs/e2e-test-plan.md:677` (SCREEN-4's superseded
+  expected text) and `:1561` (Run 8's recorded result) keep the old text by design; proposed scope
+  `extension/src extension/test`.*
+- S2b.7 the Step 7 cross-package test `mcp/test/multi-actor.test.ts` green with no edit beyond a
+  documented fake. *Stage 0 note: held under a simulated S2b daemon (`mcp/test` + `sdk/test` → `310 passed
+  (310)`, stage0-audit.md § 5).*
+- S2b.8 every removed test listed with the form it covered (the count drop is a documented removal).
 
 **S3**
 - S3.1 `npm test` after ≥ before + the `Tab`/cursor/locator tests; typecheck green.
 - S3.2 `sdk/src/policy.ts` exists, its constant's comment cites BG-1/BG-2 with their recorded result,
   and `docs/decisions.md` has the dated entry (session agent writes it).
+  *Stricter (Stage 0): the comment also cites the FE rows (FE-1…FE-5) and the decision "The
+  background-input policy" with its outcome (A)/(B)/(C), because G8-1 is resolved by stage FE
+  (decisions.md · 2026-10-23 · Stage FE measures focus emulation before `policy.ts` is set (#71)).*
 - S3.3 Tests cover: every `Tab` method's exact `{method, params}` with `tab: handle`; `newTab` and
   `claim` set the cursor; `tab()` without a cursor → `NO_CURSOR` with the stated text; a reconnect
   after close 4002 clears the cursor (*added 2026-10-21*); `trusted` →
@@ -569,6 +936,21 @@ removes the extension's dead network formatters with their 15 tests (#67)) — s
   `index.ts` is an open contract decision for the user (decisions.md · 2026-10-22 · The formatters reach
   the MCP through a `@bridge/sdk/format` subpath (#46)). S3.4 as written presumes the answer, so the
   Stage-0 audit takes it up — see Step 7 as-built § Stage T4.*
+  *Corrected 2026-10-23 (Stage 0): was an open question; now S3.4 applies as written — `index.ts` also
+  re-exports `formatSnapshot` and `formatNetwork`, and the `./format` subpath stays for the MCP
+  (decisions.md · 2026-10-23 · S3.4 applies as written: the main entry also re-exports the formatters
+  (#75)). Premise checked by execution: an esbuild bundle of `index.ts` with and without the two
+  re-exports has the same external imports (`@bridge/shared`, `node:*`, `ws`), +3 747 bytes, because
+  `sdk/src/format/{snapshot,network}.ts` import types only (stage0-audit.md § 3). Beside it, open for
+  the session agent: the exported `BridgeError` stays the shared class (F14).*
+- S3.5 *Added 2026-10-23 (Stage 0), from kickoff §7 (decisions.md · 2026-10-23 · The inherited-handles
+  check runs in S3 as S3.5 (#77)):* the inherited-handles test of stage S3 — PASS = the reader sees
+  end-of-file within 2 s while the stand-in is still alive (then killed by its recorded pid); outcomes
+  as written there. *Stricter (Stage 0, stage0-audit.md F15): the same harness runs a positive control
+  — the stand-in spawned with `stdio: "inherit"` must **not** see end-of-file within 2 s while it lives
+  — and the check passes only if the control holds; no `tsx` layer between the reader and
+  `spawnDaemon`; never the real daemon, never port 9234.* *Stage 0 flags the outcome text: see F15; the
+  session agent rules before S3.5 runs.*
 
 **S4**
 - S4.1 `npm test` after ≥ before + the enrichment tests; typecheck green.
@@ -594,6 +976,12 @@ removes the extension's dead network formatters with their 15 tests (#67)) — s
 - S6.1 Rows SDK-1…8 exist in `docs/e2e-test-plan.md` with expected results written before the run; the
   reload and `/mcp` are the first recorded line.
 - S6.2 `npm run recipe -- recipes/hello.ts` is the command recorded for SDK-1, with its printed output.
+  *Stage 0 proposes (design-local), pending the session agent's decision: SDK-1 runs as a new recipe
+  (working name `recipes/sdk-login.ts`), and this check then gets a dated note naming that command,
+  because `recipes/hello.ts` is MUX-3/5/6/8/10's instrument (see SDK-1 under stage S6). Stage 0 also
+  flags S6.1's "`/mcp` … first recorded line": each headless `claude -p` actor starts a fresh MCP from
+  the current bundle, so the reload exit and the stale check are the meaningful first lines
+  (stage0-audit.md F32, an escalation: it would drop a clause).*
 - S6.3 SDK-7's two JSON files are compared by hash; the hash is recorded, the files are not committed.
 - S6.4 `git status` after the wave shows no file under `exports/` or `~/.chrome-agent-bridge/` staged;
   `.gitignore` covers `exports/`.
@@ -628,6 +1016,12 @@ removes the extension's dead network formatters with their 15 tests (#67)) — s
   not fix background input (#66)). This plan has no stage for that option or that row. The kickoff
   places it, and the Stage-0 audit checks that it is placed — see Step 7 as-built § T5,
   § "RELOAD-AUTO, Run 9, BG-FLAGS".*
+  *Corrected 2026-10-23 (Stage 0): was "This plan has no stage for that option or that row"; now stage
+  FE holds both — the `focusEmulation` option on trusted input, the rows FE-0…FE-5, and an outcome
+  table written before the measurement — so G8-1 is resolved inside the run and is not a stop
+  (decisions.md · 2026-10-23 · Stage FE measures focus emulation before `policy.ts` is set (#71)). The
+  run stops before S3's `policy.ts` item only if FE's outcome is not recorded by then. Stage 0 checked
+  the placement and flags two of FE's pre-registered rules for the session agent (stage0-audit.md F1, F3).*
 - **G8-2 — S6 is a wave run with the user.** The S1/S2 extension changes are invisible until the user
   reloads the extension; the S5 MCP schema changes need an MCP reconnect. The wave opens with the
   reload sequence and the stale-extension check (`unknown method` ⇒ reload again). Rows needing the
@@ -687,17 +1081,26 @@ re-checks each ruling's premise by execution and raises a finding only if a prem
 - *Ruled 2026-10-21:* SDK-4 targets the delayed text with a `{text}` locator; no fixture change
   (`#load-later`, line 117, makes text appear 1.5 s after a click, line 250) — decisions.md ·
   2026-10-21 · Step 8 SDK-4 waits for the fixture's delayed text with a {text} locator.
+  *Corrected 2026-10-23 (Stage 0): was line 117 and line 250; at `1a62620` `#load-later` is at
+  `test-fixtures/e2e-playground.html:120` and its click handler at `:251-253` (stage0-audit.md F30). The
+  ruling's premise is unestablished: the text lands in a role-less `<div id="async-area">` (`:121`),
+  and 0.1 does not say a `{text}` locator matches a non-interactive element (F13).*
 - *Ruled 2026-10-21:* Step 6's D6 writes DL-1 and DL-2 before its wave; the cite stays (decisions.md ·
   2026-10-21 · Step 6 writes the DL rows for browser_download before its D6 wave).
 - *Ruled 2026-10-21:* the actor name is `claude-code #<pid>` with the MCP's own `process.pid`; 0.6
   corrected (decisions.md · 2026-10-21 · The actor name carries the MCP's own process id).
 - S1 says "reuse the Step C fixtures": the fixtures are those of Phase C (`extension/test/snapshot.test.ts`,
   shadow DOM and frame cases, line 111 onward). Naming only.
+  *Corrected 2026-10-23 (Stage 0): was "line 111 onward"; the shadow DOM cases start at
+  `extension/test/snapshot.test.ts:121` and the iframe cases at `:152` (stage0-audit.md F30).*
 - *Ruled 2026-10-21:* S7's roadmap entry names only "`wait_for` variants (element-visible …)" and
   "Return a `[ref=eN]` for a `kind:"node"` result"; `args` for `browser_evaluate` stays open in Phase F
   (decisions.md · 2026-10-21 · Step 8 S7 names only the Phase F items Step 8 closes).
 - SDK-5 and `hello.ts` cite fixture elements that exist: `#email` (line 31), the "Sign in" submit button
   `#submit-btn` (line 49), the `isTrusted` reporter (lines 155–166).
+  *Corrected 2026-10-23 (Stage 0): was lines 155–166; the `isTrusted` reporters are at
+  `test-fixtures/e2e-playground.html:157-170` (click `157-159`, input `165-167`, keydown `168-170`);
+  `#email` (31) and `#submit-btn` (49) are unchanged (stage0-audit.md F30).*
 - `Tab.network({…} | {id})` mirrors `browser_network_requests`'s parameters including `id`
   (`server/src/tools/registry.ts:247–252`) — consistent. *Corrected 2026-10-22: was
   `server/src/tools/registry.ts:247–252`; as built `mcp/src/tools/registry.ts:270–279` (Step 6 D1
