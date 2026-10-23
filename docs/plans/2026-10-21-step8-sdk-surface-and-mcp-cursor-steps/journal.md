@@ -133,3 +133,11 @@
 - Cause of REP-1 measured: Claude Code 2.1.309 drops images from isError results. Fix: a report with a
   screenshot is a non-error result with the code line first and a failure line (#100, open for the
   user). Tests 1679 → 1683 (84 files). mcp/dist already rebuilt; no daemon/extension change.
+
+## 2026-10-23 — S6 Part 3 (036909f, a56d198); SDK-6/7 addendum running
+
+- Part 3: S6-STALE, SM-0 (reload exit 0 first try; handle survived), LOC-1 (`a@b.com`), REP-1 (1 image,
+  not flagged as error), SM-1 (new rule; tabGone at quit, TAB_GONE after) all PASS; tests 1697 / 84.
+  Over three parts: 33 PASS, 1 FAIL (ASREF-1 optional clause, superseded), SDK-6/7 pending.
+- bb-login exit 4 was a too-early check: the user saw the login had worked and opened pp1 (#101).
+  SDK-6/7 live addendum dispatched to the S6 step agent.

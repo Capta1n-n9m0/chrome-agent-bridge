@@ -63,6 +63,19 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-23 · SDK-6/SDK-7 run in the session the login actually opened (#101)
+**Decided:** the Blackboard login of S6 Part 3 succeeded; the page only took long to load, so
+`bb-login.ps1`'s post-submit check ran too early and exited 4. The user has opened the pp1 course in
+that window. SDK-6/SDK-7 now run live in that session, confirming the login first by the recipes'
+read-only course lookup; the login script's exit-4 result stays recorded as observed, with a dated note
+that it was a too-early check. Read-only as registered; #96/#98's rules hold.
+**Why:** the user (2026-10-23): "you are on the blackboard, just it look long time to load. I checked,
+you had it open. I just entered pp1 course for you".
+**Instead of:** another login attempt; leaving SDK-6/SDK-7 out of the gate.
+**Revisit if:** the login script is reused — its post-submit wait needs a longer, condition-based bound
+(proposed for a later step).
+**By:** user
+
 ### 2026-10-23 · An MCP failure report with a screenshot is returned as a non-error result (#100)
 **Decided:** accepted as proposed in `…-steps/S6b.md` §5: an attach-eligible failure whose report carries
 the screenshot is returned with no `isError` flag, content `[text, image]`; the text's first line is
