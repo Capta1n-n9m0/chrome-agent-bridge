@@ -353,3 +353,31 @@ Contracts binding forward, at dcb72db:
   Run 12's earlier FAILs (LOC-1, REP-1, SM-1, S6.3). Two classifier/permission interruptions (one
   denial `[PII Data Handling]`, one API access error) — both resumed from ledgers. Tests 1714 / 85 at
   75f0bd6.
+
+## S7 — docs · 2026-10-24 · verifier: PASS-with-notes (1 fix round) · commit 01fc58e
+
+
+- **S7 (docs), commit `docs: S7 — Step 8 docs`.**
+  - CLAUDE.md carries Step 8's architecture, key files and commands, and the count 1714 / 85
+    (`npm test` 2026-10-24 at `eb6b991`).
+  - Its gotchas are new or superseded with dated notes, each with a source.
+  - S7.1's rule: change `a11y.ts`, not two places.
+- **setup.md:**
+  - The "Writing a script" section: `connect`, `client.tab()`/`newTab()`, locators, `error.report()`,
+    the cursor, `npm run recipe -- <file>`, and `focusFirst`.
+  - 23 tools, including `browser_use_active_tab`.
+  - The failure-report image is returned as a non-error result (#100).
+- **Roadmap:**
+  - Done in Phase F: "`wait_for` variants (element-visible …)" and "Return a `[ref=eN]` for a
+    `kind:"node"` result".
+  - Still open: `args` for `browser_evaluate`, console capture, D3 upload.
+- **Design spec:** dated notes in §5, §7.3, §8.1–8.3 and §10–§13 (23 codes; §13's session marker
+  answered by #94).
+- **S7.3:** met through the stage-to-Part commit map in S7.md §4. No commit in the range adds a `dist/`
+  path, the token, `.env` or `exports/`.
+- **Needs the user's keyboard: G8-3.** The `blackboard-ultra` boot-sequence change is not made. Its
+  exact proposed text is in S7.md §7 (S7.4).
+- *Session agent 2026-10-24:* #104. Tests 1714 / 85 at eb6b991 (clean worktree). **Needs the user's
+  keyboard (G8-3, not granted):** the `blackboard-ultra` skill's boot sequence → `npm run recipe --
+  recipes/blackboard/boot-bb.ts <course> --keep-open`, the old local-server path kept as a fallback for
+  one release — exact text in S7.md §7.

@@ -160,3 +160,8 @@
 - S6.3 PASS on one held export (both files sha256 b1f8ef6f…46b6a8). S6.1–S6.5 hold. 35 PASS / 1 FAIL
   (ASREF-1). Student data outside the repo for the user: %TEMP%\bridge-e2e\s6-run3-*, actor
   transcripts, five gitignored exports\ files.
+
+## 2026-10-24 — S7 closed (01fc58e); #104; propagator next
+
+- Docs updated (CLAUDE.md sections, setup.md "Writing a script", roadmap, spec notes, README). S7.3 by
+  the commit map (#104, open). G8-3 proposed text in S7.md §7. Propagator dispatched.
