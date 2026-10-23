@@ -56,12 +56,27 @@ Step 8 (2026-10-23 on), for the user at the gate:
 19. "S5's MCP details: `browser_new_tab` activation, the status lines, the tool schemas, reports" (#95)
 20. "S6's findings ruled: the user's answers, stage S6b for REP-1, re-registered rows" (#99), items 6 and S6b's error-result change
 21. "An MCP failure report with a screenshot is returned as a non-error result" (#100)
+22. "S7's doc rulings: the setup snippet, grouped wave gotchas, S7.3 by the commit map" (#104), item 3
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-24 · S7's doc rulings: the setup snippet, grouped wave gotchas, S7.3 by the commit map (#104)
+**Decided:** accepted as proposed in `…-steps/S7.md` §5: (1) `docs/setup.md`'s "Writing a script" shows a
+21-line typechecked snippet following `recipes/sdk-login.ts` (a failing control proves the typecheck
+discriminates) and names `sdk-login.ts` as the full recipe; (2) S6's gotcha candidates enter `CLAUDE.md`
+as sourced bullets, the PowerShell / `npx` / restart / live-site ones grouped into three; (3) S7.3 ("the
+commit messages listed") is met by S7.md §4's map from each listed Part message to the stage commits
+that delivered it — the phase doc itself says "S7's list is the record", and each stage committed at
+its close under the long-run invariant.
+**Why:** matching the listed wording now would mean rewriting history, which is on the integrity floor;
+neither recipe can be quoted verbatim as a clean example.
+**Instead of:** amending or squashing commits; reporting S7.3 as failed; quoting a recipe verbatim.
+**Revisit if:** the user wants the Part messages as real commits (e.g. a squashed release branch).
+**By:** Claude ((3) a pre-registered check — listed under Open decisions)
 
 ### 2026-10-23 · S6.3 compares one in-page export read through both paths (#103)
 **Decided:** S6.3 is re-registered before a re-run: the page builds the export once and holds it in
