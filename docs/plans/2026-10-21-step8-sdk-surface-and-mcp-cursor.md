@@ -190,6 +190,8 @@ the exported `BridgeError` (#83)).*
 first match in the snapshot's walk order), as Playwright's `nth`; 0.1 and #83 left the base unstated.
 `shared/src/protocol.ts` documents it and `isLocator` accepts 0. S1 builds to this unless ruled
 otherwise.*
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · S0's rulings: bounded bundle diff,
+`WaitForParams`, 0-based `nth`, #79's S2b check (#86)): item 3 — a locator's `nth` is 0-based.*
 
 ### 0.2 Actions take `ref | locator`
 
@@ -428,6 +430,9 @@ list. **Parallel with** follows "Order of work". S1 and S3 may run concurrently:
       `NO_CURSOR` from the SDK alone); mechanical. F28 as proposed — `WaitForParams` is
       `{text: string}` | `{locator, state?, timeoutMs?}` | `{networkIdle: true, idleMs?}` | `{seconds}`;
       design-local, proposed in S0.md for the session agent to record.*
+      *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · S0's rulings: bounded bundle diff,
+      `WaitForParams`, 0-based `nth`, #79's S2b check (#86)): item 2 — `WaitForParams` = `{text: string}` |
+      `{locator, state?, timeoutMs?}` | `{networkIdle: true, idleMs?}` | `{seconds}`, as built (F28).*
 
 **Lane:** `shared/src/`, `shared/test/`. **Parallel with:** sequential, first. **Verifier focus:**
 `LOCATOR_NOT_FOUND` and `LOCATOR_AMBIGUOUS` are present in `shared/src/codes.ts` from Step 6 (the plan
@@ -442,6 +447,13 @@ construction. `daemon/dist/index.js` and `extension/dist/sw.js` bundle the `Erro
 (`daemon/src/handshake.ts:1`), so adding `NO_CURSOR` to `ErrorCodes` and a `session` check to `isHello`
 changes both bundles' bytes. The clause stands unchanged until ruled; S0's report gives the measured
 diff.*
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · S0's rulings: bounded bundle diff,
+`WaitForParams`, 0-based `nth`, #79's S2b check (#86)): item 1 — `extension/dist/{content,offscreen,options}.js`
+byte-identical; `daemon/dist/index.js` and `extension/dist/sw.js` may differ only by the `NO_CURSOR` entry
+in `ErrorCodes` and the hello guard's `session` check, shown by a `diff` of the two builds (measured by S0:
+daemon `490f1c60…` → `7712e1af…`, sw `503cd209…` → `b614aa9e…`, nothing else).*
+*Superseded 2026-10-23: was 'byte-identical', because `ErrorCodes` and `isHello` are runtime values
+bundled into the daemon and the worker (#86).*
 **Needs the user's keyboard:** no.
 
 ### Stage S1 — Content-script `locate` (TDD, jsdom)
@@ -695,6 +707,10 @@ for the user's review; binds meanwhile.*
       connection naming the method only; a no-proto peer keeps today's mapping. Rejected: refusing or
       dropping the frame.
 - [ ] The session marker (item 4 above).
+- [ ] *Added 2026-10-23 (#86 item 4):* #79's daemon half gets an S2b checkbox and exit check S2b.9: a
+      second `HandleTable` started against the first's high-water mark never re-mints a number the first
+      minted (stale `T<n>` → `TAB_UNKNOWN`), and with the mark file unreadable it falls back to a start-time
+      base; tested with an injected directory, never `~/.chrome-agent-bridge/` itself.
 
 *Stage 0 notes on the checkboxes (stage0-audit.md), for the session agent:*
 - *Consumers of the Chrome `id` exist (F7): `recipes/hello.ts:81` prints `[${active.id}]` (MUX-3 expects
@@ -842,6 +858,11 @@ measures focus emulation before `policy.ts` is set (#71)).*
 
 - [ ] `sdk/src/error.ts`: `BridgeError` subclass with `snapshot?`, `screenshotPath?`, `network?`,
       `attachErrors`, `report()`; `attachContext(error, tab, opts)` best-effort with a 5 s budget.
+      *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · S0's rulings: bounded bundle diff,
+      `WaitForParams`, 0-based `nth`, #79's S2b check (#86)): item 6 — S4 builds the failure report per #83
+      (optional properties on the shared `BridgeError`); its "subclass" wording is superseded.*
+      *Superseded 2026-10-23: was "subclass", because #83 item 3 keeps the shared `BridgeError` exported,
+      with the report fields as optional properties.*
 - [ ] Tests: the attach set per code; attach failures recorded not thrown; `report()` shape for
       `LOCATOR_NOT_FOUND` (candidates first, snapshot window around them); `failureReports: false`.
 
@@ -912,6 +933,9 @@ user, who names the course. A Chrome restart with flags needs a fresh grant (#66
       checkbox above written into `recipes/hello.ts`, because `recipes/hello.ts` is MUX-3/5/6/8/10's
       instrument (decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's recipe, S3.5's
       control, the stage split (#85)).*
+      *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · S0's rulings: bounded bundle diff,
+      `WaitForParams`, 0-based `nth`, #79's S2b check (#86)): item 5 — S6.2 names the SDK-1 recipe file the
+      S6 wave sheet fixes before the run.*
 - [ ] **SDK-2** `LOCATOR_NOT_FOUND` report: misspell a name → the report names the nearest candidates,
       saves a screenshot, prints the snapshot window.
 - [ ] **SDK-3** `LOCATOR_AMBIGUOUS` → matches listed; `nth` fixes it.
@@ -1174,6 +1198,11 @@ reworded where they could not hold or could not fail (#84)).*
   documented fake. *Stage 0 note: held under a simulated S2b daemon (`mcp/test` + `sdk/test` → `310 passed
   (310)`, stage0-audit.md § 5).*
 - S2b.8 every removed test listed with the form it covered (the count drop is a documented removal).
+- S2b.9 *Added 2026-10-23 (decisions.md · 2026-10-23 · S0's rulings: bounded bundle diff, `WaitForParams`,
+  0-based `nth`, #79's S2b check (#86)):* a second `HandleTable` started against the first's high-water
+  mark never re-mints a number the first minted (stale `T<n>` → `TAB_UNKNOWN`), and with the mark file
+  unreadable it falls back to a start-time base; tested with an injected directory, never
+  `~/.chrome-agent-bridge/` itself.
 
 **S3**
 - S3.1 `npm test` after ≥ before + the `Tab`/cursor/locator tests; typecheck green.
@@ -1260,6 +1289,9 @@ reworded where they could not hold or could not fail (#84)).*
   *Superseded 2026-10-23: S6.2's command was `npm run recipe -- recipes/hello.ts`, because SDK-1 runs a new
   recipe file and `recipes/hello.ts` stays MUX-3/5/6/8/10's instrument (decisions.md · 2026-10-23 · Stage
   0's build-level rulings: SDK-1's recipe, S3.5's control, the stage split (#85)).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · S0's rulings: bounded bundle diff,
+  `WaitForParams`, 0-based `nth`, #79's S2b check (#86)): item 5 — S6.2 names the SDK-1 recipe file the S6
+  wave sheet fixes before the run.*
   *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Pre-registered checks reworded where they
   could not hold or could not fail (#84)), F32, S6.1: S6.1's "`/mcp` is the first recorded line" becomes
   "the reload script's exit 0 and the stale check are the first recorded lines" (headless actors start a

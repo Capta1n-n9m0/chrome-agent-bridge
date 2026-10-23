@@ -1,7 +1,7 @@
 /**
- * Error codes carried on the wire (`{id, error: {code, message, data?}}`) — spec §10 of
- * `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`. Exactly these 22; add a code only by
- * amending the spec first.
+ * Error codes — spec §10 of `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`. Exactly these
+ * 23: 22 that the daemon and the extension put on the wire (`{id, error: {code, message, data?}}`),
+ * plus `NO_CURSOR`, raised by the SDK alone. Add a code only by amending the spec first.
  */
 
 /** Raised by the daemon itself (routing, leases, handshake). */
@@ -34,9 +34,17 @@ export const EXTENSION_ERROR_CODES = [
   "INTERNAL",
 ] as const;
 
+/**
+ * Raised by the SDK only (a Tab-less call with no cursor: "call newTab() or claim() first"), never by
+ * the daemon or the extension (decisions.md · 2026-10-23 · `NO_CURSOR` enters `shared/src/codes.ts` as
+ * the 23rd code (#76)).
+ */
+export const SDK_ERROR_CODES = ["NO_CURSOR"] as const;
+
 export type DaemonErrorCode = (typeof DAEMON_ERROR_CODES)[number];
 export type ExtensionErrorCode = (typeof EXTENSION_ERROR_CODES)[number];
-export type ErrorCode = DaemonErrorCode | ExtensionErrorCode;
+export type SdkErrorCode = (typeof SDK_ERROR_CODES)[number];
+export type ErrorCode = DaemonErrorCode | ExtensionErrorCode | SdkErrorCode;
 
 export const ErrorCodes = {
   NOT_CONNECTED: "NOT_CONNECTED",
@@ -61,11 +69,13 @@ export const ErrorCodes = {
   DOWNLOAD_HTTP: "DOWNLOAD_HTTP",
   WINDOW_MINIMIZED: "WINDOW_MINIMIZED",
   INTERNAL: "INTERNAL",
+  NO_CURSOR: "NO_CURSOR",
 } as const satisfies { [K in ErrorCode]: K };
 
 const ALL_CODES: ReadonlySet<string> = new Set<string>([
   ...DAEMON_ERROR_CODES,
   ...EXTENSION_ERROR_CODES,
+  ...SDK_ERROR_CODES,
 ]);
 
 export function isErrorCode(value: unknown): value is ErrorCode {

@@ -31,7 +31,7 @@ export class BridgeError extends Error {
 
 /**
  * Builds a `BridgeError` from a wire error. A v2 `{code, message, data}` is preserved (a code
- * outside the 22 is kept as a string); a v1 `{message}` — or a missing/non-string/empty code —
+ * outside `ErrorCodes` is kept as a string); a v1 `{message}` — or a missing/non-string/empty code —
  * becomes `INTERNAL`. Never throws.
  */
 export function fromWire(err: unknown): BridgeError {
