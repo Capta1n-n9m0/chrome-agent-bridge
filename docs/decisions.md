@@ -56,6 +56,20 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-23 · FE's build details (#88)
+**Decided:** accepted as proposed in `…-steps/FE.md` §5: (1) when the emulation disable fails after a
+successful input, the call warns and still succeeds — the detach that follows in the same `withDebugger`
+ends the debugger session that owns the emulation; (2) FE-3 focuses `#trusted-input` with an evaluate of
+`el.focus()` and presses `ArrowLeft`, with FE-1's other clauses; (3) FE-3c (FE-3 without the option) is
+an observation outside the outcome table; (4) FE-4's window and foreground clauses are measured by a
+capture loop with its own positive control, and a void capture escalates instead of passing.
+**Why:** all written before any measurement (rows committed in 6398f27, before any FE build was loaded);
+(1) keeps an input that worked from being reported as failed; (4) makes FE-4 able to fail.
+**Instead of:** throwing on a failed disable; FE-3 without a defined focus step.
+**Revisit if:** the live run shows emulation still on after a call (then (1) is wrong and becomes a
+throw).
+**By:** Claude
+
 ### 2026-10-23 · S1's locator details (#87)
 **Decided:** accepted as proposed in `…-steps/S1.md` §5: (1) one walk (`a11y.ts` `walkElements`) serves
 `buildSnapshot` and every `locate` variant; (2) `{role, name}` matches the snapshot's name as shown

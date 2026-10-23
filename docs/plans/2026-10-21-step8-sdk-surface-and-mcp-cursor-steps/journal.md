@@ -35,3 +35,10 @@
 - S1 (content `locate`, lane content/ + inject.ts + build.mjs) and FE build part (debugger.ts,
   actions.ts trusted branch, rows §4.17, recipe) dispatched in parallel. FE live waits until both are
   committed; I resume the FE step agent by message.
+
+## 2026-10-23 — S1 closed (e9e5e8c), FE build closed (6398f27 rows, 6742c1f code); FE live dispatched
+
+- S1: PASS-with-notes, +72 tests; #87 (locator details; items 2–4 open for the user).
+- FE build: PASS-with-notes; rows FE-0…FE-5, FE-PC, FE-3c committed before any build (6398f27);
+  code + tests 6742c1f; suite 1135 / 66 at 6742c1f (verifier, clean worktree); #88 build details.
+- Main tree clean but for FE's ledger line; port 9234 free. FE live part resumed, alone.
