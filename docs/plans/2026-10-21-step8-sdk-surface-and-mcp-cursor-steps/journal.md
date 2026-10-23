@@ -69,3 +69,8 @@
 - Both step agents ended with `oauth_org_not_allowed` (HTTP 403). S2b had written nothing; S4 had a
   ledger and an untracked partial `sdk/test/failure-report.test.ts` from its builder. The user said to
   continue; both resumed by message (S4 from its ledger, S2b from scratch). Tree otherwise clean at 53f68db.
+
+## 2026-10-23 — S4 closed (26df11b)
+
+- S4: PASS-with-notes after 2 fix rounds, +65 tests; #93 (ref rewrite after the report's snapshot;
+  client options; `@bridge/sdk/report` subpath for S5). S2b still running; S5 waits for it.

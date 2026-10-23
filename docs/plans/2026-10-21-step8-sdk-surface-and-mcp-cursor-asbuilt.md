@@ -11,7 +11,7 @@ decisions.md · 2026-10-23: #71 FE stage (amended #78); #72 S2b (amended #81, #8
 required; #74 session marker (amended #80); #75 S3.4 re-exports; #76 `NO_CURSOR`; #78 FE rows and
 table; #79 handles never reused across daemons; #80 marker mechanism; #81 `id` stays, untargeted
 network = active, unlisted untargeted → `BAD_PARAMS`; #82 `__bridgeData`; #83 `{text}` rule, MCP
-`locator` object, exported `BridgeError`; #84 reworded checks; #87 S1 locator details (items 2–4); #90 `Tab` surface and cursor rule (1, 2, 7); #91 final `BridgeClient` surface (#24, #27/#28).
+`locator` object, exported `BridgeError`; #84 reworded checks; #87 S1 locator details (items 2–4); #90 `Tab` surface and cursor rule (1, 2, 7); #91 final `BridgeClient` surface (#24, #27/#28); #93 report ref rewrite, client options, `@bridge/sdk/report`.
 
 ## Stage 0 — spec audit · 2026-10-23 · verifier: PASS-with-notes · commit 7fe62f4
 
@@ -201,3 +201,36 @@ Contracts binding forward, at dcb72db:
 - `extension/src/inject.ts`: the two injection messages say "the target tab" (F33).
 
 - *Session agent 2026-10-23:* decision #92 records S2's three proposals; S2.3's `targetTab` → `BAD_PARAMS` clause is S2b's (#72). Tests 1135 / 66 → 1276 / 71 with S2 alone (+141).
+
+## S4 — failure reports · 2026-10-23 · verifier: PASS-with-notes (2 fix rounds) · commit 26df11b
+
+
+### Contracts (binding forward)
+- `sdk/src/error.ts`: `ATTACH_CODES` = exactly `LOCATOR_NOT_FOUND LOCATOR_AMBIGUOUS REF_STALE OFFSCREEN
+  PAGE_ERROR NAV_FAILED TIMEOUT`; `ATTACH_BUDGET_MS = 5000` (one deadline, injected `Timers`, three
+  concurrent attach calls `snapshot {tab}`, `screenshot {tab}`, `networkRequests {tab, limit: 20}`,
+  each `timeoutMs: 5000`, each stale-guarded); never throws; same error object rethrown.
+- Fields on the shared `BridgeError` (augmentation of `@bridge/shared/error`, own properties, attach-set
+  codes only): `snapshot?`, `screenshotPath?`, `network?`, `attachErrors?: string[]`, `report?: () =>
+  string` (≤ 60 lines). Other codes: untouched, no call.
+- Enriched in `Tab` methods (and the client's mirrored methods); never raw `call()`; never errors thrown
+  before a call. `connect({failureReports: false})` → untouched, zero attach calls.
+- A report's snapshot renumbers refs; `data.candidates/matches[].ref` rewritten to the attached
+  snapshot's (non-empty role + name, unique) or deleted.
+- Screenshot: `BRIDGE_FAILURES_DIR` else `~/.chrome-agent-bridge/failures/`, `<ISO with :/. → ->-<handle>.png`.
+- `sdk/src/index.ts` unchanged (eight values).
+
+### Decisions taken
+- Proposed in §5 (four entries; three for user review).
+
+### Deviations from the phase doc
+- §4.
+
+### Estimates vs actuals
+| Item | Estimate | Actual | Source |
+|---|---|---|---|
+| Time | 2 h | ≈ 1.6 h (incl. ≈ 0.3 h API outage) | ledger |
+| Tests | ≥ 1370 + new | 1370/75 → 1435/76 (+65) | verifier, clean worktree at eb4fc4e |
+| Fix rounds | ≤ 2 | 2 | S4-verifier.md, S4-fixer1.md |
+
+- *Session agent 2026-10-23:* #93 records S4's proposals and the `@bridge/sdk/report` subpath for S5. Covered window: the screenshot lands in `attachErrors` at the 5 s cut while the human may see the failed tab up to ~30 s (R9-RESTORE; stated, not measured live). Tests 1370 → 1435 (+65) at eb4fc4e (verifier).

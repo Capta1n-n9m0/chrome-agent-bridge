@@ -51,12 +51,32 @@ Step 8 (2026-10-23 on), for the user at the gate:
 14. "S1's locator details" (#87), items 2–4
 15. "The SDK `Tab` surface details and the cursor rule as built" (#90), items 1, 2, 7
 16. "S3.5's outcome and the Step 6 revisit items" (#91), #24 and #27/#28 as final surface
+17. "S4's failure-report details, and how the MCP reaches them" (#93)
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-23 · S4's failure-report details, and how the MCP reaches them (#93)
+**Decided:** (1) Accepted as proposed in `…-steps/S4.md` §5: a report's own snapshot renumbers the tab's
+refs, so when a report is attached each candidate/match ref in `error.data` is rewritten to the attached
+snapshot's ref (non-empty role + name, unique hit only) or else deleted; `BridgeClientOptions` gains
+`failureReports` (default on), `env` and two test seams; a failing screenshot, `focusTab` or download is
+enriched literally per 0.5 (F25); the report details of §5's fourth entry. (2) The MCP reaches the
+report machinery through an additive subpath `@bridge/sdk/report` exporting `attachContext` (S5 adds it
+to `sdk/package.json` `exports`, like `./format`); the main entry keeps exactly its 8 values (S3.4).
+**Why:** S4 verifier measured the ref reset with the real content-script code in jsdom (stale candidate
+refs pointed at other elements); S5.3 requires the MCP to render `report()` plus an image block, but the
+MCP calls through `BridgeLink`, not `Tab`, and `attachContext` was not exported. A subpath is additive
+and undoable, and keeps the pinned main surface.
+**Instead of:** a snapshot that does not reset refs (extension-side, a contract change); exporting
+`attachContext` from the main entry (changes S3.4's pinned surface); rebuilding the MCP's tools on
+`Tab` objects.
+**Revisit if:** the extension gains a ref-preserving snapshot.
+**By:** Claude (the ref rewrite, the client options and the `./report` subpath touch the SDK's surface —
+listed under Open decisions)
 
 ### 2026-10-23 · S2's handler details: the mark rides the serialiser, `pressKey` takes a target, `waitFor {locator}` rules (#92)
 **Decided:** accepted as proposed in `…-steps/S2.md` §5: (1) `asRef` marks through the serialiser's own
