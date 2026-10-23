@@ -61,6 +61,17 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-23 · The user grants the pp1 course for SDK-6/SDK-7 and one Chrome restart for SM-1 (#96)
+**Decided:** SDK-6 and SDK-7 run on the user's Blackboard course "pp1"; the login uses Chrome's autofilled
+credentials, which are never read, typed, printed, logged or recorded. SM-1 may restart Chrome once
+(`chrome://quit`, session restore). 0.7's read-only rule and the public-repo evidence rule (no Blackboard
+content, student data, course URLs or titles in the repo) still bind.
+**Why:** the user (2026-10-23): "for sdk 6 and 7, use pp1 course. It will require login, my credentials
+should be autofilled, feel free to use them you have my explicit permission. For sm 1 you absolutely can
+restart chrome, you have my explicit permission for that as well".
+**Instead of:** recording SDK-6/SDK-7 as "waits for the user" and SM-1 as "not run".
+**By:** user
+
 ### 2026-10-23 · S5's MCP details: `browser_new_tab` activation, the status lines, the tool schemas, reports (#95)
 **Decided:** accepted as proposed in `…-steps/S5.md` §5: (1) `browser_new_tab` sends `active: true` only
 when the cursor is set and `listTabs` shows its tab as `current`; with no cursor (a session's first
