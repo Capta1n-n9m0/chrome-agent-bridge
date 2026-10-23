@@ -275,3 +275,4 @@ learned):
 ## Running state (session agent updates this section at each dispatch)
 
 - 2026-10-23: steps dir created; decisions #70–#77 recorded; Stage 0 dispatched alone.
+- 2026-10-23: Stage 0 closed (7fe62f4); rulings #78–#85 recorded (read them: they bind every stage). S0 dispatched alone.
