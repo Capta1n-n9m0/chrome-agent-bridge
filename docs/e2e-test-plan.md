@@ -852,6 +852,104 @@ flags' effect is "not determinable"; the same reading if BGF-0, BGF-1/BGF-2 or B
 trial per condition (as in Run 8); a single PASS/FAIL is reported as such. Every outcome is fine;
 nothing is re-tuned after the measurement.
 
+### 4.17 FE rows (Step 8: focus emulation for trusted input; decisions.md #71, #78, #85 item 3)
+
+*Added 2026-10-23 by Step 8 stage FE's builder, before any FE build was loaded and before any FE row
+ran (exit check FE.4; decisions.md · 2026-10-23 · Stage FE measures focus emulation before `policy.ts`
+is set (#71), amended by · FE's rows and outcome table, amended before anything is measured (#78) and
+· Stage 0's build-level rulings: SDK-1's recipe, S3.5's control, the stage split (#85) item 3). The
+order, the set-up and the commands are in the wave sheet
+[`FE-wave-sheet.md`](plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/FE-wave-sheet.md).
+§4.14's markers and cautions B1–B6 apply; tags as in §4.12. Run 8's and Run 10's BG results stay as
+recorded.*
+
+**The question.** Trusted CDP input into a background tab answers `ok` and the page receives nothing
+(BG-1/BG-2, Run 8; BGF-1/BGF-2, Run 10). Stage FE adds `focusEmulation: true` to `click`/`type`/`pressKey`
+on the trusted path (explicit `trusted:true`, or click/type's escalation after a content-action
+failure): in the same debugger session the extension sends `Emulation.setFocusEmulationEnabled
+{enabled:true}`, then (for `type`) focuses the field, then the unchanged `Input.*` commands, then
+`{enabled:false}` in a `finally`, then detaches; it focuses no window and activates no tab, and the
+result carries `focusEmulation: "on"`. Without the param every call is unchanged. These rows measure
+whether the page then receives the input, and what the human sees. By Chromium's source the target
+page reads `visible` while emulation is on (stage0-audit.md F1, §8; unconfirmed for Chrome 156): that is
+recorded as an observation, not judged.
+
+**Tools of this section** (in `recipes/`, written before the run; `npx tsc --noEmit -p
+recipes/tsconfig.fe.json` exit 0; `npx tsx recipes/fe.ts selftest` → `SELFTEST PASS — 79/79 checks as
+expected`, the dry run of every rule on canned good and bad inputs, connecting to nothing):
+- `fe.ts <command>` — one command per row (its header lists them). Every line is `<ts> <name>:
+  <message>` (the t5 format); each row prints its own `… PASS` / `… FAIL` line, computed by the pure
+  functions of `fe-rules.ts`, and appends one JSON record per FE-0, positive control, capture judgement
+  and trial to `$FE_OUT\fe-results.jsonl` (handles, window ids, the fixture's status line, field value
+  and visibility logs — never a URL or a title). `fe.ts verdict` re-computes every rule from that file
+  and prints the outcome by the table below. It prints only fixture URLs (none, in practice).
+- `fe-win.ps1 -Hwnd <Wf> -Seconds <s> -IntervalMs 50 -Csv <file> [-StopFile <file>]` — the window-capture
+  loop: one `PrintWindow` capture of the driver's window every ~50 ms (~140 ms per frame was measured
+  on a scratch window at `-IntervalMs 100`), writing per frame the time, the **foreground window's
+  handle**, the size, and the colours of the uniform rows at the top of the window (three probes per
+  row, right of the bars' labels); no image is written and no title printed. `fe.ts frames <csv> --for
+  positive|block` judges it.
+- Each trial runs on a **fresh background fixture tab** `…?t5=<row>-<kind>-<k>` opened by the script
+  (`newTab`, `active:false`, leased to the script) in the driver's window and closed after the trial,
+  so no trial can read an earlier trial's status line (#78). The human's tab is the driver's
+  `…?t5=fe-human` tab (cyan bar `HUMAN`); each target gets a magenta bar `<row> TARGET`. Both carry the
+  `visibilitychange` logger (`VISLOG_INSTALL`, page-side epoch timestamps as SCREEN-1). During each call a
+  `listTabs` poller (lock-free) reads every 25 ms, from 50 ms before the call to 50 ms after it.
+
+**Order** (the wave sheet's): reload (exit 0) → FE-0 → FE-5 first → the positive control → FE-1, FE-2,
+FE-3 under one capture loop → FE-5 last → FE-3c (observation) → `verdict`.
+
+| ID | Objective | Steps | Expected |
+|---|---|---|---|
+| FE-0 ★ | The loaded extension is the FE build (the run's first row after `recipes/reload-extension.ps1` exit 0) | Driver window Wf on `…?t5=fe-human`, current (B1), uncovered (B4). **[SH]** `Get-DaemonBuild`; `npx tsx recipes/fe.ts check`. | `fe-check: connected as client c<k> — daemon build <sha>, proto 2, extension connected` (`<sha>` = `Get-DaemonBuild`, recorded); `fe-check: human <T#h> (fixture page); target <T#x> (background, leased to fe-check)`; `fe-check: click e<N> trusted focusEmulation:true → ok {"ok":true,"focusEmulation":"on"} (<ms> ms)`; `fe-check: FE-0 PASS — the result carries focusEmulation "on": the extension is the FE build`. PASS = the result carries `focusEmulation: "on"`. A stale extension ignores the param and answers `ok {"ok":true}` → `FE-0 FAIL — no focusEmulation "on" in the result ⇒ stop, reload, re-check (not an outcome; #78)`: **FAIL is not an outcome** — stop, reload, re-check; no other row runs before an FE-0 PASS. Whether the target received the click is not judged here. |
+| FE-5 ★ | Control: BG-1 and BG-2 exactly as §4.14, **without** the option, on the same build; run **first** (before FE-1) and **last** (after FE-3) | As FE-0's set-up. **[SH]** `npx tsx recipes/fe.ts control --phase first`; later `… control --phase last`. Three BG-1 trials (trusted click on `Trusted-only button`) then three BG-2 trials (trusted `type "bg2typed"` into `Trusted-only input`), each on a fresh tab. | Per trial: `fe-5: FE-5 (<phase>) BG-<1\|2> trial <k>: …` lines as FE-1's (with no `focusEmulation:true` and a result `ok {"ok":true}`), then `fe-5: FE-5 (<phase>) BG-<1\|2> trial <k>: BG-<1\|2>'s rule <PASS\|FAIL>; received input: <yes\|no>`; finally `fe-5: FE-5 control (<phase>) — BG-1 received input in <a>/3 trials, BG-2 in <b>/3; control <holds\|VOID (received input)>`. "Received input" = the target's status line is not `status: idle` **or** its field is not empty, read after the call (any page-side effect counts). **FE-5 "passes" — voids the comparison — if the control receives input in ANY trial of either block** (#78); expected (Runs 8, 10): `holds`, `0/3` and `0/3` twice. |
+| FE-PC ★ | Positive control (#78 item 3): the human's-tab logger, and the capture loop, see a real switch | As FE-0's set-up. **[SH]** start `fe-win.ps1 -Hwnd <Wf> -Seconds 30 -IntervalMs 50 -Csv $FE_OUT\frames-positive.csv` in the background; after 3 s, `npx tsx recipes/fe.ts positive` (one default-mode `screenshot` of a background magenta target, 1 s after installing the logger); when the loop has ended, `npx tsx recipes/fe.ts frames $FE_OUT\frames-positive.csv --for positive`. | `fe-positive: human <T#h> (cyan bar); target <T#x> (magenta bar, background, leased to fe-positive)`; `fe-positive: screenshot <T#x> (default mode) → ok; call <t0> → <t1> (<ms> ms)`; `fe-positive: human tab hidden +<a> ms, visible again +<b> ms`; `fe-positive: POSITIVE (page timestamps) PASS — the human's-tab logger saw hidden → visible`. Then `fe-frames: <n> frames; frames showing magenta <m>, cyan <c>` and `fe-frames: POSITIVE (capture loop) PASS — a frame during the flash shows the target's magenta bar; none before` (rule: ≥ 1 frame in [`<t0>`, `<t1>` + 500 ms] shows magenta, and ≥ 1 frame in the 3 s before `<t0>`, none of them magenta). **If the page part FAILs**, FE-4's page-timestamp clause is not discriminating: recorded, and **the run stops and escalates** (no FE-1…FE-3). **If the capture part FAILs**, FE-4's "no window capture shows the target" clause is void: recorded, **the run stops and escalates** — the clause is never silently dropped. |
+| FE-1 ★ | BG-1 with `focusEmulation:true`: trusted click into a background tab | Capture loop running for the block (wave sheet). **[SH]** `npx tsx recipes/fe.ts fe1` — three trials, each on a fresh tab. | Per trial `k`: `fe-1: FE-1 trial <k>: human <T#h>; target <T#x> (background, leased to fe-1); target visibilityState hidden`; `fe-1: FE-1 trial <k>: click e<N> trusted focusEmulation:true → ok {"ok":true,"focusEmulation":"on"} (<ms> ms)`; `fe-1: FE-1 trial <k>: target status "status: TRUSTED click received"; field value ""; target visibilityState hidden (read after the call returned)`; `fe-1: FE-1 trial <k>: human's side — listTabs reads <n> polls (<m> overlapping the call) + before/after; human current, never hidden; window active tabs unchanged; target never active → FE-4 trial PASS`; `fe-1: FE-1 trial <k>: observation — target page visible +<v> ms, hidden again +<h> ms (start hidden; read after the call hidden)`; `fe-1: FE-1 trial <k>: PASS`. Row: `fe-1: FE-1 PASS — 3/3 trials PASS; FE-4 trials 3/3 PASS (the window clauses: frames --for block)`. **PASS rule per trial** = BG-1's (§4.14), copied, with the option added: the call returns without error and its result carries `focusEmulation: "on"`; the status line exactly `status: TRUSTED click received`; the target's `visibilityState` `hidden` **as read after the call returned** (#78 item 1); the human's tab not `hidden` from 50 ms before the call; afterwards the human's tab active in its window and `current`, the target in the background. A failing trial prints `FAIL — <the clauses that failed>`. FE-1 PASSes only if **all three** trials PASS. |
+| FE-2 ★ | BG-2 with `focusEmulation:true`: trusted typing into a background tab | As FE-1: `npx tsx recipes/fe.ts fe2`. | As FE-1 with `fe-2`/`FE-2`, the call line `type e<N> "bg2typed" trusted focusEmulation:true → ok {"ok":true,"focusEmulation":"on"} (<ms> ms)` and the status line `target status "status: TRUSTED input = bg2typed"; field value "bg2typed"; target visibilityState hidden (read after the call returned)`. **PASS rule per trial** = BG-2's (§4.14), copied, with the option added: as FE-1's, with the status line exactly `status: TRUSTED input = bg2typed` **and** the field value exactly `bg2typed`. All three trials must PASS. (The extension focuses the field inside the debugger session, after the enable, #85 item 3.) |
+| FE-3 ★ | Trusted `pressKey` with `focusEmulation:true` into the background tab's trusted-only input | As FE-1: `npx tsx recipes/fe.ts fe3`. **Focus step** (in the same trial, before the pressKey): `evaluate` of `el.focus()` on `#trusted-input` (the bridge's `evaluate`, its own debugger session, ended before the pressKey's), which returns whether `document.activeElement` is then `#trusted-input`. **Key**: `ArrowLeft` (`keys.ts` sends it with `windowsVirtualKeyCode` 37 and no `text`; in an empty field it changes no value, so no `input` event overwrites the keydown's status). | As FE-1 with `fe-3`/`FE-3`; the first line ends `; focus step (evaluate el.focus()): document.activeElement is #trusted-input: yes`; the call line `pressKey ArrowLeft trusted focusEmulation:true → ok {"ok":true,"focusEmulation":"on"} (<ms> ms)`; the status line `target status "status: TRUSTED key = ArrowLeft"; field value ""; target visibilityState hidden (read after the call returned)`. **PASS rule per trial** = PASS = `status: TRUSTED key = ArrowLeft`, with FE-1's other clauses (no error, `focusEmulation: "on"`, target `hidden` after the call, the human's tab and the target afterwards). A focus step that prints `no` is recorded; the trial is judged by the same rule (it FAILs if the key did not arrive). All three trials must PASS. *Whether `el.focus()` sets `document.activeElement` in a hidden tab is unmeasured; the line records it.* |
+| FE-4 ★ | The human's side over **all** trials of FE-1…FE-3 (#78 item 1) | The capture loop runs from before FE-1 to after FE-3 (`-StopFile`), Wf in the foreground (`Set-T5Foreground` → `True` before the loop starts). **[SH]** after FE-3: `npx tsx recipes/fe.ts frames $FE_OUT\frames-block.csv --for block`; `npx tsx recipes/fe.ts verdict`. | Per trial (FE-1…FE-3 lines above): `… → FE-4 trial PASS`: in every `listTabs` read (before, each poll, after) the human's tab is `current`; every window's active tab is the one it was before the call; the target is never `active`; the human's tab's logger shows no `hidden` at any time since it was installed for that trial (stricter than BG's "from the call"); a failed poll fails the trial. Block: `fe-frames: FE-4 (window capture over 9 trials, <n> frames) PASS — no frame shows the target; the foreground window never changed` — no frame from 500 ms before the first call to 1500 ms after the last shows the target's magenta bar, and the foreground window's handle is the same in every frame of that span. The block capture is **void** (⇒ escalate, as the positive control) unless every call has a frame within 1000 ms before and after it and no gap over 1000 ms around it. Verdict line: `fe-verdict: FE-4: trials 9/9 PASS; window capture PASS (no frame shows the target; foreground constant) → PASS`. **The debugging banner is expected and is not a FAIL.** **Observation, not a PASS clause:** the target's own page visibility (each trial's `observation —` line; expected by Chromium's source: `visible` while the option is on, `hidden` again after the call). |
+| FE-3c | *Extra observation, not in the outcome table (proposed by the FE builder):* does FE-3 discriminate? FE-3 without the option | After FE-5 last. **[SH]** `npx tsx recipes/fe.ts fe3 --control` (same focus step and key, no `focusEmulation`). | Per trial as FE-3 without `focusEmulation:true`; finally `fe-3c: FE-3c observation (not in the outcome table) — without the option the key reached the page in <n>/3 trials`. Recorded either way. If `<n>` > 0, FE-3's PASS says nothing about emulation — recorded and listed for the user; the table is still read as written. |
+
+**The outcome table** (copied verbatim from kickoff §7 / phase doc Stage FE, with #78's precedence;
+not changed here). The session agent records the matching decision, "The background-input policy",
+citing the rows, and S3 sets `sdk/src/policy.ts` from it:
+- **(A) FE-1, FE-2, FE-3 PASS in all trials and FE-4 PASS** → policy `"focusEmulation"`: the SDK's
+  trusted actions send `focusEmulation: true`; no `focus()`, no flash; the MCP's trusted tools do the
+  same (S5).
+- **(B) FE-1 and FE-2 FAIL, or FE-4 FAIL** (the human saw something) → policy `"focusFirst"`: the
+  plan's fallback (0.4; #66 "Revisit if") — `Tab.click/type/pressKey({trusted:true})` call `focus()`
+  first, and the docs say the tab comes to the front and stays there.
+- **(C) mixed** (one input kind passes all trials, another fails; FE-4 PASS) → per kind: the passing
+  kinds use emulation, the failing kinds `focus()` first; recorded per kind.
+- A trial that passes once and fails once counts as FAIL for that kind (no best-of-three).
+- FE-5 passing (the control no longer fails) voids the comparison: record it, read the policy as (B),
+  and list it for me.
+- **Precedence (#78 item 2):** FE-5 void → (B); else FE-4 FAIL → (B); else every kind passes all trials
+  → (A); else no kind passes → (B); else (C). FE-0 FAIL is "stop, reload, re-check", not an outcome.
+  FE-5 "passes" if the control receives input in any trial; FE-5 runs first and last. Each trial uses a
+  fresh fixture tab or a reset status line. FE-4 is judged over all trials of FE-1…3.
+- *#78 item (4), verbatim, for S3:* "(4) Under (A)/(C), the SDK sends `focusEmulation: true` on every
+  trusted-capable click/type (it cannot see the extension's automatic escalation); (C) is a per-kind map
+  in `policy.ts`; `type {submit}` takes the stricter of type and pressKey. Under (B), the MCP's trusted
+  tools keep today's behaviour (no automatic focus; `browser_focus_tab` stays an explicit call) and only
+  the SDK's `Tab` focuses first."
+
+`fe.ts verdict` applies exactly this, after three gates that are not outcomes (each prints `STOP — …`
+and exits 1): the last FE-0 record PASSes and precedes every trial; the positive control's two parts
+PASS; the block capture is not void. Every recorded trial counts — a re-run adds trials, it never
+replaces them — and fewer than three recorded trials for a row (or for an FE-5 block and kind) prints
+`INCOMPLETE — … no outcome`. Its last line is one of `OUTCOME (A) — …`, `OUTCOME (B) — FE-5 void: …`,
+`OUTCOME (B) — FE-4 FAIL: …`, `OUTCOME (B) — no kind passes: …`, `OUTCOME (C) — per kind: click <p>,
+type <p>, pressKey <p>; type {submit} takes the stricter of type and pressKey: <p> (#78 item 4)`.
+
+**Evidence rules.** Fixture pages only (the repo is public, B2): the run record copies the scripts'
+lines; `fe-results.jsonl` and the two frames CSVs carry no URL, title or image and are attached as
+`FE-run-results.txt`, `FE-frames-positive.txt`, `FE-frames-block.txt`; no window image is kept. If any
+output shows a non-fixture URL, stop the row, record only "non-fixture tab touched — row invalid".
+**Log hygiene** at the end: §4.12's block (copy `daemon.log`, count `://`, the token and withheld lines
+without printing them); expected `0`, `0`, `0`, else the log is not attached; attached as
+`FE-daemon-log.txt` (`*.log` is gitignored).
+
 ## 5. Results template
 
 Copy this and fill it in during the run:
