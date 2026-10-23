@@ -112,6 +112,10 @@ session marker). Order: Stage 0 → S0 → (S1 ∥ FE build) → FE live part, a
 S5 → S6 → S7 (decisions.md · 2026-10-23 · Stage FE measures focus emulation before `policy.ts` is set
 (#71); · S2's daemon half becomes stage S2b (#72)). The Stage 0 findings are in
 `…-steps/stage0-audit.md` (F1–F35); none is resolved until the session agent records it.*
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's
+recipe, S3.5's control, the stage split (#85)) item 7: The stage order is the kickoff's default; budgets
+as in `stage0-audit.md` §7 (S2b 4 h with #79). Each Stage 0 note below that a ruling in decisions.md
+#78–#85 resolves carries its own "Ruled" note.*
 
 ---
 
@@ -164,6 +168,28 @@ role-less `<div id="async-area">` (`test-fixtures/e2e-playground.html:121`). The
 `nth` in walk order, the 120-character name cap and the 800-element cap are unstated (F13). Also:
 `buildSnapshot` stays exported from `snapshot.ts`, since `sdk/test/format-baseline.test.ts:9` and
 `sdk/test/format-snapshot.test.ts:8` import it.*
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Page-function failures may carry `data`
+beside the marker (#82)), open point (1): `content/guard.ts` also returns `__bridgeData` when the thrown
+error has plain-JSON `data`; `unwrapResult` hands it on as the `BridgeError`'s `data`. The
+`{__bridgeError: "CODE:message"}` string, the return-not-throw rule and null/undefined → `REF_STALE` are
+unchanged; S7 adds the field to that `CLAUDE.md` gotcha. Contract-level: open for the user's review;
+binds meanwhile.*
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Locator rules, the MCP locator schema and
+the exported `BridgeError` (#83)) item 1, open point (2): a `{text}` locator matches the innermost element
+that survives the snapshot's pruning gates (`aria-hidden`/`inert`/`hidden`/`display:none`, zero-size when
+`hasLayout`) whose normalised text contains the needle, case-insensitive substring; `exact` means
+equality; `nth` counts in the snapshot's walk order; `{role,name}` keeps 0.1's rule (only what a snapshot
+lists). The 0.1 invariant reads, for `{text}`, "what the snapshot's pruning shows". `buildSnapshot` stays
+exported from `snapshot.ts`. Contract-level: open for the user's review; binds meanwhile. (The
+120-character name cap and the 800-element cap named in point (2) are not ruled by #83.)*
+*Superseded 2026-10-23 for `{text}`: the invariant was "what Claude saw in a snapshot is what a locator
+matches", because a `{text}` target can be an element the snapshot does not list, such as SDK-4's
+role-less `<div id="async-area">` (decisions.md · 2026-10-23 · Locator rules, the MCP locator schema and
+the exported `BridgeError` (#83)).*
+*Proposed 2026-10-23 (S0 step agent, for the session agent to record): `nth` is 0-based (`nth: 0` is the
+first match in the snapshot's walk order), as Playwright's `nth`; 0.1 and #83 left the base unstated.
+`shared/src/protocol.ts` documents it and `isLocator` accepts 0. S1 builds to this unless ruled
+otherwise.*
 
 ### 0.2 Actions take `ref | locator`
 
@@ -258,6 +284,21 @@ S3 `Tab` guard plus an MCP-local guard in S5, which leave raw `call()`, Step 7 b
 exposed; (c) both. Recommended: (a) + the S3 `Tab` guard. Conservative rule until the user rules: S2b
 builds (a) behind an injectable base, and S3 builds its guard.*
 
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · A new daemon never reuses a handle number;
+the SDK guards stale `Tab`s (#79)), F2: S2b: `HandleTable` starts above a high-water mark kept under
+`~/.chrome-agent-bridge/` (written before a minted handle is returned; reserving in blocks is allowed),
+falling back to a start-time base when the file cannot be read or written; the base is injectable so
+tests keep `T1…`. S3: each `Tab` carries the client's connection generation and throws `TAB_UNKNOWN`
+locally after a 4002 reconnect, with no call. #11's premise ("an explicit stale handle returns
+`TAB_UNKNOWN`") gets a dated note naming the gap this closes. Rows quoting literal handles are re-dated
+before their run. Contract-level: open for the user's review; binds meanwhile.*
+
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Locator rules, the MCP locator schema and
+the exported `BridgeError` (#83)) item 3, F14 in the "Added (Stage 0)" note above: `@bridge/sdk` keeps
+exporting the shared `BridgeError` class; the report fields (snapshot, screenshot path, network,
+`report()`) are optional properties set on it, so every existing `instanceof BridgeError` keeps working.
+Contract-level: open for the user's review; binds meanwhile.*
+
 ### 0.5 Failure reports (`sdk/src/error.ts`)
 
 Every SDK call wraps the wire `BridgeError`. For codes where a page state helps —
@@ -338,6 +379,15 @@ codes without candidates; and whether raw `call()`, which the MCP uses, is enric
   on `browser_wait_for` (`:342`), and `ref` is required today (stage0-audit.md F12; proposed: a nested
   `locator` object, `ref` optional). And with no cursor yet, the `browser_new_tab` rule above opens the
   session's first tab in the background, a change rows TAB-1…4 and MUX-1 observe (F26).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Locator rules, the MCP locator schema
+  and the exported `BridgeError` (#83)) item 2, F12: the MCP's actions and `browser_wait_for` take a
+  nested `locator: {role?, name?, exact?, text?, css?, nth?}`; `ref` becomes optional; "exactly one of
+  ref / locator" is validated in the tool. Existing `text` fields keep their meaning. Contract-level:
+  open for the user's review; binds meanwhile. (F26, the first tab with no cursor, is not ruled in
+  #78–#85.)*
+  *Superseded 2026-10-23: was "Actions take `ref` **or** the locator fields (`role`, `name`, `text`,
+  `css`)", flat on the tool, because a flat `text` collides with `browser_type.text` (decisions.md ·
+  2026-10-23 · Locator rules, the MCP locator schema and the exported `BridgeError` (#83)).*
 
 ### 0.7 Recipes
 
@@ -372,6 +422,12 @@ list. **Parallel with** follows "Order of work". S1 and S3 may run concurrently:
       new header (stage0-audit.md F27). `WaitForParams` as written in 0.4 makes `{}` a valid `{text?}`
       arm and omits 0.2's `timeoutMs` on the locator arm (F28, proposed `{text: string}`, `{locator,
       state?, timeoutMs?}`, pending the session agent).
+      *Built 2026-10-23 (S0 step agent): F27 as proposed — `shared/src/codes.ts` holds
+      `SDK_ERROR_CODES = ["NO_CURSOR"]` as a third list, in `ErrorCode`, `ErrorCodes` and
+      `isErrorCode`'s set, with a new header (23 codes: 22 on the wire from the daemon and extension,
+      `NO_CURSOR` from the SDK alone); mechanical. F28 as proposed — `WaitForParams` is
+      `{text: string}` | `{locator, state?, timeoutMs?}` | `{networkIdle: true, idleMs?}` | `{seconds}`;
+      design-local, proposed in S0.md for the session agent to record.*
 
 **Lane:** `shared/src/`, `shared/test/`. **Parallel with:** sequential, first. **Verifier focus:**
 `LOCATOR_NOT_FOUND` and `LOCATOR_AMBIGUOUS` are present in `shared/src/codes.ts` from Step 6 (the plan
@@ -379,6 +435,13 @@ says "verify"); the `Locator` union matches 0.1 exactly (three variants, `nth` o
 the `WaitForParams` discriminated union has the four arms of 0.4's `waitFor`.
 *Added 2026-10-23 (Stage 0), from kickoff §7:* the daemon and extension bundles are byte-identical
 after S0 (types only, so no build-id handover).
+*Added 2026-10-23 (S0 step agent), escalated to the session agent: this clause conflicts with S0.4 and
+decisions.md · 2026-10-23 · `NO_CURSOR` enters `shared/src/codes.ts` as the 23rd code (#76) by
+construction. `daemon/dist/index.js` and `extension/dist/sw.js` bundle the `ErrorCodes` object literal
+(`daemon/src/*.ts`, `extension/src/errors.ts` import it) and the daemon bundles `isHello`
+(`daemon/src/handshake.ts:1`), so adding `NO_CURSOR` to `ErrorCodes` and a `session` check to `isHello`
+changes both bundles' bytes. The clause stands unchanged until ruled; S0's report gives the measured
+diff.*
 **Needs the user's keyboard:** no.
 
 ### Stage S1 — Content-script `locate` (TDD, jsdom)
@@ -451,12 +514,50 @@ FE-0…FE-5 are committed.*
   `CalculatePageVisibilityState` returns `kVisible` while one exists. So the target's page reads
   `visible` while the option is on, and the clause fails for a reason the human never sees (F1,
   CRITICAL; Chromium `main`, unconfirmed for Chrome 156).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · FE's rows and outcome table, amended
+  before anything is measured (#78)) item 1, F1: FE-4 judges only what the human sees: the human's tab
+  stays `current` and never `hidden`; the foreground window and every window's active tab are unchanged;
+  the target is never `active` in its window; no window capture shows the target. The debugging banner
+  is expected and is not a FAIL. The target's page visibility is a pre-registered **observation**
+  ("`visible` while the option is on, `hidden` again after the call"); FE-1/FE-2's copied "target
+  visibilityState hidden" is read after the call returns. Item 3: Positive control: one default-mode
+  screenshot of the target while the human's-tab `visibilitychange` logger runs must log `hidden` →
+  `visible`. Contract-level: open for the user's review; binds meanwhile.*
+  *Superseded 2026-10-23: FE-4 was "the human's tab stays `current` and never `hidden`, the foreground
+  window is unchanged, the target stays `hidden` (window capture and page timestamps as Run 8/9)", because
+  focus emulation raises a visible capturer, so the target reads `visible` while the option is on — a
+  state the human never sees (decisions.md · 2026-10-23 · FE's rows and outcome table, amended before
+  anything is measured (#78)).*
 - *The outcome table is not total: FE-1/FE-2 FAIL with FE-3 PASS matches both (B) and (C); FE-0 FAIL,
   "FE-5 passing" across trials, trial independence and the debugging banner (shown on every trusted
   call) are unstated; FE-4 has no positive control (F3).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · FE's rows and outcome table, amended
+  before anything is measured (#78)) item 2, F3: Precedence: FE-5 void → (B); else FE-4 FAIL → (B); else
+  every kind passes all trials → (A); else no kind passes → (B); else (C). FE-0 FAIL is "stop, reload,
+  re-check", not an outcome. FE-5 "passes" if the control receives input in any trial; FE-5 runs first and
+  last. Each trial uses a fresh fixture tab or a reset status line. FE-4 is judged over all trials of
+  FE-1…3. The banner and the positive control: see the note above (items 1 and 3). Item 4: Under (A)/(C),
+  the SDK sends `focusEmulation: true` on every trusted-capable click/type (it cannot see the extension's
+  automatic escalation); (C) is a per-kind map in `policy.ts`; `type {submit}` takes the stricter of type
+  and pressKey. Under (B), the MCP's trusted tools keep today's behaviour (no automatic focus;
+  `browser_focus_tab` stays an explicit call) and only the SDK's `Tab` focuses first. Contract-level: open
+  for the user's review; binds meanwhile.*
+  *Superseded 2026-10-23: the outcome table above was (A) "FE-1, FE-2, FE-3 PASS in all trials and FE-4
+  PASS", (B) "FE-1 and FE-2 FAIL, or FE-4 FAIL", (C) "mixed … FE-4 PASS", with no precedence, because the
+  cases overlapped (FE-1/FE-2 FAIL with FE-3 PASS matched both (B) and (C)) and FE-0, FE-5 across trials
+  and trial independence were unstated (decisions.md · 2026-10-23 · FE's rows and outcome table, amended
+  before anything is measured (#78)).*
 - *Trusted `type` focuses the field through the content script before `withDebugger`
   (`handlers/actions.ts:67-71`), so the focus step runs without emulation; FE-3 (`pressKey`, which has no
   focus step) must name how `#trusted-input` is focused first (F4).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's
+  recipe, S3.5's control, the stage split (#85)) item 3, F4: with `focusEmulation`, the order is attach →
+  enable → focus the field → `Input.*` → disable in a `finally`; FE-3's row names its focus step and key.*
+  *Superseded 2026-10-23: the option's sequence was "send `Emulation.setFocusEmulationEnabled {enabled:
+  true}` before the `Input.*` commands and `{enabled: false}` after them" (first checkbox above), with
+  trusted `type`'s focus step before `withDebugger`, because that focus step then ran without emulation
+  (decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's recipe, S3.5's control, the stage
+  split (#85)).*
 
 **Parallel with:** the build part with S1 (file-disjoint); the live part alone, after the build part is
 committed and no other stage has uncommitted code in the main tree. **Verifier focus** (kickoff §7):
@@ -489,6 +590,14 @@ the `asRef` details of F21 (the objectId is released inside the serializer callb
 `extension/src/debugger.ts:186`; `kind:"node"` also covers `window` and text nodes; `refOfMarked` must
 search open shadow roots and same-origin frames) and the locator-failure rules of F23 (no escalation to
 trusted input on `LOCATOR_*`; the poll runs in the service worker).*
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's
+recipe, S3.5's control, the stage split (#85)) item 5, F8's grant: S2 is granted
+`daemon/test/methods.test.ts`; `locate` enters `methods.ts` in the same commit as its router entry.*
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · The Chrome `id` stays beside `tab` this
+step; network calls without `tab` stay "active" (#81)), F8's loophole: After S2b an **unlisted** method
+without `tab` is refused `BAD_PARAMS "tab is required"` instead of forwarded. Contract-level: open for
+the user's review; binds meanwhile. (F21's `asRef` details and F23's locator-failure rules are not ruled
+in #78–#85.)*
 
 *Corrected 2026-10-23 (Step 7 propagator): was an extension-only removal. As built the fallback in
 `targetTab` is `activeTab()`, a module-private wrapper of `humansTab()` (`extension/src/tabs.ts:22`,
@@ -502,6 +611,13 @@ instead of a refusal. S2's lane names no `daemon/` path, so the Stage-0 audit mu
 question for the session agent. Removing the legacy path also meets the revisit trigger of
 decisions.md · 2026-10-22 · v2 peers do not yet require `code` (#51) — see Step 7 as-built § Stage T1,
 § Stage T2.*
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's
+recipe, S3.5's control, the stage split (#85)), the lane question above, items 4–6: S2b's daemon refuses
+`selectTab` itself (`UNKNOWN_METHOD`) before resolution, tested against a fake that would answer it. S2
+is granted `daemon/test/methods.test.ts`; `locate` enters `methods.ts` in the same commit as its router
+entry. S2b is also granted `extension/src/client.ts` (the hello lives there, not in `offscreen.ts`),
+`extension/src/handlers/tabs.ts`, `extension/src/handlers/network.ts`. (The removals' own stage is
+decisions.md · 2026-10-23 · S2's daemon half becomes stage S2b (#72).)*
 
 **Lane:** `extension/src/handlers/`, `extension/src/tabs.ts`, `extension/src/evaluate/`,
 `extension/src/content/index.ts`, `extension/test/`. **Parallel with:** sequential after S1 (and after
@@ -522,6 +638,10 @@ never find anything (executed; stage0-audit.md F16). Also from kickoff §7: `mar
 the attribute removed, a unique mark; `hidden` resolves on `LOCATOR_NOT_FOUND` only.
 `toSerializableArgs` maps only top-level `undefined` (executed: `{locator: undefined}` stays
 `undefined`), so pass `locator` as its own argument (F34).*
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Pre-registered checks reworded where they
+could not hold or could not fail (#84)), F16: Every grep check uses `grep -rn` and reads empty stdout
+**and** exit 1. Contract-level: open for the user's review; binds meanwhile. (F34 is not ruled in
+#78–#85.)*
 
 ### Stage S2b — The Step 6 compatibility path, `code` required, the session marker, the minimized-window message
 
@@ -541,6 +661,16 @@ consumer Stage 0 finds of a removed form.
 beside `tab` is removed (F7, option (b)): `recipes/hello.ts`, `recipes/t5.ts`, `recipes/t5-lib.ts`,
 `mcp/src/tools/registry.ts` (the three `?? id` fallbacks at `:140`, `:284`, `:321`) and dated notes on
 MUX-3/5/6/8/10 and LEASE-5/6.
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's
+recipe, S3.5's control, the stage split (#85)) item 6, F9's lane part: S2b is also granted
+`extension/src/client.ts` (the hello lives there, not in `offscreen.ts`), `extension/src/handlers/tabs.ts`,
+`extension/src/handlers/network.ts`; S2b.2 adds `grep -rn "targetTab({}" extension/src` → nothing; the two
+`methods.ts` comments are reworded.*
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · The Chrome `id` stays beside `tab` this
+step; network calls without `tab` stay "active" (#81)), F7: S2b does not remove the Chrome `id` from
+`newTab`/`listTabs` results. So option (b)'s conditional grants above (`recipes/hello.ts`, `recipes/t5.ts`,
+`recipes/t5-lib.ts`, `mcp/src/tools/registry.ts`, the MUX/LEASE notes) are not taken. Contract-level: open
+for the user's review; binds meanwhile.*
 
 - [ ] Daemon: remove the legacy path (#41: no `tab` → the human's tab; a Chrome `id` on
       `closeTab`/`focusTab` → its handle; #54: a bare number in a network `tab`); a non-free call
@@ -571,13 +701,28 @@ MUX-3/5/6/8/10 and LEASE-5/6.
   `active: [<id>] <title>`); `recipes/t5.ts:552-553` decides LEASE-6's (a)/(b) from it; `recipes/t5-lib.ts:100`
   prints it; five daemon lease tests read it. This is the "consumer that needs it" case: a dated
   decision is required (keep `id` this step, or remove it with the grants above).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · The Chrome `id` stays beside `tab` this
+  step; network calls without `tab` stay "active" (#81)), F7: S2b does not remove the Chrome `id` from
+  `newTab`/`listTabs` results (F7: `recipes/hello.ts`, `t5.ts` LEASE-6, `t5-lib.ts`, five daemon tests and
+  `registry.ts` read it). Contract-level: open for the user's review; binds meanwhile.*
+  *Superseded 2026-10-23: the first checkbox's "`newTab`/`listTabs` results without the Chrome `id` beside
+  `tab` (#57)" was S2b work, because Stage 0 found consumers — the checkbox's own "unless" case (decisions.md
+  · 2026-10-23 · The Chrome `id` stays beside `tab` this step; network calls without `tab` stay "active"
+  (#81)).*
 - *A `selectTab` dropped from `methods.ts` alone falls into the "unlisted with a `tab`" class and is
   forwarded **without the visibility lock** (executed, F10). Between S2b's daemon build and the extension
   reload a Step 7 extension still runs it as `focusTab`. Proposed: the daemon refuses `selectTab` itself
   (`UNKNOWN_METHOD`) before resolution.*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's
+  recipe, S3.5's control, the stage split (#85)) item 4, F10: S2b's daemon refuses `selectTab` itself
+  (`UNKNOWN_METHOD`) before resolution, tested against a fake that would answer it.*
 - *"A non-free call without `tab`" does not cover `networkRequests`, which is free; today a network call
   with no `tab` takes the legacy resolver (`daemon/src/intercept.ts:419`), while #40 gives absent/"active"
   the human's tab by design. The rule after S2b is undecided (F9).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · The Chrome `id` stays beside `tab` this
+  step; network calls without `tab` stay "active" (#81)), F9: A network call without `tab` keeps #40's
+  meaning (the human's tab), resolved without the legacy-path log. Contract-level: open for the user's
+  review; binds meanwhile.*
 - *#73's receipt half is already today's behaviour: codeless, empty, numeric, string and `null` errors
   arrive as `INTERNAL` within 1 ms from both peer kinds, with no log line; `{code:"WEIRD"}` passes through
   verbatim (executed, F17). The new parts are the type, the every-path test and the log line.*
@@ -590,9 +735,27 @@ MUX-3/5/6/8/10 and LEASE-5/6.
   awaited by `connect()` (reuse `storage.session`'s; else wait, bounded, for `onStartup` → fresh or
   `onInstalled` → reuse `storage.local`'s; neither → fresh), the marker part of the offscreen key, and a
   comparison with the last hello's marker so that none → none does not retire again.*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · The session marker's mechanism, amended
+  (#80)), F5, amending #74: The service worker's `connect()` awaits a marker: `storage.session` has one →
+  reuse (worker restart); else wait up to 2 s for `onStartup` (a fresh random marker) or `onInstalled`
+  (reuse `storage.local`'s, an extension reload); neither in time → a fresh marker (costs leases, never
+  safety); write both stores. The marker travels in the worker's `connect` message to the offscreen
+  document and is part of the offscreen client key, so a changed marker sends a new hello. The daemon
+  compares with the last hello's marker (none is a value): A→none retires, none→none does not. The choice
+  is a pure, tested function over five event orders (worker restart; reload; `onStartup` before and after
+  `connect()` within the bound; neither). Contract-level (wire): open for the user's review; binds
+  meanwhile.*
+  *Superseded 2026-10-23: the marker's mechanism was #74's ("Stage 0 confirms the mechanism, e.g. a value
+  written on `chrome.runtime.onStartup`"), because `storage.session` is emptied by a reload, `connect()`
+  runs before `onStartup`, and the offscreen key ignores the marker (decisions.md · 2026-10-23 · The
+  session marker's mechanism, amended (#80)).*
 - *Removing an unlisted-method loophole: an unlisted method without `tab` is forwarded free with no
   `tabId` (`daemon/src/methods.ts:54-55`, executed). Proposed for S2b: refuse it `BAD_PARAMS "tab is
   required"` (F8; #39 is contract-level).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · The Chrome `id` stays beside `tab` this
+  step; network calls without `tab` stay "active" (#81)), F8: After S2b an **unlisted** method without
+  `tab` is refused `BAD_PARAMS "tab is required"` instead of forwarded. Contract-level: open for the
+  user's review; binds meanwhile.*
 - *After a marker change retires every handle, the MCP's cursor answers each untargeted call with
   `TAB_GONE "tab T1 was closed …"` although nothing closed (`mcp/src/cursor.ts:10-11`, `intercept.ts:394`;
   F24).*
@@ -618,6 +781,13 @@ removals. **Needs the user's keyboard:** no.
       decision "The background-input policy" that names (A), (B) or (C) and the FE rows (FE.6); outcome
       (C) makes it a per-kind map (`click`/`type`/`pressKey`). S3 reaches `policy.ts` only after that
       decision is recorded (kickoff §9 STOP rules).*
+      *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · FE's rows and outcome table, amended
+      before anything is measured (#78)) item 4: Under (A)/(C), the SDK sends `focusEmulation: true` on
+      every trusted-capable click/type (it cannot see the extension's automatic escalation); (C) is a
+      per-kind map in `policy.ts`; `type {submit}` takes the stricter of type and pressKey. Under (B), the
+      MCP's trusted tools keep today's behaviour (no automatic focus; `browser_focus_tab` stays an
+      explicit call) and only the SDK's `Tab` focuses first. Contract-level: open for the user's review;
+      binds meanwhile.*
 - [ ] *Added 2026-10-23 (Stage 0), from kickoff §7:* **S3.5 — the inherited handles** (#36; lane
       `sdk/src/spawn.ts`, `sdk/test/`; decisions.md · 2026-10-23 · The inherited-handles check runs in S3
       as S3.5 (#77)): a test spawns, through `spawnDaemon`'s options, a stand-in long-lived node script
@@ -636,10 +806,25 @@ removals. **Needs the user's keyboard:** no.
       (PowerShell `Start-Process -NoNewWindow`) was not run, so "the hold came from `Start-Process
       -NoNewWindow` itself" is a cause the test does not measure, and a third outcome ("fails and no
       Node-level option removes it") is missing.*
+      *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's
+      recipe, S3.5's control, the stage split (#85)) item 2, F15: S3.5 gains a positive control — the same
+      test with `stdio:"inherit"` must see no EOF within 2 s — and spawns without the `tsx` layer; #77's
+      pass outcome now reads "`spawnDaemon` inherits no pipe (node and npx parents); the MUX-6 cause
+      remains unmeasured", and a third outcome is added: fails and no Node-level option removes it →
+      recorded with the measured cause.*
+      *Superseded 2026-10-23: the pass outcome was "nothing changes and the MUX-6 gotcha gets a dated note
+      that `spawnDaemon` inherits no pipe (the hold came from `Start-Process -NoNewWindow` itself)", with
+      two outcomes only, because the test does not measure the `Start-Process -NoNewWindow` chain and a
+      fail with no Node-level fix had no outcome (decisions.md · 2026-10-23 · Stage 0's build-level
+      rulings: SDK-1's recipe, S3.5's control, the stage split (#85)).*
 - [ ] *Added 2026-10-23 (Stage 0), for the session agent:* the SDK's `waitFor` sends a call `timeoutMs`
       above the wait's own (`browser_wait_for {seconds: 45}` already outlives today's 30 s default call,
       `mcp/src/tools/registry.ts:359`; stage0-audit.md F22); the cursor clear runs inside the reconnect
       path before any queued call (F24); a `Tab` from before a 4002 reconnect is void (F2).
+      *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · A new daemon never reuses a handle
+      number; the SDK guards stale `Tab`s (#79)), F2: S3: each `Tab` carries the client's connection
+      generation and throws `TAB_UNKNOWN` locally after a 4002 reconnect, with no call. Contract-level:
+      open for the user's review; binds meanwhile. (F22 and F24 are not ruled in #78–#85.)*
 
 **Lane:** `sdk/src/`, `sdk/test/`. **Parallel with:** S1. **Verifier focus:** the `policy.ts` constant
 cites the Step 7 E2E rows (BG-1/BG-2) it was set from, in a comment and in the stage report — if the
@@ -715,6 +900,18 @@ user, who names the course. A Chrome restart with flags needs a fresh grant (#66
       Rejected: rewriting `hello.ts` and re-dating those rows. Independently, if S2b removes the Chrome
       `id`, `hello.ts:81` changes and those rows get dated notes before any run (stage0-audit.md F7).
       The new recipe prints no tab title or URL but the fixture's (F31).*
+      *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's
+      recipe, S3.5's control, the stage split (#85)) item 1: SDK-1 runs a new recipe file; `recipes/hello.ts`
+      and MUX-3/5/6/8/10's expected text stay (stage0.md §5). (#85 names no file; the working name
+      `recipes/sdk-login.ts` is not ruled. F31 is not ruled in #78–#85.)*
+      *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · The Chrome `id` stays beside `tab`
+      this step; network calls without `tab` stay "active" (#81)): S2b does not remove the Chrome `id`
+      from `newTab`/`listTabs` results, so the "if S2b removes the Chrome `id`" branch does not arise
+      this step. Contract-level: open for the user's review; binds meanwhile.*
+      *Superseded 2026-10-23: SDK-1 was "`hello.ts` end to end against the fixture", with the flow of the
+      checkbox above written into `recipes/hello.ts`, because `recipes/hello.ts` is MUX-3/5/6/8/10's
+      instrument (decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's recipe, S3.5's
+      control, the stage split (#85)).*
 - [ ] **SDK-2** `LOCATOR_NOT_FOUND` report: misspell a name → the report names the nearest candidates,
       saves a screenshot, prints the snapshot window.
 - [ ] **SDK-3** `LOCATOR_AMBIGUOUS` → matches listed; `nth` fixes it.
@@ -761,6 +958,11 @@ user, who names the course. A Chrome restart with flags needs a fresh grant (#66
       whose `lastUrl` is the pre-restart page's; its next `snapshot {tab: T<a>}` → `TAB_GONE`; `listTabs`
       shows no tab owned by the recipe, and every handle is greater than every pre-restart handle; the
       daemon's pid is unchanged. FAIL on any live `T<a>` after the restart, whatever tab it names.
+      *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · The session marker's mechanism, amended
+      (#80)): S2b.5 gains the none→none branch and asserts a retired handle's `tabGone` carries the
+      pre-restart `lastUrl`. New grant-free row SM-0 (an extension reload keeps held handles) beside SM-1.
+      Contract-level (wire): open for the user's review; binds meanwhile. (#80 does not otherwise fix
+      SM-1's pre-registered text above; that is still for the session agent before the run.)*
 - [ ] *Added 2026-10-23 (Stage 0) — proposed, pending the session agent (stage0-audit.md F5; auditor C
       calls it SM-0, auditor A SM-2):* **SM-0** — the marker survives an extension reload (no grant
       needed). A recipe holds fixture tab `T<a>` (hold ≥ 120 s, printing every event);
@@ -769,6 +971,10 @@ user, who names the course. A Chrome restart with flags needs a fresh grant (#66
       after the reload answers; `listTabs` shows `T<a>` owned by the recipe. It makes SM-1
       discriminating. If #74 is amended to a marker that changes on reload, SM-0's expected text flips,
       and it is rewritten before the run.
+      *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · The session marker's mechanism, amended
+      (#80)): New grant-free row SM-0 (an extension reload keeps held handles) beside SM-1. Under #80 an
+      extension reload reuses `storage.local`'s marker (`onInstalled`), so SM-0's expected text above
+      stands. Contract-level (wire): open for the user's review; binds meanwhile.*
 
 **Lane:** `recipes/`, root `package.json` (`tsx`, `recipe` script), `docs/e2e-test-plan.md`,
 `.gitignore` (`exports/` — see Human gates). **Parallel with:** sequential, after S5. **Verifier focus
@@ -818,6 +1024,11 @@ step's baseline is Step 7's closing test count (recorded in Step 7's as-built) a
 2026-10-23). It was 965 at T5b; T6 removed 15 dead formatter tests (decisions.md · 2026-10-23 · T6
 removes the extension's dead network formatters with their 15 tests (#67)) — see Step 7 as-built
 § Stage T5b.*
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Pre-registered checks reworded where they
+could not hold or could not fail (#84)), F16, for every check below: Every grep check uses `grep -rn` and
+reads empty stdout **and** exit 1. Contract-level: open for the user's review; binds meanwhile. (It applies
+to the checks whose grep must print nothing, among them S1.4 and S4.3, still written with `grep -n`; the
+per-check notes below are at S2.2 and S2b.2.)*
 
 **S0**
 - S0.1 `npm test` after ≥ before; `npm run typecheck` green for all five packages.
@@ -855,6 +1066,12 @@ removes the extension's dead network formatters with their 15 tests (#67)) — s
   lease-checked. *Stricter (Stage 0, stage0-audit.md F8): the table row and the `sw.ts` router entry land
   in the same commit, and a test sends `locate` without `tab` and asserts today's legacy handling (after
   S2b: `BAD_PARAMS`), so an unlisted, free `locate` cannot slip through.*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's
+  recipe, S3.5's control, the stage split (#85)) item 5, F8: S2 is granted `daemon/test/methods.test.ts`;
+  `locate` enters `methods.ts` in the same commit as its router entry. And (decisions.md · 2026-10-23 · The
+  Chrome `id` stays beside `tab` this step; network calls without `tab` stay "active" (#81)): After S2b an
+  **unlisted** method without `tab` is refused `BAD_PARAMS "tab is required"` instead of forwarded (#81 is
+  contract-level: open for the user's review; binds meanwhile).*
 
 *Corrected 2026-10-23 (Stage 0): was S2.2 checked at S2's close; now S2.2 is checked at S2b's close
 (S2b.2), because the `activeTab` fallback and the `selectTab` alias are removed in S2b (decisions.md ·
@@ -863,6 +1080,12 @@ extension/src`, cannot fail: executed at `1a62620` it prints `grep: extension/sr
 exits 2 and prints nothing on stdout, while `grep -rn` finds `extension/src/handlers/tabs.ts:70` and
 `extension/src/sw.ts:32` (stage0-audit.md F16, the class of Step 7's T6.1 grep, #48). S2b.2 runs both
 greps as `grep -rn`, and passes only on empty stdout with exit 1.*
+*Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Pre-registered checks reworded where they
+could not hold or could not fail (#84)), F16: Every grep check uses `grep -rn` and reads empty stdout
+**and** exit 1. Contract-level: open for the user's review; binds meanwhile.*
+*Superseded 2026-10-23: S2.2's second grep was `grep -n "selectTab" extension/src`, because without `-r`
+it exits 2 on a directory and can never find anything (decisions.md · 2026-10-23 · Pre-registered checks
+reworded where they could not hold or could not fail (#84)).*
 
 **FE** *(added 2026-10-23 (Stage 0), copied from kickoff §7; stricter clauses marked)*
 - FE.1 `npm test` after ≥ before + the new tests; typecheck green.
@@ -882,6 +1105,10 @@ greps as `grep -rn`, and passes only on empty stdout with exit 1.*
 - FE.5 the live run's first recorded line is the reload's exit 0 and FE-0 PASS.
 - FE.6 the decision "The background-input policy" names the outcome (A)/(B)/(C) and the rows.
   *Stage 0 note: FE.6 needs the outcome table made total first (stage0-audit.md F3).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · FE's rows and outcome table, amended
+  before anything is measured (#78)) item 2, F3: Precedence: FE-5 void → (B); else FE-4 FAIL → (B); else
+  every kind passes all trials → (A); else no kind passes → (B); else (C). FE-0 FAIL is "stop, reload,
+  re-check", not an outcome. Contract-level: open for the user's review; binds meanwhile.*
 
 **S2b** *(added 2026-10-23 (Stage 0), copied from kickoff §7; stricter clauses marked)*
 - S2b.1 `npm test` after = before − the listed removed tests + the new tests; typecheck green.
@@ -890,6 +1117,12 @@ greps as `grep -rn`, and passes only on empty stdout with exit 1.*
   passes only on empty stdout **and** exit 1; also `grep -rn "targetTab({}" extension/src` → nothing
   (the hidden fallback at `extension/src/handlers/network.ts:12`). The daemon grep also hits the comments
   `daemon/src/methods.ts:1` and `:60`, which S2b rewords.*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's
+  recipe, S3.5's control, the stage split (#85)) item 6: S2b.2 adds `grep -rn "targetTab({}" extension/src`
+  → nothing; the two `methods.ts` comments are reworded. And (decisions.md · 2026-10-23 · Pre-registered
+  checks reworded where they could not hold or could not fail (#84)), F16: Every grep check uses `grep
+  -rn` and reads empty stdout **and** exit 1 (#84 is contract-level: open for the user's review; binds
+  meanwhile).*
 - S2b.3 tests: no `tab` → `BAD_PARAMS`; numeric network `tab` → `BAD_PARAMS`; `selectTab` →
   `UNKNOWN_METHOD`; `closeTab`/`focusTab` with `id` only → `BAD_PARAMS`; every lease and lock test from
   Step 7 still green unchanged. *Stricter (Stage 0, F10): the `selectTab` → `UNKNOWN_METHOD` test runs
@@ -900,6 +1133,18 @@ greps as `grep -rn`, and passes only on empty stdout with exit 1.*
   or intercept tests only use one along the way (`daemon/test/tabs.test.ts:249`, `:276`, `:386`, `:406`,
   `:435` read the Chrome `id`; `:779` sends `selectTab`; `:1081` `networkRequests {}`; `:1143`
   `networkClear {}`; `:1211` T2.3's legacy loop). `:1016` is itself a legacy lock test.*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Pre-registered checks reworded where they
+  could not hold or could not fail (#84)), F11: S2b.3's "every lease and lock test from Step 7 still green
+  unchanged" becomes "unchanged, except edits that replace a removed form with its handle form, each listed
+  in S2b.8 with the form it used; the lease and lock assertions stay byte-identical, and each edited test
+  still fails when its contract is broken". Contract-level: open for the user's review; binds meanwhile.*
+  *Superseded 2026-10-23: was "every lease and lock test from Step 7 still green unchanged", because 9
+  lease/lock tests only use a removed form along the way and could not stay unchanged (decisions.md ·
+  2026-10-23 · Pre-registered checks reworded where they could not hold or could not fail (#84)).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's
+  recipe, S3.5's control, the stage split (#85)) item 4, F10 (the stricter clause above): S2b's daemon
+  refuses `selectTab` itself (`UNKNOWN_METHOD`) before resolution, tested against a fake that would answer
+  it.*
 - S2b.4 the `code` rule's tests, both peer kinds. *Stricter (Stage 0, F17): the receipt half already
   holds at `1a62620`, so the test asserts the new log line — once per proto:2 connection, naming the
   method only, never for a no-proto peer — and labels the code-presence test a regression guard.*
@@ -907,11 +1152,24 @@ greps as `grep -rn`, and passes only on empty stdout with exit 1.*
   exactly once; the marker is never logged (the log says `extension session changed: <n> handles
   retired`). *Stricter (Stage 0, F5): a fifth branch, none after none, retires nothing; and a retired
   handle's `tabGone` carries the pre-restart `lastUrl`/`lastTitle`, never the reused page's.*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · The session marker's mechanism, amended
+  (#80)), F5: S2b.5 gains the none→none branch and asserts a retired handle's `tabGone` carries the
+  pre-restart `lastUrl`. The choice is a pure, tested function over five event orders (worker restart;
+  reload; `onStartup` before and after `connect()` within the bound; neither). Contract-level (wire): open
+  for the user's review; binds meanwhile. (The stricter clause above, which also names `lastTitle`,
+  stands.)*
 - S2b.6 the new `WINDOW_MINIMIZED` text in `extension/src/tabs.ts` and nowhere the old `pass mode:"cdp"`
   hint. *Stage 0 flags this clause: see stage0-audit.md F18; the session agent rules before S2b is
   committed. Unscoped, "nowhere" cannot pass: `docs/e2e-test-plan.md:677` (SCREEN-4's superseded
   expected text) and `:1561` (Run 8's recorded result) keep the old text by design; proposed scope
   `extension/src extension/test`.*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Pre-registered checks reworded where they
+  could not hold or could not fail (#84)), F18: S2b.6's "nowhere the old hint" is scoped to `extension/src
+  extension/test` (the e2e plan's recorded Run 8 text must stay). Contract-level: open for the user's
+  review; binds meanwhile.*
+  *Superseded 2026-10-23: was "nowhere the old `pass mode:"cdp"` hint", unscoped, because
+  `docs/e2e-test-plan.md` keeps the old text by design (decisions.md · 2026-10-23 · Pre-registered checks
+  reworded where they could not hold or could not fail (#84)).*
 - S2b.7 the Step 7 cross-package test `mcp/test/multi-actor.test.ts` green with no edit beyond a
   documented fake. *Stage 0 note: held under a simulated S2b daemon (`mcp/test` + `sdk/test` → `310 passed
   (310)`, stage0-audit.md § 5).*
@@ -943,6 +1201,11 @@ greps as `grep -rn`, and passes only on empty stdout with exit 1.*
   re-exports has the same external imports (`@bridge/shared`, `node:*`, `ws`), +3 747 bytes, because
   `sdk/src/format/{snapshot,network}.ts` import types only (stage0-audit.md § 3). Beside it, open for
   the session agent: the exported `BridgeError` stays the shared class (F14).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Locator rules, the MCP locator schema and
+  the exported `BridgeError` (#83)) item 3, F14: `@bridge/sdk` keeps exporting the shared `BridgeError`
+  class; the report fields (snapshot, screenshot path, network, `report()`) are optional properties set on
+  it, so every existing `instanceof BridgeError` keeps working. Contract-level: open for the user's
+  review; binds meanwhile.*
 - S3.5 *Added 2026-10-23 (Stage 0), from kickoff §7 (decisions.md · 2026-10-23 · The inherited-handles
   check runs in S3 as S3.5 (#77)):* the inherited-handles test of stage S3 — PASS = the reader sees
   end-of-file within 2 s while the stand-in is still alive (then killed by its recorded pid); outcomes
@@ -951,6 +1214,13 @@ greps as `grep -rn`, and passes only on empty stdout with exit 1.*
   — and the check passes only if the control holds; no `tsx` layer between the reader and
   `spawnDaemon`; never the real daemon, never port 9234.* *Stage 0 flags the outcome text: see F15; the
   session agent rules before S3.5 runs.*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's
+  recipe, S3.5's control, the stage split (#85)) item 2, F15: S3.5 gains a positive control — the same test
+  with `stdio:"inherit"` must see no EOF within 2 s — and spawns without the `tsx` layer; #77's pass
+  outcome now reads "`spawnDaemon` inherits no pipe (node and npx parents); the MUX-6 cause remains
+  unmeasured", and a third outcome is added: fails and no Node-level option removes it → recorded with the
+  measured cause. ("Outcomes as written there" now means the three outcomes of this ruling; the Superseded
+  note is at stage S3.)*
 
 **S4**
 - S4.1 `npm test` after ≥ before + the enrichment tests; typecheck green.
@@ -982,6 +1252,21 @@ greps as `grep -rn`, and passes only on empty stdout with exit 1.*
   flags S6.1's "`/mcp` … first recorded line": each headless `claude -p` actor starts a fresh MCP from
   the current bundle, so the reload exit and the stale check are the meaningful first lines
   (stage0-audit.md F32, an escalation: it would drop a clause).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Stage 0's build-level rulings: SDK-1's
+  recipe, S3.5's control, the stage split (#85)) item 1, S6.2: SDK-1 runs a new recipe file;
+  `recipes/hello.ts` and MUX-3/5/6/8/10's expected text stay (stage0.md §5). (#85 names no file, so S6.2's
+  command is `npm run recipe -- <that new recipe file>`, with its printed output; the name is still the
+  session agent's.)*
+  *Superseded 2026-10-23: S6.2's command was `npm run recipe -- recipes/hello.ts`, because SDK-1 runs a new
+  recipe file and `recipes/hello.ts` stays MUX-3/5/6/8/10's instrument (decisions.md · 2026-10-23 · Stage
+  0's build-level rulings: SDK-1's recipe, S3.5's control, the stage split (#85)).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Pre-registered checks reworded where they
+  could not hold or could not fail (#84)), F32, S6.1: S6.1's "`/mcp` is the first recorded line" becomes
+  "the reload script's exit 0 and the stale check are the first recorded lines" (headless actors start a
+  fresh MCP). Contract-level: open for the user's review; binds meanwhile.*
+  *Superseded 2026-10-23: S6.1 was "the reload and `/mcp` are the first recorded line", because headless
+  actors start a fresh MCP (decisions.md · 2026-10-23 · Pre-registered
+  checks reworded where they could not hold or could not fail (#84)).*
 - S6.3 SDK-7's two JSON files are compared by hash; the hash is recorded, the files are not committed.
 - S6.4 `git status` after the wave shows no file under `exports/` or `~/.chrome-agent-bridge/` staged;
   `.gitignore` covers `exports/`.
@@ -1022,6 +1307,10 @@ greps as `grep -rn`, and passes only on empty stdout with exit 1.*
   (decisions.md · 2026-10-23 · Stage FE measures focus emulation before `policy.ts` is set (#71)). The
   run stops before S3's `policy.ts` item only if FE's outcome is not recorded by then. Stage 0 checked
   the placement and flags two of FE's pre-registered rules for the session agent (stage0-audit.md F1, F3).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · FE's rows and outcome table, amended
+  before anything is measured (#78)), F1 and F3: amends #71, written before any FE row is committed — FE-4
+  judges only what the human sees; the table has a precedence and a positive control (the operative text
+  is under stage FE). Contract-level: open for the user's review; binds meanwhile.*
 - **G8-2 — S6 is a wave run with the user.** The S1/S2 extension changes are invisible until the user
   reloads the extension; the S5 MCP schema changes need an MCP reconnect. The wave opens with the
   reload sequence and the stale-extension check (`unknown method` ⇒ reload again). Rows needing the
@@ -1085,6 +1374,12 @@ re-checks each ruling's premise by execution and raises a finding only if a prem
   `test-fixtures/e2e-playground.html:120` and its click handler at `:251-253` (stage0-audit.md F30). The
   ruling's premise is unestablished: the text lands in a role-less `<div id="async-area">` (`:121`),
   and 0.1 does not say a `{text}` locator matches a non-interactive element (F13).*
+  *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · Locator rules, the MCP locator schema and
+  the exported `BridgeError` (#83)) item 1, F13: a `{text}` locator matches the innermost element that
+  survives the snapshot's pruning gates (`aria-hidden`/`inert`/`hidden`/`display:none`, zero-size when
+  `hasLayout`) whose normalised text contains the needle, case-insensitive substring. The 0.1 invariant
+  reads, for `{text}`, "what the snapshot's pruning shows". Contract-level: open for the user's review;
+  binds meanwhile.*
 - *Ruled 2026-10-21:* Step 6's D6 writes DL-1 and DL-2 before its wave; the cite stays (decisions.md ·
   2026-10-21 · Step 6 writes the DL rows for browser_download before its D6 wave).
 - *Ruled 2026-10-21:* the actor name is `claude-code #<pid>` with the MCP's own `process.pid`; 0.6
@@ -1143,6 +1438,11 @@ re-checks each ruling's premise by execution and raises a finding only if a prem
     different tab, possibly the human's. The proposed fix is a session marker in the extension's hello
     (a new marker → retire every handle, sending `tabGone`). It is a wire and lease change, so it is
     contract-level (`…step7-multi-actor-tabs-steps/T2-verifier.md` V4; `T2.md` § Findings).*
+    *Ruled 2026-10-23 (session agent, decisions.md · 2026-10-23 · The extension hello carries an optional
+    session marker (#74), amended by · The session marker's mechanism, amended (#80)): S0 adds an optional
+    `session?: string` to the extension's hello; S2b gives it behaviour. The daemon compares with the last
+    hello's marker (none is a value): A→none retires, none→none does not. Contract-level (wire): open for
+    the user's review; binds meanwhile.*
   - *T3 verifier V4 and T5b verifier N1: a late restore can undo a `focusTab` or spoil the next capture
     (a residual race, still open).*
 

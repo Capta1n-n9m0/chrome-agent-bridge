@@ -445,6 +445,11 @@ event    D→C  {event, params}   tabGone | leaseGranted | extensionStatus
   PAGE_ERROR NAV_FAILED DOWNLOAD_HTTP WINDOW_MINIMIZED INTERNAL`. The extension's `Router` serialises a
   thrown `BridgeError {code, data}`; a plain `Error` becomes `INTERNAL` with its message, so nothing
   is lost during the migration.
+  *Added 2026-10-23 (Step 8 S0; decisions.md · 2026-10-23 · `NO_CURSOR` enters `shared/src/codes.ts`
+  as the 23rd code (#76)): SDK — `NO_CURSOR`, a `Tab`-less SDK call with no cursor ("call newTab() or
+  claim() first"; §8). The SDK alone raises it, never the daemon or the extension, so it never
+  travels on the wire from them; `shared/src/codes.ts` lists it in its own `SDK_ERROR_CODES`, beside
+  the daemon and extension lists.*
 - **Compatibility.** A v1 hello is accepted as an extension. A v1 error `{message}` from an old
   extension is wrapped as `INTERNAL`. Beyond that, extension and daemon of this generation ship
   together — nothing else speaks the protocol yet.
@@ -471,6 +476,9 @@ event    D→C  {event, params}   tabGone | leaseGranted | extensionStatus
   - *Content-script errors travel as a returned `{__bridgeError:"CODE:message"}`, never a throw (#38).*
   - *The code count is unchanged at 22; `code` stays optional on the wire (decisions.md · 2026-10-22 ·
     v2 peers do not yet require `code` (#51)).*
+    *Corrected 2026-10-23 (Step 8 S0): the count is 23 from Step 8 S0 on — `NO_CURSOR` joins as an
+    SDK-only code (decisions.md · 2026-10-23 · `NO_CURSOR` enters `shared/src/codes.ts` as the 23rd
+    code (#76)); the 22 daemon and extension codes are unchanged.*
   - *Compatibility: a Step 6 client keeps a legacy path for one release (#41, #54), which Step 8 S2
     removes.*
 
