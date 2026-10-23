@@ -1079,6 +1079,8 @@ SCREEN-1 [ ] (flash ____ ms) SCREEN-2 [ ] SCREEN-3 (a) [ ] (b) [ ] SCREEN-4 [ ] 
 BG-1 [ ] BG-2 [ ] BG-3 [ ] BG-4 [ ]
 R9-RELOAD-1 [ ] R9-SCREEN-2 [ ] R9-SCREEN-4 [ ] R9-LEASE-3 [ ] R9-RESTORE [ | not measured ]   (Run 9, §4.15)
 R9-SCREEN-1 [ ] (flash ____ ms) R9-SCREEN-3 (a) [ ] (b) [ ] R9-SCREEN-5 [ ] R9-RESOLVER-1 [ ] R9-NET-1 [ ]
+FE-0 [ ] FE-5 first [ ] FE-PC [ ] FE-1 [ ] FE-2 [ ] FE-3 [ ] FE-4 [ ] FE-5 last [ ] FE-3c (observation)   (Step 8 FE, §4.17)
+REP-0 [ ]   (Step 8 S6, §4.19; before REP-1 and any row that could attach a non-fixture tab)
 S6-STALE [ ] SDK-1 [ ] SDK-2 [ ] SDK-3 [ ] SDK-4 [ ] SDK-5 [ ] SDK-6D [ ] SDK-6 [ | waits for the user ] SDK-7D [ ] SDK-7 [ | waits for the user ] (hash ____ ; MCP leg [ | not measured ])   (Step 8 S6, §4.19)
 SDK-8 [ ] SM-0 [ ] SM-1 [ | not measured ] (SM-1 log [ ]; counts equal [ ]; daemon pid same [ ])
 

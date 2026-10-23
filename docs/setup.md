@@ -84,7 +84,12 @@ machine that used the bridge before:
    it is unchanged in Step 6. *Corrected 2026-10-23 (Step 7 propagator): that holds only for Step 6.
    Step 7 changed the extension, so after upgrading past Step 7, reload it (§4). An unreloaded
    extension gets every tab call refused with `VERSION` and a reload hint (decisions.md · 2026-10-22 ·
-   A stale extension is refused for tab calls, detected by its hello).*
+   A stale extension is refused for tab calls, detected by its hello).* *Updated 2026-10-24: Step 8
+   changed the extension again — reload it after upgrading past Step 8; a pre-Step-8 extension answers
+   a script's `tab.locate()` with `unknown method: locate`. Step 8 also removed the Step 6 compatibility path: a script
+   that calls a tab method without `tab` now gets `BAD_PARAMS "tab is required"`, and `selectTab` gets
+   `UNKNOWN_METHOD` (use `focusTab`), so port old scripts to the `Tab` of
+   [Writing a script](#writing-a-script).*
 
 Every client on a machine must use the same `BRIDGE_PORT`; see [The daemon](#the-daemon).
 
@@ -182,7 +187,12 @@ When an action fails because the page was not as expected — `LOCATOR_NOT_FOUND
 `LOCATOR_AMBIGUOUS`, `REF_STALE`, `OFFSCREEN`, `PAGE_ERROR`, `NAV_FAILED` or `TIMEOUT` — the tool
 reads the tab once more and returns a report instead of the bare error: the message, the nearest
 candidates, a window of a fresh snapshot (its refs replace the old ones), the failed network requests,
-and a screenshot of the tab, as text plus an **image** Claude can see. The PNG is saved under
+and a screenshot of the tab, as text plus an **image** Claude can see. A report that carries the
+image comes back as a result **not flagged as an error**: its first line is still `<CODE>: …`, and
+its last line says `The call failed (<CODE>). This result is not flagged as an error only so that the
+screenshot reaches you …`, because Claude Code (2.1.309, measured) drops images from error results
+(decisions.md · 2026-10-23 · An MCP failure report with a screenshot is returned as a non-error
+result). A report without a screenshot stays an error. The PNG is saved under
 `~/.chrome-agent-bridge/failures/<time>-<handle>.png` (or `BRIDGE_FAILURES_DIR`); clear that folder
 now and then. Other errors (`TAB_HELD`, `TAB_GONE`, `NOT_CONNECTED`, …) read as before. A page
 exception in `browser_evaluate` (`PAGE_ERROR`) is reported this way too: the snapshot renumbers the
@@ -245,7 +255,7 @@ link or a popup — "click Export, a new tab appears" lands with the clicker; a 
   tab, while `browser_network_clear` on another actor's tab — or `{tab:"all"}` while anyone else owns a
   tab — is refused.
 - An owner keeps its tabs until its connection ends: ending a Claude session or a script frees them.
-  A script can also give one up (`tabs.release`).
+  A script can also give one up (`tab.release()`, the `tabs.release` method).
 - A closed tab's handle answers `tab T3 was closed …` for an hour; a Chrome Memory-Saver discard does
   not lose the handle (Chrome gives the tab a new id, the daemon follows it), but calls into the
   discarded page fail until `browser_focus_tab` or `browser_navigate` reloads it.
@@ -267,20 +277,151 @@ link or a popup — "click Export, a new tab appears" lands with the clicker; a 
   Screenshots from several actors take turns, one at a time.
 - **Trusted input needs the tab in front.** `trusted:true` on a background tab returns `Clicked …` /
   `Typed …` but the page receives nothing (measured in Step 7, also with Chrome's anti-throttling
-  flags). Call `browser_focus_tab` first, or use the default synthetic input. The same holds for
-  anything that needs window focus, such as a clipboard write in `browser_evaluate`.
+  flags, and in Step 8 with CDP focus emulation: Run 11 in `docs/e2e-test-plan.md`). Call
+  `browser_focus_tab` first, or use the default synthetic input. The same holds for anything that
+  needs window focus, such as a clipboard write in `browser_evaluate`. A script's trusted actions
+  focus the tab first by themselves — see [Writing a script](#writing-a-script).
 
 ### Screenshots
 
 - **Default (`switch`) mode**, the only one `browser_screenshot` uses for the viewport: the flash
-  above, no banner. A minimized window is refused with `WINDOW_MINIMIZED`: restore the window and retry. (The
-  message still suggests `mode:"cdp"`, which refuses a minimized window too; Step 8 rewrites it.) A window entirely covered by other windows cannot be captured: the call times
+  above, no banner. A minimized window is refused with `WINDOW_MINIMIZED` (`Chrome's window is
+  minimized, so the tab cannot be captured — restore the window, or call focusTab first`): restore the
+  window and retry. *Superseded 2026-10-24: was "The message still suggests `mode:"cdp"`, which refuses
+  a minimized window too; Step 8 rewrites it", because Step 8 S2b rewrote it.* A window entirely covered by other windows cannot be captured: the call times
   out after 35 s, and the bridge puts your tab back after about 30 s.
 - **`fullPage:true`** goes through CDP (`chrome.debugger`): the debugging banner shows while it runs.
-- **`mode:"cdp"`** (scripts only: `client.call("screenshot", {tab, mode: "cdp"})`) captures through
+- **`mode:"cdp"`** (scripts only: `tab.screenshot({mode: "cdp"})`; *superseded 2026-10-24: was
+  `client.call("screenshot", {tab, mode: "cdp"})`, because Step 8 added the typed `Tab`*) captures through
   CDP without switching tabs, with the banner. It works only on a tab that is already in front of a
   window that is not minimized: a background tab is refused with `OFFSCREEN` and a minimized window
   with `WINDOW_MINIMIZED`, at once, because Chrome never returns a CDP capture of a hidden tab.
+
+## Writing a script
+
+*Added 2026-10-24 (Step 8). The SDK's types and JSDoc in `sdk/src/` are the reference; this section is
+the tour.*
+
+A script is a TypeScript file that imports `@bridge/sdk` and runs with `tsx` from the repo root. It is
+one more client of the daemon, beside any Claude session, with its own tabs. The token comes from
+`BRIDGE_TOKEN`, else `bridge.token` at the repo root — never put it in a script.
+
+```ts
+// my-script.ts — sign in on the E2E fixture page, read its status line.
+import { BridgeError, connect } from "@bridge/sdk";
+
+const client = await connect({ name: "my-script.ts" }); // finds, starts or hands over the daemon
+try {
+  // A new tab, in the background, leased to this script; it becomes the client's cursor.
+  const tab = await client.newTab("http://localhost:8080/e2e-playground.html");
+  await tab.type({ css: "#email" }, "a@b.com"); // a locator; a ref ("e4") from tab.snapshot() works too
+  await tab.click({ role: "button", name: "Sign in" }); // the role and name a snapshot shows
+  await tab.waitFor({ text: "form submitted" });
+  console.log(await tab.evaluate<string>("document.getElementById('status').textContent"));
+  await tab.close();
+} catch (err) {
+  if (err instanceof BridgeError) {
+    console.error(`${err.code}: ${err.message}`);
+    if (err.report) console.error(err.report()); // the failure report, when one was attached
+  } else console.error(err);
+  process.exitCode = 1;
+} finally {
+  client.close();
+}
+```
+
+Save it under `recipes/` and run it with the fixture served (`python -m http.server 8080 --directory
+test-fixtures`):
+
+```bash
+npm run recipe -- recipes/my-script.ts        # the same as: npx tsx recipes/my-script.ts
+```
+
+`recipes/sdk-login.ts` is the same flow as a complete recipe (E2E row SDK-1 — the SDK flow end to
+end against the fixture, with a header saying what it needs and how it fails); `recipes/README.md` lists the others. Recipes are not part of
+`npm run typecheck`: check one with a `tsconfig` in `recipes/` (`npx tsc --noEmit -p
+recipes/tsconfig.s6.json` covers the Step 8 recipes).
+
+**Connecting.** `connect({name})` resolves once the daemon has welcomed the script and the extension
+is connected (it waits up to 15 s, `waitForExtensionMs`, then rejects with `NOT_CONNECTED`).
+`name` is what `browser_list_tabs` and `browser_status` show as the holder. `client.close()` ends the
+connection, and with it the script's leases. `connect({failureReports: false})` turns failure
+reports off (below).
+
+**Tabs and the cursor.**
+- `client.newTab(url?, {active?})` opens a tab in the background (unless `active: true`), leased to
+  the script, and returns a `Tab`. `client.claim("T3")` takes a free tab by handle;
+  `client.claim({active: true})` takes the tab the human is looking at. `client.tabs()` lists every
+  tab as `{handle, title, url, owner?, current}`, where `current` marks the human's tab.
+- The client's **cursor** is the `Tab` of the last `newTab()` or `claim()`: `client.tab()` returns it,
+  and `client.click(…)`, `client.type(…)` and the other `Tab` methods but `close` act on it. With no
+  cursor they throw `NO_CURSOR` ("No tab cursor: call newTab() or claim() first"). Only `newTab`,
+  `claim` and a daemon restart change it; `release()`, `close()` and a closed tab do not. After a
+  close the next call answers `TAB_GONE`; after `release()` the cursor still names the tab, which is
+  now nobody's (calls on it pass the lease check until another actor claims it, then `TAB_HELD`).
+  `client.close()` closes the client; close the cursor's tab with `client.tab().close()`.
+- A daemon restart (a new build) renumbers the handles: a `Tab` from before it throws `TAB_UNKNOWN`
+  without calling anything, and the cursor is cleared. Open or claim the tab again.
+- The `Tab` methods: `navigate`, `back`, `forward`, `snapshot`, `screenshot({fullPage?, mode?,
+  path?})`, `click`, `type(target, text, {submit?, trusted?})`, `pressKey(key, {trusted?})`, `hover`,
+  `scroll({target?, direction?})`, `selectOption(target, values)`, `locate`, `waitFor`, `evaluate`,
+  `evaluateRef`, `network`, `networkClear`, `download(url, path)`, `focus`, `close`, `release`.
+
+**Locators.** Every action takes a target: a ref from `tab.snapshot()` (`"e4"`), or a locator object
+(`Locator` in `shared/src/protocol.ts`), resolved in the page by the same walk and the same role and
+accessible-name rules that build the snapshot:
+- `{role, name?, exact?, nth?}` — what a snapshot lists, e.g. `{role: "button", name: "Sign in"}`.
+  `name` is a string (a case-insensitive substring of the name the snapshot shows; `exact: true`
+  means case-sensitive equality) or `{regex, flags?}`.
+- `{text, exact?, nth?}` — the innermost visible element whose text contains it (case-insensitive;
+  `exact: true` means equality), interactive or not.
+- `{css, nth?}` — a CSS selector; hidden elements never match.
+
+`nth` (0-based) picks one of several matches in page order; without it two matches fail with
+`LOCATOR_AMBIGUOUS` and none with `LOCATOR_NOT_FOUND`, whose `error.data.candidates` names the nearest
+elements. `tab.locate(locator)` resolves one to `{ref, role, name}` without acting. A `{name}` with
+no `role` is refused at once (`BAD_PARAMS`, use `{text}` or add `role`).
+
+**Waiting and evaluating.** `tab.waitFor(…)` takes exactly one of `{text}` (page text, up to 10 s),
+`{locator, state?, timeoutMs?}` (`state: "visible"` by default, `"hidden"` to wait for it to go;
+default 10 s, at most 60 s), `{networkIdle: true, idleMs?}` and `{seconds}`. `tab.evaluate<T>(js)`
+resolves with the value when it is plain JSON; a page exception rejects with `PAGE_ERROR`.
+`tab.evaluateRef(js)` returns a ref to the `Element` the expression evaluates to — "find it with JS,
+act on it with `click`" — and `BAD_PARAMS` for anything else.
+
+**Failure reports.** When a `Tab` call fails because the page was not as expected —
+`LOCATOR_NOT_FOUND`, `LOCATOR_AMBIGUOUS`, `REF_STALE`, `OFFSCREEN`, `PAGE_ERROR`, `NAV_FAILED` or
+`TIMEOUT` — the SDK reads the tab once more and sets on the thrown `BridgeError`: `snapshot` (the tab's
+snapshot just after the failure), `screenshotPath` (a PNG under `BRIDGE_FAILURES_DIR`, else
+`~/.chrome-agent-bridge/failures/<time>-<handle>.png`), `network` (the tab's last 20 requests), and
+`attachErrors` for any part it could not get within 5 s. `error.report()` renders them in at most 60
+lines: message, candidates, a window of the snapshot, the screenshot path, the failed requests. Other
+codes (`TAB_HELD`, `NOT_CONNECTED`, …) carry none of this. Three things to know:
+- The screenshot is a default-mode capture: it takes the visibility lock like any screenshot, and
+  **the failed tab comes to the front of its window for about 1.3–1.6 s** if it was in the background
+  (your tab hidden 1331 ms in Step 8's Run 12, row REP-0 — the failure-report screenshot probe;
+  1.49–1.59 s for plain screenshots in Runs 8–9) — the human sees it. On a window covered by other windows the report gives up after 5 s, but the
+  failed tab can stay in front for up to about 30 s.
+- The report's snapshot renumbers the tab's refs, like any `snapshot()`: refs from before the failure
+  are void, use the report's.
+- A script that works on a private site (mail, a course, a bank) should pass `failureReports: false`,
+  so no screenshot or snapshot of it is written to disk; the Blackboard recipes do.
+
+**Trusted input in a script.** `tab.click(target, {trusted: true})`, `type` and `pressKey` with
+`trusted: true` send real CDP input (the debugging banner shows). Trusted input into a background
+tab answers `ok` and does nothing — measured in Step 7, and again in Step 8 with Chrome's focus
+emulation (Run 11) — so the SDK **focuses the tab first**: the tab comes to the front of its window,
+the window is focused, and **it stays there** (decisions.md · 2026-10-23 · The background-input policy).
+Without `trusted`, actions are synthetic, show no banner and work on a background tab. One case
+escapes the SDK: an untrusted click or type whose synthetic path fails is retried by the extension as
+trusted input, which on a background tab does nothing; pass `trusted: true` or call `tab.focus()`
+when the input must land.
+
+**What Claude sees through the MCP** is the same machinery: the [locators](#locators) on the action
+tools and `browser_wait_for`, `browser_evaluate {asRef}`, the [failure reports](#failure-reports) with
+their image, and this session's tab ([Tabs](#tabs)) — which never follows you except through
+`browser_use_active_tab`. The MCP's trusted tools do not focus first; `browser_focus_tab` is an
+explicit call.
 
 ## The daemon
 
