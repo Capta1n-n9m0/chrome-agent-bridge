@@ -26,7 +26,7 @@ export async function ensureContent(tabId: number): Promise<void> {
     const raw = (err as Error).message;
     throw new BridgeError(
       classifyInjectError(rawMessage(err)),
-      `Could not inject into the active tab — it may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store) where extensions can't run. (${raw})`,
+      `Could not inject into the target tab — it may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store) where extensions can't run. (${raw})`,
     );
   }
 }
@@ -90,7 +90,7 @@ export async function callInPage<T>(
   } catch (err) {
     throw new BridgeError(
       classifyInjectError(rawMessage(err)),
-      `Could not run script in the active tab — it may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store). (${(err as Error).message})`,
+      `Could not run script in the target tab — it may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store). (${(err as Error).message})`,
     );
   }
   return unwrapResult<T>(injection);

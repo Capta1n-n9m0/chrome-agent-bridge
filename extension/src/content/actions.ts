@@ -54,6 +54,15 @@ export function focusForTypingRef(refs: RefMap, ref: string): { ok: true } {
   return { ok: true };
 }
 
+/**
+ * Focus an element for a targeted `pressKey` (Step 8): plain `el.focus()` — no scroll, no selection
+ * change (unlike `focusForTypingRef`, whose select-all would change what Backspace does).
+ */
+export function focusRef(refs: RefMap, ref: string): { ok: true } {
+  (resolve(refs, ref) as HTMLElement).focus();
+  return { ok: true };
+}
+
 export function scrollRef(refs: RefMap, ref: string | undefined, direction: string): { ok: true } {
   if (ref) {
     (resolve(refs, ref) as HTMLElement).scrollIntoView?.({ block: "center" });

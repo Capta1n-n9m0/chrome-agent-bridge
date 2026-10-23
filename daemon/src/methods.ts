@@ -16,6 +16,7 @@ export const TAB_METHODS: ReadonlySet<string> = new Set([
   "forward",
   "waitFor",
   "evaluate",
+  "locate",
   "networkClear",
   "focusTab",
   "selectTab",

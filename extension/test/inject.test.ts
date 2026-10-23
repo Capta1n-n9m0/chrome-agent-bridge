@@ -116,3 +116,32 @@ describe("classifyInjectError", () => {
     expect(classifyInjectError("Frame with ID 0 was removed.")).toBe("INTERNAL");
   });
 });
+
+// Step 8 S2 additions (imports are hoisted; the lines above are unchanged).
+import { vi, afterEach } from "vitest";
+import { ensureContent, callInPage } from "../src/inject.js";
+
+describe("F33: inject errors name the target tab, not the active tab (Step 8 S2)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  async function messageOf(p: Promise<unknown>): Promise<string> {
+    try {
+      await p;
+    } catch (e) {
+      return (e as Error).message;
+    }
+    throw new Error("expected a rejection");
+  }
+
+  it("ensureContent and callInPage say 'the target tab'", async () => {
+    vi.stubGlobal("chrome", {
+      scripting: { executeScript: vi.fn(async () => { throw new Error("Cannot access a chrome:// URL"); }) },
+    });
+    const a = await messageOf(ensureContent(7));
+    const b = await messageOf(callInPage(7, () => 1));
+    for (const msg of [a, b]) {
+      expect(msg).toContain("the target tab");
+      expect(msg).not.toContain("the active tab");
+    }
+  });
+});

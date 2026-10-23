@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { classify, takesLock, TAB_METHODS, FREE_METHODS, LEGACY_ID_METHODS, NETWORK_METHODS } from "../src/methods.js";
+import { Bridge } from "../src/bridge.js";
+import type { ExtensionConnection } from "../src/connection.js";
+import { TabLayer } from "../src/intercept.js";
 
 /** Step 7 T2 (decisions.md #39, #53): the one method table. */
 
@@ -20,6 +23,7 @@ describe("method table", () => {
         "forward",
         "waitFor",
         "evaluate",
+        "locate",
         "networkClear",
         "focusTab",
         "selectTab",
@@ -53,6 +57,46 @@ describe("method table", () => {
     expect(classify("slow", {})).toBe("free");
     expect(classify("slow", undefined)).toBe("free");
     expect(classify("slow", { tab: "T1" })).toBe("tab");
+  });
+
+  it("locate without tab is a tab method (today: the legacy path, the human's tab lease-checked; after S2b: BAD_PARAMS)", () => {
+    // Step 8 S2.6 (stage0-audit.md F8): an unlisted `locate` would be forwarded free with no tabId.
+    expect(classify("locate", {})).toBe("tab");
+    expect(classify("locate", undefined)).toBe("tab");
+    expect(classify("locate", { tab: "T1" })).toBe("tab");
+    expect(classify("notAMethod", {})).toBe("free");
+    expect(takesLock("locate", {})).toBe(false);
+  });
+
+  it("locate through the TabLayer: no tab → the human's tab lease-checked (TAB_HELD); with a handle → forwarded with tabId", async () => {
+    const forwarded: Array<{ method: string; params?: Record<string, unknown> }> = [];
+    const conn = {
+      call: async (method: string, params?: Record<string, unknown>) => {
+        forwarded.push({ method, params });
+        if (method === "listTabs") return { tabs: [{ id: 41, title: "", url: "", active: true, current: true }] };
+        return { ref: "e1", role: "button", name: "Go" };
+      },
+    } as unknown as ExtensionConnection;
+    const bridge = new Bridge();
+    bridge.setConnection(conn);
+    const names: Record<string, string> = { a: "A", b: "B" };
+    const layer = new TabLayer({ bridge, nameOf: (id) => names[id], sendTo: () => {} });
+    layer.extensionConnected(conn, true);
+    const A = { clientId: "a", name: "A" };
+    const B = { clientId: "b", name: "B" };
+
+    expect(await layer.request(A, "tabs.claim", { active: true }, undefined)).toEqual({ tab: "T1" });
+    const locator = { role: "button", name: "Go" };
+    await expect(layer.request(B, "locate", { locator }, undefined)).rejects.toMatchObject({ code: "TAB_HELD" });
+    expect(forwarded.filter((f) => f.method === "locate")).toHaveLength(0);
+
+    expect(await layer.request(A, "locate", { locator }, undefined)).toEqual({ ref: "e1", role: "button", name: "Go" });
+    expect(await layer.request(A, "locate", { tab: "T1", locator }, undefined)).toEqual({ ref: "e1", role: "button", name: "Go" });
+    const sent = forwarded.filter((f) => f.method === "locate").map((f) => f.params);
+    expect(sent).toEqual([
+      { locator, tabId: 41 },
+      { locator, tabId: 41 },
+    ]);
   });
 
   it("lock class: default screenshot, focusTab, selectTab — never cdp or fullPage screenshots", () => {

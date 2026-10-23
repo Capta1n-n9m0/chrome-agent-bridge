@@ -1,7 +1,10 @@
 import { pageTab, targetTab } from "../tabs.js";
 import { BridgeError, ErrorCodes } from "../errors.js";
-import { callInPage } from "../inject.js";
+import { callInPage, ensureContent } from "../inject.js";
 import { log, ready } from "../network-state.js";
+import { isLocator } from "@bridge/shared";
+import { pollLocator, type LocatorState } from "./locator-wait.js";
+import { locateInPage } from "./target.js";
 
 /** Quiet period that counts as idle when the caller does not say. */
 const DEFAULT_IDLE_MS = 500;
@@ -10,8 +13,14 @@ const MAX_IDLE_MS = 10_000;
 /** The same 10 s ceiling the text form uses. */
 const WAIT_CEILING_MS = 10_000;
 const POLL_MS = 100;
+/** `waitFor {locator}`: default and ceiling of `timeoutMs` (Step 8 phase doc 0.2). */
+const LOCATOR_DEFAULT_TIMEOUT_MS = 10_000;
+const LOCATOR_MAX_TIMEOUT_MS = 60_000;
+
+const present = (v: unknown): boolean => v !== undefined && v !== null;
 
 export async function waitFor(p: Record<string, unknown>): Promise<{ ok: true; idleAfterMs?: number }> {
+  if (present(p.locator)) return waitForLocator(p);
   if (p.networkIdle === true) return waitForNetworkIdle(p);
   if (typeof p.seconds === "number") {
     const secs = Math.min(Math.max(p.seconds, 0), 60);
@@ -38,6 +47,67 @@ export async function waitFor(p: Record<string, unknown>): Promise<{ ok: true; i
   );
   if (!res.found) throw new BridgeError(ErrorCodes.TIMEOUT, `Timed out waiting for text: "${needle}"`);
   return { ok: true };
+}
+
+/** The locator arm's params, checked before any page call. */
+export function locatorWaitParams(p: Record<string, unknown>): { state: LocatorState; timeoutMs: number } {
+  const bad = (msg: string) => new BridgeError(ErrorCodes.BAD_PARAMS, msg);
+  if (present(p.text) || present(p.seconds) || (present(p.networkIdle) && p.networkIdle !== false)) {
+    throw bad("browser_wait_for takes a locator alone — not with text, seconds or networkIdle");
+  }
+  if (!isLocator(p.locator)) {
+    throw bad("locator must be one of {role, name?, exact?, nth?}, {text, exact?, nth?} or {css, nth?}");
+  }
+  let state: LocatorState = "visible";
+  if (p.state !== undefined) {
+    if (p.state !== "visible" && p.state !== "hidden") throw bad('state must be "visible" or "hidden"');
+    state = p.state;
+  }
+  let timeoutMs = LOCATOR_DEFAULT_TIMEOUT_MS;
+  if (present(p.timeoutMs)) {
+    if (typeof p.timeoutMs !== "number" || !Number.isFinite(p.timeoutMs)) throw bad("timeoutMs must be a finite number");
+    timeoutMs = Math.min(Math.max(Math.round(p.timeoutMs), 0), LOCATOR_MAX_TIMEOUT_MS);
+  }
+  return { state, timeoutMs };
+}
+
+/**
+ * `waitFor {locator, state}`: `locate` every 100 ms from the service worker (`pollLocator`), up to
+ * `timeoutMs`. The text arm above keeps its page-side 200 ms poll (stage0-audit.md F22).
+ */
+async function waitForLocator(p: Record<string, unknown>): Promise<{ ok: true }> {
+  const { state, timeoutMs } = locatorWaitParams(p);
+  const tab = await pageTab(p, "waitFor");
+  const tabId = tab.id!;
+  await ensureContent(tabId);
+  return pollLocator({
+    state,
+    timeoutMs,
+    attempt: () => locateInPage(tabId, p.locator).catch(frameTeardownAsStale),
+    reinject: () => ensureContent(tabId),
+    now: Date.now,
+    sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+  });
+}
+
+/**
+ * Chrome's transient frame-teardown rejections of `executeScript` while the tab navigates, which
+ * `classifyInjectError` maps to INTERNAL. From reading the code, not measured live (S2-verifier
+ * finding 2; an S6 E2E row navigates during the poll). "No frame with id" is included as plausible
+ * for the same race (a frame id gone between lookup and injection); it is not seen in a log either.
+ */
+const FRAME_TEARDOWN = [/Frame with ID \d+ (was removed|is showing error page)/i, /No frame with id/i];
+
+/**
+ * The locator wait's attempt wrapper: a frame-teardown INTERNAL becomes REF_STALE, so `pollLocator`
+ * re-injects and keeps polling; every other error passes through unchanged (other INTERNALs still
+ * reject at once). The new error carries no Chrome text (it can hold a URL).
+ */
+export function frameTeardownAsStale(err: unknown): never {
+  if (err instanceof BridgeError && err.code === ErrorCodes.INTERNAL && FRAME_TEARDOWN.some((r) => r.test(err.message))) {
+    throw new BridgeError(ErrorCodes.REF_STALE, "the frame was replaced during the wait (navigation)");
+  }
+  throw err;
 }
 
 /**

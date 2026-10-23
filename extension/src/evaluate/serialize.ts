@@ -1,4 +1,5 @@
 import type { EvalEnvelope } from "@bridge/shared";
+import { MARK_SRC } from "./mark.js";
 
 /** Caps the serialiser applies. The handler passes these explicitly so page and tests agree. */
 export interface SerializeLimits {
@@ -8,6 +9,11 @@ export interface SerializeLimits {
   maxItems: number;
   /** Characters kept per string before a `…[+N chars]` suffix. */
   maxString: number;
+  /**
+   * `evaluate {asRef: true}` only (phase doc 0.3): a one-off mark. After serialising, the shipped
+   * composite runs `markFn` (`mark.ts`) on the value and attaches its status as `__mark`.
+   */
+  mark?: string;
 }
 
 export const DEFAULT_LIMITS: SerializeLimits = { maxDepth: 6, maxItems: 100, maxString: 5000 };
@@ -386,8 +392,24 @@ function serializerFn(this: unknown, limits: SerializeLimits): EvalEnvelope {
   return { kind: "json", value, description, truncated };
 }
 
-/** The exact source injected into the page via `Runtime.callFunctionOn`. */
-export const SERIALIZER_SRC: string = String(serializerFn);
+/**
+ * The exact source injected into the page via `Runtime.callFunctionOn`: a closure-free composite that
+ * serialises first (`serializerFn`, unchanged) and then, only when `limits.mark` is a non-empty string,
+ * runs `markFn` on the same value and attaches its status to the envelope as `__mark` (the evaluate
+ * handler reads and deletes it). Marking after serialising means a serialiser throw leaves no mark.
+ * Without a mark the composite returns exactly what `serializerFn` returns.
+ */
+export const SERIALIZER_SRC: string = [
+  "function bridgeSerializeAndMark(limits) {",
+  "  var env = (" + String(serializerFn) + ").call(this, limits);",
+  '  if (limits && typeof limits.mark === "string" && limits.mark !== "") {',
+  "    var status;",
+  "    try { status = (" + MARK_SRC + ').call(this, limits.mark); } catch (e) { status = "not-element"; }',
+  "    env.__mark = status;",
+  "  }",
+  "  return env;",
+  "}",
+].join("\n");
 
 /** Node-side entry point (tests, and any future in-extension use). `this` is the value. */
 export function serializeForAgent(value: unknown, limits: SerializeLimits = DEFAULT_LIMITS): EvalEnvelope {
