@@ -100,3 +100,16 @@
   report may have captured without switching, possibly the human's visible tab. PNGs deleted unopened.
   A probe row runs before REP-1 or any Blackboard MCP leg (#97).
 - Waits for the user: the classifier denial.
+
+## 2026-10-23 — PAUSED by the user
+
+- The user, asked how to proceed after S6's classifier denial: "Pause for now, we will continue I make
+  sure you can work without interruptions". Nothing running; tree clean.
+- **Resume point:** S6 live part from the wave sheet's step 8 (S6.ledger.md), same pre-written expected
+  text (23b878f). Before it: rename the sheet's PowerShell helper `R` (collides with `Invoke-History`);
+  add the MINOR-1 probe (visibilitychange timestamps on the fixture tab + hue check of the report PNG)
+  as a pre-registered row, committed before REP-1 or any Blackboard MCP leg (#97 to record). #96's
+  grants (pp1 for SDK-6/7; one Chrome restart for SM-1) are unused and still stand. Then S7 (docs),
+  propagator, gate, session-closeout, phase-kickoff.
+- Stages closed: Stage 0, S0, S1, FE (policy focusFirst, #89), S2, S3, S4, S2b, S5. Tests 1654 / 83 at
+  23b878f. Open decisions for the user: #71–#76, #78–#84, #87, #90, #91, #93–#95 (decisions.md list).
