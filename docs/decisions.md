@@ -34,11 +34,112 @@ Step 7 (2026-10-22 on):
 
 None open now. *Updated 2026-10-23: all seven Step 7 open decisions are ruled (#68, #69).*
 
+Step 8 (2026-10-23 on), for the user at the gate:
+1. "Stage FE measures focus emulation before `policy.ts` is set" (#71)
+2. "S2's daemon half becomes stage S2b" (#72)
+3. "S2b makes `code` required on error frames" (#73)
+4. "The extension hello carries an optional session marker" (#74)
+5. "S3.4 applies as written: the main entry also re-exports the formatters" (#75)
+6. "`NO_CURSOR` enters `shared/src/codes.ts` as the 23rd code" (#76)
+
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-23 · The inherited-handles check runs in S3 as S3.5 (#77)
+**Decided:** S3 gains exit check S3.5: a test spawns, through `spawnDaemon`'s options, a stand-in
+long-lived node script (never the real daemon, never port 9234) from a child whose stdout is a pipe;
+the child exits; PASS = the reader sees end-of-file within 2 s while the stand-in lives (then killed by
+its recorded pid). Both outcomes written now: pass at the baseline → no code change, and the MUX-6
+gotcha gets a dated note that `spawnDaemon` inherits no pipe (the hold came from `Start-Process
+-NoNewWindow`); fail → S3 fixes the spawn so nothing is inherited, the test is the proof.
+**Why:** #36 asked Step 8 to check which handles the spawned daemon inherits; the phase doc had no item
+(Step 7 propagator, "seen, not corrected"). Proposed by the kickoff §7 item 6.
+**Instead of:** leaving MUX-6 as a correlation only.
+**By:** Claude (build decision; the lane is `sdk/src/spawn.ts`, `sdk/test/`)
+
+### 2026-10-23 · `NO_CURSOR` enters `shared/src/codes.ts` as the 23rd code (#76)
+**Decided:** S0 adds `NO_CURSOR` to `ErrorCodes` (23 codes); spec §10 gets a dated note; the SDK alone
+raises it, never the daemon or the extension.
+**Why:** the spec's §8 names `NO_CURSOR` for a `Tab`-less call with no cursor, but it is not among the
+22 codes (Step 7 propagator, "seen"). Additive: no existing code or test changes. Proposed by the
+kickoff §7 item 5; contract-level (codes), conservative rule.
+**Instead of:** an SDK-local code outside `ErrorCodes`.
+**By:** Claude (contract-level — listed under Open decisions)
+
+### 2026-10-23 · S3.4 applies as written: the main entry also re-exports the formatters (#75)
+**Decided:** `sdk/src/index.ts` re-exports `formatSnapshot` and `formatNetwork`; the
+`@bridge/sdk/format` subpath stays and the MCP keeps importing it. Stage 0 confirms the re-export pulls
+no new runtime dependency into the main entry.
+**Why:** S3.4 is a pre-registered check, so it is the pre-stated rule; #46 (ruled #69) left the main
+entry to Step 8. Additive: every existing import keeps working. Proposed by the kickoff §7 item 3.
+**Instead of:** amending S3.4 to the subpath only.
+**By:** Claude (contract-level, SDK surface — listed under Open decisions)
+
+### 2026-10-23 · The extension hello carries an optional session marker (#74)
+**Decided:** S0 adds an optional `session?: string` to the extension's hello; S2b gives it behaviour.
+The value stays the same across service-worker restarts and extension reloads and changes when Chrome
+restarts (Stage 0 confirms the mechanism, e.g. a value written on `chrome.runtime.onStartup`). The
+daemon: same marker → today's resync by id; a different marker, or none after one was seen → retire
+every handle (`tabGone` to each holder once, leases dropped, mint anew); never a marker → today's
+behaviour. The marker is never logged (`extension session changed: <n> handles retired`). Live row SM-1
+needs a Chrome restart, so a fresh grant from the user.
+**Why:** T2 verifier V4 and spec §13: after a Chrome restart a held handle can land on a reused tab id,
+possibly the user's own tab. Stricter in every branch; undoable (the field is optional). Proposed by
+the kickoff §7 item 4.
+**Instead of:** no marker (a lease can land on a reused id); a marker that changes on every worker
+restart (retires leases for nothing).
+**By:** Claude (contract-level, wire — listed under Open decisions)
+
+### 2026-10-23 · S2b makes `code` required on error frames (#73)
+**Decided:** with the legacy path removed (#51's trigger), `WireError.code` becomes required in the
+type; every extension error path sends a code (a test over `router.ts`'s paths). On receipt, a proto:2
+peer's error without a non-empty string `code` is still delivered as `INTERNAL` — never dropped, never
+a timeout — with one log line per connection naming the method only; a no-proto peer keeps today's
+mapping.
+**Why:** #51 (ruled #69) kept `code` optional until Step 8 removes the v1 fallbacks. Delivering as
+`INTERNAL` keeps every caller answered. Proposed by the kickoff §7 item 2 of S2b.
+**Instead of:** refusing or dropping a frame without `code`.
+**By:** Claude (contract-level, wire — listed under Open decisions)
+
+### 2026-10-23 · S2's daemon half becomes stage S2b (#72)
+**Decided:** a stage S2b removes the Step 6 compatibility path (#41, #52, #53, #54, #57): daemon
+legacy path, `LEGACY_ID_METHODS`, `selectTab` (method table, lock class, router), the `activeTab()`
+fallback in `targetTab`, the old `tab:"all"` network scope, the Chrome `id` beside `tab` in
+`newTab`/`listTabs` results (unless Stage 0 finds a consumer); it also makes `code` required (#73),
+adds the session marker's behaviour (#74) and rewrites the switch-mode `WINDOW_MINIMIZED` text (#63).
+Lane: `daemon/src/` (`intercept.ts`, `methods.ts`, `handshake.ts`, `route.ts`), `daemon/test/`;
+extension `tabs.ts`, `sw.ts`, `network-scope.ts`, `offscreen.ts`, `errors.ts`, `extension/test/`;
+`shared/src/error.ts`; plus one grant per consumer of a removed form that Stage 0 finds. S2.2's greps
+are checked at S2b's close. Exit checks S2b.1–S2b.8 (kickoff §7).
+**Why:** the removals are a compatibility contract spanning three packages, not locator work (Step 7
+propagator question 1). Proposed by the kickoff §7 item 1.
+**Instead of:** S2 spanning extension, daemon and shared.
+**By:** Claude (contract-level, removal of compatibility forms — listed under Open decisions)
+
+### 2026-10-23 · Stage FE measures focus emulation before `policy.ts` is set (#71)
+**Decided:** a stage FE adds a `focusEmulation: true` param to trusted `click`/`type`/`pressKey`
+(`Emulation.setFocusEmulationEnabled` on before the `Input.*` commands and off in a `finally`, inside
+the same `withDebugger` session; no window focus, no tab activation; the result carries
+`focusEmulation: "on"`), then measures it live (rows FE-0…FE-5, committed before the build is loaded).
+The policy is read off this table, written before the measurement: (A) FE-1, FE-2, FE-3 pass every
+trial and FE-4 passes → `"focusEmulation"`; (B) FE-1 and FE-2 fail, or FE-4 fails → `"focusFirst"`;
+(C) mixed per input kind with FE-4 passing → per kind; one failed trial is a FAIL for that kind; FE-5
+(the control) passing voids the comparison and reads as (B). Exit checks FE.1–FE.6 (kickoff §7).
+**Why:** #62 (4) ruled that focus emulation is measured before the policy is set; #66 handed it to
+Step 8; Step 7 propagator question 2. Resolves G8-1 inside the run. Proposed by the kickoff §7 item 2.
+**Instead of:** setting `focusFirst` from the plan's fallback without a measurement.
+**By:** Claude (contract-level, what the human sees — listed under Open decisions)
+
+### 2026-10-23 · Step 8 agents run Opus 5.5 (#70)
+**Decided:** every Step 8 agent at every level runs Claude Opus 5.5 (`claude-opus-5-5`); only the
+headless E2E actor sessions of FE and S6 may run Sonnet.
+**Why:** the user (#69): "I like higher quality product", with Sonnet builders named as the rejected
+option.
+**Instead of:** Sonnet builders.
+**By:** user
 
 ### 2026-10-23 · The user rules on R9-SCREEN-2 and the last five Step 7 open decisions (#69)
 **Decided:** R9-SCREEN-2 is accepted (option A): its positive control's image came back, and CDP
