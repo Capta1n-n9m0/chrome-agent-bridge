@@ -1855,22 +1855,33 @@ Evidence in short (the record has every line):
 
 `fe-verdict: OUTCOME (B) — no kind passes: policy "focusFirst"`
 
-### Run 12 (S6) — <date> (Step 8: SDK-1…8, SM-0, SM-1, the S5 MCP rows and the regression smoke, §4.19)
+### Run 12 (S6) — 2026-10-23 (Step 8: SDK-1…8, SM-0, SM-1, the S5 MCP rows and the regression smoke, §4.19)
 
-*Placeholder written 2026-10-23 by the S6 builder, before the run; the driver fills it from
-`S6-run-record.md` (wave sheet: [`S6-wave-sheet.md`](plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6-wave-sheet.md)). Not run yet.*
+*Rows, rules and tools committed before the build was loaded (`23b878f`); run by the driver, the user not
+present (decisions.md #33). **Stopped at SDK-1 (step 8) by a permission-classifier denial** (`[PII Data
+Handling]`, on an actor send of a fixture-page snapshot prompt): reported, not retried; the rows after it
+were not run, no Blackboard page was opened and Chrome was not restarted. Full evidence:
+[`S6-run-record.md`](plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6-run-record.md); daemon log
+`S6-daemon-log.txt` beside it (wave sheet: [`S6-wave-sheet.md`](plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/S6-wave-sheet.md)).*
 
 ```
-Date: ____  Chrome ____  Node ____  OS ____  HEAD: ____ (rows at ____)
-Daemon build: ____   reload-extension.ps1: exit ____   S6-STALE: ____ (the first recorded line)
+Date: 2026-10-23 (UTC 13:14–13:19)  Chrome 156  Node v25.2.1  OS Windows 11 Pro 10.0.26300  HEAD: 23b878f (rows at 23b878f)
+Daemon build: 597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f   reload-extension.ps1: exit 0   S6-STALE: STALE-CHECK NEW BUILD (the first recorded line)
 
-S6-STALE [ ] SDK-1 [ ] SDK-2 [ ] SDK-3 [ ] SDK-4 [ ] SDK-5 [ ] SDK-6D [ ] SDK-6 [ | waits for the user ] SDK-7D [ ] SDK-7 [ | waits for the user ] (hash ____ ; MCP leg [ | not measured ])
-SDK-8 [ ] SM-0 [ ] SM-1 [ | not measured ] (SM-1 log [ ]; counts equal [ ]; daemon pid same [ ])
-S5 rows: CUR-1 [ ] CUR-2 [ ] CUR-3 [ ] LOC-1 [ ] LOC-2 [ ] ASREF-1 [ ] REP-1 [ ] STAT-1 [ ] MUX-1 [ ] TAB-3 [ ] NET-12 [ ] MUX-8 [ ] (in SM-1's quit window; optional run not run)
-Regression (S6.5): MUX-2 [ ] LEASE-1 [ ] SCREEN-1 [ ] (flash ____ ms) ACT-1 [ ] ACT-2 [ ] ACT-3 [ ] TRUST-2 [ ] EVAL-1 [ ] NET-1 [ ] DL-1 [ ]
-Log hygiene: '://' count ____  token count ____  withheld-line count ____   (____ lines)
-S6.4 git status: ____
+S6-STALE [P] SDK-1 [not complete: script PASS, actor's 2nd snapshot denied] SDK-2 [P] SDK-3 [P] SDK-4 [P] (1998 / 9 ms) SDK-5 [P] SDK-6D [P] SDK-6 [not run] SDK-7D [P] SDK-7 [not run] (hash — ; MCP leg not run)
+SDK-8 [not run] SM-0 [not run] SM-1 [not run] (Chrome not restarted)
+S5 rows: CUR-1 CUR-2 CUR-3 LOC-1 LOC-2 ASREF-1 REP-1 STAT-1 MUX-1 TAB-3 NET-12 MUX-8 [all not run]
+Regression (S6.5): MUX-2 LEASE-1 SCREEN-1 ACT-1 ACT-2 ACT-3 TRUST-2 EVAL-1 NET-1 DL-1 [all not run]
+Log hygiene: '://' count 0  token count 0  withheld-line count 0   (36 lines; course ids 0, ada.blackboard 0)
+S6.4 git status: only the record, the log .txt, this plan and S6.ledger.md (no exports/, no PNG)
 ```
+
+Evidence in short (the record has every line):
+- **S6-STALE** — `locate T2 {role:"button", name:"Sign in"} → ok {"name":"Sign in","ref":"e1","role":"button"} (9 ms)`; `STALE-CHECK NEW BUILD …`.
+- **SDK-2** — `LOCATOR_NOT_FOUND: no button named "Sgin in". Nearest: button "Sign in", …`; report 40 lines; PNG outside the repo (deleted). **SDK-3** — 7 matches; `nth:1 → e23 button "Fetch 404"`; `status: fetch ok.json -> 200`.
+- **SDK-4** — visible after 1998 ms, hidden after 9 ms. **SDK-5** — `status: hit at 149,295 exp 953,754 on=email (isTrusted=true)`; `#email`; mark 0.
+- **SDK-6D / SDK-7D** — `bb.VERSION = stub-2026-10-23`; `627 bytes, sha256 92fe62ab…a49c`; `Get-FileHash` equal.
+- **SDK-1** — `SDK-1 PASS — located button "Sign in", clicked, … (118 ms in all)`; actor SA's first snapshot of `?t5=sdk1-claude`; log `client + "sdk-login" (2 clients)` / `client - "sdk-login" (1 client)`; SA's second snapshot not sent (classifier denial).
 
 ## 6. Exit criteria
 
