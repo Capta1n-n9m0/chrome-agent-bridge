@@ -10,3 +10,5 @@
 - 2026-10-23T08:29:52Z · verifier re-check r1 · PASS-with-notes (F5/F7 NITs open, no change) · 1080/64 → 1135/66 at 682f73d (+55) · next: commit 1 (rows+sheet+script)
 - 2026-10-23T08:30:54Z · commit 1 · done · 6398f27 (rows §4.17 + FE-wave-sheet + recipes/fe*.ts, fe-win.ps1, tsconfig.fe.json) · next: FE.md, commit 2 (code+tests+reports)
 - 2026-10-23T08:31:39Z · FE.md written · next: commit 2 via builder
+- 2026-10-23T08:32:14Z · commit 2 · done · 6742c1f · build part closed (DONE; verifier PASS-with-notes) · next: live part on the session agent's resume message
+- 2026-10-23T08:33:15Z · LIVE PART · started on session agent's message (after 97d6123, #88) · next: driver agent runs the wave sheet steps 0–12
