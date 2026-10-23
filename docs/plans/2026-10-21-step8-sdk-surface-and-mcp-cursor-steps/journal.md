@@ -74,3 +74,10 @@
 
 - S4: PASS-with-notes after 2 fix rounds, +65 tests; #93 (ref rewrite after the report's snapshot;
   client options; `@bridge/sdk/report` subpath for S5). S2b still running; S5 waits for it.
+
+## 2026-10-23 — S2b closed (efb8557)
+
+- S2b: PASS-with-notes after 1 fix round; 1435 → 1493 (−11 listed removals, +69); one check escalated
+  (S2b.2's daemon grep vs #85's by-name refusal) → reworded in #94 with a behavioural test; #80 amended
+  (2 s reload wait). Main-tree dist rebuilt by S2b's builder; the loaded extension is FE's until S6.
+- S5 still running; S6 after it.

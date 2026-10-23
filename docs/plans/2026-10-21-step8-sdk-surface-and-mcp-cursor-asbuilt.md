@@ -11,7 +11,7 @@ decisions.md · 2026-10-23: #71 FE stage (amended #78); #72 S2b (amended #81, #8
 required; #74 session marker (amended #80); #75 S3.4 re-exports; #76 `NO_CURSOR`; #78 FE rows and
 table; #79 handles never reused across daemons; #80 marker mechanism; #81 `id` stays, untargeted
 network = active, unlisted untargeted → `BAD_PARAMS`; #82 `__bridgeData`; #83 `{text}` rule, MCP
-`locator` object, exported `BridgeError`; #84 reworded checks; #87 S1 locator details (items 2–4); #90 `Tab` surface and cursor rule (1, 2, 7); #91 final `BridgeClient` surface (#24, #27/#28); #93 report ref rewrite, client options, `@bridge/sdk/report`.
+`locator` object, exported `BridgeError`; #84 reworded checks; #87 S1 locator details (items 2–4); #90 `Tab` surface and cursor rule (1, 2, 7); #91 final `BridgeClient` surface (#24, #27/#28); #93 report ref rewrite, client options, `@bridge/sdk/report`; #94 S2b details.
 
 ## Stage 0 — spec audit · 2026-10-23 · verifier: PASS-with-notes · commit 7fe62f4
 
@@ -234,3 +234,29 @@ Contracts binding forward, at dcb72db:
 | Fix rounds | ≤ 2 | 2 | S4-verifier.md, S4-fixer1.md |
 
 - *Session agent 2026-10-23:* #93 records S4's proposals and the `@bridge/sdk/report` subpath for S5. Covered window: the screenshot lands in `attachErrors` at the 5 s cut while the human may see the failed tab up to ~30 s (R9-RESTORE; stated, not measured live). Tests 1370 → 1435 (+65) at eb4fc4e (verifier).
+
+## S2b — the Step 6 compatibility path removed, `code` required, the session marker, handle numbers never reused · 2026-10-23 · verifier: PASS-with-notes · commit efb8557
+
+
+- S2b: `tab` is required on every tab call and on every unlisted method.
+  - Without one, the call gets `BAD_PARAMS "tab is required"`, or `VERSION` from a no-proto extension.
+  - Network calls with no `tab`, or with "active", go to the human's tab, with no log line.
+  - A numeric network `tab` gets `BAD_PARAMS`.
+  - `id` on `closeTab`/`focusTab` gets `BAD_PARAMS`.
+  - `selectTab` gets `UNKNOWN_METHOD`, answered by the daemon (`REMOVED_METHODS`).
+  - The Chrome `id` stays beside `tab` in `newTab`/`listTabs` results.
+- `WireError.code` is required. A codeless proto:2 error is delivered as `INTERNAL` and logged once per
+  connection as `extension error without code: <method>`.
+- The session marker:
+  - It is chosen by `extension/src/session-marker.ts`, sent as `hello.session`, and is part of the offscreen
+    key.
+  - The daemon retires every handle on any change after the first hello, synchronously and before the resync.
+  - Each holder gets one `tabGone` with the pre-restart url and title, leases are dropped, and the lock is
+    untouched.
+  - The log line is `extension session changed: <n> handles retired`.
+- Handle numbers come from `daemon/src/handle-mark.ts` (`~/.chrome-agent-bridge/handle-mark`, blocks of 64,
+  time-base fallback).
+- The new `WINDOW_MINIMIZED` switch-mode text is quoted under Outputs.
+- Tests: 11 removed, 69 added (full suite 1435 → 1493 at d72aeda).
+
+- *Session agent 2026-10-23:* #94 records S2b's nine proposals, including the reworded S2b.2 daemon grep. Tests 1435 → 1493 (−11 removed, +69 new; removal list in S2b.md). Gotcha candidates for S7: S2b.md § "New CLAUDE.md gotcha candidates". SM-0 and SM-1 not run (S6). S2b's builder ran `npm run build` in the main tree: `dist/` is the S2b build; the loaded extension is still FE's until S6 reloads.

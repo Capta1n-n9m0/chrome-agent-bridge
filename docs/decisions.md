@@ -52,12 +52,41 @@ Step 8 (2026-10-23 on), for the user at the gate:
 15. "The SDK `Tab` surface details and the cursor rule as built" (#90), items 1, 2, 7
 16. "S3.5's outcome and the Step 6 revisit items" (#91), #24 and #27/#28 as final surface
 17. "S4's failure-report details, and how the MCP reaches them" (#93)
+18. "S2b's details: the `selectTab` refusal grep, the marker's edge cases, the handle mark" (#94)
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-23 · S2b's details: the `selectTab` refusal grep, the marker's edge cases, the handle mark (#94)
+**Decided:** accepted as proposed in `…-steps/S2b.md` §"Proposed decisions": (1) S2b.2's daemon check
+reads: `grep -rn "LEGACY_ID_METHODS\|selectTab" daemon/src` prints exactly one line, the
+`REMOVED_METHODS` entry in `daemon/src/methods.ts`; `REMOVED_METHODS` is read only in
+`TabLayer.request`'s first statement; a test against a fake that would answer `selectTab` gets
+`UNKNOWN_METHOD` with nothing forwarded. (2) none→A retires every handle, like A→B and A→none; the
+daemon's first extension hello retires nothing. (3) `onInstalled` reasons other than "install"/"update",
+or `onStartup` together with `onInstalled`, give a fresh marker. (4) An extension reload with no
+`storage.session` marker waits out the one 2 s bound for `onStartup` before reusing `storage.local`'s
+marker (a late `onStartup` still rotates and reconnects) — stricter than #80's immediate reuse. (5) A
+retire leaves the visibility lock's queue untouched (waiters re-resolve and get `TAB_GONE`). (6) Any
+`id` on `closeTab`/`focusTab` is refused, even beside a `tab`; the extension reads `tabId` only.
+(7) An untargeted unlisted method meets the refusal order NOT_CONNECTED → VERSION → BAD_PARAMS.
+(8) The handle mark is one decimal in `~/.chrome-agent-bridge/handle-mark`, reserved in blocks of 64
+(temp file + rename), missing = 0, unreadable or unwritable → milliseconds since 2026-01-01 never below
+an issued number, one log line with no path or number; only `index.ts` passes the directory. (9) An
+unknown non-empty code passes through verbatim; an empty one leaves the extension as `INTERNAL`.
+**Why:** (1) #85 item 4, written after the kickoff's grep, requires the daemon to refuse `selectTab` by
+name, so the unscoped grep cannot be empty; the reworded check keeps its intent (no alias, forwarding
+or lock class) and adds a behavioural test. (2)–(4), (6) are each stricter (cost leases, never safety);
+(4) closes verifier F1, a hello with the old marker on a Chrome start. Built and verified in efb8557.
+**Instead of:** disguising the string to pass the grep; dropping the refusal (F10); immediate marker
+reuse on reload; a write per handle.
+**Revisit if:** SM-0/SM-1 show spurious retires or `onStartup` arriving more than 2 s after
+`onInstalled`; the reload recipe's "same second" proof breaks on the up-to-2 s delay.
+**By:** Claude ((1) a pre-registered check and (2)–(4), (6) wire/lease behaviour — listed under Open
+decisions)
 
 ### 2026-10-23 · S4's failure-report details, and how the MCP reaches them (#93)
 **Decided:** (1) Accepted as proposed in `…-steps/S4.md` §5: a report's own snapshot renumbers the tab's
@@ -284,6 +313,7 @@ by design. Refusing unlisted untargeted methods is stricter (today one acts on t
 **By:** Claude (contract-level — listed under Open decisions)
 
 ### 2026-10-23 · The session marker's mechanism, amended (#80)
+*Amended 2026-10-23 by #94 item 4: a reload with no `storage.session` marker waits out the 2 s bound for `onStartup` before reusing the local marker.*
 **Decided:** amends #74. The service worker's `connect()` awaits a marker: `storage.session` has one →
 reuse (worker restart); else wait up to 2 s for `onStartup` (a fresh random marker) or `onInstalled`
 (reuse `storage.local`'s, an extension reload); neither in time → a fresh marker (costs leases, never
