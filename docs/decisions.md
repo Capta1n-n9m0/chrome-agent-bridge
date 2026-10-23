@@ -56,6 +56,24 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-23 · The background-input policy (#89)
+**Decided:** outcome **(B)**, policy `"focusFirst"`: `Tab.click/type/pressKey({trusted:true})` call
+`focus()` first, and the docs say the tab comes to the front and stays there. The MCP's trusted tools
+keep today's behaviour (#78 item 4). Read off #78's precedence: FE-5 not void (control 0/12 trials got
+input); FE-4 PASS 9/9; no input kind passed all its trials — FE-1 (click) 0/3 (`status: idle`), FE-2
+(type) 2/3 (trial 3 got `TRUSTED input = ped`, the first five characters lost), FE-3 (pressKey) 0/3 →
+"no kind passes" → (B). FE-0 PASS (`{"ok":true,"focusEmulation":"on"}`), FE-PC PASS, reload exit 0.
+Target page `visible` 3–7 ms into each call, `hidden` again 14–39 ms in; emulation never seen still on
+after a call (#88's revisit trigger not met). Record: `…-steps/FE-run-record.md`, Run 11 (FE) in
+`docs/e2e-test-plan.md` §5 — *uncommitted at the time of writing: the classifier denied the FE live
+commit; it waits for the user.*
+**Why:** the pre-written table decides; G8-1 as amended by #62 (4).
+**Instead of:** reading FE-2's 2/3 as a pass (forbidden: no best-of-three); re-running any row.
+**Revisit if:** a new, separately pre-registered design (e.g. a delay between the enable and the first
+`Input.*` command — FE-2's partial delivery suggests a race, untested) passes all trials; that is a
+later step's work, never a re-run of these rows.
+**By:** Claude (pre-stated rule, applied mechanically)
+
 ### 2026-10-23 · FE's build details (#88)
 **Decided:** accepted as proposed in `…-steps/FE.md` §5: (1) when the emulation disable fails after a
 successful input, the call warns and still succeeds — the detach that follows in the same `withDebugger`

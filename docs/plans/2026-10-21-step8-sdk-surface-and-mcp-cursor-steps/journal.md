@@ -42,3 +42,12 @@
 - FE build: PASS-with-notes; rows FE-0…FE-5, FE-PC, FE-3c committed before any build (6398f27);
   code + tests 6742c1f; suite 1135 / 66 at 6742c1f (verifier, clean worktree); #88 build details.
 - Main tree clean but for FE's ledger line; port 9234 free. FE live part resumed, alone.
+
+## 2026-10-23 — FE live measured: outcome (B) focusFirst (#89); FE live commit denied by the classifier
+
+- FE-0 PASS, FE-PC PASS, FE-5 control held (0/12), FE-4 PASS 9/9, FE-1 0/3, FE-2 2/3, FE-3 0/3 → (B).
+  Fresh verifier PASS-with-notes. Nothing left running but Chrome.
+- The committer's single commit of the 9 FE live paths was denied by the permission classifier; not
+  retried, not worked around. Waits for the user (integrity floor). Files stay uncommitted in the
+  main tree; later stages commit by explicit pathspec and must not include them.
+- Next: S2 ∥ S3 (S3 sets policy.ts = focusFirst from #89).
