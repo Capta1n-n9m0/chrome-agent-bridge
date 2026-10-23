@@ -15,8 +15,11 @@ export const MCP_CHUNK_CHARS = 8_000;
  * The MCP leg's pre-registered cap (S6 fixer r1, 2026-10-23, before any live run): at most 30 chunks
  * (240 000 characters) enter the actor's context; a longer export is "MCP leg not measured" (its length
  * recorded), never a FAIL and never transferred in part.
+ * *Superseded 2026-10-23 (#102, before the MCP leg's re-run): was 30 chunks (240 000 characters),
+ * because pp1's export (418 406 characters) is over it; the cap is now 75 chunks (600 000 characters),
+ * the chunks unchanged.*
  */
-export const MCP_MAX_CHARS = 30 * MCP_CHUNK_CHARS;
+export const MCP_MAX_CHARS = 75 * MCP_CHUNK_CHARS;
 
 export function mcpLegPlan(length: number): { measurable: boolean; chunks: number } {
   if (!Number.isInteger(length) || length < 0) throw new Error("bad length");

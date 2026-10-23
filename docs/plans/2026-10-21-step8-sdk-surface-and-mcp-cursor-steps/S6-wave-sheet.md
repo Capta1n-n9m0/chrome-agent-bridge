@@ -271,6 +271,29 @@ reload…", accepted by #99 (3)), and before every `reload-extension.ps1` call t
   the user"**, no login attempt, no `bb-login.ps1` run. No other window is touched, listed by title or URL,
   captured or brought forward. At the end `Close-T5Window $Wb.Hwnd`. Expected texts (§4.19 SDK-6/SDK-7 (live,
   pp1)), pass rules, the failures-folder rule, the evidence rules and #96/#98 are unchanged.*
+  *2026-10-23 (SDK-7 MCP-leg re-run, #102, before its first line): decisions.md · 2026-10-23 · SDK-7's MCP leg
+  is re-registered with a cap that fits pp1's export (#102) raises the MCP leg's transport cap to 600 000
+  characters (was 240 000), chunks of 8000 unchanged (§4.19 SDK-7's #102 note); the addendum's "not measured"
+  stays recorded. Procedure: set-up as P3-a/P3-b/P3-c with a fresh `$env:S6_OUT` (`Test-Path` → `False` first)
+  and the 8080 fixture server (hidden); a driver-opened fixture window `$Wb = Open-T5Window "${U}s6-bb"`,
+  `Set-T5Foreground $Wb.Hwnd` → `True`; `B1` → `<T#> fixture` (else `Set-T5Foreground` once more, then stop and
+  record); then `Rcp recipes/s6.ts stale-check` as the **first** result line. Steps 1–2 of "SDK-6/SDK-7 live"
+  are not run (no `bb-login.ps1`; SDK-6's addendum PASS stands). B1 again, then step 3, the SDK leg, re-run:
+  `Rcp recipes/blackboard/export-grades.ts pp1 --keep-open` — its resolution lines confirm the login; a
+  `REFUSED — …` ⇒ SDK-7 **"waits for the user"**, no login attempt, nothing pressed or typed. It writes the
+  `exports\pp1-<date>.json` that the MCP file is compared with (same date), and is judged by its unchanged rule
+  (§4.19 SDK-7 SDK leg); its size line is expected as `MCP leg size: 418406 characters → 53 chunk(s) of 8000;
+  measurable: yes` if pp1's export is unchanged (another `<L>` is recorded as observed and judged by the cap).
+  Then steps 4–10 as written: the plan (`--mcp-plan` into `$env:S6_OUT\sdk7-plan.txt`, its `_\d+_\d+` check →
+  `False`); actor M fresh with tools `browser_select_tab,browser_evaluate`, M1, then M2 one `send` each (at most
+  60 STATUS sends) until `"state": "done"` or `"state": "error"`, then M3… one chunk per `send` — **53 chunk
+  sends** expected for pp1's 418 406 characters; the failures-folder step (`$F0`/`$F1`, count only, deleted);
+  `Rcp recipes/blackboard/assemble-mcp.ts "$env:T5_ACTORS\M\out.jsonl" pp1`; S6.3 — `Get-FileHash` of the
+  SDK-leg file written in this run and the `-mcp` file → equal, `git check-ignore -v` for both; `close-bb-tab
+  <T#>`; step 11's data hygiene. A truncated chunk, an actor that cannot finish the loop, or a context or
+  classifier stop ⇒ recorded as observed (the step where it stopped, counts only), **never re-tuned** (no other
+  chunk size, cap, prompt split or rerun under a changed rule). At the end `Close-T5Window $Wb.Hwnd`. Expected
+  texts (§4.19 SDK-7 with its #102 note), pass rules, the evidence rules and #96/#98 are unchanged.*
 - **P3-i. SM-1 + its restart, last** — "SM-1 and MUX-8" below with these changes: **MUX-8 is not re-run** (Part 2's
   PASS stands; recorded "MUX-8: not re-run in Part 3"), so actor X is not started and steps 5 and 10 are skipped;
   step 3's `sm1.ps1` is `npm run -s recipe -- recipes/s6.ts sm1 --observed "<S6_OUT>\sm1-observed.json" *> "<S6_OUT>\sm1.out"`

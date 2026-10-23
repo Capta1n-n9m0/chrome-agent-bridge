@@ -41,11 +41,15 @@ describe("the MCP leg's size (S6 fixer r1: chunks ≤ 8000 characters, a pre-reg
   it("chunks are at most 8000 characters", () => {
     expect(MCP_CHUNK_CHARS).toBeLessThanOrEqual(8000);
   });
-  it("mcpLegPlan: measurable up to MCP_MAX_CHARS (30 chunks), else not measured", () => {
-    expect(MCP_MAX_CHARS).toBe(30 * MCP_CHUNK_CHARS);
+  // Re-pinned 2026-10-23 (#102, before the MCP leg's re-run): the cap is 600 000 characters (75 chunks of
+  // 8000); was 240 000 (30 chunks), registered in 23b878f.
+  it("mcpLegPlan: measurable up to MCP_MAX_CHARS (600 000 characters, 75 chunks), else not measured", () => {
+    expect(MCP_CHUNK_CHARS).toBe(8000);
+    expect(MCP_MAX_CHARS).toBe(600_000);
     expect(mcpLegPlan(626)).toEqual({ measurable: true, chunks: 1 });
-    expect(mcpLegPlan(MCP_MAX_CHARS)).toEqual({ measurable: true, chunks: 30 });
-    expect(mcpLegPlan(MCP_MAX_CHARS + 1)).toEqual({ measurable: false, chunks: 31 });
+    expect(mcpLegPlan(418_406)).toEqual({ measurable: true, chunks: 53 });
+    expect(mcpLegPlan(600_000)).toEqual({ measurable: true, chunks: 75 });
+    expect(mcpLegPlan(600_001)).toEqual({ measurable: false, chunks: 76 });
     expect(() => mcpLegPlan(-1)).toThrow();
   });
 });
