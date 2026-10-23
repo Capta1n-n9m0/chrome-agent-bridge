@@ -1733,6 +1733,36 @@ Result (§4.16 reading rule): **the flags alone do not change the outcome** — 
 background tab is still a silent no-op with renderer backgrounding and background throttling disabled;
 focus emulation stays Step 8's question (#62 (4)). Chrome ended as it started (1 window, 1 tab, no flags).
 
+### Run 11 (FE) — 2026-10-23 (Step 8: focus emulation for trusted input, §4.17)
+
+*Rows, rules and tools committed before the build was loaded (`6398f27`); FE build `6742c1f`; run by the
+driver, the user not present (decisions.md #33). Full evidence:
+[`FE-run-record.md`](plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/FE-run-record.md); attached
+`FE-daemon-log.txt`, `FE-run-results.txt`, `FE-frames-positive.txt`, `FE-frames-block.txt` beside it.
+Runs 8–10 above are unchanged.*
+
+```
+Date: 2026-10-23 (UTC 08:34–08:39)  Chrome 156.0.8078.48  Node v25.2.1  Windows 11 Pro 10.0.26300  HEAD: 257dd8d
+Daemon build: 7712e1afcbc173252aac19f764918f00504b6f0541ba6407a6da672a64019d0e   reload-extension.ps1: exit 0 (RELOAD OK)
+
+FE-0 [P]   FE-5 first [holds 0/3, 0/3]   FE-PC page [P] capture [P]   FE-1 [F 0/3]   FE-2 [F 2/3]   FE-3 [F 0/3]
+FE-4 [P] (trials 9/9; window capture 71 frames, no target, foreground constant)   FE-5 last [holds 0/3, 0/3]   FE-3c 0/3 (observation)
+Log hygiene: '://' count 0  token count 0  withheld-line count 0   (37 lines)
+```
+
+Evidence in short (the record has every line):
+- **FE-0** — `click e7 trusted focusEmulation:true → ok {"ok":true,"focusEmulation":"on"} (21 ms)`; `FE-0 PASS — the result carries focusEmulation "on": the extension is the FE build`.
+- **FE-5 first / last** — every BG-1/BG-2 trial `→ ok {"ok":true}` in 5–12 ms, `status: idle`, field `""`; `control holds` both times.
+- **FE-PC** — `screenshot T11 (default mode) → ok … (1635 ms)`; `human tab hidden +5 ms, visible again +1619 ms`; `POSITIVE (page timestamps) PASS`; `295 frames; frames showing magenta 16, cyan 279`; `POSITIVE (capture loop) PASS`.
+- **FE-1** — `click e7 trusted focusEmulation:true → ok {"ok":true,"focusEmulation":"on"}` (18/23/34 ms); `target status "status: idle"` ×3; `FE-1 FAIL — 0/3 trials PASS`.
+- **FE-2** — trials 1, 2 `status: TRUSTED input = bg2typed`, field `bg2typed` (PASS); trial 3 `status: TRUSTED input = ped`, field `ped` (FAIL); `FE-2 FAIL — 2/3 trials PASS`.
+- **FE-3** — focus step `document.activeElement is #trusted-input: yes` ×3; `pressKey ArrowLeft trusted focusEmulation:true → ok {"ok":true,"focusEmulation":"on"}`; `status: idle` ×3; `FE-3 FAIL — 0/3 trials PASS`.
+- **FE-4** — every trial `human current, never hidden; window active tabs unchanged; target never active → FE-4 trial PASS`; `FE-4 (window capture over 9 trials, 71 frames) PASS — no frame shows the target; the foreground window never changed`.
+- **FE-3c** — `without the option the key reached the page in 0/3 trials`.
+- **Observation** — with the option the target page logged `visible` +3–7 ms and `hidden again` +14–39 ms in all 9 trials, and read `hidden` after every call: emulation was off after each call (#88's Revisit-if not met).
+
+`fe-verdict: OUTCOME (B) — no kind passes: policy "focusFirst"`
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.

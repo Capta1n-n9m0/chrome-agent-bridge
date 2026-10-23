@@ -12,3 +12,7 @@
 - 2026-10-23T08:31:39Z · FE.md written · next: commit 2 via builder
 - 2026-10-23T08:32:14Z · commit 2 · done · 6742c1f · build part closed (DONE; verifier PASS-with-notes) · next: live part on the session agent's resume message
 - 2026-10-23T08:33:15Z · LIVE PART · started on session agent's message (after 97d6123, #88) · next: driver agent runs the wave sheet steps 0–12
+- 2026-10-23T08:41:44Z · live wave · done (driver) · ledger commit 257dd8d; reload exit 0; FE-0 PASS; FE-5 holds first+last; FE-PC PASS; FE-1 0/3, FE-2 2/3, FE-3 0/3 FAIL; FE-4 PASS; FE-3c 0/3; verdict (B) focusFirst; record + attachments + §5 Run 11 uncommitted · next: fresh verifier
+- 2026-10-23T08:42:16Z · live verifier · started (fresh, read-only) → FE-live-verifier.md
+- 2026-10-23T08:46:59Z · live verifier · PASS-with-notes (3 NITs); outcome (B) confirmed · FE.md live section written · next: commit record + reports
+- 2026-10-23T08:48:35Z · live commit · DENIED by the permission classifier (committer's one attempt; not retried) · HEAD 257dd8d, index empty, 9 paths uncommitted · next: session agent asks the user

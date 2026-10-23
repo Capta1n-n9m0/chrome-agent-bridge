@@ -149,3 +149,70 @@ fails FE-4. **By:** Claude (proposed)
 
 1.75 h budgeted; ~1.9 h actual (07:40Z start to commit 2), mostly the builder's rows and script
 (~24 min code + rows) and the verifier's independent re-recording (~12 min) plus one fix round.
+
+---
+
+# Live part (2026-10-23) — Run 11 (FE)
+
+## Verdict
+
+**DONE.** Outcome **(B), no kind passes: policy `"focusFirst"`** (`fe-verdict: OUTCOME (B) — no kind
+passes: policy "focusFirst"`), read off #78's precedence: FE-5 not void (0/12 control trials received
+input) → FE-4 PASS (9/9) → not every kind passes → **no kind passes all trials** (FE-1 0/3, FE-2 2/3,
+FE-3 0/3) → (B). Fresh verifier: **PASS-with-notes** (3 NITs), `FE-live-verifier.md`; it re-derived every
+row with its own script and re-ran `fe.ts verdict` on the attached copies (same 8 lines).
+
+## Outputs
+
+- Ledger commit before the run: `257dd8d`. Build under test `6742c1f` (rows `6398f27` before it — FE.4
+  PASS). Daemon build `7712e1af…` (unchanged since S0; FE changed only the extension).
+- Record `FE-run-record.md`; attachments `FE-run-results.txt` (28 records), `FE-frames-positive.txt`,
+  `FE-frames-block.txt`, `FE-daemon-log.txt` (37 lines; hygiene `://` 0, token 0, withheld 0);
+  `docs/e2e-test-plan.md` §5 "Run 11 (FE)". No images kept.
+
+| Row | Verdict | Observed |
+|---|---|---|
+| Reload | exit 0 | `RELOAD OK - the extension reconnected to the daemon after the press at 08:35:54.883Z` (FE.5 first row line) |
+| FE-0 | PASS | `click e7 trusted focusEmulation:true → ok {"ok":true,"focusEmulation":"on"} (21 ms)` (FE.5 PASS) |
+| FE-5 first | control holds | BG-1 0/3, BG-2 0/3; `ok {"ok":true}` in 5–12 ms, `status: idle` |
+| FE-PC | page PASS, capture PASS | human's tab hidden +5 ms → visible +1619 ms; 16 magenta frames in the flash, none before |
+| FE-1 | FAIL 0/3 | `status: idle` (18/23/34 ms) |
+| FE-2 | FAIL 2/3 | trials 1–2 `status: TRUSTED input = bg2typed`; trial 3 `TRUSTED input = ped`, field `ped` (first 5 chars lost) |
+| FE-3 | FAIL 0/3 | `status: idle`; focus step `activeElement is #trusted-input: yes` every trial |
+| FE-4 | PASS 9/9 | human's tab current, never hidden; window active tabs unchanged; target never active; 71 judged frames, none magenta; foreground `1051630` throughout; not void (max gap 126 ms) |
+| FE-5 last | control holds | 0/3, 0/3 |
+| FE-3c (obs.) | 0/3 | the key never arrived without the option — FE-3 discriminates |
+
+## Observations (not judged)
+
+- Target page visibility with the option: `visible` +3–7 ms into each call, `hidden` again +14–39 ms
+  (about when the call returned); `hidden` on every read after the call. Without the option it never
+  changed. Confirms Stage 0 F1's Chromium reading on Chrome 156.
+- **Emulation still on after a call (#88 Revisit-if): never seen.** #88's disable choice stands.
+- Finding for the user (not an outcome input; unmeasured hypothesis): FE-2's partial delivery (2/3
+  trials whole, one with its first five characters lost) and FE-1/FE-3's zero delivery for one- or
+  two-event inputs suggest the renderer starts accepting input only some milliseconds after the
+  enable — a race between `setFocusEmulationEnabled` taking effect and the first `Input.*` command. A
+  delay after the enable might change the result; testing it would be a new design and new
+  pre-registered rows, never a re-run of FE's rows. The table's reading (B) stands.
+
+## Deviations (live)
+
+None that could affect a verdict (verifier): a `recipes/hello.ts` daemon start before the reload (§1
+item 9 recommends it; it read only `daemon.status`/`listTabs`); the set-up block re-sourced per
+PowerShell call (the tool keeps no state); HEAD two docs-only commits after the build commit. No
+set-up fixes, no re-runs, no exit 1/2/3. Verifier NITs: the hello.ts `listTabs` line shows the single
+open tab's fixture title and Chrome id; FE.5's "first recorded line" holds by the sheet's step order
+(future checks: "first recorded row line"); the hello.ts block sits under the Build heading.
+
+## For the as-built register (live)
+
+- Run 11 (FE), 2026-10-23: outcome (B) `"focusFirst"` by #78's table — FE-1 0/3, FE-2 2/3, FE-3 0/3,
+  FE-4 9/9, FE-5 0/12 (control holds), FE-PC PASS, FE-3c 0/3. FE.4, FE.5 PASS; FE.6 is the session
+  agent's decision "The background-input policy".
+- Measured on Chrome 156: focus emulation makes a background target's page `visible` while it is on
+  and `hidden` again when it is off; it never moved the human's tab, the foreground window or any
+  window's active tab; Chromium cleared it by the time each call returned.
+
+Budget (live): 1.5 h budgeted; ~0.6 h actual (driver ~8 min wave, verifier ~4 min, plus set-up and
+write-up).
