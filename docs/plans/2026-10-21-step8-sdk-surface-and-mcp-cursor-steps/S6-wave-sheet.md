@@ -254,6 +254,23 @@ reload…", accepted by #99 (3)), and before every `reload-extension.ps1` call t
   only the recipe's own course tab). Set-up as P3-a/P3-b/P3-c with a new `$env:S6_OUT` (`…\s6-run3-addendum`);
   the stale check is the first result line. Expected texts (§4.19 SDK-6/SDK-7 (live, pp1)), pass rules, the
   failures-folder rule, the evidence rules and #96/#98 are unchanged.*
+  *2026-10-23 (Part 3 addendum attempt 2, step agent, before its first row): supersedes the 1b429bc note's window
+  clause — attempt 1 stopped at set-up because the bb-login window's handle was gone after P3-i's Chrome restart
+  (nothing ran against Chrome, so this is not a re-run). The step agent's ruling (stage-local): the login lives in
+  the profile's cookies (session restore after P3-i's `chrome://quit`), not in a window. The recipes' background
+  tabs therefore open in a **new window the driver opens itself on a fixture page**, made foreground — never an
+  unidentified window, never the user's: set-up as P3-a/P3-b/P3-c with a new `$env:S6_OUT` (`…\s6-run3-addendum2`,
+  `Test-Path` → `False` first) and the 8080 fixture server (hidden, as above); `$Wb = Open-T5Window "${U}s6-bb"`;
+  `Set-T5Foreground $Wb.Hwnd` → `True`; `B1` → `<T#> fixture` (else `Set-T5Foreground` once more, then stop and
+  record); then `Rcp recipes/s6.ts stale-check` as the first result line (R-b's rules; the daemon build = the
+  stale check's, P3-c). Then B1 again and steps 2–11 of "SDK-6/SDK-7 live" exactly as written (the 8765 checks,
+  `boot-bb.ts pp1`, `export-grades.ts pp1 --keep-open`, the plan and its no-id check, the MCP leg with a fresh
+  actor M under the failures-folder rule if measurable, `assemble-mcp.ts`, S6.3, `close-bb-tab <T#>`, data
+  hygiene), with B1 before each recipe that opens a tab ($Wb current). Step 1 (`bb-login.ps1`) is not run. The
+  course lookup still judges the login: `REFUSED — not logged in …` (or any `REFUSED`) ⇒ SDK-6/SDK-7 **"waits for
+  the user"**, no login attempt, no `bb-login.ps1` run. No other window is touched, listed by title or URL,
+  captured or brought forward. At the end `Close-T5Window $Wb.Hwnd`. Expected texts (§4.19 SDK-6/SDK-7 (live,
+  pp1)), pass rules, the failures-folder rule, the evidence rules and #96/#98 are unchanged.*
 - **P3-i. SM-1 + its restart, last** — "SM-1 and MUX-8" below with these changes: **MUX-8 is not re-run** (Part 2's
   PASS stands; recorded "MUX-8: not re-run in Part 3"), so actor X is not started and steps 5 and 10 are skipped;
   step 3's `sm1.ps1` is `npm run -s recipe -- recipes/s6.ts sm1 --observed "<S6_OUT>\sm1-observed.json" *> "<S6_OUT>\sm1.out"`
