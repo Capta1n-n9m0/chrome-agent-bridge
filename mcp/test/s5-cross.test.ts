@@ -17,7 +17,7 @@ import { WsHost } from "../../daemon/src/wsHost.js";
 import { connectOptions } from "../src/config.js";
 import { BridgeLink } from "../src/link.js";
 import { TabCursor } from "../src/cursor.js";
-import { registerTools } from "../src/tools/registry.js";
+import { failedLine, isFailureReport, registerTools } from "../src/tools/registry.js";
 
 const TOKEN = "s5-cross-token-SENTINEL";
 const BUILD = "s5-build";
@@ -181,7 +181,8 @@ describe("Step 8 S5 — the MCP cursor and tools over the real daemon and SDK", 
       raw: (tool: string, args: Record<string, unknown> = {}) => tools[tool].handler(args, {}),
       run: async (tool: string, args: Record<string, unknown> = {}) => {
         const res = await tools[tool].handler(args, {});
-        if (res.isError) throw new Error(`tool error: ${res.content[0].text}`);
+        // A failure report with a screenshot has no isError (decision S6b); it is still a failure.
+        if (res.isError || isFailureReport(res)) throw new Error(`tool error: ${res.content[0].text}`);
         return res.content[0].text as string;
       },
     };
@@ -221,11 +222,13 @@ describe("Step 8 S5 — the MCP cursor and tools over the real daemon and SDK", 
   it("(c) an attach-eligible error comes back as report() text plus an image block", async () => {
     const a = await actor(2003);
     const res = await a.raw("browser_click", { locator: { role: "button", name: "Nope" } });
-    expect(res.isError).toBe(true);
+    expect("isError" in res).toBe(false); // decision S6b: Claude Code 2.1.309 drops images from isError results (S6b-probe-record.md outcome A)
+    expect(isFailureReport(res)).toBe(true);
     expect(res.content.map((c) => c.type)).toEqual(["text", "image"]);
     const report = res.content[0].text!;
     expect(report.split("\n")[0]).toBe('LOCATOR_NOT_FOUND: no element matches button "Nope"');
     expect(report).toContain(`Screenshot: ${failures}`);
+    expect(report.split("\n").at(-1)).toBe(failedLine("LOCATOR_NOT_FOUND"));
     expect(res.content[1]).toEqual({ type: "image", data: PNG_B64, mimeType: "image/png" });
     // The report's reads went to the failed tab through the daemon.
     expect(ext.of("snapshot").map((p) => p.tabId)).toEqual([101]);

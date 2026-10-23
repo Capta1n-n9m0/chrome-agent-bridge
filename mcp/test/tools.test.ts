@@ -1243,10 +1243,10 @@ describe("S5 — failure reports: report() text plus an image block for the atta
 
   const notFound = () => new BridgeError(ErrorCodes.LOCATOR_NOT_FOUND, 'no element matches button "Nope"', { candidates: [] });
 
-  it("an attach-eligible error is returned as isError with report() text and the screenshot as an image", async () => {
+  it("an attach-eligible error is returned without isError, with report() text and the screenshot as an image", async () => {
     const f = failing("click", notFound());
     const res = await tools(f.bridge, undefined, reports()).run("browser_click", { locator: { role: "button", name: "Nope" } });
-    expect(res.isError).toBe(true);
+    expect("isError" in res).toBe(false); // decision S6b: Claude Code 2.1.309 drops images from isError results (S6b-probe-record.md outcome A)
     expect(res.content).toHaveLength(2);
     expect(res.content[0].type).toBe("text");
     expect(res.content[0].text).toContain("LOCATOR_NOT_FOUND");
@@ -1261,10 +1261,10 @@ describe("S5 — failure reports: report() text plus an image block for the atta
     expect(readdirSync(dir)).toHaveLength(1); // the PNG went to BRIDGE_FAILURES_DIR
   });
 
-  it("an explicit tab attaches on that tab; the lost-cursor notice still prefixes the report", async () => {
+  it("an explicit tab attaches on that tab; the lost-cursor notice comes after the report", async () => {
     const f = failing("hover", new BridgeError(ErrorCodes.REF_STALE, "ref e9 is stale — take a new snapshot"));
     const res = await tools(f.bridge, undefined, reports()).run("browser_hover", { ref: "e9", tab: "T4" });
-    expect(res.isError).toBe(true);
+    expect("isError" in res).toBe(false); // decision S6b: Claude Code 2.1.309 drops images from isError results (S6b-probe-record.md outcome A)
     expect(f.work().slice(1).map(([, p]) => p?.tab)).toEqual(["T4", "T4", "T4"]);
 
     const g = failing("click", notFound());
@@ -1273,8 +1273,11 @@ describe("S5 — failure reports: report() text plus an image block for the atta
     await t.run("browser_hover", { ref: "e1" }); // cursor T1
     cursor.markLost();
     const res2 = await t.run("browser_click", { ref: "e1" });
-    expect(res2.content[0].text!.split("\n")[0]).toBe(lostNotice("T1"));
-    expect(res2.content[1].type).toBe("image");
+    // decision S6b (S6b-probe-record.md outcome A): a report without isError keeps its code line first,
+    // so the notice moves to its last line (was: the notice was line 1 of the report's text; S6b verifier F1).
+    expect(res2.content[0].text!.split("\n")[0]).toBe('LOCATOR_NOT_FOUND: no element matches button "Nope"');
+    expect(res2.content[0].text!.split("\n").at(-1)).toBe(lostNotice("T1"));
+    expect(res2.content.map((c) => c.type)).toEqual(["text", "image"]);
   });
 
   it("no image block when the screenshot could not be taken (the report says why)", async () => {
@@ -1314,7 +1317,7 @@ describe("S5 — failure reports: report() text plus an image block for the atta
     const err = new BridgeError(ErrorCodes.PAGE_ERROR, msg);
     const f = failing("evaluate", err);
     const res = await tools(f.bridge, undefined, reports()).run("browser_evaluate", { expression: "null.x" });
-    expect(res.isError).toBe(true);
+    expect("isError" in res).toBe(false); // decision S6b: Claude Code 2.1.309 drops images from isError results (S6b-probe-record.md outcome A)
     const shown = res.content[0].text!;
     const rendered = err.report!();
     expect(shown.startsWith(rendered)).toBe(true);
@@ -1343,5 +1346,83 @@ describe("S5 — failure reports: report() text plus an image block for the atta
     const res = await tools(f.bridge, undefined, reports()).run("browser_click", {});
     expect(res.content).toHaveLength(1);
     expect(f.calls).toEqual([]);
+  });
+
+  // S6b (S6b-probe-record.md outcome A): Claude Code 2.1.309 drops images from isError results, so a
+  // report with a screenshot is a non-error result whose first line states the code and whose last
+  // line says the call failed; without a screenshot it stays isError text-only.
+  const failedLine = (code: string) =>
+    `The call failed (${code}). This result is not flagged as an error only so that the screenshot reaches you (some MCP clients, Claude Code 2.1.309 among them, drop images from error results).`;
+
+  it("S6b: with a screenshot the report is a non-error result — report text plus the failure line, then the image", async () => {
+    const err = notFound();
+    const f = failing("click", err);
+    const res = await tools(f.bridge, undefined, reports()).run("browser_click", { locator: { role: "button", name: "Nope" } });
+    expect("isError" in res).toBe(false);
+    expect(res).toEqual({
+      content: [
+        { type: "text", text: `${err.report!()}\n${failedLine("LOCATOR_NOT_FOUND")}` },
+        { type: "image", data: PNG_B64, mimeType: "image/png" },
+      ],
+    });
+    expect(res.content[0].text!.split("\n")[0]).toBe('LOCATOR_NOT_FOUND: no element matches button "Nope"');
+  });
+
+  it("S6b: a multi-line message keeps Full message, then the failure line last", async () => {
+    const msg = "TypeError: boom\n    at <anonymous>:1:15";
+    const err = new BridgeError(ErrorCodes.PAGE_ERROR, msg);
+    const f = failing("evaluate", err);
+    const res = await tools(f.bridge, undefined, reports()).run("browser_evaluate", { expression: "x" });
+    expect("isError" in res).toBe(false);
+    expect(res.content[0].text).toBe(`${err.report!()}\nFull message:\n${msg}\n${failedLine("PAGE_ERROR")}`);
+  });
+
+  it("S6b: without a screenshot the report is still isError, text only, with no failure line", async () => {
+    const err = notFound();
+    const f = failing("click", err, new BridgeError(ErrorCodes.WINDOW_MINIMIZED, "the window is minimized"));
+    const res = await tools(f.bridge, undefined, reports()).run("browser_click", { ref: "e1" });
+    expect(res).toEqual({ isError: true, content: [{ type: "text", text: err.report!() }] });
+  });
+
+  it("S6b: a re-claimed cursor's notice is the last line of a failure report's text (code line first, no extra item); a normal result's placement is unchanged", async () => {
+    const err = notFound();
+    const g = failing("click", err);
+    const cursor = new TabCursor(g.bridge);
+    const t = tools(g.bridge, cursor, reports());
+    await t.run("browser_hover", { ref: "e1" }); // cursor T1
+    cursor.markLost();
+    const res = await t.run("browser_click", { ref: "e1" });
+    expect("isError" in res).toBe(false);
+    expect(res).toEqual({
+      content: [
+        { type: "text", text: `${err.report!()}\n${failedLine("LOCATOR_NOT_FOUND")}\n${lostNotice("T1")}` },
+        { type: "image", data: PNG_B64, mimeType: "image/png" },
+      ],
+    });
+    expect(res.content).toHaveLength(2);
+    const lines = res.content[0].text!.split("\n");
+    expect(lines[0]).toBe('LOCATOR_NOT_FOUND: no element matches button "Nope"');
+    expect(lines.at(-1)).toBe(lostNotice("T1"));
+
+    // The no-image report: still isError, one text item, the notice its last line (S6b verifier F1: a second
+    // text item in an error result was never measured to survive Claude Code's flattening).
+    const err2 = notFound();
+    const h = failing("click", err2, new BridgeError(ErrorCodes.WINDOW_MINIMIZED, "the window is minimized"));
+    const cursor2 = new TabCursor(h.bridge);
+    const t2 = tools(h.bridge, cursor2, reports());
+    await t2.run("browser_hover", { ref: "e1" });
+    cursor2.markLost();
+    const res2 = await t2.run("browser_click", { ref: "e1" });
+    expect(res2).toEqual({ isError: true, content: [{ type: "text", text: `${err2.report!()}\n${lostNotice("T1")}` }] });
+    expect(res2.content).toHaveLength(1);
+    const lines2 = res2.content[0].text!.split("\n");
+    expect(lines2[0]).toBe('LOCATOR_NOT_FOUND: no element matches button "Nope"');
+    expect(lines2.at(-1)).toBe(lostNotice("T1"));
+
+    // A normal result: the notice still prefixes the first text item.
+    cursor.markLost();
+    expect(await t.run("browser_hover", { ref: "e1" })).toEqual({
+      content: [{ type: "text", text: `${lostNotice("T1")}\nHovered e1` }],
+    });
   });
 });

@@ -36,10 +36,38 @@ function toolError(s: string): ToolResult {
   return { content: [{ type: "text", text: s }], isError: true };
 }
 
-/** `notice` and a newline before the first text item, or a text item of its own before an image. */
+/**
+ * The failure reports `failureReport` returned (and `withNotice`'s copies of them): marked here, not on
+ * the wire, so a report keeps its code line first and callers can tell a non-error report from success.
+ */
+const FAILURE_REPORTS = new WeakSet<ToolResult>();
+
+/** Whether `result` is a failure report (with or without `isError`; see `failureReport`). */
+export function isFailureReport(result: object): boolean {
+  return FAILURE_REPORTS.has(result as ToolResult);
+}
+
+/**
+ * The last line of a failure report sent without `isError` (S6b-probe-record.md outcome A: Claude Code
+ * 2.1.309 drops the images of an isError result, so a report carrying a screenshot is not flagged).
+ */
+export function failedLine(code: string): string {
+  return `The call failed (${code}). This result is not flagged as an error only so that the screenshot reaches you (some MCP clients, Claude Code 2.1.309 among them, drop images from error results).`;
+}
+
+/**
+ * `notice` and a newline before the first text item, or a text item of its own before an image. A
+ * failure report keeps its code line first: the notice becomes the last line of its first text item
+ * (never an item of its own — Claude Code flattens an isError result, and a second text item is unmeasured).
+ */
 function withNotice(result: ToolResult, notice: string | null): ToolResult {
   if (!notice) return result;
   const [first, ...rest] = result.content;
+  if (FAILURE_REPORTS.has(result) && first?.type === "text") {
+    const out = { ...result, content: [{ type: "text" as const, text: `${first.text}\n${notice}` }, ...rest] };
+    FAILURE_REPORTS.add(out);
+    return out;
+  }
   if (first?.type === "text") return { ...result, content: [{ type: "text", text: `${notice}\n${first.text}` }, ...rest] };
   return { ...result, content: [{ type: "text", text: notice }, ...result.content] };
 }
@@ -210,8 +238,9 @@ export function registerTools(
 
   /**
    * A failure report for `err` on `tab` (phase doc 0.5, Step 8 S5): only a `BridgeError` with an
-   * attach-set code on a handle. Returns the tool error to show — `report()` as text, plus the saved
-   * screenshot as an image block when there is one — or null, and the caller rethrows `err` unchanged.
+   * attach-set code on a handle. Returns the report to show — `report()` as text, plus the saved
+   * screenshot as an image block when there is one (then without `isError`, decision S6b) — or null, and
+   * the caller rethrows `err` unchanged.
    */
   async function failureReport(err: unknown, tab: string): Promise<ToolResult | null> {
     if (!(err instanceof BridgeError) || !isAttachCode(err.code) || !HANDLE.test(tab)) return null;
@@ -231,7 +260,15 @@ export function registerTools(
         report += `\n(the screenshot file could not be read: ${readErr instanceof Error ? readErr.message : String(readErr)})`;
       }
     }
-    return { isError: true, content: [{ type: "text", text: report }, ...content] };
+    // With a screenshot: no isError key at all, the code on line 1 and the failure stated on the last
+    // line, because Claude Code drops images from isError results (S6b-probe-record.md outcome A).
+    // Without one: today's isError text-only result.
+    const result: ToolResult =
+      content.length > 0
+        ? { content: [{ type: "text", text: `${report}\n${failedLine(err.code)}` }, ...content] }
+        : { isError: true, content: [{ type: "text", text: report }] };
+    FAILURE_REPORTS.add(result);
+    return result;
   }
 
   /** Runs `fn` on `tab`; an attach-set failure becomes a failure report, any other is rethrown. */
