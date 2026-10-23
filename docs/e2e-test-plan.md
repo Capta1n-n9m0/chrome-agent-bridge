@@ -1895,6 +1895,40 @@ Evidence in short (the record has every line):
 - **SDK-6D / SDK-7D** — `bb.VERSION = stub-2026-10-23`; `627 bytes, sha256 92fe62ab…a49c`; `Get-FileHash` equal.
 - **SDK-1** — `SDK-1 PASS — located button "Sign in", clicked, … (118 ms in all)`; actor SA's first snapshot of `?t5=sdk1-claude`; log `client + "sdk-login" (2 clients)` / `client - "sdk-login" (1 client)`; SA's second snapshot not sent (classifier denial).
 
+**Part 2 — resumed run (2026-10-23, 14:38–15:10 UTC).** *Run by the Part 2 driver under the wave sheet's
+"Resumed run" section (decisions.md #96, #97, #98); no code change since `23b878f`, so no build; the first
+recorded result line is the stale check (NEW BUILD, no reload). REP-0 passed, so nothing was gated. No
+permission or classifier denial. SM-0's reload exited 2 (nothing pressed) and was not retried (integrity floor,
+#65); the Blackboard login exited 4. One Chrome restart (SM-1 + MUX-8). Record: `S6-run-record.md` § "Part 2";
+`S6-daemon-log.txt` now covers both parts (171 lines).*
+
+```
+Date: 2026-10-23 (UTC 14:38–15:10)  Chrome 156  Node v25.2.1  OS Windows 11 Pro 10.0.26300  HEAD: bc78ded (rows at 23b878f, REP-0 at bc78ded)
+Daemon build: 597d6c28abd12541eb51c43266f3504f18305cfeeedfd90e5ae5a9ef4434da3f   reload: none needed (S6-STALE: STALE-CHECK NEW BUILD, the first recorded line)
+
+S6-STALE [P] REP-0 [P] (report call 1344 ms; probe visible +20 ms; PNG magenta; controls A blue, B magenta) SDK-1 [P] (rerun whole)
+SDK-6 [waits for the user] SDK-7 [waits for the user] (bb-login.ps1 exit 4; MCP leg and S6.3 not run) SDK-8 [P]
+SM-0 [not measured: reload exit 2, nothing pressed; waits for the user] SM-1 [F] (recipe PASS; SM-1 LOG FAIL — 0 handles retired) MUX-8 [P]
+S5 rows: CUR-1 [P] CUR-2 [P] CUR-3 [P] LOC-1 [F: value clause not observable as written] LOC-2 [P] ASREF-1 [P; optional 1+1 clause differs]
+         REP-1 [F: no image part reached the actor] STAT-1 [P] MUX-1 [P] TAB-3 [P] (background branch) NET-12 [P]
+Regression (S6.5): MUX-2 [P] LEASE-1 [P] SCREEN-1 [P] (1576 / 1456 / 1465 ms, median 1465) ACT-1 [P] ACT-2 [P] ACT-3 [P] TRUST-2 [P] EVAL-1 [P] NET-1 [P] DL-1 [P]
+Chrome restart: 1 (chrome://quit 15:08:19Z, relaunch --restore-last-session 15:08:51Z; counts equal; no reload needed)
+Log hygiene: '://' count 0  token count 0  withheld-line count 0   (171 lines; course ids 0, ada.blackboard 0)
+S6.4 git status: only the record, the log .txt, this plan and S6.ledger.md (no exports/, no PNG)
+```
+
+*2026-10-23 (step agent, live verifier r2 N1): ASREF-1 above is FAIL (optional clause; required clauses PASS) —
+step-agent ruling: the sheet says "§4.18's Expected column, exactly" and P-ASREF1 ran the optional call. Part 2
+counts (the step agent's): 23 PASS, 4 FAIL (LOC-1, ASREF-1, REP-1, SM-1), 1 not measured (SM-0), 2 waits for the
+user (SDK-6, SDK-7 live).*
+
+Evidence in short (Part 2; the record has every line):
+- **REP-0** — `report call: probe T132 visible +20 ms, hidden again +1345 ms; human T131 hidden +16 ms, visible again +1348 ms → flash 1331 ms`; `REP-0 PASS — the report's capture switched to the failed tab …`.
+- **SM-1** — `event +10064 ms tabGone {"tab":"T216",…}` came at the quit, 14 ms before `extensionStatus {"connected":false}`; after the relaunch `extension session changed: 0 handles retired`, `snapshot T216 after the restart → TAB_GONE`, daemon pid 14400 unchanged; `SM-1 LOG FAIL — 0 handles retired (≥ 1 expected)`.
+- **REP-1** — the `LOCATOR_NOT_FOUND` report text, `Screenshot: …\failures\…-T205.png` (deleted) and the snapshot window arrived; the actor's tool result held no image block.
+- **LOC-1** — `Typed into textbox "Email address"`, `Clicked button "Click counter"`, `button "Click counter: 1"`, `browser_click takes ref or locator, not both`; the snapshot prints no values and the status line read `status: counter = 1`.
+- **MUX-8** — `FAILED after 15020 ms — NOT_CONNECTED: …`, exit 1; X: `Extension: not connected — …`; run 2 `closed after 19 ms — OK`.
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.
