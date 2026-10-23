@@ -25,9 +25,9 @@ None open now. *Updated 2026-10-22: all six W1 proposals are ruled.*
 Step 7 (2026-10-22 on):
 1. "Step 7 agents run Opus 5.5" (#37) — a default the user has not ruled; open for veto.
 2. "The `tab` parameter keeps its "all"/"active" meanings for the network tools" (#40).
-3. "A Step 6 client keeps working against a Step 7 daemon for one release, without loosening a
-   lease" (#41).
-4. "A stale extension is refused for tab calls, detected by its hello" (#42).
+3. ~~"A Step 6 client keeps working against a Step 7 daemon for one release, without loosening a
+   lease" (#41)~~ — *ruled by the user 2026-10-23 (#68).*
+4. ~~"A stale extension is refused for tab calls, detected by its hello" (#42)~~ — *ruled (#68).*
 5. "The formatters reach the MCP through a `@bridge/sdk/format` subpath" (#46).
 6. "v2 peers do not yet require `code`" (#51).
 7. "A bare number in a network `tab` is a legacy Chrome id, not `BAD_PARAMS`" (#54).
@@ -40,6 +40,27 @@ Items 2–5 are contract-level, taken by the conservative rule from the Stage 0 
 decisions" below.*
 
 ## Log
+
+### 2026-10-23 · The user rules on the Step 7 close-out questions (#68)
+**Decided:** (1) T6 is committed (the classifier had blocked the builder's commit; the user gave the
+green light; commit 430e6fe). (2) R9-NET-1 is accepted: the extra `favicon.ico` request after a hard
+reload is expected and was not accounted for in the pre-written count; the document line met the row
+(`12.8 KB`, `from cache: no`), so T5.3's NET-1 clause is met. R9-SCREEN-2's positive control waits for
+the user after an explanation. (3) The user approves the decisions reported as taken while they were
+away — #41, #42, #43, #57 and #62–#67; #41 and #42 leave Open decisions. The remaining open ones
+(#37, #40, #46, #51, #54) are presented with a recommendation each.
+**Why:** the user's reply of 2026-10-23.
+**By:** user
+
+### 2026-10-23 · T6 removes the extension's dead network formatters with their 15 tests (#67)
+**Decided:** The five network formatters left in `extension/src/network-log.ts` after T4, and their
+15 tests in `extension/test/network-log.test.ts`, are deleted; the same cases run against the SDK copy
+in `sdk/test/format-network.test.ts` and the byte-identical baseline test. `npm test` 965 → 950 (59
+files both), a documented removal of dead code, not an unexplained drop.
+**Why:** nothing called them after T4 (T4 finding 1); two copies of a formatter drift.
+**Instead of:** keeping dead code to hold the count.
+**Revisit if:** the extension needs to format text again.
+**By:** Claude
 
 ### 2026-10-23 · Chrome's anti-throttling flags do not fix background input; Step 8 takes it from there (#66)
 **Decided:** Recorded as Step 8 input: with `--disable-renderer-backgrounding
