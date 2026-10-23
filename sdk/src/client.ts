@@ -16,7 +16,19 @@ import {
   type TabGoneParams,
   type WelcomeMessage,
 } from "@bridge/shared";
+import type { LocateResult, Locator, NetworkEntry, SnapshotResult, WaitForParams } from "@bridge/shared";
+import type { DownloadOutcome } from "./download.js";
 import type { Knocked } from "./knock.js";
+import type { Target } from "./locator.js";
+import {
+  Tab,
+  type DownloadOptions,
+  type NetworkListOptions,
+  type ScreenshotOptions,
+  type ScrollOptions,
+  type TabHost,
+  type TrustedOption,
+} from "./tab.js";
 import type { Connection } from "./transport.js";
 
 /** Close code the daemon sends when it is replaced (`daemon.shutdown`, handover). */
@@ -127,6 +139,20 @@ interface Pending {
 
 type State = "idle" | "connecting" | "open" | "reconnecting" | "failed" | "closed";
 
+/** One entry of `BridgeClient.tabs()`. */
+export interface TabInfo {
+  /** The daemon's handle, e.g. `"T3"`: pass it to `claim()`. */
+  handle: string;
+  title: string;
+  url: string;
+  /** The actor name of the client that holds the tab, if one does. */
+  owner?: string;
+  /** The human's tab: the active tab of the last-focused normal window (decision #43). */
+  current: boolean;
+}
+
+const NO_CURSOR_MESSAGE = "No tab cursor: call newTab() or claim() first";
+
 export class BridgeClient {
   private readonly knockFn: (ctx: KnockContext) => Promise<Knocked>;
   private readonly timers: Timers;
@@ -142,6 +168,13 @@ export class BridgeClient {
   private readonly typedListeners = new Map<TypedEventName, Set<TypedListener>>();
   private currentWelcome: WelcomeMessage | null = null;
   private extensionUp = false;
+  /** Bumped synchronously by every 4002 close: a `Tab` from an older generation is void (#79). */
+  private generation = 0;
+  private cursor: Tab | null = null;
+  private readonly host: TabHost = {
+    call: (method, params, options) => this.call(method, params, options),
+    generation: () => this.generation,
+  };
 
   constructor(options: BridgeClientOptions) {
     this.knockFn = options.knock;
@@ -251,6 +284,120 @@ export class BridgeClient {
     };
   }
 
+  // ── tabs and the cursor (phase doc 0.4) ──────────────────────────────────────
+
+  /**
+   * Opens a tab (in the background unless `active: true`), leased to this client, and makes it the
+   * cursor.
+   */
+  async newTab(url?: string, options: { active?: boolean } = {}): Promise<Tab> {
+    const params: Record<string, unknown> = {};
+    if (url !== undefined) params.url = url;
+    if (options.active !== undefined) params.active = options.active;
+    return this.adopt("newTab", params);
+  }
+
+  /** Takes the lease on a tab by handle, or on the human's tab with `{active: true}`; sets the cursor. */
+  async claim(target: string | { active: true }): Promise<Tab> {
+    return this.adopt("tabs.claim", typeof target === "string" ? { tab: target } : { active: true });
+  }
+
+  /**
+   * The cursor: the `Tab` of the last `newTab()` or `claim()`. Throws `NO_CURSOR` if there is none,
+   * including after a 4002 reconnect (the replaced daemon's handles are void). Releasing or closing
+   * the cursor tab does not clear it.
+   */
+  tab(): Tab {
+    if (!this.cursor) throw new BridgeError(ErrorCodes.NO_CURSOR, NO_CURSOR_MESSAGE);
+    return this.cursor;
+  }
+
+  /** Every tab: handle, title, url, holder, and which one is the human's (`current`). */
+  async tabs(): Promise<TabInfo[]> {
+    const result = (await this.call("listTabs")) as { tabs?: unknown } | null;
+    const list = Array.isArray(result?.tabs) ? (result.tabs as Record<string, unknown>[]) : [];
+    const out: TabInfo[] = [];
+    for (const e of list) {
+      if (typeof e?.tab !== "string") continue;
+      const info: TabInfo = {
+        handle: e.tab,
+        title: typeof e.title === "string" ? e.title : "",
+        url: typeof e.url === "string" ? e.url : "",
+        current: e.current === true,
+      };
+      if (typeof e.owner === "string") info.owner = e.owner;
+      out.push(info);
+    }
+    return out;
+  }
+
+  // The cursor's Tab methods, mirrored — every one but `close`, which keeps its Step 6 meaning here
+  // (close the client); close the cursor tab with `client.tab().close()`. No cursor → NO_CURSOR.
+
+  async navigate(url: string): Promise<void> {
+    return this.tab().navigate(url);
+  }
+  async back(): Promise<void> {
+    return this.tab().back();
+  }
+  async forward(): Promise<void> {
+    return this.tab().forward();
+  }
+  async snapshot(): Promise<SnapshotResult> {
+    return this.tab().snapshot();
+  }
+  screenshot(options: ScreenshotOptions & { path: string }): Promise<string>;
+  screenshot(options?: Omit<ScreenshotOptions, "path">): Promise<Buffer>;
+  async screenshot(options: ScreenshotOptions = {}): Promise<Buffer | string> {
+    return this.tab().screenshot(options as ScreenshotOptions & { path: string });
+  }
+  async click(target: Target, options?: TrustedOption): Promise<void> {
+    return this.tab().click(target, options);
+  }
+  async type(target: Target, text: string, options?: TrustedOption & { submit?: boolean }): Promise<void> {
+    return this.tab().type(target, text, options);
+  }
+  async pressKey(key: string, options?: TrustedOption): Promise<void> {
+    return this.tab().pressKey(key, options);
+  }
+  async hover(target: Target): Promise<void> {
+    return this.tab().hover(target);
+  }
+  /** `Tab.scroll` on the cursor: `"down"` (default) or `"up"`; `direction` is ignored with a `target`. */
+  async scroll(options?: ScrollOptions): Promise<void> {
+    return this.tab().scroll(options);
+  }
+  async selectOption(target: Target, values: string[]): Promise<void> {
+    return this.tab().selectOption(target, values);
+  }
+  async locate(locator: Locator): Promise<LocateResult> {
+    return this.tab().locate(locator);
+  }
+  async waitFor(p: WaitForParams): Promise<void> {
+    return this.tab().waitFor(p);
+  }
+  async evaluate<T = unknown>(expression: string, options?: { timeoutMs?: number }): Promise<T> {
+    return this.tab().evaluate<T>(expression, options);
+  }
+  async evaluateRef(expression: string): Promise<string> {
+    return this.tab().evaluateRef(expression);
+  }
+  async network(options?: NetworkListOptions | { id: string }): Promise<NetworkEntry[]> {
+    return this.tab().network(options);
+  }
+  async networkClear(): Promise<number> {
+    return this.tab().networkClear();
+  }
+  async download(url: string, path: string, options?: DownloadOptions): Promise<DownloadOutcome> {
+    return this.tab().download(url, path, options);
+  }
+  async focus(): Promise<void> {
+    return this.tab().focus();
+  }
+  async release(): Promise<void> {
+    return this.tab().release();
+  }
+
   /** Closes the socket and rejects pending calls. Never reconnects. */
   close(): void {
     if (this.state === "closed") return;
@@ -262,6 +409,28 @@ export class BridgeClient {
   }
 
   // ── internals ────────────────────────────────────────────────────────────────
+
+  /**
+   * Sends a tab-minting call and wraps the handle in a `Tab` of the generation the call was sent in.
+   * If a 4002 close lands between the answer and this continuation (one `ws` read can carry both),
+   * the handle belongs to the replaced daemon: `TAB_UNKNOWN`, and the cursor is left alone.
+   */
+  private async adopt(method: string, params: Record<string, unknown>): Promise<Tab> {
+    const generation = this.generation;
+    const result = (await this.call(method, params)) as { tab?: unknown } | null;
+    if (typeof result?.tab !== "string") {
+      throw new BridgeError(ErrorCodes.INTERNAL, `${method} answered without a tab handle`);
+    }
+    if (generation !== this.generation) {
+      throw new BridgeError(
+        ErrorCodes.TAB_UNKNOWN,
+        `tab ${result.tab} came from a bridge daemon that restarted (close 4002) before it reached this client — call claim() again`,
+      );
+    }
+    const tab = new Tab(this.host, result.tab, generation);
+    this.cursor = tab;
+    return tab;
+  }
 
   private closedError(): BridgeError {
     return new BridgeError(ErrorCodes.NOT_CONNECTED, "BridgeClient is closed");
@@ -349,6 +518,11 @@ export class BridgeClient {
     if (this.state === "closed") return;
 
     if (code === CLOSE_UPGRADING) {
+      // Before anything else can run (frames behind this close in the same read, queued calls): the
+      // new daemon renumbers handles, so every older Tab is void and the cursor is gone (#11, #79;
+      // stage0-audit F24).
+      this.generation += 1;
+      this.cursor = null;
       this.rejectAll(
         new BridgeError(
           ErrorCodes.NOT_CONNECTED,
