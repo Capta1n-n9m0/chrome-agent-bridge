@@ -23,23 +23,36 @@ measurement, in `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md` 
 None open now. *Updated 2026-10-22: all six W1 proposals are ruled.*
 
 Step 7 (2026-10-22 on):
-1. "Step 7 agents run Opus 5.5" (#37) — a default the user has not ruled; open for veto.
-2. "The `tab` parameter keeps its "all"/"active" meanings for the network tools" (#40).
+1. ~~"Step 7 agents run Opus 5.5" (#37)~~ — *ruled by the user 2026-10-23 (#69).*
+2. ~~"The `tab` parameter keeps its "all"/"active" meanings for the network tools" (#40)~~ — *ruled (#69).*
 3. ~~"A Step 6 client keeps working against a Step 7 daemon for one release, without loosening a
    lease" (#41)~~ — *ruled by the user 2026-10-23 (#68).*
 4. ~~"A stale extension is refused for tab calls, detected by its hello" (#42)~~ — *ruled (#68).*
-5. "The formatters reach the MCP through a `@bridge/sdk/format` subpath" (#46).
-6. "v2 peers do not yet require `code`" (#51).
-7. "A bare number in a network `tab` is a legacy Chrome id, not `BAD_PARAMS`" (#54).
+5. ~~"The formatters reach the MCP through a `@bridge/sdk/format` subpath" (#46)~~ — *ruled (#69).*
+6. ~~"v2 peers do not yet require `code`" (#51)~~ — *ruled (#69).*
+7. ~~"A bare number in a network `tab` is a legacy Chrome id, not `BAD_PARAMS`" (#54)~~ — *ruled (#69).*
 
-Items 2–5 are contract-level, taken by the conservative rule from the Stage 0 audit
-(`docs/plans/2026-10-21-step7-multi-actor-tabs-steps/stage0-audit.md`); the run continues on them.
+None open now. *Updated 2026-10-23: all seven Step 7 open decisions are ruled (#68, #69).*
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-23 · The user rules on R9-SCREEN-2 and the last five Step 7 open decisions (#69)
+**Decided:** R9-SCREEN-2 is accepted (option A): its positive control's image came back, and CDP
+simply renders saturated colours differently from `captureVisibleTab` (cyan `#00ffff` read
+`#97fdfd`; magenta `#ff00ff` read `#dd00fa` through the default capture) — a measured fact, not a
+fault; later colour checks name the nearest hue or use less saturated colours. #37 (Opus 5.5
+everywhere), #40 (network `tab` keeps "all"/"active"), #46 (`@bridge/sdk/format` subpath; Step 8
+decides on the main entry), #51 (`code` optional until Step 8 S2 removes the v1 fallbacks) and #54
+(a bare network number is a legacy Chrome id until S2) are accepted as recommended.
+**Why:** the user (2026-10-23): "I like higher quality product. And we ran out of limits quickly
+because of many heavy parallel sessions at that moment."
+**Instead of:** a re-run of R9-SCREEN-2 with a looser rule; Sonnet builders; renaming the scope
+argument now; adding the formatters to `index.ts` now; requiring `code` now; removing the numeric form now.
+**By:** user
 
 ### 2026-10-23 · The user rules on the Step 7 close-out questions (#68)
 **Decided:** (1) T6 is committed (the classifier had blocked the builder's commit; the user gave the

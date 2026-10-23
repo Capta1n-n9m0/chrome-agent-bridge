@@ -9,22 +9,24 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-22)
+## Current state (2026-10-23)
 
-- **Shipped:** Steps 1–5 (21 tools, live E2E passes recorded in `docs/e2e-test-plan.md` §5);
-  `browser_download`. Public on GitHub (MIT).
-- **Step 6 — daemon + protocol v2: closed 2026-10-22** (built, E2E-tested in wave W1). Code D0–D5b
-  (`npm test` → 542 passed, 42 files); every live row passes but MUX-5, whose snapshot sub-check
-  failed on a focused DevTools window and passed on re-measurement; MUX-7 confirmed #14, so Step 7
-  has no launcher prerequisite. Run 7 in `docs/e2e-test-plan.md`; as-built (§ "W1 as-built")
-  `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md`.
-- **W1 rulings** (decisions.md 2026-10-22 #34–#36): MUX-5 accepted (its latency a later item);
-  NET-1 corrected to `12.6 KB` and `test-fixtures/*.html` pinned to LF; Step 7 Stage 0 makes status
-  and actions agree on the active tab; Step 8 checks the daemon's inherited handles. This machine's
-  MCP entry has no `env`; the token lives in `bridge.token` (decisions.md · 2026-10-22 · W1's set-up).
-- **Next:** Step 7 (multi-actor tabs) from `docs/plans/next-session-prompt.md`, then Step 8 (SDK
-  surface + MCP cursor). Live waves run autonomously (decisions.md · 2026-10-22 · Live E2E waves are
-  run by Claude end to end).
+- **Shipped:** Steps 1–6 (Step 6: the daemon, the SDK and the MCP as an SDK client, closed
+  2026-10-22, as-built `docs/plans/2026-10-21-step6-daemon-and-protocol-v2-asbuilt.md`). Public on
+  GitHub (MIT).
+- **Step 7 — multi-actor tabs: closed 2026-10-23.** Handles `T<n>`, one lease per tab (`TAB_HELD`),
+  the FIFO visibility lock, `tabId` on every extension method, tab events, error codes, data results
+  with the formatters in `sdk/src/format/`, the MCP cursor, `browser_focus_tab` — **22 tools, 950
+  tests in 59 files**. E2E Runs 8–10 in `docs/e2e-test-plan.md` §5; as-built with the gate checklist
+  `docs/plans/2026-10-21-step7-multi-actor-tabs-asbuilt.md`. Every decision ruled (decisions.md
+  · 2026-10-23 · #68, #69).
+- **Reloads need no human:** `recipes/reload-extension.ps1` reloads the extension by UI automation
+  and proves it (decisions.md · 2026-10-23 · Later extension reloads use `recipes/reload-extension.ps1`).
+- **Next:** Step 8 (SDK surface + MCP cursor tools + the background-input policy) from
+  `docs/plans/next-session-prompt.md`. Its inputs from Step 7: trusted input into a background tab
+  answers `ok` and does nothing, flags do not help, so Step 8 measures focus emulation first (#62, #66);
+  S2 removes the Step 6 compatibility path (#41, #54) and needs a `daemon/` lane; the session marker
+  for Chrome restarts (T2 verifier V4). Live waves run autonomously (#33).
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
 

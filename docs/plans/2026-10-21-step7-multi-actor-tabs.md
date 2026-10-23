@@ -1,6 +1,9 @@
 # Step 7 — Multi-actor tabs: `tabId` everywhere, handles, leases, the visibility lock, structured errors
 
-**Date:** 2026-10-21 · **Status:** Planned
+**Date:** 2026-10-21 · **Status:** Closed 2026-10-23 — built (Stage 0, T0–T6, T5b), E2E Runs 8–10, gate
+met except T5.2's focus-emulation retry clause, recorded as unmet (decisions.md · 2026-10-22 · BG-1/BG-2's
+focus-emulation retry cannot run in this wave (#61); Step 8 measures it, #62, #66); all open decisions
+ruled (#68, #69). *Superseded 2026-10-23: was "Planned".*
 **Design of record:** docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md (§5, §6, §7, §10) ·
 **As-built:** docs/plans/2026-10-21-step7-multi-actor-tabs-asbuilt.md (does not exist yet; written at
 stage close) · **Steps dir:** docs/plans/2026-10-21-step7-multi-actor-tabs-steps/ (does not exist yet;
@@ -35,7 +38,24 @@ audit executed every listed contract on port 0 with a fake extension: 25 of 25 r
 
 ## Outcome
 
-Targets at planning time; rewritten as results when the step closes.
+**Results (2026-10-23).** Sources: the as-built register and the step reports in the steps dir.
+- **Tests** (`npm test`, verifier clean worktrees): 542 / 42 files (baseline) → T0 600 / 43 → T1 676 / 47
+  → T2 748 / 52 → T3 793 / 53 → T4 934 / 59 → T5b 965 / 59 → T6 950 / 59 (15 dead extension formatter
+  tests removed, decisions.md · 2026-10-23 · T6 removes the extension's dead network formatters (#67)).
+  Typecheck and build green at every close.
+- **Tools:** 22 (`grep -c "server.tool(" mcp/src/tools/registry.ts`); `browser_focus_tab` added.
+- **Formatters:** byte-identical to the baseline at `51de800` (`sdk/test/fixtures/baseline-51de800.json`,
+  re-captured identically by T4's verifier).
+- **E2E:** Run 8 (2026-10-22/23), Run 9 and Run 10 in `docs/e2e-test-plan.md` §5. Leases, the opener
+  grant, `TAB_HELD`, `TAB_GONE`, the human's tab untouched, screenshots serialised, handles surviving a
+  Memory-Saver discard (which gives a new tab id — LEASE-6 outcome (b)), the restore after a hung
+  capture (+30 026 ms), `cdp` refusals in 3 ms: PASS. Background trusted input (BG-1/BG-2) answers `ok`
+  and does nothing, with or without Chrome's anti-throttling flags (#66) — Step 8's input.
+- **SCREEN-1 flash:** median 1493 ms (Run 8) and 1557 ms (Run 9), measured by page-side
+  `visibilitychange` timestamps on the human's tab; over 1 s, recorded as a finding.
+- **Reloads by UI automation:** `recipes/reload-extension.ps1` (#65).
+
+Targets at planning time (kept for the record):
 
 - Several actors work in parallel on different tabs without their actions mixing: a script on `T3`
   and Claude on `T1` run at the same time (spec §6).

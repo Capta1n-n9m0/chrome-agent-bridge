@@ -291,3 +291,32 @@ One section per stage, appended at stage close, never rewritten; corrections are
   thresholds were chosen knowing Run 8's readings (disclosed in the rows).
 - **BG-FLAGS / Run 10** (00249de, c2234d4): the anti-throttling flags do not change BG-1/BG-2 (#66);
   Chrome quit by `chrome://quit` twice, session counts restored, final Chrome without flags.
+
+## T6, propagator and the gate · 2026-10-23
+
+- **T6** (430e6fe, verifier PASS-with-notes; the classifier blocked the builder's commit, the user
+  approved it): `CLAUDE.md` architecture and 21 new gotchas each citing a report or row; `setup.md`,
+  roadmap, spec and phase-doc notes; dead extension formatters removed (#67); 950 tests / 59 files.
+- **Propagator** (b1fc1da): 49 corrections in 7 files; ledger `…-steps/propagator.md`. Step 8 gaps it
+  raised, for the Step 8 kickoff: S2's lane needs `daemon/` to remove the legacy path; no stage owns
+  the focus-emulation measurement; S3.4 vs #46; an owner for the session marker (T2 verifier V4).
+
+### Gate checklist
+| Item | Met? | Evidence |
+|---|---|---|
+| T0.1–T0.3 | yes | T0.md |
+| T1.1–T1.5, T1.7 | yes | T1.md, T1-verifier.md |
+| T1.6 (G7-1) | yes, deferred to T5 | Run 8 ACT-8, relay frame via LEASE-3/5 |
+| T2.1–T2.5 (T2.4 as superseded by #41) | yes | T2.md, T2-verifier.md |
+| T3.1–T3.5 | yes | T3.md, T3-verifier.md |
+| T4.1–T4.5 | yes | T4.md, T4-verifier.md |
+| T5.1 | yes | §4.14–§4.16 rows committed before each run (e7e56ff, b4ea752, 00249de) |
+| T5.2 | partly — every row recorded, flash measured; BG-1/BG-2 retry clause not met | #61; Run 10 (#66) |
+| T5.3 | yes, NET-1 by the user's ruling (#68) | Run 9 R9-NET-1 |
+| T5.4 | yes | fixture pages only; log `://` 0, token 0 |
+| T6.1–T6.3 | yes | T6.md |
+| STOP rules fired | none unresolved (T0 and T2 escalations ruled; T6 classifier denial approved by the user) | journal.md |
+| One commit per stage, no `dist/`, no token | yes | T6.md §T6.3 |
+| "Control targets the active tab" gone | yes | `grep -n "Control targets" CLAUDE.md` → nothing |
+
+Step 7 is closed (2026-10-23).
