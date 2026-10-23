@@ -42,6 +42,64 @@ describe("content guard (#38)", () => {
   });
 });
 
+describe("content guard carries data (#82, S1 D10)", () => {
+  const caught = (fn: () => unknown): BridgeError => {
+    try {
+      fn();
+    } catch (e) {
+      return e as BridgeError;
+    }
+    throw new Error("expected a throw");
+  };
+
+  it("codedError takes optional data; without it the error has no data key", () => {
+    expect("data" in codedError("REF_STALE", "x")).toBe(false);
+    expect((codedError("LOCATOR_NOT_FOUND", "x", { candidates: [] }) as { data?: unknown }).data).toEqual({ candidates: [] });
+  });
+
+  it("plain-JSON data rides beside the unchanged marker string", () => {
+    const data = { candidates: [{ ref: "e1", role: "button", name: "Create item" }] };
+    const marker = toMarker(codedError("LOCATOR_NOT_FOUND", 'no button named "Create"', data));
+    expect(marker).toEqual({ __bridgeError: 'LOCATOR_NOT_FOUND:no button named "Create"', __bridgeData: data });
+    expect((marker as { __bridgeData?: unknown }).__bridgeData).not.toBe(data); // a JSON copy
+  });
+
+  it("an array is data too", () => {
+    expect(toMarker(codedError("LOCATOR_AMBIGUOUS", "m", [1, 2]))).toEqual({ __bridgeError: "LOCATOR_AMBIGUOUS:m", __bridgeData: [1, 2] });
+  });
+
+  it("round-trips data through guard → unwrapResult as the BridgeError's data", () => {
+    const data = { matches: [{ ref: "e2", name: "Save" }, { ref: "e3", name: "Save draft" }] };
+    const marker = guard(() => {
+      throw codedError("LOCATOR_AMBIGUOUS", "2 match", data);
+    })();
+    const e = caught(() => unwrapResult({ result: marker }));
+    expect(e).toBeInstanceOf(BridgeError);
+    expect(e.code).toBe("LOCATOR_AMBIGUOUS");
+    expect(e.message).toBe("2 match");
+    expect(e.data).toEqual(data);
+  });
+
+  it("a marker without data yields a BridgeError with data undefined", () => {
+    const e = caught(() => unwrapResult({ result: guard(() => clickRef(new RefMap(), "e5"))() }));
+    expect(e.code).toBe("REF_STALE");
+    expect(e.data).toBeUndefined();
+  });
+
+  it("unserialisable or non-object data gives the bare marker, no throw", () => {
+    const cyc: Record<string, unknown> = {};
+    cyc.self = cyc;
+    for (const data of [cyc, () => 1, "text", 3, null, undefined, { toJSON: () => undefined }]) {
+      expect(toMarker(codedError("BAD_PARAMS", "m", data))).toEqual({ __bridgeError: "BAD_PARAMS:m" });
+    }
+  });
+
+  it("null/undefined results still → REF_STALE", () => {
+    expect(caught(() => unwrapResult({ result: null })).code).toBe("REF_STALE");
+    expect(caught(() => unwrapResult({ result: undefined })).code).toBe("REF_STALE");
+  });
+});
+
 describe("content action codes", () => {
   it("selectOption with no matching option → BAD_PARAMS", () => {
     const sel = document.createElement("select");
@@ -106,6 +164,37 @@ describe("window.__agentBridge is guarded", () => {
     expect(out).toHaveProperty("truncated");
     expect(out).not.toHaveProperty("text");
     expect(out).not.toHaveProperty("__bridgeError");
+  });
+});
+
+describe("window.__agentBridge.locate / refOfMarked (S1 D11)", () => {
+  it("locate is guarded: success returns {ref, role, name}, failure a marker with data", () => {
+    document.body.innerHTML = `<button>Create item</button><button>Delete</button>`;
+    const b = window.__agentBridge!;
+    const ok = b.locate({ role: "button", name: "create" });
+    expect(ok).toMatchObject({ role: "button", name: "Create item" });
+    expect(b.refs.get(ok.ref)).toBe(document.querySelector("button"));
+    const miss = b.locate({ role: "button", name: "Upload", exact: true }) as unknown as { __bridgeError: string; __bridgeData: { candidates: { name: string }[] } };
+    expect(miss.__bridgeError).toMatch(/^LOCATOR_NOT_FOUND:no button named "Upload"/);
+    expect(miss.__bridgeData.candidates.map((c) => c.name)).toEqual(["Delete", "Create item"]);
+    const e = (() => {
+      try {
+        unwrapResult({ result: miss });
+      } catch (err) {
+        return err as BridgeError;
+      }
+      throw new Error("expected a throw");
+    })();
+    expect(e.code).toBe("LOCATOR_NOT_FOUND");
+    expect((e.data as { candidates: unknown[] }).candidates).toHaveLength(2);
+    expect(b.locate({ css: "p[" })).toMatchObject({ __bridgeError: expect.stringMatching(/^BAD_PARAMS:/) });
+  });
+
+  it("refOfMarked is guarded", () => {
+    document.body.innerHTML = `<p data-__bridge-mark="k">Marked</p>`;
+    const b = window.__agentBridge!;
+    expect(b.refOfMarked("k")).toMatchObject({ role: "", name: "Marked" });
+    expect(b.refOfMarked("k")).toMatchObject({ __bridgeError: expect.stringMatching(/^REF_STALE:/) });
   });
 });
 

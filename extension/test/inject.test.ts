@@ -72,6 +72,31 @@ describe("unwrapResult — codes (Step 7 0.6, #38)", () => {
   });
 });
 
+describe("unwrapResult — data beside the marker (#82, S1 D10)", () => {
+  const caught = (fn: () => unknown): BridgeError => {
+    try {
+      fn();
+    } catch (e) {
+      return e as BridgeError;
+    }
+    throw new Error("expected a throw");
+  };
+
+  it("hands __bridgeData on as the BridgeError's data", () => {
+    const e = caught(() =>
+      unwrapResult({ result: { __bridgeError: "LOCATOR_NOT_FOUND:no button", __bridgeData: { candidates: [] } } }),
+    );
+    expect(e.code).toBe("LOCATOR_NOT_FOUND");
+    expect(e.message).toBe("no button");
+    expect(e.data).toEqual({ candidates: [] });
+  });
+
+  it("no __bridgeData → data undefined (unchanged)", () => {
+    const e = caught(() => unwrapResult({ result: { __bridgeError: "OFFSCREEN:x" } }));
+    expect(e.data).toBeUndefined();
+  });
+});
+
 describe("classifyInjectError", () => {
   it("No tab with id → TAB_UNKNOWN", () => {
     expect(classifyInjectError("No tab with id: 412.")).toBe("TAB_UNKNOWN");

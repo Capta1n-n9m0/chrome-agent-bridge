@@ -61,9 +61,12 @@ export function unwrapResult<T>(injection: { result?: unknown } | undefined): T 
         "or the tab may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store).",
     );
   }
-  const r = injection.result as { __bridgeError?: unknown };
+  const r = injection.result as { __bridgeError?: unknown; __bridgeData?: unknown };
   if (typeof r === "object" && typeof r.__bridgeError === "string") {
     const { code, message } = splitCoded(r.__bridgeError);
+    // `__bridgeData` (decisions.md · 2026-10-23 · #82) becomes the error's `data`, e.g. a locator
+    // failure's candidates; a marker without it is unchanged.
+    if (r.__bridgeData !== undefined) throw new BridgeError(code, message, r.__bridgeData);
     throw new BridgeError(code, message);
   }
   return injection.result as T;

@@ -10,8 +10,10 @@ import {
   centerForInputRef,
 } from "./actions.js";
 import { guard } from "./guard.js";
+import { locate } from "./locate.js";
+import { refOfMarked } from "./marked.js";
 // Type-only (erased): the content script is an IIFE and must contain no import/export at runtime.
-import type { SnapshotResult } from "@bridge/shared";
+import type { LocateResult, SnapshotResult } from "@bridge/shared";
 
 // Every method below may instead return `{__bridgeError: "CODE:message"}` (see guard.ts); the
 // handlers only read results through `unwrapResult`, which throws a coded `BridgeError` for it.
@@ -27,6 +29,8 @@ declare global {
       hover: (ref: string) => { ok: true };
       selectOption: (ref: string, values: string[]) => { ok: true };
       centerForInput: (ref: string) => { x: number; y: number };
+      locate: (locator: unknown) => LocateResult;
+      refOfMarked: (mark: string) => LocateResult;
     };
   }
 }
@@ -43,5 +47,7 @@ if (!window.__agentBridge) {
     hover: guard((ref: string) => hoverRef(refs, ref)),
     selectOption: guard((ref: string, values: string[]) => selectOptionRef(refs, ref, values)),
     centerForInput: guard((ref: string) => centerForInputRef(refs, ref)),
+    locate: guard((locator: unknown) => locate(document, refs, locator)),
+    refOfMarked: guard((mark: string) => refOfMarked(document, refs, mark)),
   };
 }
