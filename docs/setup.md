@@ -123,7 +123,7 @@ acts on **this session's tab**.
 | `browser_status()` | Diagnose the bridge: daemon connected (build, clients by name)? extension connected? the human's active tab, by handle. Call it first when other tools fail |
 | `browser_navigate(url)` *tab* | Navigate the tab |
 | `browser_snapshot()` *tab* | Accessibility outline of the tab with element refs |
-| `browser_screenshot(fullPage?)` *tab* | Screenshot (viewport; full-page via CDP when `fullPage:true`) |
+| `browser_screenshot(fullPage?)` *tab* | Screenshot (viewport; full-page via CDP when `fullPage:true`). A viewport shot of a background tab shows that tab for about 1.5 s, then puts your tab back — see [Screenshots](#screenshots) |
 | `browser_click(ref, trusted?)` *tab* | Click a ref; `trusted:true` forces real CDP input (shows the debugging banner) |
 | `browser_type(ref, text, submit?, trusted?)` *tab* | Type into a ref, optionally submit; `trusted:true` sends real CDP keystrokes (shows the debugging banner) |
 | `browser_press_key(key, trusted?)` *tab* | Press a key on the focused element; `trusted:true` sends a real CDP keystroke (shows the debugging banner) |
@@ -180,6 +180,52 @@ window. `[name]` is the actor that holds the tab; a Claude session is `claude-co
   An old handle passed as `tab` gets `unknown tab handle T9 — call listTabs`.
 - **The network tools** keep two extra values for `tab`: `"all"` (every tab) and `"active"` (the same
   as leaving it out: this session's tab).
+
+### Owners (leases)
+
+Each tab has at most one owner, the actor named in `[name]`. An actor owns a tab it opened
+(`browser_new_tab`, or `newTab` from a script), a tab it claimed (its first untargeted call, or
+`browser_select_tab`), and a tab that a page in one of its tabs opened itself (a `target=_blank`
+link or a popup — "click Export, a new tab appears" lands with the clicker; a script gets a
+`leaseGranted` event for it). A tab you open yourself is unowned until someone claims it.
+
+- Any call on a tab another actor owns fails at once with `TAB_HELD` and the owner's name; nobody
+  waits for a tab. Reading the network log is the exception: `browser_network_requests` works on any
+  tab, while `browser_network_clear` on another actor's tab — or `{tab:"all"}` while anyone else owns a
+  tab — is refused.
+- An owner keeps its tabs until its connection ends: ending a Claude session or a script frees them.
+  A script can also give one up (`tabs.release`).
+- A closed tab's handle answers `tab T3 was closed …` for an hour; a Chrome Memory-Saver discard does
+  not lose the handle (Chrome gives the tab a new id, the daemon follows it), but calls into the
+  discarded page fail until `browser_focus_tab` or `browser_navigate` reloads it.
+
+### What you see while actors work
+
+- **Nothing moves on its own.** Actors work in background tabs. A script's `newTab` opens its tab in
+  the background; Claude's `browser_new_tab` opens it in front (the tab you then look at). No call
+  brings a Chrome window to the front except `browser_focus_tab` (a script's `focusTab`).
+- **A viewport screenshot of a background tab flashes it.** The bridge switches the tab's window to
+  it, captures, and switches back: your tab is hidden for about 1.5 s (measured 1.49–1.59 s, Step 7
+  Runs 8 and 9). The window is not brought to the front (the foreground window stayed the same in Run 9). If you
+  switch tabs in that window during the flash, the bridge leaves your choice alone instead of
+  switching back (barring a race of a few milliseconds).
+  Screenshots from several actors take turns, one at a time.
+- **Trusted input needs the tab in front.** `trusted:true` on a background tab returns `Clicked …` /
+  `Typed …` but the page receives nothing (measured in Step 7, also with Chrome's anti-throttling
+  flags). Call `browser_focus_tab` first, or use the default synthetic input. The same holds for
+  anything that needs window focus, such as a clipboard write in `browser_evaluate`.
+
+### Screenshots
+
+- **Default (`switch`) mode**, the only one `browser_screenshot` uses for the viewport: the flash
+  above, no banner. A minimized window is refused with `WINDOW_MINIMIZED`: restore the window and retry. (The
+  message still suggests `mode:"cdp"`, which refuses a minimized window too; Step 8 rewrites it.) A window entirely covered by other windows cannot be captured: the call times
+  out after 35 s, and the bridge puts your tab back after about 30 s.
+- **`fullPage:true`** goes through CDP (`chrome.debugger`): the debugging banner shows while it runs.
+- **`mode:"cdp"`** (scripts only: `client.call("screenshot", {tab, mode: "cdp"})`) captures through
+  CDP without switching tabs, with the banner. It works only on a tab that is already in front of a
+  window that is not minimized: a background tab is refused with `OFFSCREEN` and a minimized window
+  with `WINDOW_MINIMIZED`, at once, because Chrome never returns a CDP capture of a hidden tab.
 
 ## The daemon
 
@@ -376,8 +422,11 @@ when Chrome exits or the extension is reloaded.
 ## Security notes
 
 - The WebSocket binds to `127.0.0.1` only and requires the shared token.
-- The agent acts on whatever tab is **active** — it can touch sensitive tabs (banking,
-  email). Be aware of what's focused when you let it run.
+- A Claude session's first call without `tab` claims **the tab you are looking at** and keeps acting
+  on it, and any actor can claim any unowned tab by handle — so it can touch sensitive tabs (banking,
+  email). Be aware of what is in front when a session starts, and what is unowned. *Superseded
+  2026-10-23: was "the agent acts on whatever tab is active", because since Step 7 a session keeps its
+  own tab and other tabs are reached by handle.*
 - **`browser_evaluate` is the sharpest tool here.** It runs with the full authority of the
   logged-in page, plus a user gesture — anything you could do in that tab's DevTools console the
   agent can do: read tokens out of `localStorage`, call authenticated APIs with the page's cookies,
@@ -438,6 +487,18 @@ when Chrome exits or the extension is reloaded.
 - **A tool errors with `tab T3 is held by "…"`**: another actor (named in the message) holds that
   tab. Open your own (`browser_new_tab`) or pick a free one from `browser_list_tabs`. The first call
   of a session fails this way when another actor already holds the tab you are looking at.
+- **"No normal Chrome window is focused (a DevTools or popup window may have focus)"**: there is no
+  normal Chrome window to take "the tab you are looking at" from. Click a normal Chrome window and
+  retry. (A focused DevTools window alone does not cause it: the bridge reads the last-focused
+  *normal* window.)
+- **`VERSION` with "the Chrome extension is an older build — reload it at chrome://extensions"**: the
+  daemon was rebuilt but Chrome still runs the old extension. Reload it (§4).
+- **`trusted:true` "succeeds" but nothing happens on the page**: the tab is in the background (see
+  [What you see](#what-you-see-while-actors-work)); `browser_focus_tab` first.
+- **A screenshot fails with `TIMEOUT` after 35 s**: the tab's window is entirely covered by other
+  windows, so Chrome produces no frame to capture; uncover it (your tab is put back after ~30 s).
+- **"The tab was discarded by Chrome's Memory Saver"**: Chrome unloaded the tab; `browser_focus_tab`
+  or `browser_navigate` reloads it.
 - **"Chrome DevTools (or another extension) is already attached to this tab"**: Chrome allows
   one debugger per tab, and DevTools wins. Close DevTools on that tab and retry the trusted action.
 - **"The debugging session was cancelled mid-action"**: someone clicked **Cancel** on the

@@ -455,6 +455,23 @@ flash with a method written in the wave sheet before the run (SCREEN-1).*
       `feat(daemon): tab handles, leases and the visibility lock`, `feat(extension): structured
       snapshot, screenshot modes, focusTab`, `refactor(sdk,mcp): formatters move to the SDK; tools take
       a tab`, `docs: Step 7 E2E results`.
+      *Corrected 2026-10-23 (T6): as committed the messages follow the long-run form
+      "<type>(<scope>): <stage> — <what> (verifier: …)": `18520f9 feat(shared): T0 — Step 7 wire types`,
+      `0240c7c feat(extension): T1 — tabId, codes, tab events`, `e409706 feat(daemon): T2 — handles,
+      leases, visibility lock, tab intercept` (+ `cd346ed fix(daemon): T2 — networkClear all …`),
+      `43c0a53 feat(extension): T3 — data not text, screenshot modes, focusTab`, `138c7f6 feat(sdk,mcp):
+      T4 — formatters in the SDK, tab handles in the MCP, browser_focus_tab` (a `feat`, not the listed
+      `refactor`: it adds a tool), `8ed3e89 docs(e2e): Step 7 E2E results (Run 8)`, plus stages the plan
+      did not list — Stage 0 `551d7fd`, T5's rows `e7e56ff`, T5b `12ecb65`, RELOAD-AUTO `15320a6`, Run 9
+      `b4ea752`/`c99709a`, BG-FLAGS `00249de`/`c2234d4` — and a session-agent `docs(step7)` close commit
+      per stage. The full mapping and the dist/token check are in
+      `2026-10-21-step7-multi-actor-tabs-steps/T6-builder-report.md`.*
+
+*Note 2026-10-23 (T6): T6 also removed the dead network formatters left in
+`extension/src/network-log.ts` after T4 (T4 report finding 1) and their 15 cases in
+`extension/test/network-log.test.ts` — `npm test` 965 → 950, 59 files unchanged; the same cases run
+against the SDK formatter in `sdk/test/format-network.test.ts`, and the T4.2 baseline is untouched —
+and fixed two stale comments in `shared/src/protocol.ts` (comment lines only).*
 
 **Lane:** `CLAUDE.md`, `docs/`. The per-Part commits happen at each stage's close (one commit per
 stage, long-run bookkeeping invariant); T6's list is the record. **Parallel with:** sequential, last.

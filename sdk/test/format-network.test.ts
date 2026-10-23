@@ -1,7 +1,8 @@
 // The network formatters moved to the SDK (Step 7 T4, decision 0.7). The cases below are COPIED from
 // `extension/test/network-log.test.ts` ("formatAgo / formatDuration / formatSize", "formatEntries",
-// "formatEntry"), which stay in place because `extension/src/network-log.ts` still has the old
-// functions (dead code after T4 — a later stage removes them with their tests). Inputs are built with
+// "formatEntry"). *Corrected 2026-10-23: those originals and the old functions in
+// `extension/src/network-log.ts` were dead code after T4 and were removed in T6; these copies are now
+// the only ones.* Inputs are built with
 // the extension's `NetworkLog` (read-only import), exactly as there; only the formatter is the SDK's.
 // The last block covers what is new: handles instead of Chrome tab ids (Stage 0 audit F12).
 import { describe, it, expect } from "vitest";

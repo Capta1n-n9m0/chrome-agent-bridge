@@ -1,8 +1,8 @@
 # Progress & Roadmap
 
-- **Date:** 2026-10-22
+- **Date:** 2026-10-23
 - **Branch:** `main` (merged from `feat/agent-bridge`; public on GitHub, MIT, since 2026-09-03)
-- **Status:** **Step 6 (daemon + SDK + MCP as an SDK client) built, E2E-tested live (wave W1) and closed 2026-10-22** — next: Step 7 (`docs/plans/next-session-prompt.md`) ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)); **21 tools, 542 unit tests green** (`npm test` → 542 passed, 42 files, at D5b commit `033b1bc`, 2026-10-22). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
+- **Status:** **Step 7 (multi-actor tabs) built and E2E-run 2026-10-22/23 (Runs 8–10); its gate waits for the user's rulings** ([Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-built-and-e2e-run-gate-open)); **22 tools, 950 unit tests green** (`npm test` → 950 passed, 59 files, on the T6 tree, 2026-10-23). *Superseded 2026-10-23: was "Step 6 … closed 2026-10-22 — next: Step 7; 21 tools, 542 unit tests green", because Step 7's stages T0–T5b, RELOAD-AUTO and the BG-FLAGS run landed.* **Step 6 (daemon + SDK + MCP as an SDK client) built, E2E-tested live (wave W1) and closed 2026-10-22** ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
 
 ---
 
@@ -164,6 +164,7 @@ out of.
 | Step 4 | `browser_evaluate`: CDP `Runtime.evaluate` in the page context + in-page serialiser + per-call server timeout | ✅ Done (E2E-verified 2026-09-07) |
 | Step 5 | Network inspection: always-on `chrome.webRequest` capture into a bounded per-tab `NetworkLog` with `storage.session` write-through; `browser_network_requests` + `browser_network_clear` | ✅ Done (E2E-verified 2026-09-07), including Part N6 `browser_wait_for { networkIdle: true }` (NET-16) |
 | Step 6 | Daemon + protocol v2: `daemon/ sdk/ mcp/` split, a shared detached daemon (roles, welcome, error codes, build-hash handover, idle exit, log), the SDK's `connect()`, the MCP as an SDK client | ✅ Done 2026-10-22 (E2E-verified in wave W1; MUX-5 accepted on re-measurement) |
+| Step 7 | Multi-actor tabs: `tabId` on every method, handles, leases, the visibility lock, tab events, error codes, data results with the formatters in the SDK, `browser_focus_tab`, the MCP cursor | Built and E2E-run 2026-10-22/23 (Runs 8–10); gate open for the user's rulings |
 
 **Quality state:** 542 unit tests pass in 42 files (`npm test` at D5b commit `033b1bc`,
 2026-10-22); `tsc` typecheck clean across all five packages (`shared daemon sdk mcp extension`);
@@ -174,10 +175,75 @@ pass; `tsc` typecheck clean across all three packages; all four bundles build (`
 milestone passed a two-stage review (spec compliance + code quality); the final whole-system review
 verified the end-to-end protocol contract and that esbuild does not break page-injected functions.
 
-**21 tools:** `browser_status`, `browser_navigate`, `browser_snapshot`, `browser_screenshot`,
+*Updated 2026-10-23: Step 7 — 950 tests in 59 files (`npm test` on the T6 tree; [Step 7
+block](#step-7--multi-actor-tabs-2026-10-2223-built-and-e2e-run-gate-open)).*
+
+**22 tools** (*superseded 2026-10-23: was 21, because Step 7 T4 added `browser_focus_tab`*):
+`browser_status`, `browser_navigate`, `browser_snapshot`, `browser_screenshot`,
 `browser_click`, `browser_type`, `browser_press_key`, `browser_scroll`, `browser_hover`,
 `browser_select_option`, `browser_back`, `browser_forward`, `browser_list_tabs`, `browser_select_tab`,
-`browser_new_tab`, `browser_close_tab`, `browser_wait_for`, `browser_evaluate`, `browser_network_requests`, `browser_network_clear`, `browser_download` (2026-10-06, live-verified: two Blackboard files, 0.4 MB and 7.2 MB, through the bbcswebdav → S3 redirect, sha256-identical to copies fetched another way).
+`browser_focus_tab`, `browser_new_tab`, `browser_close_tab`, `browser_wait_for`, `browser_evaluate`, `browser_network_requests`, `browser_network_clear`, `browser_download` (2026-10-06, live-verified: two Blackboard files, 0.4 MB and 7.2 MB, through the bbcswebdav → S3 redirect, sha256-identical to copies fetched another way).
+
+### Step 7 — multi-actor tabs (2026-10-22/23; built and E2E-run, gate open)
+
+Phase doc `docs/plans/2026-10-21-step7-multi-actor-tabs.md`; contracts and deviations in
+`…-asbuilt.md`; reports, run records and logs in `…-steps/`; decisions in `docs/decisions.md`
+2026-10-22/23 #37–#66. **Not closed:** the gate waits for the user's rulings (below).
+
+- **What exists:** several actors work in parallel on different tabs. The daemon names tabs by
+  handles (`T1, T2, …`), gives each tab one owner (a lease: opened, claimed, or a popup of a held tab;
+  `TAB_HELD` fails fast), and serialises the only screen-needing calls (default viewport screenshot,
+  `focusTab`) under one FIFO visibility lock. Every extension method takes a numeric `tabId`; the
+  extension emits tab events, returns data (snapshot elements, network entries) and errors with codes.
+  The formatters moved to `sdk/src/format` (byte-identical, pinned against the baseline at `51de800`).
+  The MCP keeps a cursor (claimed on first touch, not following the human) and gained
+  `browser_focus_tab` — **22 tools**. A Step 6 client still works against the Step 7 daemon through a
+  lease-checked legacy path until Step 8.
+- **Tests per stage** (`npm test` at each stage's verifier, as the as-built register records):
+
+| Stage | Commit | Tests | Files |
+|---|---|---|---|
+| Baseline (Step 6 close) | `0773a98` | 542 | 42 |
+| Stage 0 — spec audit | `551d7fd` | 542 | 42 |
+| T0 — types | `18520f9` | 600 | 43 |
+| T1 — extension: `tabId`, codes, events | `0240c7c` | 676 | 47 |
+| T2 — daemon: handles, leases, lock, tab layer | `e409706`, `cd346ed` | 748 | 52 |
+| T3 — extension: data, screenshot modes, `focusTab` | `43c0a53` | 793 | 53 |
+| T4 — SDK formatters + MCP pass-through | `138c7f6` | 934 | 59 |
+| T5b — fixes from Run 8 | `12ecb65` | 965 | 59 |
+| T6 — docs, dead formatter code removed | (uncommitted at writing) | 950 | 59 |
+
+  T6's −15 is the documented removal of the extension's dead network formatters and their 15 tests;
+  the same cases run against the SDK formatter in `sdk/test/format-network.test.ts`.
+- **Live E2E** (`docs/e2e-test-plan.md` §5 Runs 8–10; Chrome 156, Windows 11; run by Claude end to end
+  with headless Claude sessions as the actors; the extension reload by the user for Run 8, by
+  `recipes/reload-extension.ps1` from Run 9 on):
+  - **Run 8** (2026-10-22, `T5-run-record.md`): PASS — LEASE-1, -2, -4, -5, -6, -7, BG-3, BG-4, the
+    regression and designed-change rows but NET-1. FAIL on the bridge — SCREEN-2 (`cdp` on a hidden
+    tab hung to `TIMEOUT`), LEASE-3 (`leaseGranted.url` empty), BG-1/BG-2 (below). FAIL on the
+    pre-written checks — SCREEN-1, -3, -5, RESOLVER-1; NET-1 hit Chrome's HTTP cache.
+  - **T5b** fixed the three bridge defects; **Run 9** (2026-10-23, `T5-run9-record.md`) passed the
+    re-checks (cdp refuses in 3 ms; a hung capture restores at +30.0 s; the popup url after 45 ms;
+    SCREEN-1/3/5 and RESOLVER-1 under corrected checks). R9-SCREEN-2 and R9-NET-1 failed only on
+    their own pre-written checks (a colour-managed cyan; a favicon line after a hard reload).
+  - **The flash** of a default-mode screenshot is ~1.5 s, not a frame: median 1493 ms (Run 8) and
+    1557 ms (Run 9), page-side `visibilitychange` timestamps.
+  - **A Memory-Saver discard gives the tab a new id** and the handle survives through `tabReplaced`
+    (LEASE-6).
+- **BG findings — Step 8's input for `sdk/src/policy.ts`:** trusted CDP input into a background tab
+  returns `ok` in 5–10 ms and the page receives nothing (BG-1/BG-2, Run 8); it works after
+  `focusTab`. Chrome's three anti-throttling flags do not change that (Run 10 BG-FLAGS, 12–15 ms,
+  nothing received; decisions.md · 2026-10-23 · Chrome's anti-throttling flags do not fix background
+  input; Step 8 takes it from there). Focus emulation (`Emulation.setFocusEmulationEnabled`) is not
+  measured — no bridge method sends it (T5.2's retry clause is reported unmet). `waitFor {text}`
+  and `networkIdle` work on a background tab (BG-4); a clipboard write needs
+  `focusTab` (BG-3). Step 8 adds focus emulation, measures it, then sets the policy.
+- **Open for the user** (`docs/decisions.md` → Open decisions): #37 (Opus 5.5 for every agent), #40
+  and #54 (the network `tab` scope, a bare number as a legacy id), #41 (the Step 6 legacy path), #42
+  (a stale extension refused by its hello), #46 (the `@bridge/sdk/format` subpath), #51 (`code`
+  optional on the wire); the Run 9 rulings on R9-SCREEN-2 and R9-NET-1 and so T5.3's NET-1 clause
+  (`T5.md` §10); T5.2's unmet retry clause (#61); BG-FLAGS's proposal to reuse the Chrome restart
+  helpers, which needs a new grant beyond #64.
 
 ### Step 6 — daemon, SDK and the MCP as an SDK client (2026-10-22)
 
@@ -249,8 +315,11 @@ scripts ⇄ SDK ─────────────────────�
 
 Default actions use synthetic content-script events (no banner). When `trusted:true` is requested
 (or a content action throws), the click escalates to real CDP `Input.*` events via
-`chrome.debugger` (shows Chrome's "extension is debugging this browser" banner). Control targets
-the **active tab**; tab tools switch which tab is active.
+`chrome.debugger` (shows Chrome's "extension is debugging this browser" banner). Clients address
+tabs by daemon handles (`T3`); each tab has one owner (a lease); actions run in background tabs, and
+only a default-mode screenshot and `focusTab` touch the screen, under one visibility lock. A Claude
+session works on the tab it claimed first, not on whatever is active. *Superseded 2026-10-23: was
+"control follows the active tab; tab tools switch which tab is active", because of Step 7.*
 
 ## 3. Verified vs. not verified
 
@@ -326,13 +395,19 @@ measured, though DPR 1.25 and 1.5 both needed no correction.
   subtree even though a descendant could set `visibility:visible`.
 - **Snapshot cap** — very large pages are truncated at 800 listed elements with a note. There is
   no "expand" or viewport-only mode yet.
-- **One extension, one daemon, one active tab** — one extension at a time (a second valid connection
-  replaces the first) and one daemon per port. Several Claude sessions and scripts can connect to
-  the daemon at once, but they all act on the same active tab; parallel actors on separate tabs are
-  Step 7. *Superseded 2026-10-22: was "one server per port … two Claude sessions still cannot drive
-  the bridge concurrently", because Step 6 made the daemon shared (not yet verified live).*
-- **Active-tab safety** — the agent acts on whatever tab is focused, including sensitive ones.
-  Mitigations today are localhost-only + token + the debugger banner.
+- **One extension, one daemon** — one extension at a time (a second valid connection replaces the
+  first) and one daemon per port. Several Claude sessions and scripts share the daemon, each on its
+  own tabs (Step 7). *Superseded 2026-10-22: was "one server per port … two Claude sessions still
+  cannot drive the bridge concurrently", because Step 6 made the daemon shared (not yet verified live).*
+  *Updated 2026-10-23: W1 verified it live (Run 7 in `docs/e2e-test-plan.md`, MUX rows).*
+  *Superseded 2026-10-23: was "… but they all act on the same active tab", because Step 7 added handles and leases.*
+- **Background tabs** — trusted CDP input into a background tab silently does nothing, and a
+  default-mode screenshot of a background tab flashes it for ~1.5 s (Step 7 block). Step 8 sets the
+  policy.
+- **Tab safety** — a Claude session claims the tab the human is looking at on its first call, and any
+  actor can claim an unowned tab by handle, sensitive ones included. Mitigations today are
+  localhost-only + token + the debugger banner. *Superseded 2026-10-23: was "the agent acts on
+  whatever tab is focused", because of Step 7's cursor.*
 - **Keepalive** — measured (2026-09-03): the offscreen-document socket survived 9.5 minutes of idle
   Chrome, and a killed Chrome is noticed on the next call because its exit closes the socket. The
   daemon's 30 s heartbeat (`daemon/src/wsHost.ts`) covers the remaining case — a peer that hangs
@@ -368,7 +443,9 @@ reconnect; Opus 5.5 for every Step 6 agent). The Step 6 kickoff is `docs/plans/n
 Step 6's code is built (stages D0–D5b, 542 tests; [§1 Step 6
 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)); its live E2E ran on
 2026-10-22 (wave W1) and Step 6 closed the same day. Next: Step 7 (its
-kickoff is `docs/plans/next-session-prompt.md`), then Step 8. *Superseded 2026-10-22 (W1): was "its
+kickoff is `docs/plans/next-session-prompt.md`), then Step 8. *Updated 2026-10-23: Step 7 is built and
+E2E-run, its gate open for the user ([§1 Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-built-and-e2e-run-gate-open));
+next is Step 8, which starts from the BG findings.* *Superseded 2026-10-22 (W1): was "its
 live E2E waits for the D6 wave with the user. Next after that: Step 7, then Step 8".* *Superseded 2026-10-22: was "Step 6 starts
 by pasting it into a fresh session that does not use the bridge MCP. Nothing is built.", because
 Step 6's code stages D0–D5b landed.*

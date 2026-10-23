@@ -5,7 +5,8 @@ import type { NetworkEntry, NetworkRequestsResult } from "@bridge/shared";
  *
  * Pure: this module imports nothing from `chrome.*` so it runs under node in the unit tests. The
  * service worker owns the `chrome.webRequest` listeners and feeds their `details` objects to
- * `ingest`; everything else here (bounds, eviction, query, rendering, serialise/merge) is logic.
+ * `ingest`; everything else here (bounds, eviction, query, serialise/merge) is logic. The text
+ * rendering lives in `sdk/src/format/network.ts` (Step 7 T4; moved, and removed here in T6).
  *
  * Privacy (see the step-5 plan §0.4): headers are redacted and capped **at ingest**, so the redacted
  * form is the only one ever stored; `Cookie`/`Set-Cookie` never even reach the extension because the
@@ -54,7 +55,7 @@ export type WebRequestEvent =
 /** A single tab, or every tab (including the `-1` bucket). */
 export type Scope = number | "all";
 
-/** What `query` returns; the handler adds `text`. */
+/** What `query` returns (the wire `NetworkRequestsResult`; it has no `text` since Step 7 T4). */
 export type NetworkQueryResult = Omit<NetworkRequestsResult, "text">;
 
 export interface QueryOptions {
@@ -79,11 +80,9 @@ const MAX_HEADERS = 40;
 const MAX_HEADER_VALUE = 512;
 const MAX_FIELD_VALUE = 200;
 const MAX_BODY_BYTES = 2048;
-const MAX_URL = 300;
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
 const PENDING_WINDOW_MS = 30_000;
-const MAX_TEXT_CHARS = 20_000;
 
 const SENSITIVE_HEADERS = new Set([
   "authorization",
@@ -145,20 +144,6 @@ export function normalizeType(name: string): string {
       return "sub_frame";
     default:
       return lower;
-  }
-}
-
-/** `normalizeType` in reverse — what the formatter prints. */
-function displayType(type: string): string {
-  switch (type) {
-    case "xmlhttprequest":
-      return "xhr";
-    case "main_frame":
-      return "document";
-    case "sub_frame":
-      return "frame";
-    default:
-      return type;
   }
 }
 
@@ -230,144 +215,6 @@ export function summarizeBody(body: WebRequestBody | undefined): string | undefi
   }
   if (body.error) return `<unavailable: ${body.error}>`;
   return undefined;
-}
-
-// ---------------------------------------------------------------------------------------------
-// Formatting helpers
-// ---------------------------------------------------------------------------------------------
-
-/** "2.1s ago" / "1m05s ago" / "1h02m ago" — relative, because "what happened after my click" is the question. */
-export function formatAgo(ms: number): string {
-  const d = Math.max(0, Math.round(ms));
-  if (d < 60_000) return `${(d / 1000).toFixed(1)}s ago`;
-  if (d < 3_600_000) {
-    const m = Math.floor(d / 60_000);
-    const s = Math.floor((d % 60_000) / 1000);
-    return `${m}m${String(s).padStart(2, "0")}s ago`;
-  }
-  const h = Math.floor(d / 3_600_000);
-  const m = Math.floor((d % 3_600_000) / 60_000);
-  return `${h}h${String(m).padStart(2, "0")}m ago`;
-}
-
-export function formatDuration(ms: number): string {
-  return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`;
-}
-
-export function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function scopeLabel(scope: "active" | Scope): string {
-  if (scope === "active") return "active tab";
-  if (scope === "all") return "all tabs";
-  return `tab ${scope}`;
-}
-
-function statusColumn(e: NetworkEntry): string {
-  if (e.error) return "ERR";
-  if (e.status !== undefined) return String(e.status);
-  return "···";
-}
-
-function statusText(e: NetworkEntry): string {
-  if (e.statusLine) return e.statusLine.replace(/^HTTP\/[\d.]+\s+/, "");
-  return String(e.status);
-}
-
-export interface FormatListOptions {
-  now: number;
-  scope: "active" | Scope;
-  maxChars?: number;
-}
-
-/** The `browser_network_requests` listing: header, one fixed-width line per request, hint footer. */
-export function formatEntries(result: NetworkQueryResult, opts: FormatListOptions): string {
-  const { now, scope } = opts;
-  const maxChars = opts.maxChars ?? MAX_TEXT_CHARS;
-  const label = scopeLabel(scope);
-  const since = formatAgo(now - result.recordingSince);
-  if (result.total === 0) {
-    return (
-      `No requests recorded for ${label} (recording since ${since}). ` +
-      "Reload or act on the page, then query again."
-    );
-  }
-  const head =
-    `Network — ${label}: showing ${result.entries.length} of ${result.total} ` +
-    `(recording since ${since}; ${result.pending} pending)`;
-  const rows = result.entries.map((e) => formatRow(e, now, scope === "all"));
-  const foot = "Use filter/types/failedOnly to narrow, limit to widen, id for one request's headers and body.";
-
-  let out = head;
-  let used = head.length;
-  let i = 0;
-  for (; i < rows.length; i++) {
-    if (used + 1 + rows[i].length > maxChars) break;
-    out += "\n" + rows[i];
-    used += 1 + rows[i].length;
-  }
-  if (i < rows.length) {
-    return `${out}\n… [truncated: ${rows.length - i} more lines — narrow with filter/limit]`;
-  }
-  return `${out}\n${foot}`;
-}
-
-function formatRow(e: NetworkEntry, now: number, showTab: boolean): string {
-  const cols: string[] = [`[${e.id}]`.padEnd(6)];
-  if (showTab) cols.push(`tab:${e.tabId}`.padEnd(8));
-  cols.push(formatAgo(now - e.startedAt).padEnd(9));
-  cols.push(e.method.padEnd(6));
-  cols.push(statusColumn(e).padEnd(3));
-  cols.push(displayType(e.type).padEnd(9));
-  if (e.endedAt === undefined) {
-    cols.push("(pending)".padEnd(12));
-  } else {
-    cols.push((e.durationMs === undefined ? "—" : formatDuration(e.durationMs)).padStart(4));
-    cols.push((e.responseSize === undefined ? "—" : formatSize(e.responseSize)).padEnd(6));
-  }
-  let line = cols.join("  ") + "  " + cut(e.url, MAX_URL);
-  if (e.redirectUrl) line += `  → ${e.redirectUrl}`;
-  if (e.error) line += `  ${e.error}`;
-  return line;
-}
-
-/** The `id` form: one request in full, headers and body included. */
-export function formatEntry(e: NetworkEntry, opts: { now: number }): string {
-  const lines: string[] = [`[${e.id}] ${e.method} ${e.url}`];
-
-  const meta = [`type: ${displayType(e.type)}`];
-  if (e.initiator) meta.push(`initiator: ${e.initiator}`);
-  meta.push(`started ${formatAgo(opts.now - e.startedAt)}`);
-  meta.push(e.endedAt === undefined ? "(pending)" : `took ${formatDuration(e.durationMs ?? 0)}`);
-  lines.push(meta.join("   "));
-
-  const status: string[] = [];
-  if (e.error) status.push(`error: ${e.error}`);
-  else if (e.status !== undefined) status.push(`status: ${statusText(e)}`);
-  if (e.redirectUrl) status.push(`redirect → ${e.redirectUrl}`);
-  if (e.fromCache !== undefined) status.push(`from cache: ${e.fromCache ? "yes" : "no"}`);
-  if (e.ip) status.push(`ip: ${e.ip}`);
-  if (e.responseSize !== undefined) status.push(`size: ${formatSize(e.responseSize)}`);
-  if (status.length > 0) lines.push(status.join("   "));
-
-  pushHeaders(lines, "request headers", e.requestHeaders);
-  pushHeaders(lines, "response headers", e.responseHeaders);
-  if (e.requestBody) {
-    lines.push("request body:");
-    for (const l of e.requestBody.split("\n")) lines.push(`  ${l}`);
-  }
-  return lines.join("\n");
-}
-
-function pushHeaders(lines: string[], title: string, headers?: Record<string, string>): void {
-  if (!headers) return;
-  const names = Object.keys(headers);
-  if (names.length === 0) return;
-  lines.push(`${title}:`);
-  for (const name of names) lines.push(`  ${name}: ${headers[name]}`);
 }
 
 // ---------------------------------------------------------------------------------------------

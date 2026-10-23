@@ -76,6 +76,14 @@ Three problems turned out to have one solution:
 | Primary consumer | **Claude-written scripts and skills** | Shifts polish from API sugar to precise types + JSDoc and errors that contain the fix (§8). |
 | Packages | `shared/ extension/ daemon/ sdk/ mcp/` — `server/` renamed to `daemon/`, MCP split out, MCP depends on SDK | Four parts that evolve independently; one client code path exercised by both consumers. |
 
+*Corrected 2026-10-23: the Tab addressing rationale was doubted by Step 7's Stage 0 audit (F7: Chrome's
+docs tie `tabs.onReplaced` to prerendering, and a 2024 Chromium change discards by clearing the
+document, so the id was expected to stay). Measured on Chrome 156 (Step 7 Run 8, LEASE-6, outcome (b)):
+an Urgent Discard from `chrome://discards` **did** give the tab a new id, `tabReplaced` fired, and the
+handle kept working — the rationale stands as written (`docs/plans/2026-10-21-step7-multi-actor-tabs-steps/T5-run-record.md`
+§ LEASE-6; decisions.md · 2026-10-22 · LEASE-6 measures whether a discard keeps the tab id, with both
+outcomes pre-written).*
+
 ## 4. Topology
 
 ```
@@ -160,6 +168,14 @@ and owns `handle → chromeTabId`. The extension emits `tabCreated {tabId, opene
 (`target=_blank`, a popup) carries `openerTabId`; the daemon leases it to the opener's holder and tells
 that client (`leaseGranted {tab, reason: "opener"}`), so "click Export, a new tab appears" just works.
 
+*Corrected 2026-10-23 (Step 7 Stage 0 F13): the event params were not fully specified here and differed
+from the Step 7 plan; as built (`shared/src/protocol.ts`, Step 7 T0) they are `tabCreated {tabId,
+openerTabId?, url}`, `tabRemoved {tabId, lastUrl?, lastTitle?}` (the extension sends the last URL and
+title, which `TAB_GONE` needs), `tabReplaced {addedTabId, removedTabId}`, the daemon's `tabGone {tab,
+lastUrl?, lastTitle?}`, and `leaseGranted {tab, reason: "opener", url}`. `tabCreated.url` is often empty
+for a popup, so the daemon polls `listTabs` (≤ 2 s) to fill `leaseGranted.url` (T5b). Run 8 LEASE-6
+confirmed the remap on a Memory-Saver discard (see the note under §3).*
+
 ### 6.3 Leases
 
 - A tab is held by the actor that opened it (`newTab`), claimed it (`tabs.claim`), or received it by
@@ -201,6 +217,18 @@ E2E must establish: `captureVisibleTab` on a *minimized* window (expected to fai
 `WINDOW_MINIMIZED`), whether CDP renders a tab in a minimized window, and whether `switch` is reliable
 across two windows (the lock is global; the activation is per window).
 
+*Superseded 2026-10-23: was "`cdp` … on the background tab; … none — the human's view is untouched;
+default for unattended scripts", because Step 7 Run 8 measured `Page.captureScreenshot` never returning
+for a hidden tab (SCREEN-2: `TIMEOUT` after 35 s, banner up) or a minimized window (SCREEN-4: 25 s). As
+built since Step 7 T5b, `cdp` refuses before attaching: `OFFSCREEN` for a tab that is not active in its
+window, `WINDOW_MINIMIZED` for a minimized window (3 ms each, no banner; Run 9 R9-SCREEN-2/-4;
+decisions.md · 2026-10-23 · T5b's three fixes). So `cdp` captures only a tab already in front of a
+visible window, and today no mode captures a background tab without switching to it.*
+*Corrected 2026-10-23: the `switch` row's "~100–200 ms" flash was measured at ~1.5 s (median 1493 ms,
+Run 8 SCREEN-1; 1557 ms, Run 9 R9-SCREEN-1; page-side `visibilitychange` timestamps). `switch` works
+across two windows without focusing either (R9-SCREEN-5), but a window fully covered by others never
+yields a capture (`TIMEOUT`; the previous tab is restored at 30 s since T5b, R9-RESTORE).*
+
 ### 7.3 "Render a background tab as if it were active" — needs Chrome launch flags; a later step
 
 CDP `Page.captureScreenshot` already forces the compositor to produce a frame for a background tab —
@@ -215,6 +243,15 @@ get a tab rendered exactly as the user would see it. The one adjacent lever avai
 `Emulation.setFocusEmulationEnabled`, which makes the page believe it has *focus* (Playwright uses it
 to drive many pages in one headed browser) — that is the tool for trusted input into a background tab,
 and it is on Step 7's E2E list.
+*Corrected 2026-10-23: the first sentence did not hold. Run 8 SCREEN-2 measured a `cdp` capture of
+a hidden background tab hanging (`TIMEOUT` after 35 012 ms; `T5-run-record.md`, SCREEN-2), so since T5b
+`cdp` mode refuses such a tab at once with `OFFSCREEN` or `WINDOW_MINIMIZED` (decisions.md · 2026-10-23 ·
+T5b's three fixes (#63)). Focus emulation was not on any run: no bridge method sends
+`Emulation.setFocusEmulationEnabled`, so BG-1/BG-2's retry was recorded as not run and returns as a
+proposed decision for Step 8 (decisions.md · 2026-10-22 · BG-1/BG-2's focus-emulation retry cannot run
+in this wave (#61)). The three launch flags above did not fix trusted input either: a trusted click and
+trusted typing into a background tab still answered `ok` and did nothing (Run 10 BGF-1/2; decisions.md ·
+2026-10-23 · Chrome's anti-throttling flags do not fix background input (#66)).*
 
 ## 8. SDK and the MCP as its client
 

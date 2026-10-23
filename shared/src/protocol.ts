@@ -115,7 +115,10 @@ export interface TabGoneParams {
 
 /**
  * Params of the daemon → client `leaseGranted` event (spec §10; F13): a tab opened from a tab the
- * client holds (`openerTabId`) is leased to it too. `url` is `tabCreated`'s, so it may be "".
+ * client holds (`openerTabId`) is leased to it too. `url` starts as `tabCreated`'s, which for a popup
+ * is often "" or "about:blank"; the daemon then polls `listTabs` (every 100 ms, about 2 s at most)
+ * before sending the event, and sends the best url it has, which can still be "" or "about:blank" (T5b fix 3; decisions.md
+ * · 2026-10-23 · T5b's three fixes). The lease itself takes effect at once.
  */
 export interface LeaseGrantedParams {
   tab: string;
@@ -220,7 +223,11 @@ export function isLeaseGrantedEvent(value: unknown): value is EventMessage<Lease
 /**
  * How `screenshot` captures (spec §7). `"switch"` (the default) activates the tab under the daemon's
  * visibility lock and uses `captureVisibleTab`; `"cdp"` uses `Page.captureScreenshot` through the
- * debugger: no lock, no tab switch, but the "extension is debugging this browser" banner.
+ * debugger: no lock, no tab switch, but the "extension is debugging this browser" banner. `"cdp"`
+ * works only on a tab that is active in a window that is not minimized: it refuses a minimized window
+ * with `WINDOW_MINIMIZED` and a background tab with `OFFSCREEN` before attaching, because Run 8
+ * measured both to hang until the call timed out (T5b fix 2; decisions.md · 2026-10-23 · T5b's three
+ * fixes).
  */
 export type ScreenshotMode = "switch" | "cdp";
 
