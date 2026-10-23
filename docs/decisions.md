@@ -57,6 +57,7 @@ decisions" below.*
 ## Log
 
 ### 2026-10-23 · The background-input policy (#89)
+*Updated 2026-10-23: the FE live record is committed (829368e) after the user approved the commit the classifier had denied.*
 **Decided:** outcome **(B)**, policy `"focusFirst"`: `Tab.click/type/pressKey({trusted:true})` call
 `focus()` first, and the docs say the tab comes to the front and stays there. The MCP's trusted tools
 keep today's behaviour (#78 item 4). Read off #78's precedence: FE-5 not void (control 0/12 trials got

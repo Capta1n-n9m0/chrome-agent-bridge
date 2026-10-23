@@ -111,3 +111,38 @@ Contracts binding forward, at dcb72db:
 | Time | 2.25 h | ~0.6 h | S1.md |
 | Tests | — | 1008 / 60 → 1080 / 64 (+72, S1 only) | verifier, clean worktree |
 | Pre-S1 capture | identical | 46 fixtures byte-identical (sha256 d859e988…105e) | S1.md |
+
+## FE — focus emulation for trusted input, measured · 2026-10-23 · verifier: PASS-with-notes (build and live) · commits 6398f27 (rows), 6742c1f (code), 829368e (live record)
+
+### Contracts (binding forward)
+- `focusEmulation: true` on trusted `click`/`type`/`pressKey`: inside one `withDebugger` session,
+  attach → `Emulation.setFocusEmulationEnabled {enabled:true}` → type's focus step → `Input.*` →
+  disable in a `finally` → detach; the result carries `focusEmulation: "on"` exactly when it was on; no
+  window focus, no tab activation, no `focusTab` (FE.3 greps empty, exit 1). Without the option the CDP
+  log equals `extension/test/fixtures/fe-cdp-baseline.json` (recorded at 637a808). Pure builder:
+  `extension/src/trusted-input.ts`.
+- **The background-input policy is `"focusFirst"`** (#89): the SDK's trusted `Tab` actions focus first;
+  the MCP's trusted tools are unchanged.
+
+### Measured (Run 11 (FE), `docs/e2e-test-plan.md` §5; record `…-steps/FE-run-record.md`)
+- Reload exit 0; FE-0 PASS `{"ok":true,"focusEmulation":"on"}` (21 ms); daemon build 7712e1af….
+- FE-5 control 0/12 trials got input (first and last blocks); FE-PC PASS (human's tab hidden +5 ms,
+  visible +1619 ms; 16 frames showed the target during the switch).
+- FE-1 click 0/3; FE-2 type 2/3 (trial 3 `TRUSTED input = ped`); FE-3 pressKey 0/3; FE-3c 0/3;
+  FE-4 PASS 9/9 (foreground window unchanged, 71 frames judged, none showed the target).
+- Target page `visible` 3–7 ms into each emulated call, `hidden` again 14–39 ms in; never still on
+  after a call.
+
+### Decisions taken
+- #78 (rows and table, before measurement), #88 (build details), #89 (policy (B)).
+
+### Deviations from the phase doc
+- The step agent's live commit was denied by the permission classifier; the user approved it and the
+  session agent committed 829368e.
+
+### Estimates vs actuals
+| Item | Estimate | Actual | Source |
+|---|---|---|---|
+| Build | 1.75 h | ~0.9 h agent time (+ verifier/fix) | FE.md |
+| Live | 1.5 h | ~1.2 h agent time | task duration |
+| Tests | — | 1080 / 64 → 1135 / 66 (+55) | verifier, clean worktree at 682f73d |
