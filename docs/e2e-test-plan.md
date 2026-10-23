@@ -5,6 +5,9 @@
 - **Why manual:** these paths can't be unit-tested — they need the actual browser, the extension
   loaded in a real profile, and a live MCP connection. The 46 automated tests cover logic/protocol;
   this plan covers the rest.
+  *Corrected 2026-10-24 (Step 8 propagator): was "the 46 automated tests" (the 2026-06-04 count); at
+  `e963bff` `npm test` runs 1714 tests in 85 files, `recipes/test/` included (Step 8 as-built § S6,
+  § S7).*
 
 Each test has an **ID**, **objective**, **steps** (as MCP tool calls), and an **expected result**.
 Record outcomes in the [Results template](#results-template). A run "passes" when all **must-pass**
@@ -952,6 +955,10 @@ without printing them); expected `0`, `0`, `0`, else the log is not attached; at
 
 ### 4.18 MCP cursor and tools (Step 8 S5: CUR-1…3, LOC-1, LOC-2, ASREF-1, REP-1)
 
+*Updated 2026-10-24 (Step 8 propagator): "Not yet run" below is no longer true. All seven rows ran in
+Run 12 (S6), Parts 2–3 (§5). CUR-1, CUR-2, CUR-3 and LOC-2 passed. LOC-1 and REP-1 passed on re-runs
+under text re-registered before them (decisions.md #99, #100). ASREF-1 stands as FAIL on its optional
+clause only (#99 item 6). Each row's recorded text is unchanged.*
 *Added 2026-10-23 by Step 8 stage S5's builder, before any run (exit check S5.4). Not yet run. They
 need the S5 build loaded (extension reloaded, MCP reconnected — G8-2) and use only the fixture page
 `http://localhost:8080/e2e-playground.html` (item 7); a second fixture tab is the same URL with

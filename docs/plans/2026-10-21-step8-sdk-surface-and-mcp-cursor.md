@@ -5,6 +5,10 @@
 **As-built:** docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-asbuilt.md (does not exist yet;
 written at stage close) · **Steps dir:** docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/
 (does not exist yet; created at kickoff for ledgers, briefs, reports and evidence)
+*Corrected 2026-10-24 (Step 8 propagator): was "does not exist yet" for both; as built the as-built
+register has one section per stage (Stage 0, S0, S1, FE, S3, S2, S4, S2b, S5, S6b, S6, S7) and the
+steps dir holds the journal, briefs, ledgers, reports, run records (`FE-run-record.md`,
+`S6-run-record.md`) and this propagator's ledger `propagator.md`.*
 
 **Prerequisites:** Steps 6 and 7 complete and E2E-passed — in particular the **BG-1/BG-2 findings**
 (trusted input into a background tab, Step 7's T5 wave) decide whether `trusted` actions in the SDK
@@ -101,6 +105,23 @@ XPath locators; drag; file upload (D3, still separate); a recipes runner/schedul
   `formatNetwork`. They are reached through the `./format` subpath in `sdk/package.json`, not through
   `index.ts` (decisions.md · 2026-10-22 · The formatters reach the MCP through a `@bridge/sdk/format`
   subpath (#46), open for the user) — see Step 7 as-built § Stage T2, § Stage T4, § Stage T5b.*
+- *Corrected 2026-10-24 (Step 8 propagator): was the file list above (`content/index.ts` with
+  `refOfNode`, `handlers/actions.ts` resolving the target itself, `tabs.ts` in S2, new
+  `recipes/README.md`/`hello.ts`, the skill edited). As built, the new files are:
+  - extension: `content/{a11y,locate,nearest,marked}.ts`, `handlers/{target,locate,locator-wait}.ts`,
+    `evaluate/mark.ts`, `trusted-input.ts` (FE), `session-marker.ts` (S2b); `content/index.ts` exposes
+    `locate`, `refOfMarked` and `focus` (not `refOfNode`).
+  - daemon: `handle-mark.ts` (S2b; `REMOVED_METHODS` in `methods.ts`).
+  - sdk: `tab.ts`, `locator.ts`, `policy.ts`, `report.ts` (the `@bridge/sdk/report` subpath for the
+    MCP, #93), with `error.ts` and `client.ts` extended.
+  - mcp: `browser_use_active_tab` and the report rendering in `tools/registry.ts`, the cursor in
+    `mcp/src/cursor.ts`.
+  - recipes: `README.md`, `sdk-login.ts` (SDK-1), `s6.ts`/`s6-rules.ts`, `fe.ts`/`fe-rules.ts`/`fe-win.ps1`,
+    `bb-login.ps1`, `fixtures/`, `test/` and `blackboard/` (`boot-bb.ts`, `export-grades.ts`,
+    `assemble-mcp.ts`, `held.ts` and helpers); `recipes/hello.ts` is unchanged (#85 item 1).
+  - The `blackboard-ultra` skill is **not** edited: G8-3 was not granted, and the proposed text is in
+    `…-steps/S7.md` §7.
+  — see Step 8 as-built § S1, § FE, § S3, § S2, § S4, § S2b, § S5, § S6, § S7.*
 
 **Order of work:** S0 (types) → S1 (content `locate`, TDD) → S2 (extension handlers accept locators;
 node→ref) → S3 (sdk `Tab`, cursor, locator normalisation, TDD) → S4 (sdk failure enrichment, TDD) →
@@ -116,6 +137,12 @@ S5 → S6 → S7 (decisions.md · 2026-10-23 · Stage FE measures focus emulatio
 recipe, S3.5's control, the stage split (#85)) item 7: The stage order is the kickoff's default; budgets
 as in `stage0-audit.md` §7 (S2b 4 h with #79). Each Stage 0 note below that a ruling in decisions.md
 #78–#85 resolves carries its own "Ruled" note.*
+*Corrected 2026-10-24 (Step 8 propagator): was the order "(S2b ∥ S3) → S4 → S5"; as built the stages
+closed in this order: Stage 0 (7fe62f4) → S0 (dcb72db) → S1 (e9e5e8c) → FE build (6742c1f) → FE live
+(829368e) → S3 (db242b6) → S2 (357f776) → S4 (26df11b) → S2b (efb8557) → S5 (aa113df) → S6 pre-run
+(23b878f) → S6b (03254d9, added by #99 item 2) → S6 Parts 2–3 and addenda (to 05a34f0) → S7 (01fc58e).
+S3 ran before S2, and S4 before S2b — see the Step 8 as-built register, section order, and the
+journal.*
 
 ---
 
@@ -132,6 +159,10 @@ is set from Step 7's BG-1/BG-2 findings and recorded in `docs/decisions.md` at S
 only after a focus-emulation option has been added and measured (decisions.md · 2026-10-23 · The user
 rules on Run 8: fix stage T5b, then Run 9 (#62) item 4). That measurement needs an extension change, and
 a live run after the reload. No stage of this plan holds it yet — see G8-1.*
+*Corrected 2026-10-24 (Step 8 propagator): was "recorded in `docs/decisions.md` at S3" and "no stage
+holds it"; as built stage FE measured the option (Run 11) and the policy was recorded before S3 began:
+outcome (B), `"focusFirst"` (decisions.md · 2026-10-23 · The background-input policy (#89)); S3 set
+`sdk/src/policy.ts` from it — see Step 8 as-built § FE, § S3.*
 
 ### 0.1 Locators are resolved by the snapshot's rules, in the content script
 
@@ -201,6 +232,22 @@ act. The SDK always sends whichever the script gave. `waitFor {locator, state?: 
 timeoutMs}` polls `locate` every 100 ms up to the timeout (default 10 s; `hidden` resolves when
 `locate` throws `LOCATOR_NOT_FOUND`).
 
+*Corrected 2026-10-24 (Step 8 propagator), as built in S2:*
+- *Was "in the same `callInPage` round-trip where possible". As built, a locator is resolved by its
+  own `locate` page call (`extension/src/handlers/target.ts` `resolveTarget` → `locateInPage`), with
+  the locator as its own top-level argument (F34). The action then runs with the minted ref.
+  `checkTarget` refuses both `ref`+`locator`, or an invalid locator, with `BAD_PARAMS` before any page
+  call. A `LOCATOR_*` failure never escalates to trusted input.*
+- *The extension's `pressKey` accepts an optional target, but the SDK's `Tab.pressKey(key)` and the
+  MCP's `browser_press_key` stay untargeted. `waitFor {locator}` validates first, takes `timeoutMs`
+  (default 10 000, clamped to [0, 60 000]) and polls from the service worker every 100 ms without
+  overlap. `visible` rejects at once on `LOCATOR_AMBIGUOUS`; `REF_STALE` and a frame teardown
+  re-inject and poll; a timeout gives `TIMEOUT` with the last candidates (decisions.md · 2026-10-23 ·
+  S2's handler details: the mark rides the serialiser, `pressKey` takes a target, `waitFor {locator}`
+  rules (#92)).*
+
+*See Step 8 as-built § S2.*
+
 ### 0.3 node → ref
 
 `evaluate {expression, asRef: true}`: when the result is `kind: "node"` and the node is an `Element`,
@@ -209,6 +256,22 @@ RefMap in the ISOLATED world. Bridge: the evaluate path (CDP) sets a `data-__bri
 attribute on the element via `Runtime.callFunctionOn`, the content script finds `[data-__bridge-mark]`,
 mints a ref, removes the attribute. Returns `{…envelope, ref}`. Pure parts (`markScript`, attribute
 name) tested; the round trip is E2E (SDK-5).
+*Corrected 2026-10-24 (Step 8 propagator): was "the content script's `refOfNode`" and a separate
+`markScript`. As built:*
+- *The mark rides the serialiser's own `Runtime.callFunctionOn`. `SERIALIZER_SRC`
+  (`extension/src/evaluate/serialize.ts`) is a closure-free composite that marks a connected Element
+  after serialising, and only when a mark is passed (`evaluate/mark.ts`: `MARK_SRC`, `UNMARK_SRC`,
+  `newMark`).*
+- *The content script resolves the mark with `refOfMarked(mark)` (`content/marked.ts`): none →
+  `REF_STALE`, several → `INTERNAL`, and the attribute is removed on every path. A lost reply sweeps
+  the mark.*
+- *A non-Element value is refused `BAD_PARAMS` (`asRef needs an Element; the value is not one`). That
+  is Run 12 ASREF-1's observed behaviour, kept by decisions.md · 2026-10-23 · S6's findings ruled …
+  (#99) item 6.*
+- *SDK-5 passed (Run 12).*
+
+*Decisions: decisions.md · 2026-10-23 · S1's locator details (#87) item 6; · S2's handler details …
+(#92) item 1 — see Step 8 as-built § S1, § S2, § S6.*
 
 ### 0.4 The typed `Tab` and the cursor (`sdk/src/tab.ts`, `client.ts`)
 
@@ -301,6 +364,28 @@ exporting the shared `BridgeError` class; the report fields (snapshot, screensho
 `report()`) are optional properties set on it, so every existing `instanceof BridgeError` keeps working.
 Contract-level: open for the user's review; binds meanwhile.*
 
+*Corrected 2026-10-24 (Step 8 propagator), as built in S3 (`sdk/src/tab.ts`, `client.ts`, `policy.ts`):*
+- *The `trusted` branch: was "if BG-1/BG-2 passed, no focus; if they failed, `focus()` first". Stage FE
+  measured focus emulation first (Run 11): click 0/3, type 2/3, pressKey 0/3. So the policy is outcome
+  (B), `TRUSTED_INPUT_POLICY = "focusFirst"`. `Tab.click/type/pressKey({trusted:true})` send
+  `focusTab` first, and the tab stays in front. The SDK never sends `focusEmulation`, and the MCP's
+  trusted tools are unchanged (decisions.md · 2026-10-23 · The background-input policy (#89)).*
+- *The client mirrors every `Tab` method **but `close`**: `client.close()` still closes the client.
+  `scroll` takes `direction: "up" | "down"` only; anything else is a local `BAD_PARAMS`. `evaluateRef`
+  throws `BAD_PARAMS` when no ref comes back. A wait's call timeout is the wait's own bound + 5 s, and
+  `evaluate`'s is the page timeout + 5 s.*
+- *The cursor rule as built: was "a 4002 reconnect clears the cursor" with nothing said about
+  `release`/`close`. The cursor changes only on `newTab`, `claim` and a 4002 reconnect. `release()`,
+  `close()` and `tabGone` leave it, and the next call gets the daemon's answer (decisions.md ·
+  2026-10-23 · The SDK `Tab` surface details and the cursor rule as built (#90); items 1, 2 and 7 are
+  open for the user).*
+- *Every `Tab` carries the client's connection generation. After a 4002 reconnect it throws
+  `TAB_UNKNOWN` with no call. Since S2b a new daemon also continues handle numbers from
+  `~/.chrome-agent-bridge/handle-mark` (#79), so an explicit stale handle from any client answers
+  `TAB_UNKNOWN`.*
+
+*See Step 8 as-built § S3, § S2b, § FE.*
+
 ### 0.5 Failure reports (`sdk/src/error.ts`)
 
 Every SDK call wraps the wire `BridgeError`. For codes where a page state helps —
@@ -338,6 +423,27 @@ of `NOT_CONNECTED` covers them — see Step 6 as-built § Stage D4, § Stage D5b
 `TIMEOUT` is in the attach set) would attach a second switch-mode screenshot; another actor's lock can
 turn the attach into `LOCK_TIMEOUT` in `attachErrors`; the 60-line window has no anchor for the five
 codes without candidates; and whether raw `call()`, which the MCP uses, is enriched.*
+
+*Corrected 2026-10-24 (Step 8 propagator), as built in S4, S5 and S6b:*
+- *Was "every SDK call wraps the wire `BridgeError`". As built, only `Tab` methods and the client's
+  mirrored methods are enriched. Raw `call()` is never enriched, and neither is an error thrown before
+  a call.*
+- *The MCP reaches the machinery through the additive subpath `@bridge/sdk/report` (`attachContext`),
+  and only for an attach-set failure on a `T<n>` handle.*
+- *The three attach calls run concurrently in one 5 s deadline. Each is stale-guarded, and
+  `connect({failureReports:false})` makes zero attach calls.*
+- *A report's own snapshot renumbers the tab's refs. So candidate and match refs in `error.data` are
+  rewritten to the attached snapshot's ref (a unique role + name hit) or deleted. F25's cases are
+  enriched literally (decisions.md · 2026-10-23 · S4's failure-report details, and how the MCP reaches
+  them (#93)).*
+- *Measured: the report's screenshot **does** switch to a background failed tab. The probe tab was
+  `visible` +20 ms, the human's tab hidden 1331 ms, and the PNG showed the failed tab (Run 12 REP-0,
+  #97).*
+- *In the MCP, a report with a screenshot is a non-error result `[text, image]`, because Claude Code
+  2.1.309 drops images from `isError` results (decisions.md · 2026-10-23 · An MCP failure report with a
+  screenshot is returned as a non-error result (#100)).*
+
+*See Step 8 as-built § S4, § S5, § S6b, § S6.*
 
 ### 0.6 MCP cursor: does not follow the human
 
@@ -391,6 +497,25 @@ codes without candidates; and whether raw `call()`, which the MCP uses, is enric
   `css`)", flat on the tool, because a flat `text` collides with `browser_type.text` (decisions.md ·
   2026-10-23 · Locator rules, the MCP locator schema and the exported `BridgeError` (#83)).*
 
+*Corrected 2026-10-24 (Step 8 propagator), as built in S5 and S6b (`mcp/src/tools/registry.ts`, 23
+tools):*
+- *F26, left open above, is ruled by decisions.md · 2026-10-23 · S5's MCP details: `browser_new_tab`
+  activation, the status lines, the tool schemas, reports (#95) item 1. `browser_new_tab` sends
+  `active: true` only when the cursor's tab is `listTabs`' `current` row. With no cursor (a session's
+  first tab), a lost cursor or a failed listing it opens in the background, and the result ends
+  ` (in the background — browser_focus_tab shows it)`. It always moves the cursor.*
+- *`browser_status` keeps the Step 7 lines byte-identical (`Active tab:` included). Then comes
+  `Cursor:`, then `Human's active tab:` only when it differs. It never claims (#95 item 2).*
+- *`browser_press_key` stays untargeted. `browser_wait_for` takes `locator` + `state`; a locator
+  together with `text`, `seconds`, `networkIdle` or `idleMs` is a tool error. `browser_evaluate
+  {asRef}` prints `[ref=eN] — pass it as ref to browser_click etc.`.*
+- *An attach-set failure on a handle is rendered as `report()` plus a PNG image block. Since S6b it is
+  a **non-error** result whenever the image is present (#100).*
+- *E2E Run 12: CUR-1, CUR-2, CUR-3 and LOC-2 passed. LOC-1 and REP-1 passed under text re-registered
+  before their re-runs (#99, #100). ASREF-1 stands as FAIL on its optional clause only (#99 item 6).*
+
+*See Step 8 as-built § S5, § S6b, § S6.*
+
 ### 0.7 Recipes
 
 `recipes/` holds Claude-written scripts, each with a header comment: what it does, what it needs open,
@@ -400,6 +525,21 @@ how it fails. `npm run recipe -- recipes/hello.ts` runs with `tsx`. The first tw
    print `bb.VERSION`. This replaces steps 1–3 of the skill's boot sequence.
 2. `recipes/blackboard/export-grades.ts` — the first real deterministic job: `bb.gradebook` calls via
    `evaluate`, written to `./exports/<course>-<date>.json`. Chosen because it is read-only.
+
+*Corrected 2026-10-24 (Step 8 propagator), as built in S6 (`recipes/blackboard/`, `recipes/README.md`):*
+- *Was "claim or open a course tab". `boot-bb.ts` never claims: it opens the named course in a
+  background tab of its own and closes it at the end (`--keep-open` keeps it open).*
+- *Both recipes are read-only by construction (an allowlist in `readonly.ts`), connect with
+  `failureReports: false`, and have a `--dry-run` on the fixture with `stub-bb.js`.*
+- *`export-grades.ts` writes `exports/<course>-<UTC date>.json` (gitignored). `--mcp-plan` prints the
+  MCP leg's expressions, `assemble-mcp.ts` rebuilds the MCP leg's file from a transcript, and
+  `--hold`/`--drop-held` read one held export through both legs (decisions.md · 2026-10-23 · SDK-7's
+  MCP leg is re-registered with a cap that fits pp1's export (#102); · S6.3 compares one in-page
+  export read through both paths (#103)).*
+- *The SDK-1 recipe is `recipes/sdk-login.ts`. The root script is `"recipe": "tsx"`.*
+- *The skill's boot sequence is not changed (G8-3).*
+
+*See Step 8 as-built § S6, § S7.*
 
 ---
 
@@ -865,6 +1005,9 @@ measures focus emulation before `policy.ts` is set (#71)).*
       with the report fields as optional properties.*
 - [ ] Tests: the attach set per code; attach failures recorded not thrown; `report()` shape for
       `LOCATOR_NOT_FOUND` (candidates first, snapshot window around them); `failureReports: false`.
+      *Corrected 2026-10-24 (Step 8 propagator): was `attachContext(error, tab, opts)`; as built
+      `attachContext(error, handle, opts)` (`sdk/src/error.ts:147`, a handle string), re-exported for
+      the MCP by `sdk/src/report.ts` (#93) — see Step 8 as-built § S4.*
 
 **Lane:** `sdk/src/`, `sdk/test/`. **Parallel with:** sequential after S3. **Verifier focus:** the
 attach set is exactly the seven codes of 0.5 and excludes `TAB_HELD`, `TAB_GONE`, `NOT_CONNECTED`
@@ -879,6 +1022,11 @@ logs to the console. **Needs the user's keyboard:** no.
       accept locator fields; `browser_wait_for` accepts locator fields; `browser_evaluate` gets `asRef`.
 - [ ] Error rendering: `error.report()` for the attach-eligible codes (the screenshot is returned as an
       image content block in addition to the text — the model can see what the script saw).
+      *Corrected 2026-10-24 (Step 8 propagator): was an error result with the image block in it; as
+      built (S6b) a report with a screenshot is a non-error result `[text, image]` whose text opens
+      `<CODE>: …` and ends with the failure line, because Claude Code 2.1.309 delivered 0 images from
+      every `isError` variant (decisions.md · 2026-10-23 · An MCP failure report with a screenshot is
+      returned as a non-error result (#100)) — see Step 8 as-built § S6b.*
 - [ ] `tools.test.ts`: cursor stays when the fake `listTabs` moves the human's active tab; the status
       line appears; `browser_use_active_tab` moves it.
 
@@ -902,6 +1050,19 @@ extension reloads use `recipes/reload-extension.ps1` (#65)). The user's keyboard
 reload only when that script exits non-zero. Rows on the user's own data (SDK-6, SDK-7) still need the
 user, who names the course. A Chrome restart with flags needs a fresh grant (#66) — see Step 7 as-built
 § "RELOAD-AUTO, Run 9, BG-FLAGS".*
+*Corrected 2026-10-24 (Step 8 propagator): was "a wave run with the user after the autonomous phase
+closes". As built, S6 ran inside the phase as Run 12, in three parts plus addenda. The driver ran it
+end to end, with headless actors and scripted reloads.*
+- *The user's part: naming the course "pp1" and granting the login and a restart (decisions.md ·
+  2026-10-23 · The user grants the pp1 course for SDK-6/SDK-7 and one Chrome restart for SM-1 (#96)),
+  then unlimited restarts and unpublished Blackboard writes (#98). The user also answered the SSO
+  question (#99 item 1) and opened pp1 in the session the login had opened (#101).*
+- *Added in the run: the pre-registered REP-0 probe before any non-fixture attach (#97), stage S6b for
+  REP-1's image (#99 item 2, #100), and `bb-login.ps1` with its SSO stand-ins in `recipes/fixtures/`.*
+- *Result by each row's latest run: 35 PASS, 1 FAIL (ASREF-1's optional clause, #99 item 6). The
+  earlier FAILs (LOC-1, REP-1, SM-1, S6.3) stay recorded.*
+
+*See Step 8 as-built § S6, § S6b; `docs/e2e-test-plan.md` § Run 12 (S6).*
 
 - [ ] `recipes/README.md`, `recipes/hello.ts` (connect, newTab to the fixture, locate the login button,
       click, waitFor text, print, close).
@@ -1029,6 +1190,13 @@ saying "use this tab" (SDK-8), a second session for MUX-2/LEASE-1.
       with snapshot, screenshot and network`, `feat(mcp): cursor that does not follow the human;
       browser_use_active_tab; locator fields`, `feat(recipes): hello, boot-bb, export-grades`,
       `docs: Step 8 E2E results`.
+      *Corrected 2026-10-24 (Step 8 propagator), as built in S7 (01fc58e): the skill checkbox is not
+      done, because G8-3 was not granted. Its exact proposed text is in `…-steps/S7.md` §7 and is
+      listed under "Needs the user's keyboard" in the as-built (S7.4). The per-Part messages were not
+      used as commit messages: each stage committed at its own close. S7.3 is met by S7.md §4's map
+      from each Part to its stage commits (decisions.md · 2026-10-24 · S7's doc rulings: the setup
+      snippet, grouped wave gotchas, S7.3 by the commit map (#104) item 3, open for the user) — see
+      Step 8 as-built § S7.*
 
 **Lane:** `CLAUDE.md`, `docs/`; the `blackboard-ultra` skill lives **outside this repository** and is
 not in any lane without the user's grant (G8-3). The per-Part commits happen at each stage's close (one
@@ -1299,7 +1467,16 @@ reworded where they could not hold or could not fail (#84)).*
   *Superseded 2026-10-23: S6.1 was "the reload and `/mcp` are the first recorded line", because headless
   actors start a fresh MCP (decisions.md · 2026-10-23 · Pre-registered
   checks reworded where they could not hold or could not fail (#84)).*
+  *Corrected 2026-10-24 (Step 8 propagator): the file the S6 wave sheet fixed is
+  `recipes/sdk-login.ts`, so S6.2's command is `npm run recipe -- recipes/sdk-login.ts` (Run 12: SDK-1
+  PASS on the whole re-run, Part 2) — see Step 8 as-built § S6.*
 - S6.3 SDK-7's two JSON files are compared by hash; the hash is recorded, the files are not committed.
+  *Corrected 2026-10-24 (Step 8 propagator): S6.3 was re-registered before its re-run as one in-page
+  export held by the page and read by both legs. The SDK leg reads it once; the MCP leg reads it in
+  8 000-character chunks under a 600 000-character cap (decisions.md · 2026-10-23 · SDK-7's MCP leg is
+  re-registered with a cap that fits pp1's export (#102); · S6.3 compares one in-page export read
+  through both paths (#103)). Met: both files sha256 `b1f8ef6f…46b6a8`, 418 999 bytes. The earlier
+  FAIL on two separate exports stays recorded — see Step 8 as-built § S6.*
 - S6.4 `git status` after the wave shows no file under `exports/` or `~/.chrome-agent-bridge/` staged;
   `.gitignore` covers `exports/`.
 - S6.5 The regression rows pass with the same expected text as their last recorded run.
@@ -1343,6 +1520,10 @@ reworded where they could not hold or could not fail (#84)).*
   before anything is measured (#78)), F1 and F3: amends #71, written before any FE row is committed — FE-4
   judges only what the human sees; the table has a precedence and a positive control (the operative text
   is under stage FE). Contract-level: open for the user's review; binds meanwhile.*
+  *Corrected 2026-10-24 (Step 8 propagator): G8-1 is resolved. FE's outcome (B) was recorded before S3
+  reached `policy.ts` (decisions.md · 2026-10-23 · The background-input policy (#89)), and
+  `sdk/src/policy.ts` cites BG-1/BG-2, BGF-1/2, FE-0…FE-5 and #89 in its header (S3.2) — see Step 8
+  as-built § FE, § S3.*
 - **G8-2 — S6 is a wave run with the user.** The S1/S2 extension changes are invisible until the user
   reloads the extension; the S5 MCP schema changes need an MCP reconnect. The wave opens with the
   reload sequence and the stale-extension check (`unknown method` ⇒ reload again). Rows needing the
@@ -1358,9 +1539,20 @@ reworded where they could not hold or could not fail (#84)).*
   opened itself. The user is needed
   for a non-zero reload exit, for SDK-6/SDK-7 (the user's own course), and for anything the kickoff
   keeps with them — see Step 7 as-built § T5.*
+  *Corrected 2026-10-24 (Step 8 propagator): as run (Run 12), SDK-8 used a fixture "human" window the
+  driver opened, never Gmail. MUX-2 and LEASE-1 ran with headless actors. The user's part was the
+  grants (#96, #98), the SSO answer (#99 item 1) and opening pp1 in the logged-in session (#101). The
+  sign-in used Chrome's autofill and UIA presses by `recipes/bb-login.ps1`, with no credential read
+  or recorded. Failure screenshots
+  and `exports/` stayed out of the repo, and S6.4/S7.3 found no `exports/` or `dist/` path committed —
+  see Step 8 as-built § S6, § S7.*
 - **G8-3 — editing the `blackboard-ultra` skill.** It lives in a separate repository
   (`~/.claude/skills/blackboard-ultra`), outside this run's outputs; an edit there needs the user's
   explicit grant in the kickoff or at S7, otherwise it is listed as needing the user's keyboard.
+  *Corrected 2026-10-24 (Step 8 propagator): not granted. The edit is listed under "Needs the user's
+  keyboard" in the as-built, and its exact text is in `…-steps/S7.md` §7. The skill's boot sequence →
+  `npm run recipe -- recipes/blackboard/boot-bb.ts <course> --keep-open`, with the old local-server
+  path kept as a fallback for one release — see Step 8 as-built § S7.*
 - **Standing gates:** never push; a locator rule that would stop matching what the snapshot shows is a
   contract change (0.1's invariant) — stop; nothing in the run touches the user's tabs outside the
   rows the user runs.
@@ -1373,6 +1565,14 @@ absent at S3 (G8-1); a `CLAUDE.md` runtime invariant would have to change (`unwr
 null-or-undefined, the IIFE content script, `toSerializableArgs`, never logging URLs); a
 security-boundary question; a recipe that would write or change anything on Blackboard (0.7: the first
 jobs are read-only).
+*Corrected 2026-10-24 (Step 8 propagator), two clauses:*
+- *"The BG findings are absent at S3" can no longer fire: FE's outcome was recorded first (#89).*
+- *A Blackboard write is no longer a STOP when the content is not published to students, or is hidden
+  shortly after if it became visible. Any such write is recorded (decisions.md · 2026-10-23 · The user
+  allows unlimited Chrome restarts and unpublished Blackboard writes (#98)). The recipes stay
+  read-only as built, and Run 12 recorded no write.*
+
+*See Step 8 as-built § FE, § S6.*
 
 **Continues anyway, recorded:** a `nearest()` ranking that looks odd on a real page (report the
 candidates); a flash seen during a failure screenshot (0.5 accepts it); build decisions on the
@@ -1487,6 +1687,11 @@ refs, `tabs.claim {wait:true}`, session recording (follow-ups).
 session agent (`By: Claude`); the `Locator` type, the `Tab` method set and signatures, tool names and
 schemas, the attach set, the cursor rule → contract: a pre-stated rule applies or the conservative rule
 of `long-run` §3 with the decision listed for the user; the `trusted` policy → the BG findings (G8-1).
+*Corrected 2026-10-24 (Step 8 propagator): was "the `trusted` policy → the BG findings". As built,
+stage FE's pre-written outcome table decided it (decisions.md · 2026-10-23 · FE's rows and outcome
+table, amended before anything is measured (#78); · The background-input policy (#89)). The
+contract-level decisions taken in the run are listed for the user in decisions.md → Open decisions,
+items 1–22 for Step 8 — see Step 8 as-built § "Open decisions".*
 
 **Revisit triggers:** a real script breaks in a way the report does not explain (then self-healing is
 reconsidered — spec §2 non-goal); hand-writing a recipe proves slower than expected (session
@@ -1495,6 +1700,11 @@ recording); a Python skill needs the bridge (Python SDK).
 **Needs the user's keyboard:** extension reload + `/mcp` at the start of the S6 wave; the whole S6
 wave, including a live Blackboard course tab and the Gmail switch; the `blackboard-ultra` skill edit
 (G8-3); any push.
+*Corrected 2026-10-24 (Step 8 propagator): as run, nobody needed the keyboard for the reload, `/mcp`
+or a Gmail switch: reloads were scripted, actors were headless, and SDK-8 used fixture windows. The
+user gave grants and answers (#96, #98, #99 item 1, #101) and approved one commit the classifier had
+denied (FE live, 829368e). Still waiting for the user: the G8-3 skill edit, the open decisions, and
+any push — see Step 8 as-built § FE, § S6, § S7.*
 
 ## Follow-ups (not this step)
 

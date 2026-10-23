@@ -2,7 +2,7 @@
 
 - **Date:** 2026-10-24
 - **Branch:** `main` (merged from `feat/agent-bridge`; public on GitHub, MIT, since 2026-09-03)
-- **Status:** **Step 8 (the SDK surface: locators, typed `Tab`, failure reports, the MCP cursor, first recipes) built and E2E-run (Runs 11–12), 2026-10-23/24; its gate waits on the docs stage S7 and the user's open decisions** ([Step 8 block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026-10-2324)); **23 tools, 1714 unit tests green** (`npm test` → 1714 passed, 85 files, at `eb6b991`, 2026-10-24). *Superseded 2026-10-24: was "next: Step 8; 22 tools, 950 unit tests green (… 59 files, on the T6 tree)", because Step 8's stages Stage 0–S6b landed.* **Step 7 (multi-actor tabs) built, E2E-run (Runs 8–10) and closed 2026-10-23** ([Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23)). *Superseded 2026-10-23: was "Step 6 … closed 2026-10-22 — next: Step 7; 21 tools, 542 unit tests green", because Step 7's stages T0–T5b, RELOAD-AUTO and the BG-FLAGS run landed.* **Step 6 (daemon + SDK + MCP as an SDK client) built, E2E-tested live (wave W1) and closed 2026-10-22** ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
+- **Status:** **Step 8 (the SDK surface: locators, typed `Tab`, failure reports, the MCP cursor, first recipes) built and E2E-run (Runs 11–12), 2026-10-23/24; its gate waits on the docs stage S7 and the user's open decisions** *(corrected 2026-10-24, Step 8 propagator: S7 closed at `01fc58e` (#104), so the gate waits only on the user: the open decisions and G8-3)* ([Step 8 block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026-10-2324)); **23 tools, 1714 unit tests green** (`npm test` → 1714 passed, 85 files, at `eb6b991`, 2026-10-24). *Superseded 2026-10-24: was "next: Step 8; 22 tools, 950 unit tests green (… 59 files, on the T6 tree)", because Step 8's stages Stage 0–S6b landed.* **Step 7 (multi-actor tabs) built, E2E-run (Runs 8–10) and closed 2026-10-23** ([Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23)). *Superseded 2026-10-23: was "Step 6 … closed 2026-10-22 — next: Step 7; 21 tools, 542 unit tests green", because Step 7's stages T0–T5b, RELOAD-AUTO and the BG-FLAGS run landed.* **Step 6 (daemon + SDK + MCP as an SDK client) built, E2E-tested live (wave W1) and closed 2026-10-22** ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
 
 ---
 
@@ -177,7 +177,11 @@ milestone passed a two-stage review (spec compliance + code quality); the final 
 verified the end-to-end protocol contract and that esbuild does not break page-injected functions.
 
 *Updated 2026-10-23: Step 7 — 950 tests in 59 files (`npm test` on the T6 tree; [Step 7
-block](#step-7--multi-actor-tabs-2026-10-2223-built-and-e2e-run-gate-open)).*
+block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23)).* *Corrected 2026-10-24 (Step 8 propagator): the link pointed at `#…-built-and-e2e-run-gate-open`, a heading renamed when Step 7 closed; here and in §5.*
+*Updated 2026-10-24 (Step 8 propagator): Step 8 — 1714 tests in 85 files (`npm test` at `eb6b991` and
+again at `e963bff`, `recipes/test/` included); typecheck across the five packages, with recipes
+checked by their own `tsconfig*.json` ([Step 8
+block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026-10-2324)).*
 
 **23 tools** (*superseded 2026-10-24: was 22, because Step 8 S5 added `browser_use_active_tab`*;
 *superseded 2026-10-23: was 21, because Step 7 T4 added `browser_focus_tab`*):
@@ -192,7 +196,7 @@ Phase doc `docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor.md`; contracts
 `…-asbuilt.md`; reports, run records and logs in `…-steps/`; decisions in `docs/decisions.md`
 2026-10-23 #70–#103. **Not closed:** after this docs stage (S7) the gate waits for the user's
 rulings on the open decisions listed there, and on the `blackboard-ultra` skill edit (G8-3, the
-user's grant).
+user's grant). *Corrected 2026-10-24 (Step 8 propagator): was "#70–#103" and "after this docs stage"; S7 closed at `01fc58e` and added #104 (2026-10-24) — see Step 8 as-built § S7.*
 
 - **What exists:** scripts and Claude name elements by **locator** (`{role, name}`, `{text}`,
   `{css}`) as well as by ref, resolved in the content script by the snapshot's own walk
@@ -242,13 +246,19 @@ user's grant).
     user's course (read-only; one held export read by both paths, equal hashes). Earlier FAILs (LOC-1,
     REP-1, SM-1, S6.3) stay recorded beside their re-registered re-runs.
 - **Open for the user** (`docs/decisions.md` → Open decisions): #71–#76, #78–#84, #87, #90, #91,
-  #93–#95, #99 (item 6 and S6b's error-result change), #100; G8-3 (the skill edit).
+  #93–#95, #99 (item 6 and S6b's error-result change), #100, #104 (item 3); G8-3 (the skill edit).
+  *Corrected 2026-10-24 (Step 8 propagator): was the list without #104, because S7's ruling #104
+  item 3 (S7.3 met by the commit map) is listed under Open decisions as item 22.*
 
 ### Step 7 — multi-actor tabs (2026-10-22/23; closed 2026-10-23)
 
 Phase doc `docs/plans/2026-10-21-step7-multi-actor-tabs.md`; contracts and deviations in
 `…-asbuilt.md`; reports, run records and logs in `…-steps/`; decisions in `docs/decisions.md`
 2026-10-22/23 #37–#66. **Not closed:** the gate waits for the user's rulings (below).
+*Corrected 2026-10-24 (Step 8 propagator): was "Not closed", but the user ruled the rest on
+2026-10-23 and Step 7 is closed, as the heading says (decisions.md · 2026-10-23 · The user rules on the
+Step 7 close-out questions (#68); · The user rules on R9-SCREEN-2 and the last five Step 7 open
+decisions (#69)). So the "Open for the user" list at the end of this block is ruled.*
 
 - **What exists:** several actors work in parallel on different tabs. The daemon names tabs by
   handles (`T1, T2, …`), gives each tab one owner (a lease: opened, claimed, or a popup of a held tab;
@@ -258,7 +268,9 @@ Phase doc `docs/plans/2026-10-21-step7-multi-actor-tabs.md`; contracts and devia
   The formatters moved to `sdk/src/format` (byte-identical, pinned against the baseline at `51de800`).
   The MCP keeps a cursor (claimed on first touch, not following the human) and gained
   `browser_focus_tab` — **22 tools**. A Step 6 client still works against the Step 7 daemon through a
-  lease-checked legacy path until Step 8.
+  lease-checked legacy path until Step 8. *(Corrected 2026-10-24, Step 8 propagator: Step 8 S2b removed
+  the legacy path. A tab call without `tab` is now `BAD_PARAMS "tab is required"`, and `selectTab` is
+  `UNKNOWN_METHOD` — see Step 8 as-built § S2b.)*
 - **Tests per stage** (`npm test` at each stage's verifier, as the as-built register records):
 
 | Stage | Commit | Tests | Files |
@@ -298,6 +310,9 @@ Phase doc `docs/plans/2026-10-21-step7-multi-actor-tabs.md`; contracts and devia
   measured — no bridge method sends it (T5.2's retry clause is reported unmet). `waitFor {text}`
   and `networkIdle` work on a background tab (BG-4); a clipboard write needs
   `focusTab` (BG-3). Step 8 adds focus emulation, measures it, then sets the policy.
+  *Corrected 2026-10-24 (Step 8 propagator): done. Run 11 (FE) measured focus emulation, which does not
+  deliver the input. The policy is `focusFirst` (decisions.md · 2026-10-23 · The background-input
+  policy (#89)) — see the Step 8 block.*
 - **Open for the user** (`docs/decisions.md` → Open decisions): #37 (Opus 5.5 for every agent), #40
   and #54 (the network `tab` scope, a bare number as a legacy id), #41 (the Step 6 legacy path), #42
   (a stale extension refused by its hello), #46 (the `@bridge/sdk/format` subpath), #51 (`code`
@@ -357,7 +372,9 @@ in the same folder). *Superseded 2026-10-22: was "waits for the D6 wave … Noth
   row is corrected and `test-fixtures/*.html` pinned to LF.
 - **Found (no code changed):** `browser_status` and the action tools can disagree on the active tab
   when a DevTools window is focused (→ Step 7); a daemon spawned through `Start-Process -NoNewWindow`
-  kept the caller's output pipe open (→ Step 8).
+  kept the caller's output pipe open (→ Step 8). *(Corrected 2026-10-24, Step 8 propagator: Step 8
+  S3.5 measured that `spawnDaemon` inherits no pipe. The MUX-6 cause remains unmeasured (decisions.md ·
+  2026-10-23 · S3.5's outcome and the Step 6 revisit items (#91)).)*
 
 ## 2. Architecture at a glance
 
@@ -507,7 +524,7 @@ Step 6's code is built (stages D0–D5b, 542 tests; [§1 Step 6
 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)); its live E2E ran on
 2026-10-22 (wave W1) and Step 6 closed the same day. Next: Step 7 (its
 kickoff is `docs/plans/next-session-prompt.md`), then Step 8. *Updated 2026-10-23: Step 7 is built and
-E2E-run, its gate open for the user ([§1 Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-built-and-e2e-run-gate-open));
+E2E-run, its gate open for the user ([§1 Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23));
 next is Step 8, which starts from the BG findings.* *Updated 2026-10-24: Step 8 is built and
 E2E-run (Runs 11–12; [§1 Step 8 block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026-10-2324));
 after its gate: Phase E safety, D3 file upload, and the open Phase F items (`args` for
