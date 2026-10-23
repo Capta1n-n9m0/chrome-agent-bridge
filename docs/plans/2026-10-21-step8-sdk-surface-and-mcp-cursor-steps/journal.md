@@ -25,3 +25,13 @@
   build 1.75 h) → FE live 1.5 h → S2 2.5 h → (S2b 4 h ∥ S3 3.5 h) → S4 2 h → S5 3 h → S6 1.5 + 3.25 h
   live → S7 1 h.
 - Next: S0 alone; its first deliverable also writes the phase-doc notes for #78–#85.
+
+## 2026-10-23 — S0 closed (dcb72db); S1 ∥ FE build dispatched
+
+- S0 escalated one check (byte-identical bundles: wrong premise, `ErrorCodes`/`isHello` are bundled
+  runtime values) → #86 bounded diff; also `WaitForParams`, 0-based `nth`, S2b.9 for #79. Closed
+  PASS-with-notes, 1008 tests / 60 files. Decision commit fde6826.
+- As-built register created with Stage 0 and S0 sections.
+- S1 (content `locate`, lane content/ + inject.ts + build.mjs) and FE build part (debugger.ts,
+  actions.ts trusted branch, rows §4.17, recipe) dispatched in parallel. FE live waits until both are
+  committed; I resume the FE step agent by message.
