@@ -237,6 +237,23 @@ reload…", accepted by #99 (3)), and before every `reload-extension.ps1` call t
   **Part 2's bb-login window, if still open, is the user's: it is not touched, closed or read** (`bb-login.ps1`
   opens a new window of its own and acts only in it). #98's write clause: any Blackboard write is recorded (kind,
   when, when hidden) without content.
+  *2026-10-23 (Part 3 addendum, #101, before its first row): SDK-6/SDK-7 live run again in the session the
+  Part 3 login opened (decisions.md · 2026-10-23 · SDK-6/SDK-7 run in the session the login actually opened
+  (#101)). Steps 2–11 of "SDK-6/SDK-7 live" run unchanged; step 1 (`bb-login.ps1`) is **not** re-run, and its
+  Part 3 exit 4 stays recorded as observed. The login is confirmed by the recipes' own read-only course lookup
+  — `boot-bb.ts pp1`'s resolution lines (branch (a) or (b) of §4.19 SDK-6); a `REFUSED — not logged in …` (or
+  any other `REFUSED`) ⇒ SDK-6/SDK-7 **"waits for the user"**, with no login attempt, nothing pressed or typed.
+  The recipes' background tabs open in the last-focused window (`client.newTab`), so before each recipe that
+  opens a tab the driver makes the bb-login window last-focused with `Set-T5Foreground <its hwnd>` (the handle
+  in the Part 3 record's P3-h lines), checked → `True` (a `False`: once more; a second `False` ⇒ recorded, stop:
+  "waits for the user"). That window is checked by handle and window class only (never its title or URL); if
+  the handle no longer names a Chrome window (`Chrome_WidgetWin_1`) — e.g. after P3-i's Chrome restart, which
+  restores windows under new handles — the addendum records that and stops: "waits for the user"; no other
+  window of the user's is used or brought forward. The driver never captures, snapshots, evaluates or types
+  into that window, nor into the course tab the user opened there, and closes neither (`close-bb-tab` closes
+  only the recipe's own course tab). Set-up as P3-a/P3-b/P3-c with a new `$env:S6_OUT` (`…\s6-run3-addendum`);
+  the stale check is the first result line. Expected texts (§4.19 SDK-6/SDK-7 (live, pp1)), pass rules, the
+  failures-folder rule, the evidence rules and #96/#98 are unchanged.*
 - **P3-i. SM-1 + its restart, last** — "SM-1 and MUX-8" below with these changes: **MUX-8 is not re-run** (Part 2's
   PASS stands; recorded "MUX-8: not re-run in Part 3"), so actor X is not started and steps 5 and 10 are skipped;
   step 3's `sm1.ps1` is `npm run -s recipe -- recipes/s6.ts sm1 --observed "<S6_OUT>\sm1-observed.json" *> "<S6_OUT>\sm1.out"`
