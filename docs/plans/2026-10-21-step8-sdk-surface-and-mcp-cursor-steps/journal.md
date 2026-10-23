@@ -118,3 +118,12 @@
 
 - New session (Claude-Session trailer updated in briefs/common.md). #97 records the REP-0 screenshot
   probe and the `R` rename. A fresh S6 step agent resumes from S6.ledger.md at step 8.
+
+## 2026-10-23 — S6 Part 2 done (bc78ded, 24b5ce5); rulings #98, #99; S6b dispatched
+
+- Run 12 (S6): 29 PASS, 4 FAIL (LOC-1 own check, ASREF-1 optional clause, REP-1 image part, SM-1 log
+  clause), SM-0 not measured (reload exit 2), SDK-6/7 live wait (SSO page). REP-0 PASS: reports switch
+  to the failed tab (closes MINOR-1). One Chrome restart; counts equal. Near miss: a full-window frame
+  showed the user's bookmark bar — deleted, never kept.
+- User: SSO login allowed; exit-2 reload re-runs standing; fix REP-1 now. #99 records it all; S6b
+  (mcp/ REP-1 fix) dispatched; then S6 Part 3 (SM-0, SM-1, LOC-1, REP-1, SDK-6/7).

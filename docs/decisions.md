@@ -54,12 +54,42 @@ Step 8 (2026-10-23 on), for the user at the gate:
 17. "S4's failure-report details, and how the MCP reaches them" (#93)
 18. "S2b's details: the `selectTab` refusal grep, the marker's edge cases, the handle mark" (#94)
 19. "S5's MCP details: `browser_new_tab` activation, the status lines, the tool schemas, reports" (#95)
+20. "S6's findings ruled: the user's answers, stage S6b for REP-1, re-registered rows" (#99), items 6 and S6b's error-result change
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-23 · S6's findings ruled: the user's answers, stage S6b for REP-1, re-registered rows (#99)
+**Decided:** (1) **By the user:** the Blackboard login goes through ADA's SSO (ada.blackboard.com
+redirects there; the user's autofilled credentials sign in and it redirects back) — `bb-login.ps1` is
+extended to that flow, credentials still never read, typed by the driver, printed or recorded; an
+exit-2 `reload-extension.ps1` (nothing pressed) may be re-run during waves without asking (standing);
+REP-1 is fixed in this step. (2) A stage **S6b** (lane `mcp/src/`, `mcp/test/`) pins the failure
+report's tool result in a unit test and finds by a live probe whether an `isError: true` result's image
+block reaches a `claude -p` model; if it does not, it makes the image reach the model (any change to
+how tool errors are returned is listed for the user); REP-1 is re-run after. (3) S6's 14 proposals in
+`…-steps/S6.md` §5 (predecessor's 11, REP-0's 3) and the mechanical sheet fixes are accepted; the blue
+control (REP-0) stands. (4) The live part continuing after SM-0's exit 2 is accepted as a disclosed
+deviation: nothing was pressed, the log shows no extension change until the restart, and the later rows
+ran on the build the stale check proved. (5) SM-1 and LOC-1 get new pre-registered text before a re-run:
+SM-1 — "the held handle is gone after the restart (by `tabGone` at the quit or by the session change), a
+call on it gives `TAB_GONE`, and no handle minted before the quit resolves after it"; LOC-1 — the typed
+value is read by a tool output. Their Run 12 FAILs stay recorded. (6) ASREF-1: the conservative default —
+the observed behaviour (`asRef needs an Element; the value is not one`) stays, no code change; §4.18 gets
+a dated *Superseded* note on the optional clause; Run 12's FAIL stays recorded. (7) S6 Part 3 then runs,
+alone: SM-0 (reload re-run as needed), SM-1 and LOC-1 under the new text, REP-1 after S6b, SDK-6/SDK-7
+live through SSO.
+**Why:** the user (2026-10-23): "ada.blackboard.com ridirects to ada sso, you can login there using my
+credentials and then it redicrect back blackboard"; reload: "Yes, re-run as needed"; REP-1: "Fix now".
+SM-1's and LOC-1's rules could not hold for their own set-ups (S6 Part 2, measured); a check is
+re-registered, never re-read to pass.
+**Instead of:** carrying REP-1 to Step 9; re-reading SM-1's clause to pass; changing the MCP's
+`asRef` output to match the row.
+**By:** user ((1)); Claude ((2)–(7); (6) and S6b's error-result change, if any, listed under Open
+decisions)
 
 ### 2026-10-23 · The user allows unlimited Chrome restarts and unpublished Blackboard writes (#98)
 **Decided:** the run may restart Chrome as often as it needs (still only by `chrome://quit`, session
