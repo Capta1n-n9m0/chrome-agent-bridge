@@ -34,6 +34,19 @@ export interface ConnectOptions {
   env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
   /** Where the workspace-root walk starts. Default: the SDK module's own directory. */
   startDir?: string;
+  /**
+   * Default true: when a `Tab` call (or a client method mirroring one) fails with
+   * `LOCATOR_NOT_FOUND LOCATOR_AMBIGUOUS REF_STALE OFFSCREEN PAGE_ERROR NAV_FAILED TIMEOUT`, the SDK
+   * attaches a snapshot, a screenshot path (`BRIDGE_FAILURES_DIR`, else
+   * `~/.chrome-agent-bridge/failures/`) and the tab's last 20 network entries to the error within 5 s,
+   * with `error.report()`. The default-mode screenshot shows the tab for about 1.5 s. The attached
+   * snapshot renumbers the tab's refs, as a script's own `snapshot()` does: after a failure, refs from
+   * before it are void — use the refs in `error.snapshot` (the `candidates`/`matches` refs in
+   * `error.data` are rewritten to them by role and name, or dropped when the item has no role or no
+   * single element matches — every match loses its ref). False turns it
+   * off (hot loops): errors are rethrown untouched with no extra call.
+   */
+  failureReports?: boolean;
   /** Test seams. */
   io?: Partial<KnockIo>;
   timers?: Timers;
@@ -99,6 +112,8 @@ export async function connect(options: ConnectOptions): Promise<BridgeClient> {
     knock: ({ reconnect }) =>
       knock({ port, token, name: options.name, daemonPath, io, allowHandover: !reconnect }),
     timers,
+    failureReports: options.failureReports ?? true,
+    env,
   });
   try {
     await client.connect();
