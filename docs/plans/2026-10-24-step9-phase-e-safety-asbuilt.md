@@ -109,5 +109,26 @@ session agent; one section per stage, written at each stage close.
 ### Estimates vs actuals
 - 3 h estimated; about 62 min (one fix round, which fixed one CRITICAL). Tests 2329 / 96 → 2561 / 106.
 
+## Stage S2b — Extension UI and the 0.7 log scan · 2026-10-24 · verifier: PASS-with-notes · commit 59388ed
+
+### Contracts (binding forward)
+- Manifest gains only `action` (no popup) and `commands._execute_action` (`Alt+Shift+K` suggested); no new
+  permission. One top-level `action.onClicked` listener in `sw.ts` serves the button and the shortcut, calls
+  `safety.toggle()` and logs one fixed line per press.
+- Badge and title derived from the stored state at every worker start and on every change (#143 titles word
+  for word; every failure state shows `OFF`, #181, #182).
+- The options page: armed and JavaScript switches save on change (not debounced); the block list marks and
+  counts invalid lines with S1's parser (#184); a button opens `chrome://extensions/shortcuts`; port and token
+  unchanged (#186).
+- Tests: the log scan allowlists 60 log sites (extension 15, daemon 33, sdk 0, mcp 6) and a sentinel test runs
+  the real daemon on port 0 (#187); only the toggle module and the options page write the safety keys, and
+  `storage.local.remove`/`clear` are refused everywhere (#188).
+
+### Decisions taken
+- #181–#188 (S2b report §5); #188 contract-level, under Open decisions. #189 orders the fix stage S2c.
+
+### Estimates vs actuals
+- 1.5 h estimated; about 56 min (one fix round). Tests 2561 / 106 → 2660 / 113.
+
 ## Open decisions for the user (running list; also in `docs/decisions.md` → Open decisions)
-- #131–#141, #144 (Stage 0), #148 (S0), #153–#156 (S1), #159–#163, #168 (S3), #174–#180 (S2a).
+- #131–#141, #144 (Stage 0), #148 (S0), #153–#156 (S1), #159–#163, #168 (S3), #174–#180 (S2a), #188 (S2b).

@@ -98,12 +98,77 @@ Step 9 (2026-10-24 on), for the user at the gate:
 28. "S2a: the post-check also replaces error replies; `listTabs` with an unreadable state is refused, and has no post-check" (#178).
 29. "S2a: the network ingest drops a request for good once one of its events was dropped" (#179).
 30. "S2a: no `safetyState` is sent while the state cannot be read" (#180).
+31. "S2b: the writers test refuses `storage.local.remove`/`clear` everywhere" (#188).
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-24 · A fix stage S2c before S4: a failed re-arm write leaves memory disarmed; the badge reads only the safety keys (#189)
+**Decided:** S2b's step agent escalated a defect in S2a's `extension/src/safety-state.ts`: when the write that
+re-arms fails, `toggleOnce` leaves its in-memory copy armed while storage stays disarmed, so the network log
+records while every call, the badge and storage say OFF, and the next press disarms instead of retrying. A
+short stage S2c fixes it before S4: the memory copy is restored to disarmed before the error is rethrown, with a
+failing test first. The same stage narrows the badge's stored read from `storage.local.get(null)` (#183, which
+reads the token too, never logged) to the safety keys only. *Supersedes #183's read.*
+**Why:** #174's rule is "memory is never re-armed by a failed write", and 0.3 says nothing is recorded while
+disarmed; the defect breaks both, though only a failing `storage.local.set` triggers it. Reading the token where it
+is not needed is a needless exposure in a safety module. Both are in S2a's lane, outside S2b's, so S2b did not fix
+them (correctly).
+**Instead of:** fixing it in S4 (S4 runs on committed code and never fixes in the wave); leaving it as a recorded
+finding (it is a disarmed-state leak, however unlikely).
+**Revisit if:** never; it is a defect fix.
+**By:** Claude
+
+### 2026-10-24 · S2b: the writers test refuses `storage.local.remove`/`clear` everywhere (#188)
+**Decided:** as built. **Why:** removing a safety key restores its default — armed — so it is a write in effect;
+conservative; nothing uses them today. **Instead of:** allowing them outside the two writers. **Revisit if:** a feature
+needs `remove` (name its site in the test). **By:** Claude (contract-level; listed under Open decisions for the user; S2b report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2b.md` §5)
+
+### 2026-10-24 · S2b: the log scan finds loggers by name (#187)
+**Decided:** sites are every `console` use (call or value), `process.stdout`/`stderr`/`process` as a value, any call or
+value use of `log`/`.log` (incl. `.call/.apply/.bind`), and `warn/info/debug/trace/error` on non-`console` objects; an
+allowlist entry is file + normalized call text + a note; a stale entry fails. **Why:** stricter than listing today's
+three injected-logger expressions. **Instead of:** a fixed list (`options.log`, `deps.log`). **Revisit if:** a
+non-logging method with one of those names appears (allowlist it with a note). **By:** Claude (S2b report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2b.md` §5)
+
+### 2026-10-24 · S2b: options page names and layout (#186)
+**Decided:** labels per §7 row 5 below; switches save on change (#144, not debounced); the block list has its own Save;
+one status line. **Why:** UIA finds controls by name. **Instead of:** one Save for everything. **Revisit if:** S4's
+automation finds a name ambiguous. **By:** Claude (S2b report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2b.md` §5)
+
+### 2026-10-24 · S2b: unsaved block-list edits survive a change made elsewhere (#185)
+**Decided:** an untouched textarea follows the stored text; edited text is kept and a line says Save replaces the stored
+list. **Why:** never lose typing, never overwrite silently. **Instead of:** always reloading; never reloading. **Revisit
+if:** two options tabs editing at once matters. **By:** Claude (S2b report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2b.md` §5)
+
+### 2026-10-24 · S2b: one fixed reason for every invalid block-list line (#184)
+**Decided:** each invalid line is marked by number with one reason naming the grammar's shapes. **Why:** S1's parser
+returns only `invalid`; per-cause messages would need a second grammar. **Instead of:** re-deriving causes; extending
+`safety-match.ts` (S1's). **Revisit if:** the user wants per-cause messages. **By:** Claude (S2b report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2b.md` §5)
+
+### 2026-10-24 · S2b: the badge's stored read is `storage.local.get(null)` (#183)
+**Decided:** as built (fixer r1). **Why:** the writers test forbids naming safety keys in `sw.ts`; only a boolean leaves the
+read; nothing logs it. **Instead of:** `get([...SAFETY_KEY_NAMES])` with the writers test allowing key names as a `get`
+argument only (verifier R2-2: feasible in lane, 61/61 tests in a restored trial) — the better shape, deferred to keep the
+stage in one fix round. **Revisit if:** at Step 10 or any later touch of `sw.ts`'s badge glue — then take the narrower
+read. **By:** Claude (S2b report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2b.md` §5)
+
+### 2026-10-24 · S2b: a failed-write title lasts until storage itself reads disarmed or the state moves on (#182)
+**Decided:** `BadgeModel` keeps write-failed / arm-failed while reads say disarmed; it ends when the stored `armed` reads
+false (e.g. the options page saved the OFF), a read says armed, or a press is saved. **Why:** the gate's `read()` masks the
+stored value with the memory disarm (#176), so the title would otherwise outlive a successful save (verifier F5).
+**Instead of:** showing it only until the next refresh. **Revisit if:** S4 shows a stale failure title. **By:** Claude (S2b report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2b.md` §5)
+
+### 2026-10-24 · S2b: badge colours, and titles for the unreadable, unsaved-disarm and failed-arm states (#181)
+**Decided:** `#d93025` red (`OFF`), `#e37400` amber (`JS`); #143's three titles verbatim; unreadable → `OFF`, "…the
+safety state cannot be read, so agents are refused (check the options page)"; write-failed → `OFF`, "…OFF, but not saved
+(storage write failed): agents are refused until the extension restarts (click to turn on)"; rejected arm → `OFF`,
+"…turning on failed (storage write failed), agents are still refused (turn it on from the options page)". **Why:** #143
+leaves colours and failure wording to the build; S2a's handoff (#174) asks the unsaved disarm to be visible.
+**Instead of:** one OFF title for every OFF. **Revisit if:** the user prefers other words or colours. **By:** Claude (S2b report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2b.md` §5)
 
 ### 2026-10-24 · S2a: no `safetyState` is sent while the state cannot be read (#180)
 **Decided:** sent only from a successful read; the daemon keeps "not reported" (#159). **Why:** an unreadable state has no

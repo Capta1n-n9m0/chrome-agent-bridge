@@ -55,3 +55,13 @@
 - Recorded #169–#180; #174–#180 contract-level, under Open decisions. As-built updated.
 - S4 inputs so far: S2a.md §7 (eleven Chrome-only rows incl. SAFE-REL-1/2), stage0-audit.md §7, #162's row.
 - Next: S2b (manifest action + `_execute_action`, badge, options page, 0.7 log scan) alone.
+
+## 2026-10-24 — S2b closed (59388ed) with one escalation; fix stage S2c dispatched
+
+- S2b: DONE, PASS-with-notes after one fix round. Tests 2561/106 → 2660/113; typecheck, build 0.
+- Escalation (S2a's file, outside S2b's lane): a failed re-arm write leaves `toggleOnce`'s memory copy armed
+  while storage stays OFF — the network log records while OFF, and the next press disarms. Ruled #189: fix
+  stage S2c (memory restored to disarmed, failing test first) plus the badge reading only the safety keys
+  (supersedes #183's `get(null)`).
+- Recorded #181–#189; #188 contract-level under Open decisions.
+- Next: S2c alone, then S4.
