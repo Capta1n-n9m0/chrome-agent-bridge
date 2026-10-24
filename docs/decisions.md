@@ -114,6 +114,20 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-25 · S5: `bb-login.ps1`'s post-submit wait — exit rules and the hard bound (#215)
+**Decided:** after its one press the script waits inside one bound counted from the press (`-WaitSec`, default 90):
+exit 0 once the Blackboard host shows no sign-in control on two clean scans in a row with the address unchanged
+(case-sensitive) for 4 s; exit 4 at the bound whatever the page, or at once if its own window is gone; no scan starts
+in the last max(5 s, slowest scan so far), so the bound is a hard cap; no "Not secure" check after the press; counted
+fixture requests carry a fresh query. Every old parameter and exit code keeps its meaning.
+**Why:** S5.1's legs (verifier re-run: old exits 4 at 13.2 s and new exits 0 at 16.2 s on the 12 s delayed redirect;
+stuck → 4 at 90.019 s; another host → 4 at 90.021 s; submits = 1 in every leg); fixer round 1 found an 8 000-button
+page overran the bound (23.1 s at `-WaitSec 20`) and fixed it (20.017 s).
+**Instead of:** a stable-address check alone (the old 20 s rule); exiting at once on another host.
+**Revisit if:** a real Blackboard scan takes more than 10 s (then the 95 s ceiling fails; unmeasured until a G10-3
+grant).
+**By:** Claude (S5 report `…step10…-steps/S5.md`)
+
 ### 2026-10-25 · S2: the MCP schema baseline, a failed focus's answer, and the focus sentence (#214)
 **Decided:** (1) the tool-schema baseline (`mcp/test/s2-focus-first.test.ts`) is captured through a real `tools/list`
 over the MCP SDK's in-memory transport (names + `inputSchema`, keys sorted, tool descriptions excluded) at `f45e3bf`;

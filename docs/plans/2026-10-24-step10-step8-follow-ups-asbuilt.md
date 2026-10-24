@@ -96,3 +96,20 @@ session agent; one block per stage, appended at each stage close.
 
 ### Estimates vs actuals
 - 1 h estimated; ~18 min.
+
+## S5 — `bb-login.ps1`'s condition-based wait · 2026-10-25 · verifier: PASS-with-notes · commit `34adfdc`
+
+### Contracts (binding forward)
+- One bound from the press (`-WaitSec`, default 90, a hard cap); exit 0 on the Blackboard host with no sign-in
+  control on two clean scans and the address stable 4 s; exit 4 at the bound or when its window is gone; nothing
+  pressed after the first press. Old parameters and exit codes unchanged (#215).
+
+### Decisions taken
+- #215.
+
+### Deviations from the phase doc
+- `sso-standin.html` gained a counted submit line; eight new fixtures. Tests 2807/117 unchanged (no TypeScript).
+- The real-site scan time is unmeasured (needs G10-3).
+
+### Estimates vs actuals
+- 1 h estimated; ~2 h 45 min (one fix round on the hard bound).
