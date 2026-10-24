@@ -29,6 +29,17 @@
 #   status                 prints the globals (for the ledger); runs even after a stop
 #   stop -Why <text>       the stop procedure by hand, for a STOP the runner met outside a block
 #   reset                  archives a finished or stopped wave's state (a new wave needs the step agent's decision)
+#   reset -Attempt 3 -Skip rel3,pop1 [-LogMark <iso>]
+#                          S1 wave fixer (Return 2, ruling (b); narrowed in round 2, S1-wave-verifier F2): the ONLY
+#                          resume. Accepted only as written (attempt 3, both names) and only when the stored state is
+#                          attempt 2's (stopped at r3, done exactly preflight..pop1, not itself a resume); anything else
+#                          prints `USAGE: ...` (never `STOP:`), exits 3 and changes nothing. Then the same archive and a
+#                          RESUME: attempt 3 runs the order WITHOUT rel3 and pop1, printing `RESUME attempt 3: rel3,
+#                          pop1 recorded in attempt 2, not re-run`. A skipped block refuses to run (exit 3); every other
+#                          block keeps the order check (the block before it in the order minus the skipped ones).
+#                          Attempt 2's WaveStart is carried as S14LogMark (ruling (d)); -LogMark (the record's attempt-2
+#                          `wave start <iso>`) only when it is not stored. With no current globals file the newest
+#                          archived one (r14-globals.clixml.<stamp>) is the source, under the same checks.
 #
 # THE STOP PROCEDURE (#193; the sheet's STOP RULE): a guard prints a line beginning `STOP:` and throws; any other throw
 # in a block is caught the same way. Then, in this order: `STOP: block <b>: <why> ...`; the background r14-type ended
@@ -46,7 +57,11 @@ param(
   [string]$Block,
   [string]$Prep = '',
   [int]$DelayMs = 400,
-  [string]$Why = ''
+  [string]$Why = '',
+  # S1 wave fixer (Return 2, ruling (b)): only with -Block reset.
+  [int]$Attempt = 0,
+  [string[]]$Skip = @(),
+  [string]$LogMark = ''
 )
 
 $ErrorActionPreference = 'Continue'
@@ -61,7 +76,9 @@ $global:S9PinUiaOnly = $true          # never pin or unpin by mouse in this wave
 $Steps = 'docs\plans\2026-10-24-step10-step8-follow-ups-steps'
 $StateFile = Join-Path $env:S9_OUT 'r14-globals.clixml'
 $Order = @('preflight', 'servers', 'window', 'setup', 'safe0', 'found', 'rel3', 'pop1', 'r3', 'type', 'ctl', '5c', 'restore', 'logs', 'teardown')
-$Names = @('W', 'O', 'E', 'D', 'WinStart', 'PinnedBefore', 'L0', 'S9ChromeStart', 'S9Found', 'S9WinIds', 'WaveStart', 'S14Touched', 'S14Stopped', 'S14Pids', 'S14Done', 'S14TypeND', 'S14TypeRuns')
+$Names = @('W', 'O', 'E', 'D', 'WinStart', 'PinnedBefore', 'L0', 'S9ChromeStart', 'S9Found', 'S9WinIds', 'WaveStart', 'S14Touched', 'S14Stopped', 'S14Pids', 'S14Done', 'S14TypeND', 'S14TypeRuns', 'S14Resume', 'S14LogMark')
+# S1 wave fixer (Return 2, ruling (b)): the only blocks a resume may skip (rows recorded in an earlier attempt).
+$Skippable = @('rel3', 'pop1')
 # Step 9's build on disk (sha256, 2026-10-25, unchanged by `npm run build` at b016712): Run 14 measures exactly this.
 $Dist = [ordered]@{
   'daemon/dist/index.js'      = '99bb55c5913cdb6a11a68453b22fe4751534bdcdd0d0ae29bf8bef9b3a93332d'
@@ -316,7 +333,10 @@ function B-pop1 {
 }
 
 function B-r3 {
-  Set-S9SideBySide $global:W $global:O
+  # S1 wave fixer (Return 2, ruling (a)): the placement is tried in the fixed order (W's monitor, then each other
+  # monitor's work area), each attempt printed with its occluders named; none free -> the same STOP as before. The
+  # guard below is unchanged and re-checks the chosen placement.
+  if (-not (Find-S9FreePlacement $global:W $global:O)) { Fail-S14 'R14-3 placement guard: W and O are not side by side, uncovered by each other and by any window above O (no occluder), on a work area and restored' }
   if (-not (Test-S9Placement $global:W $global:O 'placement-before-switch')) { Fail-S14 'R14-3 placement guard: W and O are not side by side, uncovered by each other and by any window above O (no occluder), on a work area and restored' }
   $global:S14Touched = $true; Save-S14
   [void](Set-S9Switch $global:O -Which armed -On $false)
@@ -398,7 +418,15 @@ function B-logs {
     S9 scan-file $con --mode console-s16
     if ($global:S9Code -eq 1) { $conFail = $true }
   } else { Say9 'worker console: no capture - S1.6 console half NOT MEASURED' }
-  S9 scan-log --since $global:WaveStart --copy "$Steps\S1-daemon-log.txt"
+  # S1 wave fixer (Return 2, ruling (d)): on a resume daemon.log is counted from the earlier attempt's wave mark (both
+  # attempts); that attempt's worker console was not captured (its window D closed with its stop procedure).
+  $since = if ($global:S14LogMark) { $global:S14LogMark } else { $global:WaveStart }
+  if ($global:S14Resume) {
+    $prev = [int]$global:S14Resume.Attempt - 1
+    Say9 "R14-LOGS daemon.log counted from $since (attempt $prev's wave mark: $($global:S14Resume.MarkFrom)) - attempts $prev and $($global:S14Resume.Attempt)"
+    Say9 "R14-LOGS attempt $prev's worker console was not captured (its window D closed with attempt $prev's stop procedure) - a recorded deviation; the console counted here is attempt $($global:S14Resume.Attempt)'s only"
+  }
+  S9 scan-log --since $since --copy "$Steps\S1-daemon-log.txt"
   $logFail = ($global:S9Code -ne 0)
   if ($conFail -or $logFail) {
     Fail-S14 "R14-LOGS FAILS: $(if ($conFail) { 'the worker console holds a count that is not 0 (token, non-fixture ://, localhost:8081, :8083 or bank.example, whoever wrote the line)' })$(if ($conFail -and $logFail) { '; ' })$(if ($logFail) { 'daemon.log since the wave mark holds a count that is not 0 - nothing copied' }) (counts above; S1.6) - nothing of it is committed"
@@ -434,15 +462,53 @@ function B-teardown {
 }
 
 function B-status {
-  foreach ($n in $Names) { $v = Get-Variable -Scope Global -Name $n -ValueOnly -ErrorAction SilentlyContinue; if ($n -eq 'S9Found' -and $v) { $v = "default=$($v.Default)" }; if ($n -eq 'S9WinIds' -and $v) { $v = ($v.Keys -join ',') }; if ($n -eq 'S14Pids' -and $v) { $v = (($v.Keys | ForEach-Object { "$_=$($v[$_])" }) -join ' ') }; Write-Host ("{0} = {1}" -f $n, ($v -join ',')) }
+  foreach ($n in $Names) { $v = Get-Variable -Scope Global -Name $n -ValueOnly -ErrorAction SilentlyContinue; if ($n -eq 'S9Found' -and $v) { $v = "default=$($v.Default)" }; if ($n -eq 'S9WinIds' -and $v) { $v = ($v.Keys -join ',') }; if ($n -eq 'S14Resume' -and $v) { $v = "attempt=$($v.Attempt) skip=$(@($v.Skip) -join ',') mark=$($v.Mark)" }; if ($n -eq 'S14Pids' -and $v) { $v = (($v.Keys | ForEach-Object { "$_=$($v[$_])" }) -join ' ') }; Write-Host ("{0} = {1}" -f $n, ($v -join ',')) }
   Write-Host "daemon PIDs now: $((@(Get-BridgeDaemon | ForEach-Object { $_.ProcessId })) -join ',')"
 }
 
 function B-reset {
-  if (-not $global:S14Stopped -and -not ($global:S14Done -contains 'teardown')) { Say9 'reset refused: the wave is neither stopped nor torn down'; exit 3 }
+  # S1 wave fixer (Return 2, ruling (b); round 2, S1-wave-verifier F2): the ONE resume ruling (b) allows - exactly
+  # `-Attempt 3 -Skip rel3,pop1`, and only when the stored state is attempt 2's: stopped at r3, with exactly preflight..pop1
+  # recorded, and not itself a resume. Anything else is a usage error (`USAGE:`, never `STOP:`), exit 3, nothing archived.
+  # -LogMark is accepted only when attempt 2's wave mark is not stored.
+  $resume = $null
+  if ($Attempt -or $Skip.Count -or $LogMark) {
+    $usage = 'the only resume is -Block reset -Attempt 3 -Skip rel3,pop1 [-LogMark <iso>, only when attempt 2''s wave mark is not stored]'
+    $sk = @($Skip | ForEach-Object { "$_".Split(',') } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    if ($Attempt -ne 3) { Write-Host "USAGE: -Attempt $Attempt refused - $usage; nothing changed"; exit 3 }
+    if ($sk.Count -ne 2 -or ($sk | Sort-Object -Unique).Count -ne 2 -or @($sk | Where-Object { $Skippable -notcontains $_ }).Count) { Write-Host "USAGE: -Skip '$($sk -join ',')' refused - $usage; nothing changed"; exit 3 }
+    $sk = @($Order | Where-Object { $sk -contains $_ })   # rel3, pop1
+    $src = 'the current globals'
+    $h = $null
+    if (Test-Path $StateFile) { $h = Import-Clixml $StateFile }
+    else {
+      $arch = @(Get-ChildItem -Path (Join-Path $env:S9_OUT 'r14-globals.clixml.*') -ErrorAction SilentlyContinue | Sort-Object Name | Select-Object -Last 1)
+      if ($arch.Count) { $h = Import-Clixml $arch[0].FullName; $src = "the archived $($arch[0].Name)" }
+    }
+    if (-not $h) { Write-Host "USAGE: no stored state of attempt 2 to resume from - $usage; nothing changed"; exit 3 }
+    $want = @($Order[0..($Order.IndexOf('pop1'))])
+    $done = @($h['S14Done'])
+    $isA2 = (-not $h['S14Resume']) -and ("$($h['S14Stopped'])".StartsWith('r3:')) -and (($done -join ',') -eq ($want -join ','))
+    if (-not $isA2) { Write-Host "USAGE: $src is not attempt 2's stopped state (needs: stopped at r3, done exactly $($want -join ','), not a resume; found stopped='$(if ($h['S14Stopped']) { "$($h['S14Stopped'])".Split(':')[0] } else { '' })' done=$($done -join ',') resume=$(if ($h['S14Resume']) { 'yes' } else { 'no' })) - $usage; nothing changed"; exit 3 }
+    $mark = ''; $from = ''
+    if ($h['WaveStart']) {
+      if ($LogMark) { Write-Host "USAGE: -LogMark refused - attempt 2's wave mark is stored in $src; nothing changed"; exit 3 }
+      $mark = "$($h['WaveStart'])"; $from = "the WaveStart stored in $src"
+    } elseif ($LogMark) { $mark = $LogMark; $from = "-LogMark: the record's attempt-2 wave start (not stored in $src)" }
+    $parsed = [DateTime]::MinValue
+    if (-not $mark -or -not [DateTime]::TryParse($mark, [ref]$parsed)) { Write-Host 'USAGE: attempt 2''s daemon-log mark is not stored - pass -LogMark <the record''s attempt-2 wave start iso>; nothing changed'; exit 3 }
+    $resume = @{ Attempt = $Attempt; Skip = $sk; Mark = $mark; MarkFrom = $from }
+  } elseif (-not $global:S14Stopped -and -not ($global:S14Done -contains 'teardown')) { Say9 'reset refused: the wave is neither stopped nor torn down'; exit 3 }
   $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
   foreach ($f in 'r14-globals.clixml', 'r14-raw.txt', 'state.json') { $x = Join-Path $env:S9_OUT $f; if (Test-Path $x) { Rename-Item $x "$f.$stamp" } }
   Write-Host "archived the wave's state files with suffix .$stamp; a new wave starts at preflight"
+  if ($resume) {
+    @{ S14Resume = $resume; S14LogMark = $resume.Mark; S14Done = @() } | Export-Clixml $StateFile
+    $l = "RESUME attempt ${Attempt}: $($resume.Skip -join ', ') recorded in attempt $($Attempt - 1), not re-run"
+    Write-Host $l; Write-S9Raw $l
+    $l2 = "RESUME attempt ${Attempt}: blocks $(@($Order | Where-Object { $resume.Skip -notcontains $_ }) -join ', '); daemon.log mark $($resume.Mark) ($($resume.MarkFrom))"
+    Write-Host $l2; Write-S9Raw $l2
+  }
 }
 
 # ------------------------------------------------------------------------------------------------- main
@@ -452,8 +518,19 @@ if ($Block -eq 'status') { B-status; exit 0 }
 if ($Block -eq 'reset') { B-reset; exit 0 }
 if ($global:S14Stopped) { Write-Host "NOT RUN: the wave stopped at '$($global:S14Stopped)' (its STOP line is in the raw output). RETURN to the step agent."; exit 3 }
 if ($Block -eq 'stop') { Invoke-S14Stop $(if ($Why) { $Why } else { 'a STOP the runner met outside a block' }); exit 2 }
-$i = $Order.IndexOf($Block)
-if ($i -gt 0 -and -not ($global:S14Done -contains $Order[$i - 1])) { Write-Host "NOT RUN: block $Block needs block $($Order[$i - 1]) first (the sheet's order)"; exit 3 }
+if ($Attempt -or $Skip.Count -or $LogMark) { Write-Host 'NOT RUN: -Attempt, -Skip and -LogMark belong to -Block reset only'; exit 3 }
+# S1 wave fixer (Return 2, ruling (b)): on a resume the order is the sheet's minus the skipped blocks; a skipped block
+# never runs, and every other block still needs the one before it in that order.
+$RunOrder = @($Order)
+if ($global:S14Resume) {
+  $RunOrder = @($Order | Where-Object { @($global:S14Resume.Skip) -notcontains $_ })
+  if (@($global:S14Resume.Skip) -contains $Block) { Write-Host "NOT RUN: block $Block is skipped in this resume (RESUME attempt $($global:S14Resume.Attempt): recorded in attempt $([int]$global:S14Resume.Attempt - 1), not re-run)"; exit 3 }
+}
+$i = $RunOrder.IndexOf($Block)
+if ($i -gt 0 -and -not ($global:S14Done -contains $RunOrder[$i - 1])) { Write-Host "NOT RUN: block $Block needs block $($RunOrder[$i - 1]) first (the sheet's order$(if ($global:S14Resume) { ' minus the resume''s skipped blocks' }))"; exit 3 }
+# The block that comes right after a skipped one prints the RESUME line again, so the raw output shows the skip there.
+if ($global:S14Resume -and $i -gt 0 -and $Order.IndexOf($RunOrder[$i - 1]) -ne $Order.IndexOf($Block) - 1) {
+  Say9 "RESUME attempt $($global:S14Resume.Attempt): $(@($global:S14Resume.Skip) -join ', ') recorded in attempt $([int]$global:S14Resume.Attempt - 1), not re-run" }
 if ($global:S14Done -contains $Block) {
   if (-not ($Block -eq 'type' -and $global:S14TypeND -and [int]$global:S14TypeRuns -lt 2)) { Write-Host "NOT RUN: block $Block is done (only R14-4b's one pre-registered re-run may repeat a block)"; exit 3 }
   if ($global:S14Done -contains 'ctl') { Write-Host 'NOT RUN: the re-run of type must come before ctl'; exit 3 }

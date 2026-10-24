@@ -55,6 +55,13 @@
 //                              concurrent GETs (redirect: manual), each must answer 302 within 1 s
 //   server-logs --log8083 <f> --log8081 <f> [--row R]   R14-5c's server-log counts (s14=5c1, s14=5c2)
 //   rect-check --file <json> [--row R] [--step S]   R14-3's placement rule over rects s9-win.ps1 measured
+//   rect-check --file <json> --attempt <n>   S1 wave fixer (Return 2): one try of the placement order — `ROW R14-3
+//                              placement-attempt-<n> …` + `PLACEMENT attempt <n> on work area […]: free|not free — …`
+//                              (a record, no CHECK line); exit 1 = not free
+//   placement-order --file <json>   S1 wave fixer (Return 2): `PLACEMENT order <n>: […] …` — W's monitor work area
+//                              first, then the others in the system's order (s9-rules `placementOrder`)
+//                              round 2: JSON {wWork, work, shell}; each area cut above any shell taskbar intersecting
+//                              it (`PLACEMENT work area […] cut to y=<n> by taskbar class=…`, s9-rules `taskbarCut`)
 //   wait-safety … --guard      as wait-safety, but "not reached" is a STOP line (exit 2)
 //
 // It never prints the token, a non-fixture URL or title, or a block-list pattern read from Chrome; listTabs,
@@ -75,8 +82,15 @@ import {
   concurrentVerdict,
   followUpVerdict,
   logHits,
+  placementAttemptLine,
   placementLine,
+  placementOrder,
   placementVerdict,
+  rectText,
+  taskbarCut,
+  taskbarCutLine,
+  type Rect,
+  type ShellWindow,
   R14,
   rerunDelayMs,
   scrubAll,
@@ -1036,10 +1050,41 @@ async function cmdRectCheck(): Promise<void> {
   const file = option("--file");
   if (!file || !existsSync(file)) throw new SetUp("SET-UP: rect-check --file <json>");
   const p = JSON.parse(readFileSync(file, "utf8").replace(/^﻿/, "")) as Placement;
-  say(`ROW ${row} ${step} ${placementLine(p)}`);
   const v = placementVerdict(p);
+  const attemptArg = option("--attempt");
+  if (attemptArg !== undefined) {
+    // S1 wave fixer (Return 2, ruling (a)): one try of the fixed placement order — a record line, never a CHECK (the
+    // guard's own CHECK follows on the chosen placement). Exit 1 = this area is not free.
+    const n = Number(attemptArg);
+    const area = (p as Placement & { area?: Rect }).area;
+    if (!Number.isInteger(n) || n < 1 || !area) throw new SetUp("SET-UP: rect-check --attempt <n ≥ 1> needs the JSON's `area`");
+    say(`ROW ${row} placement-attempt-${n} ${placementLine(p)}`);
+    say(placementAttemptLine(n, area, v));
+    if (!v.pass) failed = true;
+    return;
+  }
+  say(`ROW ${row} ${step} ${placementLine(p)}`);
   say(checkLine(row, step, v));
   if (!v.pass) failed = true;
+}
+
+/**
+ * S1 wave fixer (Return 2, ruling (a)): the order R14-3 tries work areas in (`placementOrder`). The JSON is
+ * `{wWork: Rect, work: Rect[]}` (s9-win.ps1 `Find-S9FreePlacement`); one line `PLACEMENT order <n>: [l,t,r,b] …`.
+ */
+async function cmdPlacementOrder(): Promise<void> {
+  const file = option("--file");
+  if (!file || !existsSync(file)) throw new SetUp("SET-UP: placement-order --file <json>");
+  const j = JSON.parse(readFileSync(file, "utf8").replace(/^﻿/, "")) as { wWork?: Rect; work?: Rect[]; shell?: ShellWindow[] };
+  if (!j.wWork || !Array.isArray(j.work) || !Array.isArray(j.shell)) throw new SetUp("SET-UP: placement-order needs {wWork, work, shell}");
+  // Round 2 (S1-wave-verifier F1): each area tried is cut above any shell taskbar intersecting it (taskbarCut); the
+  // order line lists the areas as tried, each cut line names the uncut work area.
+  const order = placementOrder(j.wWork, j.work).map((a) => {
+    const c = taskbarCut(a, j.shell ?? []);
+    say(taskbarCutLine(a, c.cut));
+    return c.area;
+  });
+  say(`PLACEMENT order ${order.length}: ${order.map(rectText).join(" ")}`);
 }
 
 function tokenOf(): string {
@@ -1188,6 +1233,7 @@ const commands: Record<string, () => Promise<void>> = {
   "redirect-probe": cmdRedirectProbe,
   "server-logs": cmdServerLogs,
   "rect-check": cmdRectCheck,
+  "placement-order": cmdPlacementOrder,
 };
 
 const run = commands[command];

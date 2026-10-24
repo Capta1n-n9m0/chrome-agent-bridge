@@ -27,8 +27,12 @@ import {
   concurrentVerdict,
   followUpVerdict,
   logHits,
+  firstFreePlacement,
+  occluderText,
   overlapArea,
+  placementAttemptLine,
   placementLine,
+  placementOrder,
   placementVerdict,
   R14,
   R14_WRAPPER_SCHEMES,
@@ -39,6 +43,8 @@ import {
   serverLogVerdict,
   sideBySide,
   stopLine,
+  taskbarCut,
+  taskbarCutLine,
   urlClass,
   urlClassLine,
   consoleHits,
@@ -616,6 +622,91 @@ describe("R14-3: the window placement rule", () => {
     expect(overlapArea(odd.w, odd.o)).toBe(0);
     expect(odd.w.left).toBe(-1280);
     expect(odd.o.right).toBe(0);
+  });
+});
+
+describe("R14-3 wave fixer (Return 2, ruling (a)): occluder identity and the placement order", () => {
+  const work = [{ left: 0, top: 0, right: 1920, bottom: 1032 }];
+  const w = { rect: { left: 0, top: 0, right: 1152, bottom: 1032 }, minimized: false, visible: true };
+  const o = { rect: { left: 1152, top: 0, right: 1920, bottom: 1032 }, minimized: false, visible: true };
+
+  it("an occluder is printed as driver:W|E|D|O, else class=<ClassName> process=<name> — never a title", () => {
+    expect(occluderText({ driver: "E" })).toBe("driver:E");
+    expect(occluderText({ driver: "D", cls: "Chrome_WidgetWin_1", process: "chrome" })).toBe("driver:D");
+    expect(occluderText({ cls: "Shell_SecondaryTrayWnd", process: "explorer" })).toBe("class=Shell_SecondaryTrayWnd process=explorer");
+    // a driver name outside the four is not trusted: the window is described by class and process
+    expect(occluderText({ driver: "X" as unknown as "W", cls: "Chrome_WidgetWin_1", process: "chrome" })).toBe("class=Chrome_WidgetWin_1 process=chrome");
+    // nothing that could carry a URL or a title survives: '/', ':' and spaces are replaced, the length is capped
+    expect(occluderText({ cls: "http://x/y z", process: "a b" })).toBe("class=http___x_y_z process=a_b");
+    expect(occluderText({ cls: "A".repeat(100), process: "" }).length).toBe("class=".length + 64 + " process=?".length);
+    expect(occluderText({})).toBe("class=? process=?");
+  });
+
+  it("placementLine adds the occluder identities only when there are some (the 0 line is unchanged)", () => {
+    const base = "W [0,0,1152,1032] minimized=false visible=true · O [1152,0,1920,1032] minimized=false visible=true · work areas [0,0,1920,1032] · occluders above O";
+    expect(placementLine({ w, o, work, occluders: 0, occluderIds: [] })).toBe(`${base} 0`);
+    expect(placementLine({ w, o, work, occluders: 2, occluderIds: [{ driver: "E" }, { cls: "Shell_TrayWnd", process: "explorer" }] })).toBe(
+      `${base} 2 · occluder ids driver:E, class=Shell_TrayWnd process=explorer`,
+    );
+  });
+
+  it("the guard itself is unchanged by the identities: any occluder fails, none passes", () => {
+    expect(placementVerdict({ w, o, work, occluders: 1, occluderIds: [{ driver: "D" }] }).pass).toBe(false);
+    expect(placementVerdict({ w, o, work, occluders: 0, occluderIds: [] }).pass).toBe(true);
+  });
+
+  it("the placement order: W's monitor work area first, then every other one in the order the system lists them", () => {
+    const left = { left: 0, top: 0, right: 1920, bottom: 1080 };
+    const right = { left: 1920, top: 0, right: 3840, bottom: 1080 };
+    const third = { left: -1280, top: 0, right: 0, bottom: 1024 };
+    expect(placementOrder(right, [left, right])).toEqual([right, left]);
+    expect(placementOrder(left, [left, right, third])).toEqual([left, right, third]);
+    expect(placementOrder(third, [left, right, third])).toEqual([third, left, right]);
+    // a duplicate in the system's list is tried once; W's area missing from the list is still tried first
+    expect(placementOrder(right, [left, left, right])).toEqual([right, left]);
+    expect(placementOrder(third, [left])).toEqual([third, left]);
+  });
+
+  it("the choice: the first attempt whose verdict passes; none → -1 (the existing STOP)", () => {
+    const no = { pass: false, why: "1 window(s) above O overlap it (O is covered)" };
+    const yes = { pass: true, why: "free" };
+    expect(firstFreePlacement([no, yes, yes])).toBe(1);
+    expect(firstFreePlacement([yes, no])).toBe(0);
+    expect(firstFreePlacement([no, no])).toBe(-1);
+    expect(firstFreePlacement([])).toBe(-1);
+  });
+
+  it("round 2 (F1): a try's area is the work area with its bottom cut to the top of any shell taskbar intersecting it", () => {
+    const left = { left: 0, top: 0, right: 1920, bottom: 1080 };
+    const right = { left: 1920, top: 0, right: 3840, bottom: 1080 };
+    // the measured auto-hidden strips (S1-wave-verifier F1): 2 px inside each monitor
+    const trays = [
+      { cls: "Shell_TrayWnd", rect: { left: 0, top: 1078, right: 1920, bottom: 1126 } },
+      { cls: "Shell_SecondaryTrayWnd", rect: { left: 1920, top: 1078, right: 3840, bottom: 1126 } },
+    ];
+    expect(taskbarCut(right, trays)).toEqual({ area: { ...right, bottom: 1078 }, cut: { y: 1078, cls: "Shell_SecondaryTrayWnd" } });
+    expect(taskbarCut(left, trays)).toEqual({ area: { ...left, bottom: 1078 }, cut: { y: 1078, cls: "Shell_TrayWnd" } });
+    expect(taskbarCutLine(right, taskbarCut(right, trays).cut)).toBe("PLACEMENT work area [1920,0,3840,1080] cut to y=1078 by taskbar class=Shell_SecondaryTrayWnd");
+    expect(taskbarCutLine(right, null)).toBe("PLACEMENT work area [1920,0,3840,1080] not cut (no shell taskbar intersects it)");
+    // a docked (not hidden) taskbar lies outside the work area: no cut, no margin
+    expect(taskbarCut({ ...left, bottom: 1032 }, [{ cls: "Shell_TrayWnd", rect: { left: 0, top: 1032, right: 1920, bottom: 1080 } }]).cut).toBeNull();
+    // only the two shell classes cut; any other window is left to the guard (still an occluder)
+    expect(taskbarCut(right, [{ cls: "Chrome_WidgetWin_1", rect: { left: 1920, top: 1000, right: 3840, bottom: 1080 } }]).cut).toBeNull();
+    // the highest top among intersecting taskbars wins
+    expect(taskbarCut(right, [trays[1], { cls: "Shell_TrayWnd", rect: { left: 3000, top: 1040, right: 3840, bottom: 1080 } }]).cut).toEqual({ y: 1040, cls: "Shell_TrayWnd" });
+    // the cut area is still inside the (uncut) work area, so the guard's work-area clause is unchanged
+    const s = sideBySide(taskbarCut(right, trays).area);
+    expect(placementVerdict({ w: { rect: s.w, minimized: false, visible: true }, o: { rect: s.o, minimized: false, visible: true }, work: [left, right], occluders: 0 }).pass).toBe(true);
+    expect(overlapArea(s.o, trays[1].rect)).toBe(0);
+  });
+
+  it("each attempt prints one line: its number, the work area, free or not and why", () => {
+    expect(placementAttemptLine(1, { left: 1920, top: 0, right: 3840, bottom: 1080 }, { pass: false, why: "1 window(s) above O overlap it (O is covered)" })).toBe(
+      "PLACEMENT attempt 1 on work area [1920,0,3840,1080]: not free — 1 window(s) above O overlap it (O is covered)",
+    );
+    expect(placementAttemptLine(2, { left: 0, top: 0, right: 1920, bottom: 1080 }, { pass: true, why: "ok" })).toBe(
+      "PLACEMENT attempt 2 on work area [0,0,1920,1080]: free — ok",
+    );
   });
 });
 

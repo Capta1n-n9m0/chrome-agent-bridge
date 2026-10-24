@@ -40,6 +40,9 @@
 #   Set-S9SideBySide / Test-S9Placement (R14-3), Wait-S9OptionsStatus (R14-3), Invoke-S9PressWhenReady -BannerOut
 #   -BannerForMs -BannerPollMs (R14-4b); Read-S9StoredState proves the old page gone; STATE prints a non-empty
 #   list's sha256 as withheld(non-empty).
+#   S1 wave fixer (Return 2, 2026-10-25): Get-S9OccluderIds (each occluder of O as driver:W|E|D|O or class + process,
+#   never a title), Find-S9FreePlacement (W's monitor work area, then each other monitor's, first free kept),
+#   Set-S9SideBySide -Area (and E, D moved inside W's rect), Test-S9Placement -Attempt -Area.
 #   Invoke-S9OptionsButton <hwnd> -Id <html id>
 #   Invoke-S9PressWhenReady <hwnd> -Row <r> -DelayMs <ms> [-Via Button|Shortcut] [-WatchBanner] [-RearmAfterMs <ms>]
 #   Invoke-S9WhenReady -Row <r> -DelayMs <ms> -Action { ... }
@@ -123,17 +126,36 @@ public static class S9Geo {
   // R14-3's occluder rule (prep fixer r1, S1-prep-verifier F5): top-level windows ABOVE target in the z-order
   // (GetWindow GW_HWNDPREV, walked to the top) that are visible, not minimized, not DWM-cloaked, not see-through
   // (above), with a non-empty rect intersecting target's with a positive area (touching edges do not count).
-  public static int Occluders(IntPtr target) {
-    RECT t = Rect(target); int n = 0; IntPtr h = GetWindow(target, 3);
+  public static int Occluders(IntPtr target) { return OccluderList(target).Length; }
+  // S1 wave fixer round 2 (S1-wave-verifier F1): every top-level shell taskbar window (Shell_TrayWnd,
+  // Shell_SecondaryTrayWnd) and its rect, visible or not - recipes/s9-rules.ts taskbarCut decides which one cuts.
+  public delegate bool WndEnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(WndEnumProc f, IntPtr l);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int n);
+  public static string[] ShellTrays() {
+    var list = new List<string>();
+    WndEnumProc f = (IntPtr h, IntPtr l) => {
+      var sb = new System.Text.StringBuilder(256); GetClassName(h, sb, 256); string c = sb.ToString();
+      if (c == "Shell_TrayWnd" || c == "Shell_SecondaryTrayWnd") { RECT r = Rect(h); list.Add(c + " " + r.Left + " " + r.Top + " " + r.Right + " " + r.Bottom); }
+      return true;
+    };
+    EnumWindows(f, IntPtr.Zero);
+    GC.KeepAlive(f);
+    return list.ToArray();
+  }
+  // S1 wave fixer (Return 2, ruling (a)): the same walk, returning the handles it counts (s9-win.ps1
+  // Get-S9OccluderIds names each as a driver window or by class + process - never by title).
+  public static IntPtr[] OccluderList(IntPtr target) {
+    RECT t = Rect(target); var list = new List<IntPtr>(); IntPtr h = GetWindow(target, 3);
     while (h != IntPtr.Zero) {
       if (IsWindowVisible(h) && !IsIconic(h) && !Cloaked(h) && !SeeThrough(h)) {
         RECT r = Rect(h);
         bool empty = !(r.Right > r.Left && r.Bottom > r.Top);
-        if (!empty && Math.Min(r.Right, t.Right) > Math.Max(r.Left, t.Left) && Math.Min(r.Bottom, t.Bottom) > Math.Max(r.Top, t.Top)) n++;
+        if (!empty && Math.Min(r.Right, t.Right) > Math.Max(r.Left, t.Left) && Math.Min(r.Bottom, t.Bottom) > Math.Max(r.Top, t.Top)) list.Add(h);
       }
       h = GetWindow(h, 3);
     }
-    return n;
+    return list.ToArray();
   }
 }
 '@
@@ -836,30 +858,94 @@ function Get-S9WinPlace([long]$Hwnd) {
 # R14-3: W the left 60 % and O the right 40 % of W's monitor work area (recipes/s9-rules.ts sideBySide, the same
 # split), both restored first (not maximized or minimized), then O and W brought to the front in that order, so O is
 # second in the z-order, above every other window it might overlap. Moves the driver's own windows only.
-function Set-S9SideBySide([long]$W, [long]$O) {
+#
+# S1 wave fixer (Return 2, ruling (a)): -Area places them on a given work area (an attempt of Find-S9FreePlacement;
+# default W's monitor work area, as before). The other driver windows E and D are moved INSIDE W's new rect first
+# (restored, same rect as W), so they cannot overlap O whatever their z-order; O then W are brought to the front after.
+function Set-S9SideBySide([long]$W, [long]$O, $Area = $null) {
   foreach ($h in @($W, $O)) { if (-not (Test-S9Live $h)) { throw "window $h is not taken as the driver's - nothing moved" } }
-  $a = [S9Geo]::WorkOf([IntPtr]$W)
+  $a = if ($null -ne $Area) { $Area } else { [S9Geo]::WorkOf([IntPtr]$W) }
   $split = $a.Left + [Math]::Floor((($a.Right - $a.Left) * 3) / 5)
   foreach ($h in @($W, $O)) { [void][S9Win]::ShowWindow([IntPtr]$h, 9) }
   Start-Sleep -Milliseconds 300
   [void][S9Geo]::MoveWindow([IntPtr]$W, $a.Left, $a.Top, $split - $a.Left, $a.Bottom - $a.Top, $true)
+  foreach ($n in 'E', 'D') {
+    $h = Get-Variable -Scope Global -Name $n -ValueOnly -ErrorAction SilentlyContinue
+    if ($h -and (Test-S9Live $h)) {
+      [void][S9Win]::ShowWindow([IntPtr][long]$h, 9)
+      [void][S9Geo]::MoveWindow([IntPtr][long]$h, $a.Left, $a.Top, $split - $a.Left, $a.Bottom - $a.Top, $true)
+      Say9 "MOVED driver window $n inside W's rect [$($a.Left),$($a.Top),$split,$($a.Bottom)] (off O's rect)"
+    }
+  }
   [void][S9Geo]::MoveWindow([IntPtr]$O, $split, $a.Top, $a.Right - $split, $a.Bottom - $a.Top, $true)
   Start-Sleep -Milliseconds 500
   [void](Set-S9Foreground $O); [void](Set-S9Foreground $W)
   Say9 "PLACED W left and O right on W's monitor work area [$($a.Left),$($a.Top),$($a.Right),$($a.Bottom)] (split at x=$split); O then W brought to the front"
 }
 
+# S1 wave fixer (Return 2, ruling (a)): each window S9Geo.OccluderList counts above $O, named as a driver window
+# (driver = W|E|D|O, by handle) or by its class name and owning process name. Never a title. recipes/s9-rules.ts
+# occluderText formats it (and strips anything that could carry a URL).
+function Get-S9OccluderIds([long]$O) {
+  $drivers = @{}
+  foreach ($n in 'W', 'E', 'D', 'O') { $h = Get-Variable -Scope Global -Name $n -ValueOnly -ErrorAction SilentlyContinue; if ($h) { $drivers[[string][long]$h] = $n } }
+  @([S9Geo]::OccluderList([IntPtr]$O) | ForEach-Object {
+      $k = [string][long]$_
+      if ($drivers.ContainsKey($k)) { [pscustomobject]@{ driver = $drivers[$k] } }
+      else {
+        $wpid = [uint32]0; [void][S9Win]::GetWindowThreadProcessId($_, [ref]$wpid)
+        $pn = (Get-Process -Id ([int]$wpid) -ErrorAction SilentlyContinue).ProcessName
+        [pscustomobject]@{ cls = [S9Win]::Cls($_); process = "$pn" }
+      }
+    })
+}
+
+# S1 wave fixer (Return 2, ruling (a)): R14-3's placement, tried in the order fixed before attempt 3 - W's monitor work
+# area, then each other monitor's work area in the order the system lists them (s9.ts placement-order). Each attempt
+# places W and O side by side there (Set-S9SideBySide -Area) and judges it (Test-S9Placement -Attempt: a
+# `PLACEMENT attempt <n> …` line, no CHECK); the first free one is kept. $true = one is free (the caller's guard then
+# re-checks it, unchanged); $false = none free (the caller's existing STOP).
+function Find-S9FreePlacement([long]$W, [long]$O) {
+  $wa = [S9Geo]::WorkOf([IntPtr]$W)
+  $rect = { param($r) [pscustomobject]@{ left = $r.Left; top = $r.Top; right = $r.Right; bottom = $r.Bottom } }
+  # Round 2 (S1-wave-verifier F1): the shell taskbars go with it; s9.ts cuts each area above any that intersects it.
+  $shell = @([S9Geo]::ShellTrays() | ForEach-Object { $x = "$_".Split(' '); [pscustomobject]@{ cls = $x[0]; rect = [pscustomobject]@{ left = [int]$x[1]; top = [int]$x[2]; right = [int]$x[3]; bottom = [int]$x[4] } } })
+  $j = [pscustomobject]@{ wWork = (& $rect $wa); work = @([S9Geo]::WorkAreas() | ForEach-Object { & $rect $_ }); shell = $shell }
+  $f = Join-Path $env:S9_OUT 'r14-placement-order.json'
+  [IO.File]::WriteAllText($f, ($j | ConvertTo-Json -Depth 5 -Compress), (New-Object Text.UTF8Encoding $false))
+  Push-Location $S9Repo
+  try { $out = @(node --import tsx recipes/s9.ts placement-order --file $f); $code = $LASTEXITCODE } finally { Pop-Location }
+  foreach ($l in $out) { Write-Host $l }; Write-S9Raw $out
+  $line = @($out | Where-Object { "$_" -match 'PLACEMENT order \d+:' }) | Select-Object -Last 1
+  if ($code -ne 0 -or -not $line) { Say9 'PLACEMENT order not computed - no placement tried'; return $false }
+  $areas = @([regex]::Matches(($line -replace '^.*PLACEMENT order \d+:', ''), '\[(-?\d+),(-?\d+),(-?\d+),(-?\d+)\]') | ForEach-Object {
+      [pscustomobject]@{ Left = [int]$_.Groups[1].Value; Top = [int]$_.Groups[2].Value; Right = [int]$_.Groups[3].Value; Bottom = [int]$_.Groups[4].Value } })
+  $n = 0
+  foreach ($a in $areas) {
+    $n++
+    Set-S9SideBySide $W $O -Area $a
+    if (Test-S9Placement $W $O "placement-attempt-$n" -Attempt $n -Area $a) { Say9 "PLACEMENT chosen: attempt $n of $($areas.Count)"; return $true }
+  }
+  Say9 "PLACEMENT none of the $($areas.Count) work areas is free"
+  $false
+}
+
 # R14-3's guard: both rects, the minimized/visible flags, every monitor's work area and a count of windows above O
 # that overlap it (S9Geo.Occluders; 0 needed since prep fixer r1, F5) go to $env:S9_OUT\r14-placement.json; `s9.ts rect-check` judges them (placementVerdict).
 # Returns $true on PASS. A FAIL is the caller's STOP (the row would not measure what it names).
-function Test-S9Placement([long]$W, [long]$O, [string]$Step = 'placement') {
+# S1 wave fixer (Return 2, ruling (a)): the JSON also carries `occluderIds` (Get-S9OccluderIds, printed after the count
+# only when there are some); -Attempt <n> -Area <rect> makes it one try of Find-S9FreePlacement (a record line, no CHECK).
+function Test-S9Placement([long]$W, [long]$O, [string]$Step = 'placement', [int]$Attempt = 0, $Area = $null) {
   $work = @([S9Geo]::WorkAreas() | ForEach-Object { [pscustomobject]@{ left = $_.Left; top = $_.Top; right = $_.Right; bottom = $_.Bottom } })
-  $p = [pscustomobject]@{ w = (Get-S9WinPlace $W); o = (Get-S9WinPlace $O); work = $work; occluders = [S9Geo]::Occluders([IntPtr]$O) }
+  $ids = @(Get-S9OccluderIds $O)
+  $p = [pscustomobject]@{ w = (Get-S9WinPlace $W); o = (Get-S9WinPlace $O); work = $work; occluders = $ids.Count; occluderIds = $ids }
+  if ($Attempt -gt 0) { $p | Add-Member -NotePropertyName area -NotePropertyValue ([pscustomobject]@{ left = $Area.Left; top = $Area.Top; right = $Area.Right; bottom = $Area.Bottom }) }
   $f = Join-Path $env:S9_OUT 'r14-placement.json'
   [IO.File]::WriteAllText($f, ($p | ConvertTo-Json -Depth 5 -Compress), (New-Object Text.UTF8Encoding $false))
   Push-Location $S9Repo
   try {
-    $out = @(node --import tsx recipes/s9.ts rect-check --file $f --row R14-3 --step $Step)
+    $extra = if ($Attempt -gt 0) { @('--attempt', "$Attempt") } else { @() }
+    $out = @(node --import tsx recipes/s9.ts rect-check --file $f --row R14-3 --step $Step @extra)
     $code = $LASTEXITCODE
     foreach ($l in $out) { Write-Host $l }; Write-S9Raw $out
     $code -eq 0

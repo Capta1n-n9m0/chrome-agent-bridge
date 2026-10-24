@@ -734,6 +734,32 @@ export interface Placement {
    * click-through (WS_EX_LAYERED + WS_EX_TRANSPARENT) or fully transparent (LWA_ALPHA with alpha 0). -1 = not measured.
    */
   occluders: number;
+  /**
+   * S1 wave fixer (Return 2, ruling (a)): who each counted occluder is — a driver window by its letter, else the
+   * window's class name and process name. Never a title. Absent on Run 14 attempt 2's JSON.
+   */
+  occluderIds?: OccluderId[];
+}
+
+/** One occluder as s9-win.ps1 `Get-S9OccluderIds` describes it: a driver window, or class + process. */
+export interface OccluderId {
+  driver?: "W" | "E" | "D" | "O";
+  cls?: string;
+  process?: string;
+}
+
+const DRIVER_LETTERS = new Set(["W", "E", "D", "O"]);
+
+/** A class or process name as printed: only [A-Za-z0-9_.#+-] kept (others → `_`), at most 64 chars, empty → `?`. */
+function idPart(s: string | undefined): string {
+  const t = String(s ?? "").replace(/[^A-Za-z0-9_.#+-]/g, "_").slice(0, 64);
+  return t === "" ? "?" : t;
+}
+
+/** `driver:W|E|D|O`, else `class=<ClassName> process=<name>` (S1 wave fixer, ruling (a)). */
+export function occluderText(o: OccluderId): string {
+  if (o.driver !== undefined && DRIVER_LETTERS.has(o.driver)) return `driver:${o.driver}`;
+  return `class=${idPart(o.cls)} process=${idPart(o.process)}`;
 }
 
 function rectEmpty(r: Rect): boolean {
@@ -786,7 +812,61 @@ export function placementVerdict(p: Placement): Judged {
 export function placementLine(p: Placement): string {
   const one = (x: WinPlace): string => `${rectText(x.rect)} minimized=${x.minimized} visible=${x.visible}`;
   const occ = typeof p.occluders === "number" ? String(p.occluders) : "not measured";
-  return `W ${one(p.w)} · O ${one(p.o)} · work areas ${p.work.map(rectText).join(" ")} · occluders above O ${occ}`;
+  const ids = Array.isArray(p.occluderIds) && p.occluderIds.length ? ` · occluder ids ${p.occluderIds.map(occluderText).join(", ")}` : "";
+  return `W ${one(p.w)} · O ${one(p.o)} · work areas ${p.work.map(rectText).join(" ")} · occluders above O ${occ}${ids}`;
+}
+
+function sameRect(a: Rect, b: Rect): boolean {
+  return a.left === b.left && a.top === b.top && a.right === b.right && a.bottom === b.bottom;
+}
+
+/**
+ * S1 wave fixer (Return 2, ruling (a)): the work areas R14-3 tries, in a fixed order chosen before the next attempt —
+ * W's monitor work area first, then every other monitor's work area in the order the system lists them
+ * (`EnumDisplayMonitors`), each once.
+ */
+export function placementOrder(wWork: Rect, all: Rect[]): Rect[] {
+  const out: Rect[] = [wWork];
+  for (const a of all) if (!out.some((x) => sameRect(x, a))) out.push(a);
+  return out;
+}
+
+/** The first attempt whose `placementVerdict` passed (zero occluders and every other clause), or -1: none (STOP). */
+export function firstFreePlacement(verdicts: Judged[]): number {
+  return verdicts.findIndex((v) => v.pass);
+}
+
+/** The shell's taskbar window classes (primary and secondary monitors). */
+export const TASKBAR_CLASSES: readonly string[] = ["Shell_TrayWnd", "Shell_SecondaryTrayWnd"];
+
+export interface ShellWindow {
+  cls: string;
+  rect: Rect;
+}
+
+/**
+ * S1 wave fixer round 2 (S1-wave-verifier F1, the step agent's ruling): a try's area is the work area with its bottom
+ * cut to the top of any shell taskbar window (TASKBAR_CLASSES) whose rect intersects it with a positive area — an
+ * auto-hidden taskbar's visible strip included. A fixed rule, no margin. Several → the highest top. Every other window
+ * is left to the guard, which is unchanged (it still counts the taskbar if O overlaps it).
+ */
+export function taskbarCut(area: Rect, shell: ShellWindow[]): { area: Rect; cut: { y: number; cls: string } | null } {
+  let cut: { y: number; cls: string } | null = null;
+  for (const s of shell) {
+    if (!TASKBAR_CLASSES.includes(s.cls) || overlapArea(area, s.rect) <= 0) continue;
+    if (s.rect.top < area.bottom && (cut === null || s.rect.top < cut.y)) cut = { y: s.rect.top, cls: s.cls };
+  }
+  return { area: cut ? { ...area, bottom: cut.y } : { ...area }, cut };
+}
+
+export function taskbarCutLine(area: Rect, cut: { y: number; cls: string } | null): string {
+  return cut
+    ? `PLACEMENT work area ${rectText(area)} cut to y=${cut.y} by taskbar class=${cut.cls}`
+    : `PLACEMENT work area ${rectText(area)} not cut (no shell taskbar intersects it)`;
+}
+
+export function placementAttemptLine(n: number, area: Rect, v: Judged): string {
+  return `PLACEMENT attempt ${n} on work area ${rectText(area)}: ${v.pass ? "free" : "not free"} — ${v.why}`;
 }
 
 /** Where s9-win.ps1 puts W and O: W the left 60 % of W's monitor work area, O the right 40 %, touching, no overlap. */

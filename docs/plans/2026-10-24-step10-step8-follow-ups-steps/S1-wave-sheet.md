@@ -85,6 +85,55 @@ the PIDs and window handles for the ledger's "Live PIDs" section.
 Which rows need the pinned toolbar button: R14-3 (the re-arm click) and R14-4b (the disarm and the re-arm). No row uses
 `Alt+Shift+K`. Every other change goes through the options page O (UIA patterns, no mouse).
 
+### Resume after Return 2 (attempt 3)
+
+*Added 2026-10-25 by the S1 wave fixer (`S1-wave-fixer.md`), applying the step agent's rulings on Return 2
+(`S1.ledger.md`). Nothing ran against Chrome to write it.* Attempt 2 stopped at block 9's placement guard with the
+safety state never changed. Attempt 3 does **not** re-run R14-REL-3 or R14-POP-1 (recorded in attempt 2; a failed row
+is never re-run). The first call archives attempt 2's state and starts the resume; it refuses (exit 3, nothing
+archived) unless the stored state is attempt 2's — stopped at r3, done exactly preflight … pop1, not itself a resume.
+*Round 2 (2026-10-25, wave verifier F2):* only this exact call is accepted (`-Attempt 3`, both names); anything else
+prints `USAGE: …` (never `STOP:`), exits 3 and changes nothing:
+
+```powershell
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\s9-r14.ps1 -Block reset -Attempt 3 -Skip rel3,pop1
+"exit $LASTEXITCODE"
+```
+
+It prints `RESUME attempt 3: rel3, pop1 recorded in attempt 2, not re-run` and `RESUME attempt 3: blocks preflight,
+servers, window, setup, safe0, found, r3, type, ctl, 5c, restore, logs, teardown; daemon.log mark
+2026-10-24T21:14:17.041Z (the WaveStart stored in …)` (attempt 2's wave mark, kept for R14-LOGS). If attempt 2's mark is
+no longer stored (its globals file and every archive gone), the reset refuses; pass `-LogMark 2026-10-24T21:14:17.041Z`
+(the record's attempt-2 line `wave start 2026-10-24T21:14:17.041Z`) and the line says so; `-LogMark` while the mark is
+stored is a `USAGE:` refusal. Then, one call each, exactly
+as in §0, in this order:
+
+`-Block preflight -Prep 5f17d54` · `-Block servers` · `-Block window` · `-Block setup` · `-Block safe0` (framing:
+re-proves the build) · `-Block found` (framing: re-records the found state) · `-Block r3` · `-Block type` (its one
+pre-registered re-run as in the table) · `-Block ctl` · `-Block 5c` · `-Block restore` · `-Block logs` ·
+`-Block teardown`.
+
+- `-Block rel3` and `-Block pop1` answer `NOT RUN: block … is skipped in this resume …` (exit 3); every other block
+  keeps the order check against the order above (out of order → `NOT RUN … needs block … first`, exit 3). `-Attempt`,
+  `-Skip` and `-LogMark` on any block but `reset` → `NOT RUN` (exit 3).
+- Block r3 prints the RESUME line again, then the placement tries (ruling (a)): one line per work area,
+  `PLACEMENT work area […] cut to y=<n> by taskbar class=<class>` or `… not cut (no shell taskbar intersects it)`
+  (round 2, verifier F1: the bottom cut to the top of any shell taskbar intersecting it, an auto-hidden strip
+  included; on this desk both monitors' auto-hidden taskbars cut at y=1078), then `PLACEMENT order <m>: […] …` (the
+  areas as tried: W's monitor first, then the others in the system's order); per try `MOVED driver window E|D inside W's rect …`,
+  `PLACED …`, `ROW R14-3 placement-attempt-<n> …` and `PLACEMENT attempt <n> on work area […]: free|not free — …`
+  (records); then `PLACEMENT chosen: attempt <n> of <m>` and the unchanged guard (`ROW R14-3 placement-before-switch
+  …` + `CHECK …`). No try free → `PLACEMENT none of the <m> work areas is free` and the same `STOP: R14-3 placement
+  guard …` → RETURN. A non-zero occluder count is printed with each occluder named `driver:W|E|D|O` or
+  `class=<ClassName> process=<name>` — never a title.
+- Block logs (ruling (d)) counts `daemon.log` from attempt 2's mark (both attempts) and prints `R14-LOGS daemon.log
+  counted from 2026-10-24T21:14:17.041Z (attempt 2's wave mark: …) - attempts 2 and 3` and `R14-LOGS attempt 2's worker
+  console was not captured (its window D closed with attempt 2's stop procedure) - a recorded deviation; …`.
+- The record: attempt 3's lines go into `S1-run-record.md` under a new heading `## Attempt 3 (runner 3) — resume after
+  Return 2`, from its SAFE-0 line on; attempt 2's lines (R14-REL-3 PASS, R14-POP-1 FAIL) stand as recorded. The
+  preflight still needs a clean tracked tree: the step agent commits this fix and its bookkeeping first.
+
 ## PIDs and handles to track (the ledger's "Live PIDs")
 
 daemon (block 4, `-Block status` `S14Pids daemon=`), http8080 / http8081 / redirect8083 (block 2), driver windows W, E,

@@ -24,6 +24,10 @@ observation of the next row, and never past a STOP line.**
 return. For a STOP outside a block, run `-Block stop -Why "<what>"` first. Never resolve a STOP yourself — not a helper
 bug, not an "obvious" fix, not a re-read (Run 13's runner did, four times, and the run failed on process: #192, #193).
 
+**Attempt 3 (resume after Return 2; added 2026-10-25 by the S1 wave fixer):** follow the wave sheet's subsection
+"Resume after Return 2 (attempt 3)" instead of the table's full order — the first call is `-Block reset -Attempt 3
+-Skip rel3,pop1`; R14-REL-3 and R14-POP-1 are not re-run (recorded in attempt 2); every STOP is still a return.
+
 ## Grant and limits (decisions.md #33 standing grant of fixture waves; phase doc "Human gates")
 
 You drive the user's REAL Chrome profile on fixture pages only: windows YOU open (W, E, D, O), the toolbar button
