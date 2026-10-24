@@ -54,3 +54,15 @@ tool is added. **By:** Claude
 Nothing running. The verifier re-checks findings 1–7 (and 9, 11). Still unmeasured live: every UIA assumption the
 builder listed, plus two new ones — that `about:blank` typed into O's omnibox reads back as `about:blank` through the
 RootWebArea value (`Set-S9Omnibox`'s wait), and that the extensions card exposes `enableToggle` with a Toggle pattern.
+
+## Round 2 (2026-10-24; S4-prep-verifier.md "Round 2", PASS-with-notes)
+
+| # | Sev | Outcome | Where |
+|---|---|---|---|
+| R2-1 | MINOR | **fixed** | `recipes/s9-win.ps1`: `Wait-S9NewWindow` (the one path through which `Open-S9Window`, `Open-S9ChromePage` and `Open-S9WorkerConsole` obtain a handle) records each new driver window's owning pid in `$global:S9WinIds` at open time. `Test-S9Live` now requires `IsWindow` **and** a recorded handle, class `Chrome_WidgetWin_1`, an owner process named `chrome` whose pid equals the recorded one, and a title `Format-S9Title` recognises as the wave's own; otherwise it prints `window <h> is alive but not taken as the driver's (<why>) - not touched` and returns `$false`, so the restore neither closes nor types into it (a driver window left open then fails the window-count check → STOP). Wave sheet stop rule says so. |
+| R2-2 | NIT | **fixed** | New `Get-BridgeClients` (node processes running `mcp/dist/index.js`: count + PIDs). Wave sheet block 1 records it (with no daemon there is no connected client; `0` expected; non-zero → STOP before block 2, since another session's MCP would join the wave's daemon within 5 s). Block 5, after `S9 setup`: `S9 wait-alone --row CLIENTS-START --timeout 3000` (expect `clients=1`), so a foreign client is caught before any toggle rather than at block 32. |
+
+Checks: `s9-win.ps1` parses (0 errors, UTF-8 BOM kept); offline: `Test-S9Live 0` → False, `Test-S9Live <the
+foreground window, not recorded>` → False with the "not recorded at open time" line, `Get-BridgeClients` → 0 (no
+window touched). `npx tsc --noEmit -p recipes/tsconfig.s9.json` → exit 0. `npm test` → 116 files, 2720 tests passed
+(unchanged: no pure rule changed).

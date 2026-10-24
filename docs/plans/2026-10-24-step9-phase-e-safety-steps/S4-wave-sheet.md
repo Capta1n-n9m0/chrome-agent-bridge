@@ -31,7 +31,9 @@ Chrome disarmed, JavaScript off or a pattern blocked):
    (armed, JavaScript on, the block list empty — the found state block 8's guard verified) **and its read-back**
    (a fresh options page, i.e. the stored state; `daemon.status` through `s9.ts wait-safety`; the toolbar title),
    then the pin state found at block 9, W's keyboard layout recorded at block 4 (`$L0`), and the driver windows
-   (D, O, E, W closed; the window count back to `$WinStart`). Before block 8 has run, or when block 8's guard
+   (D, O, E, W closed — each only if `Test-S9Live` still takes it as the driver's: same class, a chrome.exe owner whose
+   pid matches the one recorded at open time, a title of the wave's own; prep fixer r2; the window count back to
+   `$WinStart`). Before block 8 has run, or when block 8's guard
    stopped the wave, it leaves the safety state untouched (nothing was toggled) and restores only the desk;
 3. the rest of block 43 as far as it runs (actors ended, `S9 cleanup`, `S9 daemon-shutdown`, servers stopped);
 4. `$ok` is `$false` → **STOP that escalates** (G9-1; integrity floor: "a safety state left different from the one
@@ -86,7 +88,10 @@ block number. Record UTC times as printed.
    not ours), `Get-BridgeDaemon` (none), `Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Select ProcessId,
    ParentProcessId` (record; the Codex `host-daemon.mjs` PID 22152 is not ours), `$WinStart =
    (Get-S9ChromeWindows).Count`, `$S9ChromeStart = Get-S9ChromeStart` (record both: Restore-S9All reads them),
-   `Get-S9KeyboardLayouts`. Record: "the extension in Chrome runs a pre-Step-9 build (S4 ledger); it has
+   `Get-S9KeyboardLayouts`. **Bridge clients** (prep fixer r2, R2-2): with no daemon there is no connected client;
+   `Get-BridgeClients` → `bridge MCP processes: 0` expected (record). A non-zero count (another session's bridge MCP,
+   which would join the wave's daemon within 5 s and keep `wait-alone` at block 32 from reaching 1): STOP before
+   block 2; the step agent asks the user to end that session. Record: "the extension in Chrome runs a pre-Step-9 build (S4 ledger); it has
    no safety state to read; absent keys parse as armed / JS on / empty list (#171)".
 2. **Build.** `npm run build` (exit 0) then `git status --short` (no tracked file changed). `npx tsc --noEmit -p
    recipes/tsconfig.s9.json` (exit 0).
@@ -100,7 +105,9 @@ block number. Record UTC times as printed.
 4. **Driver window W.** `$W = Open-S9Window 'http://localhost:8080/e2e-playground.html?s9=w'`; `$L0 = Get-S9Layout
    $W` (record; the layout Restore-S9All puts back). From here on, the stop rule above applies.
 5. **Tabs and daemon.** `S9 setup` (the first client spawns the daemon on 9234: `Get-BridgeDaemon` → record its PID
-   `$D9`). Expect `driver tab w = <T#w> (current), title set to "S9 W human tab"` and four `opened …` lines.
+   `$D9`). Expect `driver tab w = <T#w> (current), title set to "S9 W human tab"` and four `opened …` lines. Then
+   `S9 wait-alone --row CLIENTS-START --timeout 3000` (expect `wait-alone reached clients=1`: the daemon has no
+   client but the probe; exit 2 = a foreign client, a helper throw → the stop rule).
 6. **Per-call cost before.** `S9 perf --label before` (SAFE-PERF, on the pre-Step-9 extension).
 
 ## The reload and the first two lines (S4.2)

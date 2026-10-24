@@ -39,7 +39,7 @@
 #   Invoke-S9PressWhenReady <hwnd> -Row <r> -DelayMs <ms> [-Via Button|Shortcut] [-WatchBanner] [-RearmAfterMs <ms>]
 #   Invoke-S9WhenReady -Row <r> -DelayMs <ms> -Action { ... }
 #   Test-S9Banner <hwnd> / Select-S9Tab <hwnd> -TitlePrefix <p> / Close-S9Tab <hwnd> -TitlePrefix <p>
-#   Get-BridgeDaemon / Get-BridgeLog / Get-DriverChain / Get-ProcTree / Test-SafeToKill   (section 1 item 8, copied)
+#   Get-BridgeClients (bridge MCP processes, count + PIDs) / Get-BridgeDaemon / Get-BridgeLog / Get-DriverChain / Get-ProcTree / Test-SafeToKill   (section 1 item 8, copied)
 #
 # Signals: s9.ts writes $env:S9_OUT\<row>.ready; Invoke-S9PressWhenReady writes $env:S9_OUT\<row>.pressed (ISO time
 # of the press) - the default $env:S9_OUT is %TEMP%\bridge-e2e\s9, the same as s9.ts's.
@@ -127,7 +127,13 @@ function Wait-S9NewWindow($before, [int]$TimeoutSec = 15, [string]$TitleLike = '
     $new = @(Get-S9ChromeWindows | Where-Object { $before -notcontains $_ } | Where-Object { -not $TitleLike -or ([S9Win]::Text([IntPtr]$_) -like $TitleLike) })
   } until ($new.Count -ge 1 -or ((Get-Date) - $t0).TotalSeconds -gt $TimeoutSec)
   if ($new.Count -ne 1) { throw "expected exactly 1 new Chrome window, found $($new.Count) - not knowing which is mine, none is touched" }
-  [long]$new[0]
+  $h = [long]$new[0]
+  # Prep fixer r2 (R2-1): the driver's windows are recorded with their owning pid at open time; Test-S9Live acts only
+  # on a handle that still matches (a reused handle is never closed or typed into).
+  $wpid = [uint32]0; [void][S9Win]::GetWindowThreadProcessId([IntPtr]$h, [ref]$wpid)
+  if (-not $global:S9WinIds) { $global:S9WinIds = @{} }
+  $global:S9WinIds[[string]$h] = [int]$wpid
+  $h
 }
 
 function Open-S9Window([string]$Url) {
@@ -646,7 +652,26 @@ function Get-S9ChromeStart {
   if ($p.Count) { $p[0].StartTime.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffZ') } else { '' }
 }
 
-function Test-S9Live($h) { $h -and [S9Win]::IsWindow([IntPtr][long]$h) }
+# A driver window still alive AND still the driver's (prep fixer r2, S4-prep-verifier R2-1): IsWindow, class
+# Chrome_WidgetWin_1, owned by a running chrome.exe whose pid equals the one Wait-S9NewWindow recorded for this
+# handle at open time, and a title Format-S9Title recognises as the wave's own. Anything else counts as gone: the
+# restore never closes or types into it (a window it should have closed then shows up as a count mismatch -> STOP).
+function Test-S9Live($h) {
+  if (-not $h) { return $false }
+  $ip = [IntPtr][long]$h
+  if (-not [S9Win]::IsWindow($ip)) { return $false }
+  $why = ''
+  $want = if ($global:S9WinIds) { $global:S9WinIds[[string][long]$h] } else { $null }
+  $wpid = [uint32]0; [void][S9Win]::GetWindowThreadProcessId($ip, [ref]$wpid)
+  $proc = Get-Process -Id ([int]$wpid) -ErrorAction SilentlyContinue
+  if ($null -eq $want) { $why = 'not recorded at open time' }
+  elseif ([S9Win]::Cls($ip) -ne 'Chrome_WidgetWin_1') { $why = 'class changed' }
+  elseif (-not $proc -or $proc.ProcessName -ne 'chrome') { $why = 'not owned by chrome.exe' }
+  elseif ([int]$wpid -ne $want) { $why = "owner pid $wpid, recorded $want" }
+  elseif ((Format-S9Title ([S9Win]::Text($ip))) -eq '<other window>') { $why = 'title not one of the wave''s own' }
+  if ($why) { Say9 "window $h is alive but not taken as the driver's ($why) - not touched"; return $false }
+  $true
+}
 
 # Armed, JavaScript on, empty list - the found state block 8's guard verified ($global:S9Found.Default); read back
 # from a fresh options page (stored), from daemon.status, and from the toolbar title.
@@ -722,6 +747,13 @@ function Restore-S9All([string]$Why = 'stop') {
 $log = "$HOME\.chrome-agent-bridge\daemon.log"
 function Get-BridgeLog([int]$n = 10) { Get-Content $log -Tail $n -Encoding UTF8 }
 function Get-BridgeDaemon { Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match 'daemon[\\/]dist[\\/]index\.js' } | Select-Object ProcessId, ParentProcessId, CreationDate, CommandLine }
+# Prep fixer r2 (R2-2): bridge MCP processes (node running mcp/dist/index.js) - another session's MCP would join the
+# wave's daemon as a client (it retries every 5 s) and keep `s9.ts wait-alone` from reaching 1. Prints count + PIDs.
+function Get-BridgeClients {
+  $m = @(Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match 'mcp[\\/]dist[\\/]index\.js' })
+  Say9 "bridge MCP processes: $($m.Count)$(if ($m.Count) { ' (PIDs ' + (($m | ForEach-Object { $_.ProcessId }) -join ', ') + ')' })"
+  $m.Count
+}
 function Get-DriverChain { $ids = @(); $p = $PID; for ($i = 0; $p -and $i -lt 32; $i++) { $ids += $p; $p = (Get-CimInstance Win32_Process -Filter "ProcessId=$p").ParentProcessId }; $ids }
 function Get-ProcTree([int]$Root) { $all = @(Get-CimInstance Win32_Process); $ids = @($Root); $i = 0; while ($i -lt $ids.Count) { $c = $ids[$i]; $ids += @($all | Where-Object { $_.ParentProcessId -eq $c -and $ids -notcontains $_.ProcessId } | ForEach-Object { $_.ProcessId }); $i++ }; $ids }
 function Test-SafeToKill([int]$Root) { $chain = Get-DriverChain; $hit = @(Get-ProcTree $Root | Where-Object { $chain -contains $_ }); if ($hit.Count) { "UNSAFE: the tree of $Root contains driver PID(s) $($hit -join ', ')" } else { "safe: the tree of $Root does not contain the driver" } }

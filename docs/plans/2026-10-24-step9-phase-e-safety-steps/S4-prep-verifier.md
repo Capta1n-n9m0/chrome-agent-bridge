@@ -109,3 +109,41 @@ nothing on 9234. The only file edits were two mutations of `recipes/s9-rules.ts`
 **FAIL** — two MAJOR findings (1: no restore on an aborted wave; 2: a pre-registered row fails `TAB_HELD` by wave
 design). Both are fixable in the wave sheet / helpers before anything runs, without changing an expected text.
 Findings 3–7 should be fixed in the same pass.
+
+## Round 2
+
+Verifier: Opus 5.5, 2026-10-24, HEAD `ba073d6` (fixer report `S4-prep-fixer1.md`, treated as claims). Re-checked only
+the affected items. No file touched except this report; no Chrome, build, daemon or bridge client.
+
+### Re-checks
+
+| Item | Evidence | Result |
+|---|---|---|
+| Regression | `npx tsc --noEmit -p recipes/tsconfig.s9.json` → `tsc-exit=0`; `npm test` → `Test Files 116 passed (116)`, `Tests 2720 passed (2720)` (+2, none removed); `git diff --stat 3821d0f..HEAD -- extension daemon sdk mcp shared \| wc -l` → `0` | **OK** |
+| Token / URLs (files changed in `ba073d6`) | token (read from `bridge.token` in the shell, never echoed): 0 in all 8 files; schemes added: `http://localhost` 13, `chrome://…` 14, `chrome-extension://` 3, `scheme://…` 1 — no real site | **OK** |
+| 1 (MAJOR) restore on any stop | Wave sheet "On any stop, and on any helper throw, from block 4 on" (record → `Restore-S9All` → rest of block 43 → `$false` escalates; Chrome restart and an options page that cannot be reopened included). `Restore-S9Safety`: no found state or a non-default found state → touches nothing; Chrome start time changed → touches nothing, `$false`; otherwise reopens O only through `Open-S9ChromePage` (a verified new `about:blank` window), reads the stored state, presses each switch only if off (`Set-S9Switch` returns early when already on), saves an empty list only when the stored hash is not empty, then reads back stored page + `daemon.status` + title; any throw → `$false`. `Restore-S9Desk`: unpins only if `$PinnedBefore -eq $false` and the button is pinned, layout taps until `$L0`, closes D/O/E/W only if alive, compares the window count. A second call presses nothing (every press is read-gated; a reopened O is assigned to `$global:O` and closed by the desk half). It cannot report success with the state changed: success needs the stored page, `daemon.status` and the title all equal to the default. | **fixed** (note R2-1) |
+| 2 (MAJOR) SAFE-5d lease | Block 32 ends M after its SAFE-5 leg, then `S9 wait-alone` polls `daemon.status.clients` (`route.ts:127`, `registry.list()`) until 1 (its own); leases die with the connection (`intercept.ts:432-435`), so `snapC` is no longer held. M2 starts at block 36, serves SAFE-9 (block 37), ends at 43; both transcripts extracted. The row's claim-on-a-blocked-tab check is unchanged. | **fixed** (note R2-2) |
+| 3 stored read-back | `Read-S9StoredState`: O → `about:blank` → a fresh options page, then `Read-S9SafetyState` waits ≤ 10 s for `#safety-status` (empty until the first storage read); used by blocks 33 and 40 and by the guard, each cross-checked with `wait-safety --armed --evaluate --count`. | **fixed** |
+| 4 found-state guard | `Test-S9FoundState` (block 8): stored read AND `daemon.status` default → `$global:S9Found.Default`; else `FOUND STATE differs … STOP before any toggle`; `-SaveTo`/`-FromFile` removed, so the user's list is never copied. | **fixed** |
+| 5 `-Lines` | `grep -n '\-Text "' docs/e2e-test-plan.md` → 2 hits, both inside dated "was `-Text …`" correction notes; steps now use `-Lines @(…)` / `Restore-S9Safety`. | **fixed** |
+| 6 console rule | `isBridgeLogLine` matches `[bridge]` anywhere and `safety: ` after a non-letter; `consoleVerdict` → `notMeasured` without a `safety: disarmed by the user` line, a FAIL still wins; `s9.ts scan-file --mode console` prints `NOT MEASURED` and exits 3. Fixer's mutation reported (old anchor → 1 failed / 35); the 2 new tests are in the 2720. | **fixed** |
+| 7 SAFE-7d | §4.20 lists the deviation with its reason; `Get-S9CardEnabled` reads our card's `enableToggle` (scoped by `Find-S9Card`, name + id) before and after (block 24). | **fixed** |
+| NITs 8, 9, 11 | 8: the record says it cannot show an empty store; 9: `Get-S9Toggle` checks AutomationId and name; 11: ACL-1's reason names the DevTools route, REL-2's class. NIT 10 unchanged (fail-safe) — accepted. | **fixed / accepted** |
+
+### New findings
+
+R2-1. **MINOR — the restore trusts a stored HWND by `IsWindow` alone.** `Test-S9Live` (`recipes/s9-win.ps1`) checks
+only `IsWindow`; `Restore-S9Desk` posts `WM_CLOSE` to D/O/E/W and `Restore-S9Safety` types into O's omnibox if the
+handle is alive. D closes with the extension reload (block 37) and O may too; if Windows reused such a handle for
+another window, the restore would act on a window that is not the driver's. Unlikely (handle reuse is rare within
+minutes), but it is the one path where a helper could touch a non-driver window. **Fix:** in `Test-S9Live`, also
+require class `Chrome_WidgetWin_1`, a `chrome.exe` pid, and a title `Format-S9Title` recognises (else treat as gone).
+
+R2-2. **NIT — `wait-alone` needs exactly one client.** Any other bridge client (e.g. one of the user's own Claude
+sessions with the bridge MCP) keeps it from reaching 1, which triggers a set-up stop and the restore — fail-safe,
+but a check of the client list in block 1 (`S9 probe` before M starts) would catch it before any toggle.
+
+### Verdict (round 2)
+
+**PASS-with-notes** — both MAJOR findings and findings 3–9, 11 are fixed as claimed; R2-1 (MINOR) and R2-2 (NIT)
+are recommended before the live wave, not blocking.
