@@ -100,3 +100,16 @@
   sw.ts listeners, testing list, Docs section Steps 8/9, the action-title second-line gotcha).
 - Ruled #200 (SAFE-7c stays unmeasured) and #201 (Step 10's kickoff carries #194/#196 as its first wave under #193).
 - Next: session-closeout, then the Step 10 kickoff (conditional on #192).
+
+## 2026-10-24 — close-out: memory, Step 10 kickoff (1828681); run ends at the gate
+
+- session-closeout: CLAUDE.md Current state (built, gate open on #192), roadmap (S5), decisions through #201,
+  memory updated. phase-kickoff: Step 10 phase doc `docs/plans/2026-10-24-step10-step8-follow-ups.md` and the
+  kickoff in `docs/plans/next-session-prompt.md` (precondition: #192 ruled). Environment re-measured by the
+  writer: HEAD f45e3bf clean, 9234 free, 2720 / 116, typecheck and build 0 with no tracked change.
+- Gate checklist (session agent): S0.1–S5.1 met per the stage reports; S4.1–S4.4 met, live verifier FAIL on
+  process → #192 open; no router method reachable without the gate (sw.ts builds only GatedRouter); no path
+  for a client/daemon/page to change the state (S3.3 greps empty, writers test); safety state restored by
+  hash; daemon.log and console 0 for token, URLs, patterns; test count never dropped; one commit (or more)
+  per stage, none with dist/, the token, exports/ or a screenshot (exact file lists). Step 9 is NOT closed:
+  it waits for the user's ruling on #192 and the 32 open decisions.
