@@ -11,26 +11,28 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
 
 ## Current state (2026-10-24)
 
-- **Shipped:** Steps 1–7 (Step 6 closed 2026-10-22; Step 7 — multi-actor tabs — closed 2026-10-23,
-  as-built `docs/plans/2026-10-21-step7-multi-actor-tabs-asbuilt.md`). Public on GitHub (MIT).
-- **Step 8 — the SDK surface: built and E2E-run 2026-10-23/24; the gate waits for the user.**
-  Locators by the snapshot's rules, `waitFor {locator}`, `evaluate {asRef}`, the typed `Tab` with the
-  client's cursor, failure reports (`report()` + screenshot), the MCP's `browser_use_active_tab`,
-  the background-input policy `focusFirst` (focus emulation measured and failed, Run 11; #89), the
-  Step 6 compatibility path removed, `code` required, the session marker, handle numbers never reused,
-  the first recipes — **23 tools, 1714 tests in 85 files** (`npm test` at `e963bff`). Runs 11 (FE) and
-  12 (S6) in `docs/e2e-test-plan.md` §5; as-built with the gate checklist
-  `docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-asbuilt.md`. Waiting for the user: the 25 open
-  decisions (decisions.md → Open decisions, Step 8) and G8-3 (the `blackboard-ultra` skill edit).
+- **Shipped:** Steps 1–8 (Step 7 — multi-actor tabs — closed 2026-10-23; Step 8 — the SDK surface —
+  closed 2026-10-24, as-built `docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-asbuilt.md`).
+  Public on GitHub (MIT). **23 tools, 1714 tests in 85 files** (`npm test` 2026-10-24 at `a1932a8`).
+- **Step 8 closed 2026-10-24 (wave W2):** the user ruled its 25 open decisions (decisions.md
+  #106–#127): 19 ratified as built, six with a work item for Step 10; the `blackboard-ultra` skill
+  now boots by `npm --prefix ~/Projects/chrome-remote-extention run recipe --
+  recipes/blackboard/boot-bb.ts <course> --keep-open` (skill `dfa2e50`; the local-server boot kept as a
+  one-release fallback; the course repos PP1-2026 and NLP-Bachelor allow the command).
 - **Reloads need no human:** `recipes/reload-extension.ps1` reloads the extension by UI automation
   and proves it (#65); an exit-2 reload may be re-run during waves (#99).
-- **Resume:** wave W2 in `docs/plans/handoffs.md` — rule the 25 open decisions with the user, the
-  `blackboard-ultra` skill edit (G8-3, granted #105), close Step 8, then the next kickoff.
-- **Next:** after the gate, the roadmap's next item (Phase E safety, D3 file upload, or the open Phase F
-  items — `docs/progress-and-roadmap.md` §5); the kickoff waits for the user's choice. Carried inputs:
-  the MCP's trusted tools on a background tab still answer `ok` and do nothing; failure reports are on
-  by default and switch the human's view ~1.5 s; `bb-login.ps1` needs a condition-based post-submit
-  wait (#102); Step 8 propagator's questions (`…-steps/propagator.md`). Live waves run autonomously (#33).
+- **Resume:** Step 9 — Phase E safety: kickoff `docs/plans/next-session-prompt.md`, phase doc
+  `docs/plans/2026-10-24-step9-phase-e-safety.md`; design decided with the user (#128: kill switch by
+  toolbar button, options page and shortcut; disarmed refuses page calls with `DISARMED`; a block list,
+  empty by default, `DOMAIN_BLOCKED`; a separate JavaScript switch). Start it in a fresh session that
+  is not a bridge client.
+- **Next after Step 9** (decisions.md · 2026-10-24 · The roadmap after Step 8 (#129), order open for
+  veto): **Step 10** — the Step 8 follow-ups: the MCP's trusted tools focus first (#106), a warning when
+  a locator resolves past the snapshot's 800 cap (#117), a squashed `step8` release tag (#125), a live
+  N ≥ 1 retire row on a killed Chrome (#126), `browser_evaluate {saveTo}` with S6.3 redone through it
+  (#127), plus the carried inputs (failure reports switch the human's view ~1.5 s; `bb-login.ps1`'s
+  condition-based post-submit wait, #102); **Step 11** — D3 file upload; **Step 12** — Phase F (`args`
+  for `browser_evaluate`, console capture, keep-attached debugger). Live waves run autonomously (#33).
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
 

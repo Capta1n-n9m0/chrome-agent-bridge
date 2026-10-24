@@ -69,6 +69,34 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-24 · The roadmap after Step 8 (#129)
+**Decided:** Step 9 is Phase E safety (phase doc `docs/plans/2026-10-24-step9-phase-e-safety.md`, kickoff
+`docs/plans/next-session-prompt.md`). The other items are planned as later steps, in this order:
+Step 10 — the Step 8 follow-ups (W2's six work items, #106/#117/#125/#126/#127, plus the carried inputs:
+the ~1.5 s failure-report screen switch, `bb-login.ps1`'s condition-based wait); Step 11 — D3 file
+upload; Step 12 — the open Phase F items (`args` for `browser_evaluate`, console capture, the
+keep-attached debugger session).
+**Why:** the user (2026-10-24): "Dear Claude, we can do Phase E safety fist. But other items such as D3
+files upload, Phase F items, Step 8 follow-ups should be also implemented in the future sessions,
+please plan them as well". The order of Steps 10–12 is Claude's: the follow-ups first because they
+close known gaps (background trusted input through the MCP, bulk data through a model's context), then
+the smallest new feature, then the open-ended one.
+**Instead of:** folding the follow-ups into Step 9 (mixes a safety boundary with UX fixes in one gate).
+**Revisit if:** the user reorders Steps 10–12 (the order is open for veto).
+**By:** user (Step 9 and the plan); Claude (the order of Steps 10–12, flagged for veto)
+
+### 2026-10-24 · Phase E's design: the kill switch, the disarmed state, blocked sites, the JavaScript switch (#128)
+**Decided:** (1) the human disarms the bridge by a toolbar button (one click), the options page, or a
+keyboard shortcut; (2) disarmed refuses every call that reads or acts on a page with a new code, detaches
+debugger sessions, and still answers status and the tab list, the socket staying up; (3) a per-site
+block list, empty by default; (4) a separate "Allow JavaScript (`browser_evaluate`)" switch, default on.
+Details and the proposals around them: the Step 9 phase doc, "Decisions" 0.1–0.7.
+**Why:** the user (2026-10-24), answering the four questions: "Toolbar, optios, shortcut"; "Refuse page
+calls (Recommended)"; "Block list, empty default (Recommended)"; "Yes, separate switch (Recommended)".
+**Instead of:** options page only; dropping the connection when disarmed; refusing only actions while
+allowing reads; an allow-list mode; no JavaScript switch.
+**By:** user
+
 ### 2026-10-24 · Bulk data through `browser_evaluate` was a test device only; the MCP gets a `saveTo` path (#127)
 **Decided:** rules Step 8 open items 24 and 25. #102 (SDK-7's MCP-leg cap raised to 600 000 characters)
 and #103 (S6.3 on one held export) stay as the record of what was measured — both registered before the

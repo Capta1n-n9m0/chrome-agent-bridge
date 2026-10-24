@@ -5,6 +5,10 @@ Format: `.claude/skills/phase-kickoff/template-wave.md`. Phase kickoffs live in
 
 ## W2 — rule Step 8's 25 open decisions; the blackboard-ultra skill edit; then the next kickoff (written 2026-10-24; precondition: Step 8 close-out committed and pushed)
 
+*Run 2026-10-24 with the user: done — 25 items ruled (decisions.md #106–#127; the Ruled note in the Step 8
+as-built); G8-3 made (blackboard-ultra `dfa2e50`, course repos' allow rule); Step 8 closed; Phase E's
+design and the roadmap ruled (#128, #129); Step 9 kickoff in `next-session-prompt.md`.*
+
 ```
 Dear Claude, let's run wave W2: close Step 8's gate (the SDK surface: locators, the typed Tab,
 failure reports, the MCP cursor, the background-input policy, first recipes) of the

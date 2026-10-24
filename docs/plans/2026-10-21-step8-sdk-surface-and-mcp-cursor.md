@@ -1,7 +1,9 @@
 # Step 8 — The SDK surface: locators, typed `Tab`, failure reports, MCP cursor, first recipes
 
-**Date:** 2026-10-21 · **Status:** Built and E2E-run 2026-10-23/24 (Runs 11 (FE) and 12 (S6)); the gate
-waits for the user's rulings on the Step 8 open decisions and on G8-3 *(Updated 2026-10-24 at close-out: was "Planned".)*
+**Date:** 2026-10-21 · **Status:** Closed 2026-10-24 — built and E2E-run 2026-10-23/24 (Runs 11 (FE) and
+12 (S6)); the user ruled the 25 open decisions (decisions.md #106–#127, wave W2) and G8-3 was made
+(blackboard-ultra `dfa2e50`). *(Updated 2026-10-24 at close-out: was "Planned"; updated 2026-10-24 (W2):
+was "the gate waits for the user's rulings on the Step 8 open decisions and on G8-3".)*
 **Design of record:** docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md (§8) ·
 **As-built:** docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-asbuilt.md (does not exist yet;
 written at stage close) · **Steps dir:** docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/

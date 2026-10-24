@@ -426,7 +426,12 @@ Item → met? → evidence (step reports in `…-steps/`; decisions by number in
 | One commit per stage close, no `dist/`, token, `exports/` or failure screenshot | yes | every stage's commit by pathspec; hygiene counts 0 in FE and S6 records |
 | Test count never dropped undocumented | yes | 950 → 1714 / 85; S2b's 11 removals listed (S2b.8) |
 
-**Open for the user:** the 25 items in decisions.md → Open decisions (Step 8). **Needs the user's keyboard:**
+*Closed 2026-10-24 (wave W2): the 25 items are ruled (#106–#127, see the Ruled note under Open
+decisions); G8-3 made and pushed (blackboard-ultra `dfa2e50`, the course repos' allow rule added); the
+student-data files were deleted (#105); no other session needed `/mcp` (#105). Six rulings are
+next-phase work items, carried in `docs/plans/next-session-prompt.md`.*
+
+**Open for the user (as of the close-out, before W2):** the 25 items in decisions.md → Open decisions (Step 8). **Needs the user's keyboard:**
 (1) G8-3, the `blackboard-ultra` skill edit (exact text in S7.md §7); (2) `/mcp` or a restart of any
 interactive Claude session that ran during the phase (its MCP bundle predates S5/S6b); (3) the rulings
 on the open decisions; (4) any push; (5) deleting the student-data files left outside the repo
