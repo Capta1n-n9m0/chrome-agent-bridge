@@ -111,6 +111,11 @@ disarm and on a newly blocked tab (#137)).*
   when `onChanged` is delivered, so a call in between would read the old cache (Stage 0 F10; decisions.md ·
   2026-10-24 · The state is read per call, fails closed, and is locked to trusted contexts (#139)).*
 - The badge shows `OFF` (red) while disarmed, nothing while armed; the button's title says which.
+  *Corrected 2026-10-24 (Step 9 propagator): was two badge states; as built three — none (armed), `JS` amber
+  (armed, JavaScript off), `OFF` red (disarmed, and also every failure state: unreadable, unsaved disarm, failed
+  re-arm), `OFF` winning; Chrome 156 adds its own second line under the title ("Has access to this site", Run 13
+  record SAFE-1 (4)) — see as-built § Stage S2b / decisions.md · 2026-10-24 · Badge and title (#143); · S2b: badge
+  colours, and titles for the unreadable, unsaved-disarm and failed-arm states (#181).*
 - The `action.onClicked` and `commands.onCommand` listeners are registered at the top level of `sw.ts`
   (`CLAUDE.md`: listeners must exist on every worker start).
   *Amended 2026-10-24 (Stage 0 F20): the shortcut is
@@ -118,6 +123,10 @@ disarm and on a newly blocked tab (#137)).*
   `action.onClicked`; one top-level `action.onClicked` listener serves the button and the shortcut, and there is
   no `commands.onCommand` listener (D11). Whether the key is assigned (a conflicting suggestion is left
   unassigned) and whether Alt+Shift changes the Windows input language are read in S4 (SAFE-2).*
+  *Corrected 2026-10-24 (Step 9 propagator): was "read in S4 (SAFE-2)", still to be measured; as measured in Run 13
+  on Chrome 156, Windows 11: `Alt+Shift+K` is assigned as `_execute_action`, the press toggled the state, and the
+  Windows input layout stayed `0x04090409` with three layouts installed (SAFE-2 (a), (b, c), PASS) — see as-built
+  § Stage S4 "Contracts".*
   *Superseded 2026-10-24: was "The `action.onClicked` and `commands.onCommand` listeners", because Chrome
   dispatches the reserved `_execute_action` command as `action.onClicked`, not `commands.onCommand` (Stage 0
   F20; decisions.md · 2026-10-24 · The shortcut is `_execute_action` (#142)).*
@@ -129,6 +138,11 @@ disarm and on a newly blocked tab (#137)).*
   refused with a new code **`DISARMED`** (message: the user has turned the bridge off in Chrome; ask
   them to turn it on). `listTabs` and the hello still answer, so agents can say why; the daemon's own
   `daemon.status`, `tabs.claim`/`tabs.release` are untouched (bookkeeping, no page).
+  *Corrected 2026-10-24 (Step 9 propagator): was "`listTabs` … still answer" without exception; as built
+  `listTabs` answers, redacted, while disarmed, but is refused `DISARMED` when the state cannot be read, and an
+  unknown method is `UNKNOWN_METHOD` in every state — see as-built § Stage S2a / decisions.md · 2026-10-24 · S2a:
+  the post-check also replaces error replies; `listTabs` with an unreadable state is refused, and has no post-check
+  (#178); · S2a: an unknown method is `UNKNOWN_METHOD` in every state (#170).*
   *Proposed, for the audit:* `listTabs` while disarmed returns handles and `current` but not titles or
   URLs.
   *Amended 2026-10-24 (Stage 0 F2): while disarmed, `tabCreated.url` is `""` and
@@ -162,6 +176,12 @@ disarm and on a newly blocked tab (#137)).*
 - At the moment of disarming: every debugger session the extension holds is detached (the banner goes),
   `waitFor` polls stop at their next tick with `DISARMED`, a pending download is dropped from the
   `DownloadStore`.
+  *Corrected 2026-10-24 (Step 9 propagator): was "(the banner goes)" as if at once; as measured in Run 13 the
+  detach ended a running trusted `type` `DISARMED` 14 ms after the press, but Chrome's debugging banner was still
+  shown 3 s later and gone by +14 s (SAFE-4 (b), FAIL, Chrome-owned; re-measured in Step 10); a running `waitFor`
+  was refused 54–92 ms after the press (SAFE-4 (a), 4c, PASS) — see as-built § Stage S4 / decisions.md · 2026-10-24 ·
+  S4: SAFE-5c's redirect half, SAFE-POP-1, SAFE-3 and SAFE-4(b) are re-measured in the next live wave (Step 10)
+  (#194).*
   *Amended 2026-10-24 (Stage 0 F5): the locator and network-idle waits re-check the gate
   each tick and end `DISARMED`/`DOMAIN_BLOCKED`; the text wait (page-side, ≤ 10 s) and the `seconds` wait end on
   their own and their reply is replaced by the post-check (F1). A seconds-wait may also be cut by a 100 ms
@@ -175,6 +195,12 @@ disarm and on a newly blocked tab (#137)).*
   *(Amended 2026-10-24: Stage 0 F9's amendment, under 0.4's third bullet, settles this for 0.3 and 0.4 alike —
   dropped at ingest while disarmed, events before the stored state is read held in a bounded buffer; entries
   recorded before a disarm stay.)*
+  *Corrected 2026-10-24 (Step 9 propagator): was "(proposed)", settled by F9 only; as built also a request is
+  dropped for good once one of its events was dropped, and a tab showing this extension's own page counts as
+  blocked for the log; measured in Run 13: 0 entries recorded while disarmed, 1 in the armed control (SAFE-8, PASS)
+  — see as-built § Stage S2a / decisions.md · 2026-10-24 · S2a: the network ingest drops a request for good once one
+  of its events was dropped (#179); · S1: The network filter treats a tab showing this extension's own page as
+  blocked (#155).*
 - `DISARMED` is not in the failure-report attach set (a report would only be refused too).
 - The socket stays up; `browser_status` and the SDK see the state (0.6).
 
@@ -203,6 +229,12 @@ disarm and on a newly blocked tab (#137)).*
   that would stop a bridge `navigate` bounced by an allowed redirector onto a blocked host (D9, V13).*
   *(decisions.md · 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140); V13 = Stage 0
   verifier item 13, in `stage0-verifier.md`.)*
+  *Corrected 2026-10-24 (Step 9 propagator): the F8 note reads as settled; as run, the check of `res.url` is
+  **unit-tested only, not measured live**: Run 13's direct download to the blocked fixture was refused
+  `DOMAIN_BLOCKED` (SAFE-5c direct half, PASS), but its redirect half ended `TIMEOUT` after 15 s, probably on the
+  single-threaded test redirect server (FAIL, tooling probable) — see as-built § Stage S4 / decisions.md ·
+  2026-10-24 · S4: SAFE-5c's redirect half, SAFE-POP-1, SAFE-3 and SAFE-4(b) are re-measured in the next live wave
+  (Step 10) (#194).*
 - `listTabs` and tab events carry no title or URL for a blocked tab (proposed); the network log records
   no entry whose URL host is blocked (proposed).
   *Amended 2026-10-24 (Stage 0 F41): a tab that becomes blocked loses its
@@ -232,6 +264,13 @@ disarm and on a newly blocked tab (#137)).*
   `DOMAIN_BLOCKED` (nothing uses it today). A tab showing another extension's page, opened by the human, is
   treated as today (Chrome already refuses scripting and the debugger there, `inject.ts:9`). Whether
   `chrome.debugger` can attach to the own options page is measured in S4 (SAFE-7c), not assumed safe.*
+  *Corrected 2026-10-24 (Step 9 propagator): was "measured in S4 (SAFE-7c)"; as run, SAFE-7c was **not measured**
+  (pre-registered: it needs a gate exemption or a throwaway extension), so whether the debugger can attach there
+  stays unknown; the block does not depend on it, since every call on an own-page tab was refused before any attach
+  (SAFE-7b, PASS) and own-page navigation, absolute or relative, was refused (SAFE-7, SAFE-REL-1, PASS). As built,
+  `downloadStart` to a `chrome-extension://` URL is not refused by the gate: the handler answers `BAD_PARAMS`
+  (http(s) only) — see as-built § Stage S4 / decisions.md · 2026-10-24 · S1: `downloadStart` checks its own URL
+  against the block list only (#154).*
   *Superseded 2026-10-24: was "(proposed, not configurable)", because the block is required, not merely
   proposed — the extension itself can `tabs.update`/`create` to its own `options.html`, and its debugger there is
   assumed reachable until measured (Stage 0 F3; decisions.md · 2026-10-24 · Script URLs and the JavaScript
@@ -262,6 +301,11 @@ allowed page shows in that page's screenshots. `docs/setup.md` "Safety" says so.
   `javascript:`, `data:` or `blob:` URL are refused `DISARMED` with `data.scope: "evaluate"`; while it is on they
   behave as today (Chrome decides). S4 measures Chrome's own answer to `javascript:` with JavaScript on as a record
   (SAFE-6c).*
+  *Corrected 2026-10-24 (Step 9 propagator): was "S4 measures …", still open; as measured in Run 13 (Chrome 156,
+  JavaScript on), Chrome itself answers a `javascript:` navigation through the bridge with `NAV_FAILED` ("JavaScript
+  URLs are not allowed in API based extension navigations. …") and the page is unchanged (SAFE-6c, record); with
+  JavaScript off the gate refuses first, `DISARMED` scope `evaluate`, for `javascript:` and `data:` (SAFE-6, 6b,
+  PASS) — see as-built § Stage S4 "Contracts".*
   *(decisions.md · 2026-10-24 · Script URLs and the JavaScript switch; own pages of every extension (#138).
   This narrows "every other tool keeps working" above for those three URL schemes while JavaScript is off.)*
   *(Badge per decisions.md · 2026-10-24 · Badge and title (#143): armed with JavaScript off → badge `JS` amber;
@@ -286,6 +330,14 @@ allowed page shows in that page's screenshots. `docs/setup.md` "Safety" says so.
   force a reconnect on every change (Stage 0 F12; decisions.md · 2026-10-24 · The safety state travels as two
   events and a `daemon.status` field (#132), which also fixes `browser_status`'s `Safety: not reported (reload
   the extension)` when the state is null and the SDK's read-only `client.safety()` / `on("safetyStatus")`).*
+  *Corrected 2026-10-24 (Step 9 propagator): was "`browser_status` prints `Safety: …`" in its text and "null again
+  when the extension socket closes" as the only reset; as built (1) the `Safety:` line is a **second text item**,
+  sent only while the extension is connected (with the extension down the result is the single pre-Step-9 item); Run
+  13 showed the second item in the headless MCP actors' transcripts (SAFE-1 (3), SAFE-9 record: "text item 2 of 2");
+  (2) the reported state is also reset to null by each new extension hello until that socket reports, and
+  `safetyStatus` is never sent with null — see as-built § Stage S3 / decisions.md · 2026-10-24 · S3: `browser_status`'s
+  Safety line is a second text item, shown only while the extension is connected (#162); · S3: A new extension hello
+  resets the reported state to null (#165); · S3: `safetyStatus` is never sent with null (#159).*
   *Amended 2026-10-24 (Stage 0 F23): `blockedCount` counts the valid
   patterns only; the options page marks each invalid line and shows how many there are.*
   *(decisions.md · 2026-10-24 · The block-list grammar (#135): invalid lines kept, shown, not counted.)*
@@ -315,6 +367,13 @@ the allowlist, and a runtime test drives the gate, the matcher, the toggles and 
 sentinel pattern, URL, title and token and finds none of them in any captured log line.*
 *(Recorded with the phase doc's proposals: decisions.md · 2026-10-24 · The Step 9 phase doc's proposals,
 recorded before Stage 0 so the audit can attack them (#131); the scan's check is S2.3 as amended by #141.)*
+*Corrected 2026-10-24 (Step 9 propagator): was "the toggles log one line each"; as built only a button or shortcut
+press logs, one of five fixed lines (`badge.ts` `toggleLogLine`: `safety: disarmed by the user`, `… armed by the
+user`, `… re-arm ignored (within 1 s of a disarm)`, and the two storage-write failures); the options page logs
+nothing; the daemon logs `safety state: armed=… evaluate=… blocked=<n>` per change (`intercept.ts` `safetyLogLine`).
+The scan allowlists 60 sites (extension 15, daemon 33, sdk 0, mcp 6). Run 13: `daemon.log` (210 lines) and the
+worker console held 0 tokens, 0 non-fixture URLs, 0 test patterns (SAFE-10, PASS) — see as-built § Stage S2b, § Stage
+S4 / decisions.md · 2026-10-24 · S2b: the log scan finds loggers by name (#187).*
 
 ## Stages
 
@@ -342,6 +401,11 @@ F32). The types every later stage needs land here, since S3's lane has no `share
 *Amended 2026-10-24 (#145): S1's budget is 2.5 h, in parallel with S3 (2.5 h). Its gate has the F7 signature
 and the post-check predicate (0.1's notes), and its matcher cases are stage0-audit.md §5's 50 (S1.3 as amended
 below).*
+*Corrected 2026-10-24 (Step 9 propagator): was one module `extension/src/safety.ts` holding the parser and matcher
+too; as built the parser, matcher and URL helpers are `extension/src/safety-match.ts` (which the options page
+imports alone) and the table, gate, redaction and network predicate `safety.ts` — see as-built § Stage S1 /
+decisions.md · 2026-10-24 · S1: S1's module layout: the matcher in `safety-match.ts`, the gate in `safety.ts`
+(#149).*
 
 ### Stage S2 — Extension wiring and UI
 - [x] The router calls the gate before every handler; `storage.local` state with defaults;
@@ -362,6 +426,9 @@ unassigned) and whether Alt+Shift changes the Windows input language are read in
 `commands.onCommand`" as two listeners, because `_execute_action` arrives as `action.onClicked` (Stage 0 F20;
 decisions.md · 2026-10-24 · The shortcut is `_execute_action` (#142)). The manifest's `commands` entry stays: it
 declares `_execute_action`.*
+*Corrected 2026-10-24 (Step 9 propagator): was "read in S4 (SAFE-2)", still to be measured; Run 13 measured both:
+the key is assigned and the Windows input layout is unchanged (SAFE-2, PASS; 0.2's correction above) — see as-built
+§ Stage S4 "Contracts".*
 
 *Amended 2026-10-24 (Stage 0 F18): S2's lane is `extension/src/**` except `content/**` and `safety.ts` (S1's), plus `options.html`,
 `manifest.json`, `extension/test/`.*
@@ -375,6 +442,12 @@ redaction, F2), `network-log.ts` (query filter, F9), `tabs.ts` (`pendingUrl`, ca
 Step 9's own; Step 8's S2b (the daemon half of Step 8's S2) is unrelated.*
 *Superseded 2026-10-24: was one Stage S2 of 3 h, because #137 and #139 roughly double the enforcement work
 (#145).*
+*Corrected 2026-10-24 (Step 9 propagator): S2's ticked checkbox above reads as one stage whose router "calls the
+gate before every handler"; as built S2 ran as three stages — S2a (enforcement), S2b (UI and the log scan) and an
+unplanned fix stage **S2c** (a rejected re-arm write returns memory to disarmed; the badge reads only the safety
+keys) — and the gate runs through `GatedRouter` at receipt, before each first side effect and as the post-check
+(0.1's F1 note) — see as-built § Stage S2a, § Stage S2b, § Stage S2c / decisions.md · 2026-10-24 · A fix stage S2c
+before S4: a failed re-arm write leaves memory disarmed; the badge reads only the safety keys (#189).*
 
 #### Stage S2a — Extension enforcement (3 h, after S1)
 - [x] (From S2's checkbox, by content:) the router calls the gate before every handler — at receipt, before each
@@ -461,6 +534,10 @@ does not do (0.4's F16 note).*
   - *Amended 2026-10-24 (Stage 0 §6; decisions.md · 2026-10-24 · Stricter exit checks for Step 9 (#141)):
     S1.1 reads as written, and adds F17: "`Router.on` of an unclassified name throws (test)".* (`Router.on`
     lives in `extension/src/router.ts`, outside S1's lane as written — see the S0 builder report.)
+    *Corrected 2026-10-24 (Step 9 propagator): was "`Router.on` of an unclassified name throws"; as built the
+    throwing `on` is `GatedRouter.on` (the only router `sw.ts` constructs), while `Router` is kept unchanged beside
+    it, closed at S2a — see as-built § Stage S2a / decisions.md · 2026-10-24 · S2a: the gated router sits beside the
+    unchanged `Router` core (#169); · Where S2's and S1.1's checks close after the split (#147).*
   - *Amended 2026-10-24 (Stage 0 §6; decisions.md · 2026-10-24 · Stricter exit checks for Step 9 (#141)):
     S1.2 reads as written, and adds "× {redaction outcome for `listTabs`}; the network forms × {`tabId`,
     `scope:"all"`, `id` lookup} (refused while disarmed; `"all"`/`id` never refused while armed, their entries
@@ -559,6 +636,13 @@ does not do (0.4's F16 note).*
   restore that fails stops the run and asks the user.
 - **G9-2** — pinning the extension's button to the toolbar, if UI automation cannot reach an unpinned
   button: the driver may pin it by UI automation; if that fails, ask the user once.
+  *Corrected 2026-10-24 (Step 9 propagator): G9-2 assumed UI automation can press the pin; as measured in Run 13,
+  Chrome 156's toolbar extension button and the Extensions (puzzle) button expose no UIA Invoke pattern, so
+  `Set-S9Pin` failed three times; the runner then pinned by a real mouse click at a `FromPoint`-verified point in its
+  own window instead of asking (a process deviation the user rules on) and unpinned at the end, as found — see
+  as-built § Stage S4 / decisions.md · 2026-10-24 · S4: Run 13 stands as recorded, with the runner's four
+  self-resolved stops listed (#192); · S4: Live runners return on every stop; one stop rule for sheet and brief
+  (#193).*
 
 ## STOP rules and forbidden fixes
 
@@ -591,6 +675,14 @@ invariant (leases, the lock, the cursor rule, the token gate, the bind).
   #117 a warning past the snapshot's 800 cap; #125 a squashed `step8` release tag; #126 a live N ≥ 1
   retire row; #127 `browser_evaluate {saveTo}` and S6.3 redone through it) and the carried inputs
   (the ~1.5 s failure-report screen switch; `bb-login.ps1`'s condition-based post-submit wait).
+  *Corrected 2026-10-24 (Step 9 propagator): was the Step 8 items only; as built Step 9 adds Run 13's four
+  re-measurements (SAFE-5c's redirect half with a threaded redirect server — the post-redirect `downloadStart`
+  check is unmeasured live until then; SAFE-POP-1 with a recipe that claims the opener first; SAFE-3 with the
+  options window visible or a page-side reporter; SAFE-4 (b) polling the banner ≥ 10 s), SAFE-REL-3 printing a URL
+  class, and #193's stop rule for every live runner — see as-built § Stage S4 / decisions.md · 2026-10-24 · S4:
+  SAFE-5c's redirect half, SAFE-POP-1, SAFE-3 and SAFE-4(b) are re-measured in the next live wave (Step 10) (#194);
+  · S4: SAFE-REL-3 prints a URL class, not "withheld" (#196); · S4: Live runners return on every stop; one stop rule
+  for sheet and brief (#193).*
 - **Step 11 — D3 file upload:** `browser_upload_file` / `Tab.upload` via `DOM.setFileInputFiles`.
 - **Step 12 — Phase F items:** `args` for `browser_evaluate`, console/error capture, and the
   keep-attached debugger session if the design allows.

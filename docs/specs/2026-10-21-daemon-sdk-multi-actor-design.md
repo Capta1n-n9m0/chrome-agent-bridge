@@ -11,7 +11,12 @@
   Contracts and deviations: `docs/plans/2026-10-21-step7-multi-actor-tabs-asbuilt.md`.* *Corrected
   2026-10-24 (Step 8 S7): Step 8 (§8, with §5, §10 and §13 where noted below) is built and E2E-run
   (Runs 11–12): 23 tools, 1714 tests in 85 files (`npm test` at `eb6b991`); its gate waits on the
-  user's open decisions. Contracts and deviations: `docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-asbuilt.md`.* Plans: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`, `…step7-multi-actor-tabs.md`, `…step8-sdk-surface-and-mcp-cursor.md`.
+  user's open decisions. Contracts and deviations: `docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-asbuilt.md`.* *Corrected
+2026-10-24 (Step 9 propagator): was "1714 tests in 85 files … its gate waits on the user's open decisions" as the
+latest state; Step 8 closed 2026-10-24 (wave W2), and Step 9 (Phase E safety: §6.5's and §10's Step 9 notes) is
+built and E2E-run (Run 13): 23 tools, 25 codes, 2720 tests in 116 files (`npm test` at `ba6029e`); its gate waits
+on the user's ruling on Run 13 and its open decisions. Contracts and deviations:
+`docs/plans/2026-10-24-step9-phase-e-safety-asbuilt.md`.* Plans: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`, `…step7-multi-actor-tabs.md`, `…step8-sdk-surface-and-mcp-cursor.md`.
 - **Owner:** Abbas Aliyev (@Capta1n-n9m0)
 - **Supersedes in part:** `2026-06-04-chrome-real-profile-agent-bridge-design.md` §3 "Controller: MCP server", §4 topology, and the "Tab targeting: active tab" decision. Everything about the extension's perception/action model stands.
 
@@ -205,6 +210,14 @@ lastUrl?, lastTitle?}`, and `leaseGranted {tab, reason: "opener", url}`. `tabCre
 for a popup, so the daemon polls `listTabs` (≤ 2 s) to fill `leaseGranted.url` (T5b). Run 8 LEASE-6
 confirmed the remap on a Memory-Saver discard (see the note under §3).*
 
+*Corrected 2026-10-24 (Step 9 propagator): was "the extension sends the last URL and title" on every `tabRemoved`
+and a `leaseGranted.url` the daemon always waits to fill; as built in Step 9, while disarmed or for a blocked tab
+`tabRemoved` carries `hidden: "disarmed" | "blocked"` and no `lastUrl`/`lastTitle`, `tabCreated.url` is `""`, the
+daemon omits `lastUrl`/`lastTitle` from `tabGone` and `TAB_GONE` while the last state says disarmed, and
+`leaseGranted.url` is `""` without the wait — see §10's Step 9 note; Step 9 as-built § Stage S3; decisions.md ·
+2026-10-24 · What `listTabs`, tab events and the daemon reveal while disarmed or for a blocked tab (#134); · S3:
+`leaseGranted.url` is `""` while disarmed, whatever the event carried (#161).*
+
 ### 6.3 Leases
 
 - A tab is held by the actor that opened it (`newTab`), claimed it (`tabs.claim`), or received it by
@@ -213,6 +226,11 @@ confirmed the remap on a Memory-Saver discard (see the note under §3).*
   one tab is a design error in the scripts, not a scheduling event. (Future option, not v1: read-only
   `snapshot` on a foreign tab via generation-stamped refs `s7.e12`, which would also catch stale refs.)
 - Calls touching no tab — `listTabs`, `networkRequests` (any scope), `daemon.status` — are free.
+  *Corrected 2026-10-24 (Step 9 propagator): "free" holds for leases only; as built in Step 9 the extension refuses
+  every network call `DISARMED` while disarmed, filters blocked entries from every scope, and redacts `listTabs`
+  (refusing it only when the safety state cannot be read) — Step 9 as-built § Stage S2a; decisions.md · 2026-10-24 ·
+  In-flight work at disarm and on a newly blocked tab (#137); · S2a: the post-check also replaces error replies;
+  `listTabs` with an unreadable state is refused, and has no post-check (#178).*
 - `tabs.release {tab}` gives a tab up; `tabs.claim {tab}` on an unheld tab takes it; `tabs.claim
   {active: true}` claims whatever the human is looking at (the MCP's first-touch move).
 
@@ -499,6 +517,12 @@ The block itself is left as written.*
   PAGE_ERROR NAV_FAILED DOWNLOAD_HTTP WINDOW_MINIMIZED INTERNAL`. The extension's `Router` serialises a
   thrown `BridgeError {code, data}`; a plain `Error` becomes `INTERNAL` with its message, so nothing
   is lost during the migration.
+  *Corrected 2026-10-24 (Step 9 propagator): was "the extension's `Router`"; as built since Step 9 S2a the service
+  worker serves through `GatedRouter` (`extension/src/router.ts`), which runs the safety gate before dispatch and as
+  a post-check before the reply, throws at registration for a method with no safety class, turns a gate throw into
+  `INTERNAL`, and answers an unknown method `UNKNOWN_METHOD` in every state; `Router` is kept unchanged beside it —
+  Step 9 as-built § Stage S2a; decisions.md · 2026-10-24 · S2a: the gated router sits beside the unchanged `Router`
+  core (#169); · S2a: an unknown method is `UNKNOWN_METHOD` in every state (#170).*
   *Added 2026-10-23 (Step 8 S0; decisions.md · 2026-10-23 · `NO_CURSOR` enters `shared/src/codes.ts`
   as the 23rd code (#76)): SDK — `NO_CURSOR`, a `Tab`-less SDK call with no cursor ("call newTab() or
   claim() first"; §8). The SDK alone raises it, never the daemon or the extension, so it never
@@ -563,6 +587,12 @@ The block itself is left as written.*
     the unknown event; an older SDK ignores it.*
   - *`daemon.status` adds `safety: {armed, evaluate, blockedCount} | null` — null until the extension has
     reported, and null again after the extension socket closes (#132).*
+    *Corrected 2026-10-24 (Step 9 propagator): was null only before the first report and after the socket closes;
+    as built a new extension hello also resets it to null until that socket reports, `safetyStatus` is never sent
+    with null, and the daemon's redaction follows the last non-null state across extension sockets — Step 9
+    as-built § Stage S3; decisions.md · 2026-10-24 · S3: A new extension hello resets the reported state to null
+    (#165); · S3: `safetyStatus` is never sent with null (#159); · S3: The daemon's redaction follows the last state
+    it received, across extension sockets (#160).*
   - *A hidden tab: a `listTabs` row while disarmed, or for a blocked tab, drops `title` and `url` and adds
     `hidden: "disarmed" | "blocked"` (it keeps `id`, `windowId`, `active`, `openerTabId`, `current`, and the
     daemon's `tab`, `owner`); `tabRemoved` then carries `hidden` and no `lastUrl`/`lastTitle`; `tabCreated.url`
@@ -576,6 +606,9 @@ The block itself is left as written.*
   (#138), which this note adds):*
   - *`DISARMED` with `data: {scope: "evaluate"}` also answers `navigate`/`newTab` to a `javascript:`, `data:` or
     `blob:` URL while JavaScript is off; while JavaScript is on, those navigations behave as before Step 9 (#138).*
+    *Corrected 2026-10-24 (Step 9 propagator): "behave as before" left Chrome's answer unmeasured; Run 13 measured
+    it on Chrome 156: a `javascript:` navigation through the bridge with JavaScript on → `NAV_FAILED`, page unchanged
+    (SAFE-6c, record) — Step 9 as-built § Stage S4 "Contracts".*
   - *`DOMAIN_BLOCKED` also answers `navigate`/`newTab` to **any** `chrome-extension://` URL (any extension id),
     and every method on a tab showing **this** extension's own page (by its `url` or `pendingUrl`); such a tab's
     `listTabs` row and events are hidden as a blocked tab's are. `chrome://` navigation is unchanged (#138).*

@@ -197,6 +197,8 @@ block](#step-9--phase-e-safety-the-kill-switch-the-javascript-switch-blocked-sit
 
 Phase doc `docs/plans/2026-10-24-step9-phase-e-safety.md`; contracts and deviations in `…-asbuilt.md`;
 reports, run record and logs in `…-steps/`; decisions in `docs/decisions.md` 2026-10-24 #128–#197.
+*Corrected 2026-10-24 (Step 9 propagator): was "#128–#197"; S5 added #198 and #199 (as-built § Stage S5), so the
+range is #128–#199.*
 **Built and E2E-run (Run 13); not closed:** the user's ruling on Run 13 (#192) and the open decisions
 below wait at the gate.
 

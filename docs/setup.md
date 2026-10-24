@@ -676,6 +676,9 @@ closes an open options page.
 | `OFF` (red) | `… OFF: the safety state cannot be read, so agents are refused (check the options page)` | See [When the state cannot be read or saved](#when-the-state-cannot-be-read-or-saved) |
 | `OFF` (red) | `… OFF, but not saved (storage write failed): …` / `… OFF: turning on failed (storage write failed), …` | Same |
 
+*Added 2026-10-24 (Step 9 propagator): on hover Chrome 156 shows its own second line under these titles, e.g.
+`Has access to this site` (Run 13 record, SAFE-1 (4) and SAFE-9); the first line is the extension's.*
+
 ### What agents see while the bridge is off
 
 - **Every call that reads or acts on a page is refused** with the code `DISARMED` and `data:
@@ -687,7 +690,12 @@ closes an open options page.
   (`sdk/src/error.ts` `safetyRefusalLine`; Run 13 row SAFE-1, verbatim).
 - **Still answered:** `browser_status` adds a line `Safety: DISARMED by the user · JavaScript on · 0
   blocked sites` (while armed: `Safety: armed · …`; before the extension reports: `Safety: not reported
-  (reload the extension)`). `browser_list_tabs` keeps the handles, the `*` and the owners, but every
+  (reload the extension)`). *Corrected 2026-10-24 (Step 9 propagator): was "adds a line" in every case; as built
+  the `Safety:` line is a second text item of the result, sent only while the extension is connected — with Chrome
+  or the extension down there is no `Safety:` line at all, not `not reported` (Run 13 showed the second item in
+  headless Claude sessions' transcripts, SAFE-1 (3)) — see `docs/plans/2026-10-24-step9-phase-e-safety-asbuilt.md`
+  § Stage S3 / decisions.md · 2026-10-24 · S3: `browser_status`'s Safety line is a second text item, shown only
+  while the extension is connected (#162).* `browser_list_tabs` keeps the handles, the `*` and the owners, but every
   tab reads `(hidden: the bridge is off)` — no title, no URL. The daemon withholds URLs and titles from
   its status rows and tab events while off. Claiming a tab still works, but a lease grants nothing:
   every call on the tab is refused. The connection stays up.

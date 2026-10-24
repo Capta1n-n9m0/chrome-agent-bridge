@@ -7,7 +7,9 @@
   this plan covers the rest.
   *Corrected 2026-10-24 (Step 8 propagator): was "the 46 automated tests" (the 2026-06-04 count); at
   `e963bff` `npm test` runs 1714 tests in 85 files, `recipes/test/` included (Step 8 as-built § S6,
-  § S7).*
+  § S7).* *Corrected 2026-10-24 (Step 9 propagator): was "1714 tests in 85 files" as the current count; at
+  `ba6029e` `npm test` runs 2720 tests in 116 files (Step 9 as-built § Stage S5), and Step 9's safety controls
+  are covered live by §4.20 (Run 13 in §5).*
 
 Each test has an **ID**, **objective**, **steps** (as MCP tool calls), and an **expected result**.
 Record outcomes in the [Results template](#results-template). A run "passes" when all **must-pass**
