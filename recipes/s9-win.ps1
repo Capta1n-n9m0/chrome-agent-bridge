@@ -117,7 +117,9 @@ function Get-S9ChromeWindows([switch]$AnyTitle) {
     }
     $true }
   [void][S9Win]::EnumWindows($cb, [IntPtr]::Zero)
-  , @($found)
+  # S4 runner set-up fix (2026-10-24, block 4): was `, @($found)`, which wrote the array as ONE pipeline object, so
+  # `Get-S9ChromeWindows | Where-Object …` filtered the array itself and `@(Get-S9ChromeWindows).Count` was always 1.
+  @($found)
 }
 
 function Wait-S9NewWindow($before, [int]$TimeoutSec = 15, [string]$TitleLike = '') {
@@ -248,14 +250,40 @@ function Invoke-S9ActionButton([long]$Hwnd, [int]$Times = 1, [int]$GapMs = 200) 
   $b = Find-S9ActionButtons $Hwnd
   if ($b.Count -ne 1) { throw "toolbar buttons named '$S9Name…': $($b.Count) (need exactly 1) - nothing pressed (is it pinned? G9-2)" }
   $pat = $null
-  if (-not $b[0].TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern, [ref]$pat)) { throw 'the toolbar button has no Invoke pattern - nothing pressed' }
+  # S4 runner set-up fix (2026-10-24, block 14): Chrome 156's ToolbarActionView exposes no Invoke pattern; the button
+  # is then clicked with the mouse (Click-S9Element: W foreground, the element at the point is the button).
+  $hasInvoke = $b[0].TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern, [ref]$pat)
   $last = ''
   for ($i = 1; $i -le $Times; $i++) {
-    $pat.Invoke(); $last = Now9
+    if ($hasInvoke) { $pat.Invoke() } else { Click-S9Element $Hwnd $b[0] }
+    $last = Now9
     Say9 "PRESS button $i/$Times at $last"
     if ($i -lt $Times) { Start-Sleep -Milliseconds $GapMs }
   }
   $last
+}
+
+# S4 runner set-up fix (2026-10-24, block 9): a left click at an element's centre, sent only when window $Hwnd is in
+# the foreground and UIA's element at that point is the element itself (so nothing else can be hit).
+if (-not ('S9Mouse' -as [type])) {
+  Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class S9Mouse {
+  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+  [DllImport("user32.dll")] public static extern void mouse_event(uint f, int dx, int dy, uint d, UIntPtr e);
+}
+'@
+}
+function Click-S9Element([long]$Hwnd, $El) {
+  if (-not (Set-S9Foreground $Hwnd)) { throw "window $Hwnd is not in the foreground - nothing clicked" }
+  $r = $El.Current.BoundingRectangle
+  $x = [int]($r.X + $r.Width / 2); $y = [int]($r.Y + $r.Height / 2)
+  $at = $S9UIA::FromPoint((New-Object System.Windows.Point($x, $y)))
+  if (-not $at -or -not [Windows.Automation.Automation]::Compare($at, $El)) { throw "the element at ($x,$y) is not the target - nothing clicked" }
+  [void][S9Mouse]::SetCursorPos($x, $y); Start-Sleep -Milliseconds 50
+  [S9Mouse]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero); [S9Mouse]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
+  Say9 "CLICK '$($El.Current.Name)' at ($x,$y)"
 }
 
 # Pins (-Pin) or unpins (-Unpin) the button through W's Extensions menu. Prints only our row's element names.
@@ -266,7 +294,14 @@ function Set-S9Pin([long]$Hwnd, [switch]$Pin, [switch]$Unpin) {
   $ext = @($root.FindAll([Windows.Automation.TreeScope]::Descendants, $c) | Where-Object { $_.Current.Name -eq 'Extensions' })
   if ($ext.Count -ne 1) { throw "Extensions buttons in window ${Hwnd}: $($ext.Count) (need 1) - nothing pressed (G9-2: ask the user)" }
   $before = Get-S9ChromeWindows -AnyTitle
-  $ext[0].GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
+  # S4 runner set-up fix (2026-10-24, block 9): Chrome 156's Extensions button (class ExtensionsToolbarButton) has no
+  # Invoke pattern, only ExpandCollapse (and ScrollItem); expand it when Invoke is absent.
+  # ExpandCollapse.Expand() answered E_FAIL live and UIA SetFocus moved the focus to the app menu button instead, so
+  # the button is clicked with the mouse at its centre - only after UIA's element at that point IS this button and W
+  # is in the foreground (Click-S9Element).
+  $ip = $null
+  if ($ext[0].TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern, [ref]$ip)) { $ip.Invoke() }
+  else { Click-S9Element $Hwnd $ext[0] }
   Start-Sleep -Milliseconds 800
   $menus = @(Get-S9ChromeWindows -AnyTitle | Where-Object { $before -notcontains $_ })
   $scopes = @($menus | ForEach-Object { $S9UIA::FromHandle([IntPtr]$_) }) + @($root)
@@ -457,6 +492,17 @@ function Get-S9Toggle($doc, [string]$Id) {
   $tp.Current.ToggleState -eq [Windows.Automation.ToggleState]::On
 }
 
+# S4 runner set-up fix (2026-10-24, block 8): Chrome 156 does not expose <p id="blocklist-summary"> under its id
+# (it has no role, so UIA shows only its text, as a Text element with an empty AutomationId); the summary is that
+# Text, the one whose name starts "<n> blocked site". By id first, in case a later build gives it a role.
+function Get-S9Summary($doc) {
+  $s = Get-S9Text (Get-S9ById $doc 'blocklist-summary')
+  if ($s) { return $s }
+  $t = @($doc.FindAll([Windows.Automation.TreeScope]::Descendants, (New-Object Windows.Automation.PropertyCondition($S9UIA::ControlTypeProperty, [Windows.Automation.ControlType]::Text))) | Where-Object { $_.Current.Name -match '^\d+ blocked sites?\.' })
+  if ($t.Count -eq 1) { return $t[0].Current.Name }
+  ''
+}
+
 function Get-S9Sha256([string]$s) {
   $h = [Security.Cryptography.SHA256]::Create().ComputeHash((New-Object Text.UTF8Encoding $false).GetBytes($s))
   -join ($h | ForEach-Object { $_.ToString('x2') })
@@ -475,8 +521,8 @@ function Read-S9SafetyState([long]$Hwnd, [switch]$PassThru) {
   if (-not $ta -or -not $ta.TryGetCurrentPattern([Windows.Automation.ValuePattern]::Pattern, [ref]$vp)) { throw 'no block-list textarea with a ValuePattern' }
   $text = $vp.Current.Value
   $lines = @($text -split "`r?`n" | Where-Object { $_.Trim() -ne '' }).Count
-  $summary = Get-S9Text (Get-S9ById $doc 'blocklist-summary')
-  $count = if ($summary -match '^(\d+) blocked site') { $Matches[1] } else { '?' }
+  $summary = Get-S9Summary $doc
+  $count =if ($summary -match '^(\d+) blocked site') { $Matches[1] } else { '?' }
   $sha = Get-S9Sha256 $text
   Write-Host ('{0} s9-win: STATE armed={1} evaluate={2} count={3} lines={4} sha256={5} status "{6}" summary "{7}"' -f (Now9), "$armed".ToLower(), "$eval".ToLower(), $count, $lines, $sha, $status, $summary)
   if ($PassThru) { [pscustomobject]@{ armed = $armed; evaluate = $eval; count = $count; lines = $lines; sha256 = $sha; status = $status } }
@@ -521,7 +567,8 @@ function Read-S9OptionsLines([long]$Hwnd, [switch]$ShowInvalid) {
   $doc = Get-S9Options $Hwnd
   Say9 ("OPTIONS armed=" + "$(Get-S9Toggle $doc 'armed')".ToLower() + " evaluate=" + "$(Get-S9Toggle $doc 'evaluate')".ToLower())
   foreach ($id in @('safety-status', 'safety-error', 'blocklist-summary', 'blocklist-saved', 'blocklist-conflict', 'blocklist-error')) {
-    Say9 "OPTIONS $id ""$(Get-S9Text (Get-S9ById $doc $id))"""
+    $v = if ($id -eq 'blocklist-summary') { Get-S9Summary $doc } else { Get-S9Text (Get-S9ById $doc $id) }
+    Say9 "OPTIONS $id ""$v"""
   }
   $ul = Get-S9ById $doc 'invalid-lines'
   $items = if ($ul) { @($ul.FindAll([Windows.Automation.TreeScope]::Children, [Windows.Automation.Condition]::TrueCondition)) } else { @() }

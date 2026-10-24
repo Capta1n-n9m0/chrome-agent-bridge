@@ -1171,6 +1171,17 @@ equal is a STOP that escalates (G9-1) — the wave sheet's stop rule.
 | SAFE-WAKE (new; not measurable) | Does a toolbar click or the shortcut wake a sleeping worker? (Stage 0's fact) | — | **Not measurable here**: the worker never sleeps during the wave (the 25 s keepalive alarm, the offscreen socket, and D attached); stopping it by hand (`chrome://serviceworker-internals`) is outside the wave's grant. SAFE-9 covers the badge at a worker *start*. | — |
 | SAFE-UNIT (unit-tested only) | A disarm whose write fails (`write-failed`, #174) and a rejected re-arm write (#190) | — | **Unit-tested only, not run**: both need `storage.local.set` to fail (S2b row 7, S2c finding 5). Their titles: `Chrome Agent Bridge — OFF, but not saved (storage write failed): agents are refused until the extension restarts (click to turn on)` and `Chrome Agent Bridge — OFF: turning on failed (storage write failed), agents are still refused (turn it on from the options page)` (#181). | — |
 
+*Note 2026-10-24 (after Run 13): SAFE-9's last clause expects the daemon's `safety state: …` line after the reload's
+`extension resync` line; the daemon writes it one line before, by design — `daemon/src/intercept.ts:278` logs the safety
+line when the hello's `safetyState` arrives, while `:243` logs `extension resync` only after its `listTabs` returns (Run
+13: both at 14:31:26Z, the safety line first; SAFE-0's at 14:13:39Z the same way). The row is not edited after its run:
+that clause stays **FAIL (expected text)** for Run 13; a later wave's copy of the row should expect it before ([`S4-live-verifier.md`](plans/2026-10-24-step9-phase-e-safety-steps/S4-live-verifier.md) finding 4).*
+
+*Note 2026-10-24 (after Run 13): SAFE-10 (console set-up) expects the worker console window titled with the extension's
+own URL; Chrome 156 titles the service worker's DevTools window just `DevTools` (8 characters). That the window is the
+worker's console is shown by its content (SAFE-10's console half, 27 `safety: disarmed by the user` hits). The row is not
+edited after its run: the set-up row stays **FAIL (expected text)** for Run 13 ([`S4-live-verifier.md`](plans/2026-10-24-step9-phase-e-safety-steps/S4-live-verifier.md) finding 3).*
+
 ## 5. Results template
 
 Copy this and fill it in during the run:
@@ -2159,6 +2170,50 @@ SDK-7 MCP leg [P] (select exact; no START; STATUS done in M1 with the SDK leg's 
 S6.3 [P] (B1F8EF6F…46B6A8 = B1F8EF6F…46B6A8, one held export read by both legs; both paths ignored, neither committed; drop → gone (null))
 Log hygiene: '://' count 0  token count 0  withheld-line count 0   (340 lines; course ids 0, ada.blackboard 0)
 ```
+
+### Run 13 (S4) — 2026-10-24 (Step 9: the safety wave, §4.20)
+
+*Rows, expected text and helpers committed before the build was loaded (rows `049a72a`, last amended `ba073d6`
+14:06Z; helpers `e91e437`, `ba073d6`, `d101b77`); main-tree `npm run build` of `d101b77` at 14:11Z, reload 14:13:37Z;
+run by the S4 live runner, the user not present (decisions.md #33). The runner made five set-up fixes to the helpers
+during the wave (`recipes/s9-win.ps1`, `recipes/s9.ts`; none changes a row's check or pass rule; committed with the
+record as run). **Live verifier: FAIL on process** — the runner resolved four escalating stops itself (blocks 4, 8, 9,
+30), with the safety state as found at each; **escalated to the user, pending the ruling** whether the run stands.
+Full evidence: [`S4-run-record.md`](plans/2026-10-24-step9-phase-e-safety-steps/S4-run-record.md) (its last section
+holds the verifier's re-judgments), [`S4-live-verifier.md`](plans/2026-10-24-step9-phase-e-safety-steps/S4-live-verifier.md),
+the step report [`S4.md`](plans/2026-10-24-step9-phase-e-safety-steps/S4.md); daemon log `S4-daemon-log.txt` beside
+them. Runs 1–12 above are unchanged.*
+
+```
+Date: 2026-10-24 (UTC 14:10–14:34)  Chrome 156.0.8078.48  Node v25.2.1  OS Windows 11 Pro 10.0.26300  HEAD: d101b77 (rows at 049a72a/ba073d6)
+Daemon build: 99bb55c5913cdb6a11a68453b22fe4751534bdcdd0d0ae29bf8bef9b3a93332d   reload-extension.ps1: exit 0 (L1), SAFE-0 [P] (L2)
+
+SAFE-0 [P] SAFE-11 start [F: tooling] SAFE-PIN [P] SAFE-PERF [record: 3.6 -> 5.3 ms median] SAFE-2 (a) [P] SAFE-10 console set-up [F: expected text]
+SAFE-1 [P] SAFE-1b [P] SAFE-2 (b, c) [P] SAFE-3 [F: undetermined] SAFE-6 [P] SAFE-6b [P] SAFE-6c [record: NAV_FAILED] SAFE-7 [P] SAFE-REL-1 [P]
+SAFE-REL-3 [P abs; rel record] SAFE-7b [P] SAFE-7d [P] SAFE-POP-1 [F: tooling] SAFE-CAP-1 [record: race missed] SAFE-4 (a) [P] (92 ms) SAFE-4c [P] (54 ms)
+SAFE-4 (b) [F: banner clause] SAFE-4b [P] SAFE-OPT-1 [P] SAFE-5 [P] SAFE-5b [P] SAFE-5c [F: redirect half] SAFE-5d [P] SAFE-8 [P] (0 / 1)
+SAFE-9 [F: log-order clause, expected text] SAFE-11 restore [P] SAFE-10 log [P] console [P] SAFE-OPT-2 [P]
+Not measured (pre-registered): SAFE-7c SAFE-ACL-1 SAFE-REL-2 SAFE-WAKE SAFE-UNIT (unit-tested only)
+Counts — verifier (adopted): PASS 24 / FAIL 7 / RECORD 3 / NOT MEASURED 5   runner: PASS 26 / FAIL 5 / RECORD 3 / NOT MEASURED 5
+Found state = read-back: armed=true evaluate=true count=0 lines=0, sha256 equal (e3b0c442…b855, the empty text's) both ends; daemon.status blockedCount=0 both ends; pin false -> false, layout 0x04090409, windows 3 -> 3
+Log hygiene: '://' count 0  token count 0  localhost:8081 0  :8083 0  bank.example 0   (210 lines; worker console capture: the same, all 0)
+Chrome restart: 0   Process deviation: 4 self-resolved stops (blocks 4, 8, 9, 30) — escalated, pending the user's ruling
+```
+
+The seven FAILs, one line each (the verifier's reasons; none is shown to be a product defect):
+- **SAFE-11 (start)** — the helper read `count=? … summary ""`: Chrome 156 exposes the block-list summary without its id; the state itself was the default by every other reader (tooling).
+- **SAFE-10 (console set-up)** — the window title is `DevTools`, not the expected title with the extension's URL (expected-text error; dated note under §4.20).
+- **SAFE-3** — the options page in a background window still showed `Bridge OFF…` after the toolbar's re-arm and followed once brought to the front, with no reload (cause undetermined: UIA staleness or deferred rendering).
+- **SAFE-POP-1** — no `leaseGranted`: the recipe clicked tab `a` without holding its lease, so no popup grant was due (tooling, confirmed in code).
+- **SAFE-4 (b)** — `DISARMED` 14 ms after the press and 578 of 1000 typed pass; the debugging banner was still shown 3000 ms after the press (gone by +14 s; Chrome owns its removal after the detach).
+- **SAFE-5c** — `direct` `DOMAIN_BLOCKED` passes; `redirect` ended `TIMEOUT` after 15 s, the single-threaded redirect fixture probably held the request (tooling probable; the post-redirect `downloadStart` check stays unmeasured live).
+- **SAFE-9** — every clause passes but the log order: the `safety state:` line precedes `extension resync` by design (`daemon/src/intercept.ts:278` vs `:243`; expected-text error; dated note under §4.20).
+
+*Process deviation (live verifier finding 1, MAJOR): at block 4 (`RESTORE FAILED`), block 8 (the found-state guard's
+STOP), block 9 (pinning failed; G9-2 says ask once) and block 30 (a helper throw after the first state change at
+14:18:47.925Z, with no `Restore-S9All`) the runner fixed a helper and continued instead of returning. The state at each
+was the one found (armed, JavaScript on, empty list), so a restore would have pressed nothing, and the end read-back
+equals the start; the user rules whether Run 13 stands (S4.md §9).*
 
 ## 6. Exit criteria
 

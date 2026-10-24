@@ -276,7 +276,10 @@ async function openTab(c: BridgeClient, url: string): Promise<string> {
 }
 
 async function evalValue(c: BridgeClient, handle: string, expression: string): Promise<unknown> {
-  const env = (await c.call("evaluate", { tab: handle, expression, timeoutMs: 10_000 }, { timeoutMs: 15_000 })) as { kind?: string; value?: unknown };
+  // S4 runner set-up fix (2026-10-24, block 30): the extension wraps an expression that contains `return` in an
+  // async function body, so SAFE-4b's VISLOG IIFE came back kind "undefined" (t5-lib.ts evalJson's 2026-10-22 fix);
+  // `return (<expr>);` makes the value the body's return value in every case.
+  const env = (await c.call("evaluate", { tab: handle, expression: `return (${expression});`, timeoutMs: 10_000 }, { timeoutMs: 15_000 })) as { kind?: string; value?: unknown };
   if (env?.kind !== "json") throw new Error(`evaluate returned kind ${String(env?.kind)}`);
   return env.value;
 }
