@@ -340,12 +340,38 @@ describe("log and evidence scans", () => {
     const h = consoleHits(text);
     expect(h.hitLines).toEqual(["GET http://localhost:8081/dl/hello.txt?s9=5c2 net::ERR_ABORTED"]);
     expect(h.bridgeHitLines).toEqual([]);
+    expect(h.pressLines).toEqual(["safety: disarmed by the user"]);
     expect(consoleVerdict(scanCounts(text, token), h).pass).toBe(true);
     const bad = "[bridge] fetch http://localhost:8081/x failed";
     expect(consoleVerdict(scanCounts(bad, token), consoleHits(bad)).pass).toBe(false);
     const other = "Failed to load https://real.example/";
     expect(consoleVerdict(scanCounts(other, token), consoleHits(other)).pass).toBe(false);
     expect(consoleVerdict(scanCounts(`x ${token}`, token), consoleHits("x")).pass).toBe(false);
+  });
+
+  it("consoleHits: a bridge line is recognised anywhere in the row (a DevTools prefix or source link first)", () => {
+    const text = [
+      "2 [bridge] fetch http://localhost:8081/x failed sw.js:12",
+      "sw.js:183 safety: disarmed by the user",
+      "10:00:00.123 [bridge] evaluate bank.example",
+      "unsafety: http://localhost:8080/ fixture line, not the bridge's",
+    ].join("\n");
+    const h = consoleHits(text);
+    expect(h.bridgeHitLines).toHaveLength(2);
+    expect(h.pressLines).toEqual(["sw.js:183 safety: disarmed by the user"]);
+    expect(consoleVerdict(scanCounts(text, token), h).pass).toBe(false);
+  });
+
+  it("consoleVerdict: an empty capture, or one without the disarm press line, is NOT MEASURED, never a pass", () => {
+    for (const text of ["", "[bridge] connection: up\nsafety: armed by the user"]) {
+      const v = consoleVerdict(scanCounts(text, token), consoleHits(text));
+      expect(v.pass).toBe(false);
+      expect(v.notMeasured).toBe(true);
+    }
+    const leak = "safety: disarmed by the user\n[bridge] evaluate http://localhost:8081/";
+    const v = consoleVerdict(scanCounts(leak, token), consoleHits(leak));
+    expect(v.pass).toBe(false);
+    expect(v.notMeasured).toBeUndefined();
   });
 
   it("scanVerdict: daemon needs all zero; committed needs no token and no other ://", () => {

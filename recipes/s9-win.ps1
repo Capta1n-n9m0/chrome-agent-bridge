@@ -26,8 +26,15 @@
 #   Get-S9KeyboardLayouts / Send-S9Shortcut <hwnd> / Restore-S9Layout <hwnd> <hkl>   Alt+Shift+K; put a switched layout back
 #   Read-S9Shortcuts <hwnd>                  window on chrome://extensions/shortcuts: is our command Alt+Shift+K?
 #   Open-S9WorkerConsole <hwnd> / Read-S9WorkerConsole <hwnd> -Out <file>
-#   Read-S9SafetyState <hwnd> [-SaveTo <dir>] / Read-S9OptionsLines <hwnd> [-ShowInvalid]
+#   Read-S9SafetyState <hwnd> [-PassThru]    the page as shown (waits for the stored state to arrive) / Read-S9OptionsLines <hwnd> [-ShowInvalid]
+#   Read-S9StoredState <hwnd> [-PassThru]    STORED state: O to about:blank, then a fresh options page, then Read-S9SafetyState
+#   Test-S9FoundState <hwnd>                 block 8's guard: armed + JS on + empty list (O and daemon.status), else STOP
 #   Set-S9Switch <hwnd> -Which armed|evaluate -On $true|$false / Set-S9BlockList <hwnd> -Lines <s[]> | -FromFile <f>
+#   Get-S9CardEnabled <hwnd>                 window on chrome://extensions: our card's enable toggle (SAFE-7d)
+#   Get-S9ChromeStart                        the oldest chrome.exe start time (a changed value = Chrome restarted)
+#   Restore-S9All [-Why <s>]                 THE restore entry point, idempotent, callable from any block: Restore-S9Safety
+#                                            (armed, JS on, empty list; stored read-back + daemon.status + title), then
+#                                            Restore-S9Desk (pin state, keyboard layout, the driver windows). $false = STOP.
 #   Invoke-S9OptionsButton <hwnd> -Id <html id>
 #   Invoke-S9PressWhenReady <hwnd> -Row <r> -DelayMs <ms> [-Via Button|Shortcut] [-WatchBanner] [-RearmAfterMs <ms>]
 #   Invoke-S9WhenReady -Row <r> -DelayMs <ms> -Action { ... }
@@ -75,6 +82,11 @@ $S9TitleOff = 'Chrome Agent Bridge — OFF: agents are refused (click to turn on
 $S9TitleArmed = 'Chrome Agent Bridge — armed (click to turn off)'
 $S9TitleJsOff = 'Chrome Agent Bridge — armed, JavaScript off (click to turn off)'
 if (-not $env:S9_OUT) { $env:S9_OUT = Join-Path $env:TEMP 'bridge-e2e\s9' }
+$S9Repo = Split-Path -Parent $PSScriptRoot
+$S9OptionsUrl = "chrome-extension://$S9Id/options.html"
+$S9EmptySha = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'   # sha256 of the empty text
+# The wave's state for Restore-S9All lives in GLOBAL variables the wave sheet sets: $W $O $E $D (HWNDs), $WinStart,
+# $PinnedBefore, $L0 (W's keyboard layout at block 4), $S9ChromeStart (block 1), $S9Found (Test-S9FoundState).
 
 function Say9([string]$m) { Write-Host ('{0:yyyy-MM-ddTHH:mm:ss.fffZ} s9-win: {1}' -f [DateTime]::UtcNow, $m) }
 function Now9 { [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ') }
@@ -368,6 +380,21 @@ function Find-S9Card([long]$Hwnd) {
   $null
 }
 
+# SAFE-7d's card read (prep fixer r1): our card's enable toggle (AutomationId enableToggle, docs/e2e-test-plan.md
+# section 1) on a window showing chrome://extensions. Prints and returns 'on' | 'off' | 'not-found' (a record).
+function Get-S9CardEnabled([long]$Hwnd) {
+  if (-not (Get-S9DocUrl $Hwnd).StartsWith('chrome://extensions')) { throw "window $Hwnd is not on chrome://extensions" }
+  $span = Find-S9Card $Hwnd
+  $res = 'not-found'
+  if ($span) {
+    $t = @($span | Where-Object { $_.Current.AutomationId -eq 'enableToggle' })
+    $tp = $null
+    if ($t.Count -eq 1 -and $t[0].TryGetCurrentPattern([Windows.Automation.TogglePattern]::Pattern, [ref]$tp)) { $res = if ($tp.Current.ToggleState -eq [Windows.Automation.ToggleState]::On) { 'on' } else { 'off' } }
+  }
+  Say9 "CARD $S9Name enable toggle: $res"
+  $res
+}
+
 function Open-S9WorkerConsole([long]$Hwnd) {
   if (-not (Get-S9DocUrl $Hwnd).StartsWith('chrome://extensions')) { throw "window $Hwnd is not on chrome://extensions" }
   $span = Find-S9Card $Hwnd
@@ -415,9 +442,12 @@ function Get-S9Text($e) {
   (@($e.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition) | ForEach-Object { $_.Current.Name } | Where-Object { $_ }) -join ' ')
 }
 
+# A checkbox's state, by AutomationId AND accessible name (options.html's labels; null when either does not match).
 function Get-S9Toggle($doc, [string]$Id) {
   $e = Get-S9ById $doc $Id; $tp = $null
-  if (-not $e -or -not $e.TryGetCurrentPattern([Windows.Automation.TogglePattern]::Pattern, [ref]$tp)) { return $null }
+  $label = @{ armed = 'Bridge on*'; evaluate = 'Allow JavaScript*' }[$Id]
+  if (-not $e -or ($label -and $e.Current.Name -notlike $label)) { return $null }
+  if (-not $e.TryGetCurrentPattern([Windows.Automation.TogglePattern]::Pattern, [ref]$tp)) { return $null }
   $tp.Current.ToggleState -eq [Windows.Automation.ToggleState]::On
 }
 
@@ -426,8 +456,14 @@ function Get-S9Sha256([string]$s) {
   -join ($h | ForEach-Object { $_.ToString('x2') })
 }
 
-function Read-S9SafetyState([long]$Hwnd, [string]$SaveTo = '') {
+# The options page as shown. It first waits (<= 10 s) until the page has rendered a stored state: options.ts leaves
+# #safety-status empty until its first storage.local read lands (refreshSafety -> render). The block list is printed
+# only as its line count and sha256 (never its text); -PassThru also returns the values as an object.
+function Read-S9SafetyState([long]$Hwnd, [switch]$PassThru) {
   $doc = Get-S9Options $Hwnd
+  $t0 = Get-Date; $status = ''
+  do { $status = Get-S9Text (Get-S9ById $doc 'safety-status'); if (-not $status) { Start-Sleep -Milliseconds 100; $doc = Get-S9Options $Hwnd } } until ($status -or ((Get-Date) - $t0).TotalSeconds -gt 10)
+  if (-not $status) { throw "the options page in window $Hwnd rendered no stored state within 10 s (#safety-status empty)" }
   $armed = Get-S9Toggle $doc 'armed'; $eval = Get-S9Toggle $doc 'evaluate'
   $ta = Get-S9ById $doc 'blocklist'; $vp = $null
   if (-not $ta -or -not $ta.TryGetCurrentPattern([Windows.Automation.ValuePattern]::Pattern, [ref]$vp)) { throw 'no block-list textarea with a ValuePattern' }
@@ -435,15 +471,44 @@ function Read-S9SafetyState([long]$Hwnd, [string]$SaveTo = '') {
   $lines = @($text -split "`r?`n" | Where-Object { $_.Trim() -ne '' }).Count
   $summary = Get-S9Text (Get-S9ById $doc 'blocklist-summary')
   $count = if ($summary -match '^(\d+) blocked site') { $Matches[1] } else { '?' }
-  $status = Get-S9Text (Get-S9ById $doc 'safety-status')
   $sha = Get-S9Sha256 $text
   Write-Host ('{0} s9-win: STATE armed={1} evaluate={2} count={3} lines={4} sha256={5} status "{6}" summary "{7}"' -f (Now9), "$armed".ToLower(), "$eval".ToLower(), $count, $lines, $sha, $status, $summary)
-  if ($SaveTo -and $text -ne '') {
-    New-Item -ItemType Directory -Force $SaveTo | Out-Null
-    $f = Join-Path $SaveTo 'blocklist.txt'
-    [IO.File]::WriteAllText($f, $text, (New-Object Text.UTF8Encoding $false))
-    Say9 "the found block list is not empty: saved (not printed) to $f for SAFE-11's restore"
-  }
+  if ($PassThru) { [pscustomobject]@{ armed = $armed; evaluate = $eval; count = $count; lines = $lines; sha256 = $sha; status = $status } }
+}
+
+# The STORED state: O is sent to about:blank and then to a fresh options page, so nothing the wave typed into the old
+# page can be read back; the new page fills its checkboxes and textarea from storage.local (options.ts render with
+# loadedList null), and Read-S9SafetyState waits until that read has landed.
+function Read-S9StoredState([long]$Hwnd, [switch]$PassThru) {
+  Set-S9Omnibox $Hwnd 'about:blank'
+  Set-S9Omnibox $Hwnd $S9OptionsUrl
+  $t0 = Get-Date
+  while (-not (Get-S9DocUrl $Hwnd).StartsWith($S9OptionsUrl)) { if (((Get-Date) - $t0).TotalSeconds -gt 10) { throw "window $Hwnd did not reach the options page" }; Start-Sleep -Milliseconds 200 }
+  Say9 "STORED read: window $Hwnd reloaded onto a fresh options page"
+  Read-S9SafetyState $Hwnd -PassThru:$PassThru
+}
+
+# daemon.status's safety tuple, through s9.ts wait-safety (exit 0 = reached within the timeout). Prints s9.ts's line.
+function Test-S9DaemonSafety([bool]$Armed, [bool]$Evaluate, [int]$Count, [string]$Row, [int]$TimeoutMs = 5000) {
+  Push-Location $S9Repo
+  try {
+    $a = "$Armed".ToLower(); $e = "$Evaluate".ToLower()
+    node --import tsx recipes/s9.ts wait-safety --armed $a --evaluate $e --count $Count --timeout $TimeoutMs --row $Row | Write-Host
+    $LASTEXITCODE -eq 0
+  } finally { Pop-Location }
+}
+
+# Block 8's pre-registered guard (prep fixer r1): every toggle in the wave sheet is a blind press and the restore
+# targets armed + JS on + an empty list, so the wave may toggle only when that is what it found - on O (a stored read)
+# AND in daemon.status. Sets $global:S9Found. $false = STOP before block 14 (nothing changed yet; nothing is saved).
+function Test-S9FoundState([long]$Hwnd) {
+  $s = Read-S9StoredState $Hwnd -PassThru
+  $d = Test-S9DaemonSafety $true $true 0 'SAFE-11-start-guard' 3000
+  $def = ($s.armed -eq $true) -and ($s.evaluate -eq $true) -and ($s.count -eq '0') -and ($s.lines -eq 0) -and ($s.sha256 -eq $S9EmptySha)
+  $global:S9Found = [pscustomobject]@{ Default = ($def -and $d); State = $s }
+  if ($def -and $d) { Say9 'FOUND STATE = the expected default (armed, JavaScript on, empty list; O and daemon.status agree): the toggles may run'; return $true }
+  Say9 "FOUND STATE differs from the expected default (O default: $("$def".ToLower()), daemon.status agrees: $("$d".ToLower())) - STOP before any toggle; the step agent asks the user. Nothing was changed."
+  $false
 }
 
 function Read-S9OptionsLines([long]$Hwnd, [switch]$ShowInvalid) {
@@ -568,6 +633,88 @@ function Close-S9Tab([long]$Hwnd, [string]$TitlePrefix) {
   if ($x.Count -ne 1) { throw "close buttons on that tab: $($x.Count) (need 1)" }
   $x[0].GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
   Say9 "closed the tab '$TitlePrefix…' in window $Hwnd"
+}
+
+# ------------------------------------------------------------------------------------ the restore (G9-1)
+# Prep fixer r1 (S4-prep-verifier finding 1): ONE idempotent entry point, Restore-S9All, that the runner calls on any
+# stop or helper throw from any block, and at the wave's end (blocks 40 and 43 call its two halves). Each half
+# re-reads before it acts, so a second call presses nothing. It returns $true only when everything read back equal;
+# $false is a STOP that escalates (the step agent asks the user; nothing else is touched in Chrome).
+
+function Get-S9ChromeStart {
+  $p = @(Get-Process chrome -ErrorAction SilentlyContinue | Sort-Object StartTime | Select-Object -First 1)
+  if ($p.Count) { $p[0].StartTime.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffZ') } else { '' }
+}
+
+function Test-S9Live($h) { $h -and [S9Win]::IsWindow([IntPtr][long]$h) }
+
+# Armed, JavaScript on, empty list - the found state block 8's guard verified ($global:S9Found.Default); read back
+# from a fresh options page (stored), from daemon.status, and from the toolbar title.
+function Restore-S9Safety {
+  $f = $global:S9Found
+  if (-not $f) { Say9 'RESTORE safety: nothing to restore (no found state was read, so no toggle ran)'; return $true }
+  if (-not $f.Default) { Say9 'RESTORE safety: not touched (the found state was not the default, so the wave stopped before any toggle)'; return $true }
+  if ($global:S9ChromeStart -and (Get-S9ChromeStart) -ne $global:S9ChromeStart) {
+    Say9 'RESTORE safety: NOT attempted - Chrome restarted since block 1 (a restart needs a fresh grant); the state as last read stands in the record'
+    return $false
+  }
+  $o = $global:O
+  try {
+    if (-not (Test-S9Live $o)) { $o = Open-S9ChromePage $S9OptionsUrl; $global:O = $o; Say9 "RESTORE safety: options page reopened in window $o" }
+    $s = Read-S9StoredState $o -PassThru
+    Start-Sleep -Milliseconds 1500   # margin after any disarm (#144 is the toolbar's rule; the options switch writes directly)
+    [void](Set-S9Switch $o -Which armed -On $true)
+    [void](Set-S9Switch $o -Which evaluate -On $true)
+    if ($s.sha256 -ne $S9EmptySha) { [void](Set-S9BlockList $o -Lines @()) } else { Say9 'RESTORE safety: the stored list is already empty - not saved again' }
+  } catch { Say9 "RESTORE safety: a step threw: $($_.Exception.Message)" }
+  $ok = $false
+  try {
+    $r = Read-S9StoredState $o -PassThru
+    $d = Test-S9DaemonSafety $true $true 0 'SAFE-11-end' 5000
+    $page = ($r.armed -eq $true) -and ($r.evaluate -eq $true) -and ($r.count -eq '0') -and ($r.lines -eq 0) -and ($r.sha256 -eq $S9EmptySha) -and ($r.status -eq $f.State.status)
+    $title = $true
+    if (Test-S9Live $global:W) { $n = Get-S9ActionTitle $global:W; $title = ($n -eq $S9TitleArmed) -or ("$n".StartsWith($S9TitleArmed)) }
+    else { Say9 'RESTORE safety: W is gone - the title is not read (record)' }
+    $ok = $page -and $d -and $title
+    Say9 "RESTORE safety read-back: stored page equal $("$page".ToLower()), daemon.status equal $("$d".ToLower()), title armed $("$title".ToLower())"
+  } catch { Say9 "RESTORE safety: the read-back threw: $($_.Exception.Message)" }
+  $ok
+}
+
+# The pin state found (block 9), W's keyboard layout at block 4, then the driver windows D, O, E, W closed and the
+# Chrome window count back to $WinStart.
+function Restore-S9Desk {
+  $ok = $true
+  $any = @($global:W, $global:O, $global:E | Where-Object { Test-S9Live $_ })
+  if ($global:PinnedBefore -eq $false) {
+    if ($any.Count) {
+      try { if (Get-S9PinState $any[0]) { if (-not (Set-S9Pin $any[0] -Unpin)) { $ok = $false; Say9 'RESTORE desk: unpin FAILED' } } }
+      catch { $ok = $false; Say9 "RESTORE desk: unpin threw: $($_.Exception.Message)" }
+    } else { $ok = $false; Say9 'RESTORE desk: no driver window left to unpin from (record; the step agent asks)' }
+  }
+  if ($global:L0 -and (Test-S9Live $global:W)) {
+    try { Restore-S9Layout $global:W $global:L0; if ((Get-S9Layout $global:W) -ne $global:L0) { $ok = $false } }
+    catch { $ok = $false; Say9 "RESTORE desk: layout threw: $($_.Exception.Message)" }
+  }
+  foreach ($n in 'D', 'O', 'E', 'W') {
+    $h = Get-Variable -Scope Global -Name $n -ValueOnly -ErrorAction SilentlyContinue
+    if (Test-S9Live $h) { Close-S9Window $h; if (Test-S9Live $h) { $ok = $false } }
+  }
+  if ($null -ne $global:WinStart) {
+    $now = @(Get-S9ChromeWindows).Count
+    Say9 "RESTORE desk: Chrome windows now $now (found $($global:WinStart))"
+    if ($now -ne $global:WinStart) { $ok = $false }
+  }
+  $ok
+}
+
+function Restore-S9All([string]$Why = 'stop') {
+  Say9 "RESTORE begins ($Why)"
+  $s = Restore-S9Safety
+  $k = Restore-S9Desk
+  if ($s -and $k) { Say9 'RESTORE ok: safety state, pin, layout and windows as found' }
+  else { Say9 "RESTORE FAILED (safety $("$s".ToLower()), desk $("$k".ToLower())) - STOP: record the last STATE line; the step agent asks the user (G9-1)" }
+  $s -and $k
 }
 
 # ------------------------------------------------------------------- section 1 item 8 helpers (copied verbatim)

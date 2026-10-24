@@ -488,26 +488,46 @@ export function scanVerdict(c: ScanCounts, mode: "daemon" | "committed"): Judged
 }
 
 /**
- * The worker console capture (SAFE-10, second half): the lines with a hit (`://`, a test pattern, `:8083`), and
- * which of them are the bridge's own log lines (`[bridge] …`, `safety: …` — every `console.*` call in extension/src
- * starts so). Chrome's own entries in that console (e.g. a failed fetch's `net::ERR_…` report) are not bridge
- * logging; the pre-registered rule fails on a bridge hit line, a non-fixture `://` or the token.
+ * A line of the bridge's own logging: every `console.*` call in extension/src starts its text with `[bridge]` or
+ * `safety: ` (grep 2026-10-24, prep fixer r1: the `[bridge] …` calls in sw.ts, debugger.ts, network-state.ts,
+ * handlers/{actions,download,evaluate}.ts, and badge.ts's `console.log(toggleLogLine(r))`, whose LOG_LINES all start
+ * `safety: `). How DevTools exposes a console row to UIA is unmeasured (a repeat count, a timestamp or a source link
+ * may come first), so the prefix is matched anywhere in the line, not only at its start.
  */
-export function consoleHits(text: string): { hitLines: string[]; bridgeHitLines: string[] } {
-  const hitLines = text
-    .split(/\r?\n/)
-    .filter((l) => l.includes("://") || l.includes(PATTERN_8081) || l.includes(":8083") || l.includes(PATTERN_BANK));
-  const bridgeHitLines = hitLines.filter((l) => /^\s*(\[bridge\]|safety: )/.test(l));
-  return { hitLines, bridgeHitLines };
+export function isBridgeLogLine(l: string): boolean {
+  return l.includes("[bridge]") || /(^|[^A-Za-z])safety: /.test(l);
 }
 
-export function consoleVerdict(c: ScanCounts, h: { bridgeHitLines: string[] }): Judged {
+/**
+ * The worker console capture (SAFE-10, second half): the lines with a hit (`://`, a test pattern, `:8083`), which of
+ * them are the bridge's own log lines, and the press lines (`safety: …`, the positive control). Chrome's own entries
+ * in that console (e.g. a failed fetch's `net::ERR_…` report) are not bridge logging; the pre-registered rule fails
+ * on a bridge hit line, a non-fixture `://` or the token.
+ */
+export function consoleHits(text: string): { hitLines: string[]; bridgeHitLines: string[]; pressLines: string[] } {
+  const lines = text.split(/\r?\n/);
+  const hitLines = lines.filter((l) => l.includes("://") || l.includes(PATTERN_8081) || l.includes(":8083") || l.includes(PATTERN_BANK));
+  const bridgeHitLines = hitLines.filter(isBridgeLogLine);
+  const pressLines = lines.filter((l) => /(^|[^A-Za-z])safety: /.test(l)).map((l) => l.trim());
+  return { hitLines, bridgeHitLines, pressLines };
+}
+
+/**
+ * The console verdict. A failure (token, non-fixture `://`, a bridge line with a URL or pattern) is a FAIL whatever
+ * else holds; otherwise the capture must show the positive control — at least one `safety: disarmed by the user`
+ * line (SAFE-1 presses the button before this read) — or the check is NOT MEASURED, never a pass: an empty or
+ * unreadable capture would otherwise pass vacuously (prep fixer r1, S4-prep-verifier finding 6).
+ */
+export function consoleVerdict(c: ScanCounts, h: { bridgeHitLines: string[]; pressLines: string[] }): Judged & { notMeasured?: boolean } {
   const bad = [
     c.token ? `token ${c.token}` : "",
     c.schemeOther ? `non-fixture :// ${c.schemeOther}` : "",
     h.bridgeHitLines.length ? `bridge log lines with a URL or pattern ${h.bridgeHitLines.length}` : "",
   ].filter(Boolean);
-  return bad.length ? { pass: false, why: bad.join(", ") } : { pass: true, why: "no token, no non-fixture ://, no bridge line with a URL or pattern" };
+  if (bad.length) return { pass: false, why: bad.join(", ") };
+  const control = h.pressLines.filter((l) => l.includes(EXPECT.logDisarmed)).length;
+  if (control === 0) return { pass: false, notMeasured: true, why: `no "${EXPECT.logDisarmed}" line in the capture (the positive control), so the bridge's lines were not seen` };
+  return { pass: true, why: `no token, no non-fixture ://, no bridge line with a URL or pattern; positive control: ${control} "${EXPECT.logDisarmed}" line(s)` };
 }
 
 /** daemon.log lines (`<YYYY-MM-DDTHH:MM:SSZ> <msg>`) stamped at or after `sinceIso` (whole seconds, floor). */

@@ -32,6 +32,8 @@
 //   scan-log --since <iso> [--copy <file>]   SAFE-10: counts over daemon.log lines since <iso>; --copy writes them
 //                              to <file> only when every count is 0
 //   scan-file <file> --mode daemon|console|committed   counts over a file (the worker console capture, a file to commit)
+//   wait-alone [--timeout <ms>] [--row R]   poll daemon.status until this probe is the only client (an ended
+//                              actor's leases die with its connection; SAFE-5d, prep fixer r1)
 //   mcp-config <file>          the MCP config for recipes/s9-actor.ts (only chrome-agent-bridge, no token)
 //   cleanup                    close every tab state.json says this script opened
 //   daemon-shutdown            stop the daemon (refused while any other client is connected)
@@ -394,6 +396,27 @@ async function cmdWaitSafety(): Promise<void> {
   }
 }
 
+/** Until this probe is the daemon's only client: an ended MCP actor's leases die with its connection (leases.ts). */
+async function cmdWaitAlone(): Promise<void> {
+  const row = option("--row") ?? "WAIT";
+  const timeout = Number(option("--timeout") ?? "10000");
+  const c = await client("s9-wait-alone");
+  try {
+    const t0 = Date.now();
+    let n = -1;
+    for (;;) {
+      const st = (await c.call("daemon.status")) as { clients?: unknown[] };
+      n = Array.isArray(st?.clients) ? st.clients.length : -1;
+      if (n === 1 || Date.now() - t0 > timeout) break;
+      await sleep(100);
+    }
+    say(`ROW ${row} wait-alone ${n === 1 ? "reached" : "NOT reached"} clients=${n} after ${Date.now() - t0} ms`);
+    if (n !== 1) throw new SetUp(`SET-UP: ${n} clients still connected after ${timeout} ms (an actor did not end)`);
+  } finally {
+    c.close();
+  }
+}
+
 async function cmdCall(): Promise<void> {
   const [id, step, op, ...args] = positional();
   if (!id || !step || !op) throw new SetUp("SET-UP: call <ROW> <step> <op> [args] [--expect E]");
@@ -740,12 +763,17 @@ async function cmdScanFile(): Promise<void> {
   if (mode === "console") {
     // The bridge's press lines are fixed strings (badge.ts); every hit line is printed with URLs scrubbed, a line
     // holding the token is withheld whole.
-    for (const l of text.split(/\r?\n/).filter((x) => /^\s*safety: /.test(x))) say(`CONSOLE ${l.trim()}`);
     const h = consoleHits(text);
+    for (const l of h.pressLines) say(`CONSOLE ${l}`);
     for (const l of h.hitLines) say(`CONSOLE-HIT ${token && l.includes(token) ? "<line withheld: token>" : scrubMessage(l.trim(), OWN_ID)}`);
     const v = consoleVerdict(c, h);
-    say(checkLine("SAFE-10", "scan-console", v));
-    if (!v.pass) failed = true;
+    if (v.notMeasured) {
+      say(`CHECK SAFE-10 scan-console NOT MEASURED — ${v.why}`);
+      notMeasured = true;
+    } else {
+      say(checkLine("SAFE-10", "scan-console", v));
+      if (!v.pass) failed = true;
+    }
     return;
   }
   const v = scanVerdict(c, mode);
@@ -805,6 +833,7 @@ const commands: Record<string, () => Promise<void>> = {
   safe0: cmdSafe0,
   probe: cmdProbe,
   "wait-safety": cmdWaitSafety,
+  "wait-alone": cmdWaitAlone,
   call: cmdCall,
   safe4a: () => cmdWaitRow("SAFE-4a", { locator: { css: "#s9-never-there" }, timeoutMs: 20_000 }),
   safe4c: () => cmdWaitRow("SAFE-4c", { seconds: 30 }),
