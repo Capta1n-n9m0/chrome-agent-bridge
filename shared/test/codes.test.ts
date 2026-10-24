@@ -7,9 +7,13 @@ import {
   isErrorCode,
 } from "../src/codes.js";
 
-// Spec §10 of docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md — exactly these 23: 22 on the wire,
+// Spec §10 of docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md — exactly these 25: 24 on the wire,
 // plus `NO_CURSOR`, raised by the SDK alone (decisions.md · 2026-10-23 · `NO_CURSOR` enters
 // `shared/src/codes.ts` as the 23rd code (#76)).
+// Count 23 → 25 (Step 9 S0, 2026-10-24): `DISARMED` and `DOMAIN_BLOCKED` join the extension codes, per
+// spec §10's dated Step 9 note and decisions.md · 2026-10-24 · The JavaScript switch reuses `DISARMED`
+// with a scope (#133) and · The safety state travels as two events and a `daemon.status` field (#132).
+// This is a count change, not an edited error text (Stage 0 F32): every earlier code is still listed.
 const SPEC_DAEMON = [
   "NOT_CONNECTED", "TIMEOUT", "UNKNOWN_METHOD", "BAD_PARAMS", "TAB_HELD", "TAB_GONE",
   "TAB_UNKNOWN", "LOCK_TIMEOUT", "VERSION",
@@ -17,21 +21,32 @@ const SPEC_DAEMON = [
 const SPEC_EXTENSION = [
   "REF_STALE", "LOCATOR_NOT_FOUND", "LOCATOR_AMBIGUOUS", "OFFSCREEN", "RESTRICTED_URL",
   "DEBUGGER_ATTACH", "DEBUGGER_CANCELLED", "DEBUGGER_DEVTOOLS", "PAGE_ERROR", "NAV_FAILED",
-  "DOWNLOAD_HTTP", "WINDOW_MINIMIZED", "INTERNAL",
+  "DOWNLOAD_HTTP", "WINDOW_MINIMIZED", "INTERNAL", "DISARMED", "DOMAIN_BLOCKED",
 ];
 const SPEC_SDK = ["NO_CURSOR"];
 
 describe("error codes (spec §10)", () => {
-  it("groups exactly the 9 daemon, 13 extension and 1 SDK codes", () => {
+  it("groups exactly the 9 daemon, 15 extension and 1 SDK codes", () => {
     expect([...DAEMON_ERROR_CODES].sort()).toEqual([...SPEC_DAEMON].sort());
     expect([...EXTENSION_ERROR_CODES].sort()).toEqual([...SPEC_EXTENSION].sort());
     expect([...SDK_ERROR_CODES]).toEqual(SPEC_SDK);
   });
-  it("ErrorCodes holds exactly the 23 spec codes, each mapped to itself", () => {
+  it("ErrorCodes holds exactly the 25 spec codes, each mapped to itself", () => {
     const keys = Object.keys(ErrorCodes).sort();
     expect(keys).toEqual([...SPEC_DAEMON, ...SPEC_EXTENSION, ...SPEC_SDK].sort());
-    expect(keys).toHaveLength(23);
+    expect(keys).toHaveLength(25);
     for (const [k, v] of Object.entries(ErrorCodes)) expect(v).toBe(k);
+  });
+  it("Step 9: DISARMED and DOMAIN_BLOCKED are extension codes on the wire (#132, #133)", () => {
+    expect(EXTENSION_ERROR_CODES).toContain("DISARMED");
+    expect(EXTENSION_ERROR_CODES).toContain("DOMAIN_BLOCKED");
+    expect(EXTENSION_ERROR_CODES).toHaveLength(15);
+    expect(isErrorCode("DISARMED")).toBe(true);
+    expect(isErrorCode("DOMAIN_BLOCKED")).toBe(true);
+    expect((ErrorCodes as Record<string, string>).DISARMED).toBe("DISARMED");
+    expect((ErrorCodes as Record<string, string>).DOMAIN_BLOCKED).toBe("DOMAIN_BLOCKED");
+    expect(SDK_ERROR_CODES).not.toContain("DISARMED");
+    expect(DAEMON_ERROR_CODES).not.toContain("DOMAIN_BLOCKED" as never);
   });
   it("isErrorCode accepts a spec code and rejects anything else", () => {
     expect(isErrorCode("TAB_HELD")).toBe(true);

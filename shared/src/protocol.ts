@@ -75,15 +75,21 @@ export interface ExtensionStatusParams {
   connected: boolean;
 }
 
-/** Events the extension sends the daemon (spec §10). */
-export type ExtensionEventName = "tabCreated" | "tabRemoved" | "tabReplaced";
+/**
+ * Events the extension sends the daemon (spec §10). `safetyState` is Step 9's (decisions.md · 2026-10-24 ·
+ * The safety state travels as two events and a `daemon.status` field (#132)).
+ */
+export type ExtensionEventName = "tabCreated" | "tabRemoved" | "tabReplaced" | "safetyState";
 
-/** Events the daemon sends a client (spec §10). */
-export type DaemonEventName = "tabGone" | "leaseGranted" | "extensionStatus";
+/** Events the daemon sends a client (spec §10). `safetyStatus` is Step 9's (#132). */
+export type DaemonEventName = "tabGone" | "leaseGranted" | "extensionStatus" | "safetyStatus";
 
 /**
  * Params of the extension → daemon `tabCreated` event (spec §10; Stage 0 audit F13), from
  * `chrome.tabs.onCreated`. `url` is `pendingUrl ?? url ?? ""`, so it may be "".
+ * Step 9 adds no field here: for a tab created while disarmed or onto a blocked URL, `url` is `""` and
+ * nothing marks it hidden (decisions.md · 2026-10-24 · What `listTabs`, tab events and the daemon reveal
+ * while disarmed or for a blocked tab (#134)).
  */
 export interface TabCreatedParams {
   tabId: number;
@@ -99,6 +105,12 @@ export interface TabRemovedParams {
   tabId: number;
   lastUrl?: string;
   lastTitle?: string;
+  /**
+   * Step 9: set when the tab was removed while the bridge was disarmed, or while its URL was blocked; then
+   * `lastUrl` and `lastTitle` are absent (decisions.md · 2026-10-24 · What `listTabs`, tab events and the
+   * daemon reveal while disarmed or for a blocked tab (#134)).
+   */
+  hidden?: HiddenReason;
 }
 
 /**
@@ -210,7 +222,11 @@ export function isTabCreatedEvent(value: unknown): value is EventMessage<TabCrea
 export function isTabRemovedEvent(value: unknown): value is EventMessage<TabRemovedParams> {
   const p = eventParams(value, "tabRemoved");
   return (
-    p !== null && isTabId(p.tabId) && optional(p, "lastUrl", isString) && optional(p, "lastTitle", isString)
+    p !== null &&
+    isTabId(p.tabId) &&
+    optional(p, "lastUrl", isString) &&
+    optional(p, "lastTitle", isString) &&
+    optional(p, "hidden", isHiddenReason)
   );
 }
 
@@ -499,4 +515,124 @@ export function isLocator(value: unknown): value is Locator {
   if (!optional(value, "name", isLocatorName)) return false;
   if (!optional(value, "exact", (v) => typeof v === "boolean")) return false;
   return optional(value, "nth", (v) => Number.isSafeInteger(v) && (v as number) >= 0);
+}
+
+// ── Step 9 (docs/plans/2026-10-24-step9-phase-e-safety.md; spec §10's Step 9 note) ───────────────────
+// The human's three controls, enforced in the extension. Nothing here changes the safety state: no
+// method of any layer arms, disarms, edits the block list or turns JavaScript on (phase doc 0.1).
+
+/**
+ * The extension's safety state as reported to the daemon and relayed to clients: `armed` (the kill
+ * switch), `evaluate` (the JavaScript switch), `blockedCount` (the number of valid block-list patterns;
+ * the patterns themselves never leave the extension). decisions.md · 2026-10-24 · The safety state travels
+ * as two events and a `daemon.status` field (#132); the count is of valid patterns only (· The block-list
+ * grammar (#135)).
+ */
+export interface SafetyState {
+  armed: boolean;
+  evaluate: boolean;
+  blockedCount: number;
+}
+
+/** Params of the extension → daemon `safetyState` event: sent when the connection comes up and on every change (#132). */
+export type SafetyStateParams = SafetyState;
+
+/** Params of the daemon → client `safetyStatus` event: relayed on every change (#132). */
+export type SafetyStatusParams = SafetyState;
+
+/**
+ * The type of `daemon.status`'s `safety` field: null until the extension has reported, and null again
+ * after the extension socket closes (decisions.md · 2026-10-24 · The safety state travels as two events
+ * and a `daemon.status` field (#132)).
+ */
+export type DaemonStatusSafety = SafetyState | null;
+
+/**
+ * Which switch a `DISARMED` refusal comes from: `"all"` the kill switch, `"evaluate"` the JavaScript
+ * switch on an `evaluate` (decisions.md · 2026-10-24 · The JavaScript switch reuses `DISARMED` with a
+ * scope (#133)).
+ */
+export type SafetyScope = "all" | "evaluate";
+
+/** `DISARMED`'s `data` (#133). */
+export interface DisarmedData {
+  scope: SafetyScope;
+}
+
+/**
+ * Why a `listTabs` row or a `tabRemoved` event carries no title or URL: the bridge is disarmed, or the
+ * tab's URL is blocked (or is one of the extension's own pages) (decisions.md · 2026-10-24 · What
+ * `listTabs`, tab events and the daemon reveal while disarmed or for a blocked tab (#134)).
+ */
+export type HiddenReason = "disarmed" | "blocked";
+
+/**
+ * One row of a `listTabs` result as the extension sends it (`extension/src/handlers/tabs.ts`). Before
+ * Step 9 `title` and `url` were always present (`""` when Chrome had none); since Step 9 a hidden row
+ * omits both and carries `hidden` (#134). Types only — the `result` of a response.
+ */
+export interface ExtensionListTabsRow {
+  id: number;
+  title?: string;
+  url?: string;
+  active: boolean;
+  windowId: number;
+  /** Only when Chrome reports one. */
+  openerTabId?: number;
+  /** Set (true) on exactly the human's tab (#43); absent on the others. Kept on a hidden row (#134). */
+  current?: true;
+  /** Step 9: present exactly when `title` and `url` are withheld (#134). */
+  hidden?: HiddenReason;
+}
+
+/**
+ * One row of a `listTabs` result as a client receives it: the extension's row plus the daemon's handle
+ * (`tab`, "T3") and the holder's actor name (`owner`, when held) (`daemon/src/intercept.ts` `listTabs`;
+ * spec §10's Step 7 note). The Chrome `id` stays beside `tab` (#81).
+ */
+export interface ListTabsRow extends ExtensionListTabsRow {
+  tab: string;
+  owner?: string;
+}
+
+const isBoolean = (v: unknown): v is boolean => typeof v === "boolean";
+
+/**
+ * A `SafetyState` as it arrives untyped: `armed` and `evaluate` booleans, `blockedCount` a non-negative
+ * safe integer. A missing or mistyped field (`null` included) is rejected; unknown extra keys are accepted
+ * (forward-compatible, as the event guards above).
+ */
+export function isSafetyState(value: unknown): value is SafetyState {
+  if (!isPlainObject(value)) return false;
+  return (
+    isBoolean(value.armed) &&
+    isBoolean(value.evaluate) &&
+    Number.isSafeInteger(value.blockedCount) &&
+    (value.blockedCount as number) >= 0
+  );
+}
+
+export function isSafetyScope(value: unknown): value is SafetyScope {
+  return value === "all" || value === "evaluate";
+}
+
+/** `DISARMED`'s `data`: an object whose `scope` is `"all"` or `"evaluate"`; extra keys accepted (#133). */
+export function isDisarmedData(value: unknown): value is DisarmedData {
+  return isPlainObject(value) && isSafetyScope(value.scope);
+}
+
+export function isHiddenReason(value: unknown): value is HiddenReason {
+  return value === "disarmed" || value === "blocked";
+}
+
+/** The extension → daemon `safetyState` event: the exact name, an `isEvent` frame (no `id`), a good state (#132). */
+export function isSafetyStateEvent(value: unknown): value is EventMessage<SafetyStateParams> {
+  const p = eventParams(value, "safetyState");
+  return p !== null && isSafetyState(p);
+}
+
+/** The daemon → client `safetyStatus` event: the exact name, an `isEvent` frame (no `id`), a good state (#132). */
+export function isSafetyStatusEvent(value: unknown): value is EventMessage<SafetyStatusParams> {
+  const p = eventParams(value, "safetyStatus");
+  return p !== null && isSafetyState(p);
 }
