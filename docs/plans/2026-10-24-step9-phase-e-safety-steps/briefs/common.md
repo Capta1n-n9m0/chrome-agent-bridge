@@ -279,4 +279,4 @@ plan-side with a dated note.
 
 ## Running state (session agent updates this section at each dispatch)
 
-- S2c closed 6fef83c (2685 tests / 115 files). S4 (live) dispatched alone. Nothing running; port 9234 free at dispatch.
+- S4 returned escalated (Run 13; #192 open for the user). S5 dispatched alone. Nothing running; port 9234 free.

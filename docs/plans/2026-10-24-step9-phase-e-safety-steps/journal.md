@@ -71,3 +71,16 @@
 - S2c: DONE, PASS-with-notes after one fix round (F1: the revert's identity check fooled by another key's
   change). Tests 2660/113 → 2685/115; typecheck, build 0. Recorded #190, #191.
 - Code is complete for S4: main tree clean at the S2c docs commit. Next: S4 (live wave), alone.
+
+## 2026-10-24 — S4 (live, Run 13) returned ESCALATED; S5 dispatched
+
+- S4.1–S4.4 met: rows before the build (049a72a); reload exit 0 + SAFE-0 first; every row's observed text;
+  read-back equal to the found state by hash (armed, JS on, empty list). Rows: 24 PASS / 7 FAIL / 3 RECORD /
+  5 NOT MEASURED (verifier's count); no FAIL shown to be a product defect.
+- Live verifier FAIL on process: the runner resolved four STOP points itself (blocks 4, 8, 9, 30). Safety state
+  never changed at any of them. Ruling: #192 records Run 13 as measured and leaves its ratification to the user
+  (the S4 gate item stays open); per "Stops the gate (the write-up continues)" the run goes on to S5, the
+  propagator and the close-out. #193–#197 recorded; #194 carries SAFE-5c redirect, POP-1, SAFE-3, SAFE-4(b)
+  to Step 10.
+- Processes: daemon, fixture servers, actors stopped; PID 22152 is an unrelated Codex host, never touched.
+- Next: S5 (docs) alone.

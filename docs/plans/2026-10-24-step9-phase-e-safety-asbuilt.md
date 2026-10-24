@@ -144,5 +144,43 @@ session agent; one section per stage, written at each stage close.
 ### Estimates vs actuals
 - Unbudgeted fix stage; about 25 min (one fix round). Tests 2660 / 113 → 2685 / 115.
 
+## Stage S4 — E2E (live), Run 13 · 2026-10-24 · verifier: FAIL on process (escalated, #192) · commits 049a72a (rows first), e91e437, ba073d6, d101b77, 46d765b, e381696
+
+### As run
+- Rows §4.20 committed before the build (049a72a); the reload script exit 0 and SAFE-0 are the first two
+  recorded lines; daemon build `99bb55c5…332d`.
+- Rows (live verifier's count): **24 PASS, 7 FAIL, 3 RECORD, 5 NOT MEASURED** (pre-registered reasons). The
+  FAILs: SAFE-11 start and SAFE-POP-1 (tooling), SAFE-5c's redirect half (TIMEOUT, single-threaded redirect
+  server probable — the post-redirect `downloadStart` check of #140 is unmeasured live), SAFE-4(b) (the disarm
+  stopped trusted typing 14 ms after the press, but the debugging banner was still up at 3 s, gone by 14 s),
+  SAFE-3 (a background options window showed the re-arm only when foregrounded), SAFE-9 and SAFE-10's set-up
+  (expected text wrong; dated notes beside the rows, #195). None is shown to be a product defect.
+- Found state: a pre-Step-9 extension with no safety keys (armed, JS on, empty list); first read after the
+  reload armed / JS on / 0 lines / sha256 of the empty text. Read-back at the end identical on every field,
+  pin, keyboard layout and window count as found (S4.4).
+- Log greps by count: `daemon.log` (210 lines) and the worker console 0 for the token, non-fixture `://`,
+  `localhost:8081`, `:8083`, `bank.example`. Real hostnames in committed files: 0.
+- Process deviation: the level-2 runner resolved four STOP points itself (blocks 4, 8, 9, 30) instead of
+  returning; no state was changed at any of them. Ratification is the user's (#192); #193 sets one stop rule
+  for later waves.
+
+### Contracts (binding forward)
+- Measured on Chrome 156: `Alt+Shift+K` is assigned as `_execute_action` and left the Windows input layout
+  unchanged; `javascript:` through the bridge → `NAV_FAILED`, page unchanged; the toolbar extension button
+  and the Extensions button expose no UIA Invoke pattern; the per-call safety read moved the snapshot
+  round-trip median 3.6 → 5.3 ms (#139's Revisit-if not met).
+
+### Decisions taken
+- #192–#197 (S4 report §9); #192 integrity floor, under Open decisions; #194 carries four re-measurements
+  to Step 10.
+
+### Estimates vs actuals
+- 1.5 h prep + 2.5 h live estimated; about 95 min of agent time in all. Tests 2685 / 115 → 2720 / 116
+  (recipes/test).
+
+### Needs the user's keyboard
+- The ruling on Run 13 (#192); `/mcp` or a fresh session in any interactive Claude session using the bridge
+  (daemon build changed); optionally pin the toolbar button (left unpinned, as found).
+
 ## Open decisions for the user (running list; also in `docs/decisions.md` → Open decisions)
-- #131–#141, #144 (Stage 0), #148 (S0), #153–#156 (S1), #159–#163, #168 (S3), #174–#180 (S2a), #188 (S2b).
+- #131–#141, #144 (Stage 0), #148 (S0), #153–#156 (S1), #159–#163, #168 (S3), #174–#180 (S2a), #188 (S2b), #192 (S4 — the gate item waits for it).

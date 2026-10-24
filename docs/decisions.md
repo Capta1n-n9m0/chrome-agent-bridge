@@ -99,12 +99,51 @@ Step 9 (2026-10-24 on), for the user at the gate:
 29. "S2a: the network ingest drops a request for good once one of its events was dropped" (#179).
 30. "S2a: no `safetyState` is sent while the state cannot be read" (#180).
 31. "S2b: the writers test refuses `storage.local.remove`/`clear` everywhere" (#188).
+32. "S4: Run 13 stands as recorded, with the runner's four self-resolved stops listed" (#192) — the S4 gate item waits for this ruling.
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-24 · S4: The redirect server uses port 8083 (#197)
+**Decided:** 8083. **Why:** 8082 is `Bound` on 0.0.0.0 by `SystemSettings.exe` on this machine. **Instead of:** 8082
+(stage0-audit §7).
+**By:** Claude (S4 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S4.md` §9)
+
+### 2026-10-24 · S4: SAFE-REL-3 prints a URL class, not "withheld" (#196)
+**Decided:** future waves print the wrapper scheme, inner scheme and own-page yes/no for a non-fixture URL.
+**Why:** Run 13 cannot show what `view-source:/options.html` opened (verifier finding 5); the product's detector says
+not an own page, but that is the detector judging itself.
+**By:** Claude (S4 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S4.md` §9)
+
+### 2026-10-24 · S4: Dated notes on §4.20 for two expected-text errors (#195)
+**Decided:** beside SAFE-9 and SAFE-10's console set-up (never editing the rows): the `safety state:` log line
+precedes `extension resync` by design; Chrome 156 titles the worker's DevTools window `DevTools`. Both rows stay FAIL
+for Run 13. **Why:** the row text was wrong, not the product; forbidden to edit expected text after the run.
+**By:** Claude (S4 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S4.md` §9)
+
+### 2026-10-24 · S4: SAFE-5c's redirect half, SAFE-POP-1, SAFE-3 and SAFE-4(b) are re-measured in the next live wave (Step 10) (#194)
+**Decided:** threaded redirect server (`ThreadingHTTPServer`); POP-1's recipe claims the opener first; SAFE-3
+with the options window visible or a page-side reporter; SAFE-4(b) polls the banner ≥ 10 s. No product change unless
+one reproduces there. **Why:** each failed on tooling or an unmeasured Chrome timing (verifier §FAILs). The
+post-redirect `downloadStart` check (#140) remains **unmeasured live** until then. **Revisit if:** any reproduces.
+**By:** Claude (S4 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S4.md` §9)
+
+### 2026-10-24 · S4: Live runners return on every stop; one stop rule for sheet and brief (#193)
+**Decided:** a level-2 runner may fix a helper only between rows with no observation and **never** past a
+STOP line (restore failure, guard, G9-2); throws from the first press onward always run `Restore-S9All`. **Why:**
+Run 13's deviations. **Instead of:** letting the runner judge "helper bug, safe to continue". **Revisit if:** a wave
+needs a mid-run helper fix often enough to make returning impractical.
+**By:** Claude (S4 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S4.md` §9)
+
+### 2026-10-24 · S4: Run 13 stands as recorded, with the runner's four self-resolved stops listed (#192)
+**Decided:** ratify Run 13's results; record the four stops as a process deviation. **Why:** at every stop
+the safety state equalled the found state (the record's own reads), the final read-back equals the start by hash, and
+no row was re-run to pass. **Instead of:** re-running the affected rows (blocks 4–30 cover SAFE-0…SAFE-4b) in a new
+wave. **Revisit if:** any of those rows is contradicted by a later wave. **Session agent's note:** the runner pinned by a real mouse click at a `FromPoint`-verified point inside its own window when UIA exposed no Invoke pattern; that is still UI automation under G9-2's grant, but G9-2 said to ask the user once after a failure, and three of the four stops (blocks 4, 8, 30) should have returned to the step agent. No safety state was changed at any stop, none was left changed, and no row was re-run to pass. The S4 gate item stays open until the user rules.
+**By:** Claude (integrity floor — listed under Open decisions for the user; S4 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S4.md` §9)
 
 ### 2026-10-24 · S2c: the badge's stored read is `readStoredArmed` in `safety-state.ts` (#191)
 **Decided:** `readStoredArmed(get)` asks exactly `SAFETY_KEY_NAMES`; `sw.ts` forwards the keys to
