@@ -2323,6 +2323,69 @@ STOP), block 9 (pinning failed; G9-2 says ask once) and block 30 (a helper throw
 was the one found (armed, JavaScript on, empty list), so a restore would have pressed nothing, and the end read-back
 equals the start; the user rules whether Run 13 stands (S4.md §9).*
 
+### Run 14 (S1) — 2026-10-24/25 (Step 10: Step 9's live follow-ups, §4.21)
+
+*Rows, expected text and helpers committed before any press (`5f17d54`); later commits `bfadbbc` and `111cb7b` add
+only between-rows helper fixes and dated notes under §4.21. No build and no reload: the loaded extension and daemon
+were Step 9's dist (SAFE-0 PASS in every attempt). Run by the S1 live runners, the user not present (decisions.md
+#33). The wave took four attempts and three returns to the step agent (#193), all tooling: attempt 1 stopped at the
+clean-tree guard before anything was touched (the step agent's bookkeeping was uncommitted); attempt 2 ran R14-REL-3
+and R14-POP-1, then stopped at R14-3's placement guard (an auto-hidden taskbar strip) before any state change; attempt
+3 disarmed for R14-3, then its second guard met a non-driver Chrome window over the options page and the stop
+procedure re-armed (read back equal); attempt 4 ran R14-4b, R14-5c's control, R14-5c, the restore, the logs and the
+teardown. No row that had made an observation was re-run. **Live verifier: PASS-with-notes** (fresh; it agrees with
+every recorded verdict, and 203 of 204 quotes match the raw output — the one miss names the unmet teardown clause).
+Full evidence: [`S1-run-record.md`](plans/2026-10-24-step10-step8-follow-ups-steps/S1-run-record.md),
+[`S1-live-verifier.md`](plans/2026-10-24-step10-step8-follow-ups-steps/S1-live-verifier.md), the step report
+[`S1.md`](plans/2026-10-24-step10-step8-follow-ups-steps/S1.md); daemon log
+[`S1-daemon-log.txt`](plans/2026-10-24-step10-step8-follow-ups-steps/S1-daemon-log.txt). Runs 1–13 above are
+unchanged.*
+
+```
+Date: 2026-10-24/25 (UTC 2026-10-24 21:12–22:02)  Chrome 156.0.8078.48  Node v25.2.1  OS Windows 11 Pro 10.0.26300
+HEAD: prep 5f17d54; attempt 1 on 5f17d54, attempt 2 on e321c1a, attempt 3 on bfadbbc, attempt 4 on 111cb7b
+Daemon build: 99bb55c5913cdb6a11a68453b22fe4751534bdcdd0d0ae29bf8bef9b3a93332d (Step 9's dist)   reload: none needed
+
+Row             Attempt   Verdict          Observed (short)
+SAFE-0          2, 3, 4   [P] x3           the loaded build is Step 9's; no reload needed
+R14-FOUND       2, 3, 4   [P] x3           armed, JavaScript on, empty list (sha256 the empty text's)
+R14-REL-3       2         [P]              wrapper=view-source inner=http own=no: the relative own-page path resolved
+                                           against the fixture server, not the extension (#196)
+R14-POP-1       2         [F]              opener T835 claimed before the click; one popup opened; no leaseGranted in 5 s
+R14-3           2, 3      [NOT MEASURED]   2: placement guard before any change; 3: disarm half observed (snapshot
+                                           DISARMED {scope:"all"}), then the guard before the re-arm click met a
+                                           non-driver Chrome window over the options page
+R14-4b          4         [P]              DISARMED 5 ms after the press, 571 of 1000 typed; re-armed; trusted follow-up
+                                           reads "R14ok", no another-debugger error. Banner [record, no bound]: shown at
+                                           the press, gone between +4696 and +4955 ms, 79 polls over 20.2 s, never back
+R14-5c-ctl      4         [P]              two concurrent requests to 8083: 302 in 29 ms and 14 ms
+R14-5c          4         [P]              direct and redirect both DOMAIN_BLOCKED, exact message, no file written; server
+                                           log: hop 8083 = 1, target 8081 = 1 (#140's limit). First live run of the
+                                           post-redirect downloadStart check
+R14-RESTORE     4         [P]              read back equal: stored page, daemon.status, toolbar title, block-list sha256
+R14-LOGS        4         [P]              daemon.log (from attempt 2's mark) and attempt 4's worker console: all counts 0
+R14-TEARDOWN    4         [F] one clause   the raw-output scan counted 3 "other" '://' (the helper's own SCAN/CHECK
+                                           lines); raw output not copied; every process, window, port, pin, layout as found
+Counts: PASS 8 / FAIL 2 / NOT MEASURED 1   (framing rows R14-PRE, SRV, PIN, SETUP as found in attempts 2–4)
+
+Found state = read-back (attempts 2, 3, 4): armed=true evaluate=true count=0 lines=0, sha256 equal (e3b0c442…b855, the
+empty text's) at both ends; attempt 3 disarmed 5.55 s and re-armed by the stop procedure; attempt 4 touched it in
+R14-4b and R14-5c, each row chained back by its own guard, so block 13 pressed nothing. Pin pinned -> pinned, layout
+0x04090409, Chrome windows 1 -> 1
+Log hygiene: daemon.log (93 lines since 21:14:17Z) and worker console (171 texts, attempt 4 only): '://' other 0
+token 0  localhost:8081 0  :8083 0  bank.example 0; positive control 3 "disarmed by the user" lines
+Chrome restart: 0   Returns: 3 (attempts 1–3, all tooling, each matched by the live verifier)
+```
+
+Open items (each recorded, not re-run; the fixes are proposed decisions in [`S1.md`](plans/2026-10-24-step10-step8-follow-ups-steps/S1.md)):
+- **R14-POP-1 (FAIL)** — the held opener was a background tab; LEASE-3 and R9-LEASE-3 passed with the opener in front.
+  Proposed: a diagnostic row R15-POP-2 in Run 15 that prints the popup's `openerTabId` class with the opener in front
+  and in the background, then judges `leaseGranted`.
+- **R14-3 (NOT MEASURED)** — SAFE-3's options-page view of a re-arm is still unmeasured. Proposed: a new row in Run 15
+  with occluder diagnostics and the fixed cursor park.
+- **R14-TEARDOWN (FAIL)** — a scanner defect (live verifier F1), and the helper printed no `STOP:` line on the failed
+  scan (F2). Proposed: the raw-output scan counts `scheme://host` only, and a teardown scan failure takes the STOP path.
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.
