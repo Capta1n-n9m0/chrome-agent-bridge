@@ -35,3 +35,13 @@
 - Ruled: #146 (S0 build details), #147 (S1.1's router half closes at S2a; S2 checks per half), #148 (SDK
   `TabInfo` keeps string title/url, adds `hidden?` — open for the user).
 - Next: S1 (extension/src/safety.ts) ∥ S3 (daemon/sdk/mcp), file-disjoint, both port 0.
+
+## 2026-10-24 — S1 (2091f6b) and S3 (782b1d5) closed; S2a dispatched
+
+- S1: DONE, PASS-with-notes after one fix round; matcher cases committed first (9722cd6). +473 tests.
+- S3: DONE, PASS-with-notes; daemon/sdk/mcp 771/44 → 844/49. Full suite with both: 2329 / 96, 0 failures;
+  typecheck and build 0.
+- Recorded #149–#158 (S1) and #159–#168 (S3) as proposed; contract-level ones under Open decisions.
+- Created the as-built register (Stage 0, S0, S1, S3).
+- For S4: a row must read `browser_status`'s second text item (the `Safety:` line) from a live transcript (#162).
+- Next: S2a (extension enforcement) alone; S2b after it.

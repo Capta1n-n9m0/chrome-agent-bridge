@@ -81,12 +81,225 @@ Step 9 (2026-10-24 on), for the user at the gate:
 11. "Stricter exit checks for Step 9" (#141).
 12. "A re-arm right after a disarm is ignored" (#144).
 13. "The SDK's `TabInfo` keeps `title` and `url` as strings and gains an optional `hidden`" (#148).
+14. "S1: Rule 7 unwraps wrapper URLs and compares case-insensitively" (#153).
+15. "S1: `downloadStart` checks its own URL against the block list only" (#154).
+16. "S1: The network filter treats a tab showing this extension's own page as blocked" (#155).
+17. "S1: Matcher details §5 leaves implicit" (#156).
+18. "S3: `safetyStatus` is never sent with null" (#159).
+19. "S3: The daemon's redaction follows the last state it received, across extension sockets" (#160).
+20. "S3: `leaseGranted.url` is `""` while disarmed, whatever the event carried" (#161).
+21. "S3: `browser_status`'s Safety line is a second text item, shown only while the extension is connected" (#162).
+22. "S3: Safety refusals get no `report` property; the wording is `safetyRefusalLine` on `@bridge/sdk/report`" (#163).
+23. "S3: The SDK exports the types `SafetyState` and `HiddenReason`" (#168).
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-24 · S3: The SDK exports the types `SafetyState` and `HiddenReason` (#168)
+**Decided:** type-only exports from `sdk/src/index.ts`. No value is added to the main entry.
+**Why:** `client.safety()` returns one type and `TabInfo.hidden` uses the other.
+**Instead of:** making callers import `@bridge/shared`.
+**Revisit if:** the type list is to stay frozen.
+**By:** Claude (contract-level; listed under Open decisions for the user; S3 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S3.md` §5)
+
+### 2026-10-24 · S3: A `listTabs` reply requested before a safety change notes no url/title in the daemon's cache (#167)
+**Decided:** a generation count rises on every real safety change. A reply whose request predates the
+latest change still mints handles, marks gone tabs and clears `"blocked"` rows, but adds no URL or
+title. The reply forwarded to the client is unchanged.
+**Why:** an out-of-order reply could otherwise undo the post-change refresh (S3 verifier finding 5).
+**Instead of:** recording only after the refresh settles.
+**Revisit if:** a cached URL stays missing after a safety change for longer than one refresh round
+trip.
+**By:** Claude (S3 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S3.md` §5)
+
+### 2026-10-24 · S3: Hidden rows in the daemon: `"blocked"` clears the cache, `"disarmed"` keeps it (#166)
+**Decided:**
+- A hidden row is never noted.
+- A `"blocked"` row clears that handle's cached url and title.
+- A `tabRemoved {hidden:"blocked"}` leaves no `lastUrl`/`lastTitle`.
+- A `tabRemoved {hidden:"disarmed"}` keeps the cache.
+
+**Why:** this is #134 as written.
+**Instead of:** clearing on `"disarmed"` too, which would lose today's output after re-arming.
+**Revisit if:** never.
+**By:** Claude (S3 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S3.md` §5)
+
+### 2026-10-24 · S3: A new extension hello resets the reported state to null (#165)
+**Decided:** `safety` is null from each extension hello until that socket reports.
+**Why:** the state belongs to the socket that reported it.
+**Instead of:** keeping the replaced socket's state.
+**Revisit if:** a `browser_status` taken in that window is shown to mislead.
+**By:** Claude (S3 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S3.md` §5)
+
+### 2026-10-24 · S3: The refusal wording (#164)
+**Decided:**
+- `DISARMED` all: "DISARMED: the user has turned the bridge off in Chrome. Stop and ask the user to
+  turn it back on; do not retry."
+- `DISARMED` evaluate: "DISARMED: the user has turned JavaScript off for the bridge in Chrome, so
+  evaluate (browser_evaluate) is refused; every other call still works. Ask the user before relying
+  on it; do not retry it."
+- `DOMAIN_BLOCKED`: "DOMAIN_BLOCKED: the user has blocked this site for the bridge in Chrome. Stop and
+  ask the user; do not retry, and do not try to reach the site another way."
+
+A `DISARMED` with no valid scope is read as `"all"`. The MCP answers every tool with this line as an
+error, through one wrapper (`withSafetyRefusals`), with no failure report and no screenshot.
+**Why:** these are #133's two meanings, and when the scope is missing the stricter reading applies.
+**Instead of:** separate SDK and MCP wordings; per-tool catches.
+**Revisit if:** S4's actors misread a line.
+**By:** Claude (S3 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S3.md` §5)
+
+### 2026-10-24 · S3: Safety refusals get no `report` property; the wording is `safetyRefusalLine` on `@bridge/sdk/report` (#163)
+**Decided:** `@bridge/sdk/report` gains one value. `renderReport` returns that line for the two codes.
+The main entry keeps its eight values and gains only the types `SafetyState` and `HiddenReason`.
+**Why:** the attach-set contract test pins "no `report` on a non-attach code", and the MCP and the SDK
+share one wording.
+**Instead of:**
+- `err.report` on safety errors, which breaks Step 8's contract test;
+- an MCP-private copy of the lines, which changes no SDK surface but gives two wordings.
+
+**Revisit if:** the user refuses the subpath value (then the MCP holds its own copy), or scripts need
+`err.report()` on a safety refusal.
+**By:** Claude (contract-level; listed under Open decisions for the user; S3 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S3.md` §5)
+
+### 2026-10-24 · S3: `browser_status`'s Safety line is a second text item, shown only while the extension is connected (#162)
+**Decided:** while the extension is connected, the result is `[today's text, "Safety: …"]`. While it
+is not, the result is today's single item.
+**Why:** this is the only placement that keeps every existing line and every Step 8 test unedited.
+`not reported (reload the extension)` would mislead when Chrome is simply closed.
+**Instead of:** a new line in the first item, which means editing the pinned test text (forbidden);
+the literal #132 reading while disconnected.
+**Revisit if:** S4's live headless transcript shows the second item is not shown to the model. S4
+needs a pre-registered row that reads the `Safety:` line from a transcript. Also revisit if the user
+wants the literal reading.
+**By:** Claude (contract-level; listed under Open decisions for the user; S3 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S3.md` §5)
+
+### 2026-10-24 · S3: `leaseGranted.url` is `""` while disarmed, whatever the event carried (#161)
+**Decided:** this is in addition to F40's rule (a hidden row gives `""` at once).
+**Why:** every other daemon output withholds URLs while disarmed. Without this, the channel would
+depend on the extension alone.
+**Instead of:** relaying the event's URL.
+**Revisit if:** never, since nothing changes while armed.
+**By:** Claude (contract-level; listed under Open decisions for the user; S3 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S3.md` §5)
+
+### 2026-10-24 · S3: The daemon's redaction follows the last state it received, across extension sockets (#160)
+**Decided:** while the last state received in this daemon's life says disarmed, the #134 redaction
+continues. It covers `daemon.status` rows without `url`, `tabGone`/`TAB_GONE` without
+`lastUrl`/`lastTitle`, and `leaseGranted.url` `""`. It holds even while `safety` is null after the
+socket closes, until a new report arrives. With no report ever received, nothing is redacted.
+**Why:** this is the conservative rule. The cache still holds URLs from before the disarm, and a
+reload's hello can come up to 2 s late.
+**Instead of:** null redacts nothing, which reopens F2 during every reconnect.
+**Revisit if:** a disarmed state should be forgotten once the extension is gone for good.
+**By:** Claude (contract-level; listed under Open decisions for the user; S3 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S3.md` §5)
+
+### 2026-10-24 · S3: `safetyStatus` is never sent with null (#159)
+**Decided:** the daemon broadcasts only a `SafetyState`. A reset to null (the extension socket
+closes, or a new extension hello arrives) shows through `daemon.status.safety` and through
+`extensionStatus`.
+**Why:** `SafetyStatusParams` is `SafetyState` (S0, #132), and a null param would fail every SDK's
+guard.
+**Instead of:** a null broadcast; a new event.
+**Revisit if:** a client must learn of the reset without `extensionStatus`.
+**By:** Claude (contract-level; listed under Open decisions for the user; S3 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S3.md` §5)
+
+### 2026-10-24 · S1: The refusal messages (#158)
+**Decided:** the wording is in `safety.ts`'s `*_MESSAGE` constants. The two `DISARMED` scopes read differently
+(#133). No message contains a URL, pattern, title or id (a test checks this). `DOMAIN_BLOCKED` carries no
+`data`.
+**Why:** #133 and 0.7. **Instead of:** one generic message.
+**Revisit if:** S3's MCP and SDK wording should match word for word. **By:** Claude (S1 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S1.md` §5)
+
+### 2026-10-24 · S1: Script URLs are recognised as Chrome parses the scheme (#157)
+**Decided:** before the case-insensitive scheme compare, `urlScheme` strips tabs and newlines and trims leading
+C0 control characters and spaces. So `java\tscript:` and ` JavaScript:` are refused while JavaScript is off.
+**Why:** a plain prefix check would let these through. **Instead of:** `startsWith`.
+**Revisit if:** never; this is mechanical. **By:** Claude (S1 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S1.md` §5)
+
+### 2026-10-24 · S1: Matcher details §5 leaves implicit (#156)
+**Decided:**
+- A URL has a host only for `http`, `https`, `ws`, `wss` and `ftp`, plus `file:` with a host. `ftp` uses
+  port 21 as its effective port. `file:` has no port.
+- Wrappers are unwrapped up to 4 levels deep.
+- These patterns are invalid: an empty label (`a..b`), `*.` alone, `*.*.x`, a pasted URL of another scheme, and
+  a pasted URL whose host fails the name grammar.
+- A numeric name that the URL parser reads as IPv4 is treated as an IP literal.
+- A name pattern never matches an IP host, and an IP pattern never matches a name host.
+- Lines split on `\r\n`, `\r` or `\n`.
+**Why:** each is the stricter reading, or the only consistent one, of rules 3–6. Nothing matches by substring.
+The empty list is unaffected.
+**Instead of:** dropping `ftp` (Chrome no longer loads it, so including it costs nothing); splitting lines on
+`\n` only.
+**Revisit if:** the user wants `ftp` dropped or deeper nesting allowed.
+**By:** Claude (contract-level; listed under Open decisions for the user; S1 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S1.md` §5)
+
+### 2026-10-24 · S1: The network filter treats a tab showing this extension's own page as blocked (#155)
+**Decided:** `networkEntryBlocked` drops an entry when its tab's top-level URL is one of this extension's own
+pages, as well as when the URL matches the list. An entry's own URLs are tested against the list only.
+**Why:** #134 hides own pages as `"blocked"`, and F9 drops entries whose tab is blocked. The options page makes
+no other requests, so nothing changes today.
+**Instead of:** testing the tab URL against the list alone.
+**Revisit if:** the user disagrees that own pages count as blocked for the log.
+**By:** Claude (contract-level; listed under Open decisions for the user; S1 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S1.md` §5)
+
+### 2026-10-24 · S1: `downloadStart` checks its own URL against the block list only (#154)
+**Decided:** a `downloadStart` to a `chrome-extension://` URL, this extension's or another's, is not refused by
+the gate. It goes to the handler, which answers `BAD_PARAMS` as today because it requires http(s). A
+`blob:`/`filesystem:` wrapper is still tested by its inner URL against the list.
+**Why:** 0.4 names only "`downloadStart` whose URL … matches". #138's any-extension-URL rule names
+`navigate`/`newTab`. The conservative rule's second property is that replies are identical while armed, JS on,
+empty list. The builder's first version refused the extension's own page with `DOMAIN_BLOCKED` (verifier
+finding 5(b)).
+**Instead of:** `DOMAIN_BLOCKED` for own pages or for every extension URL.
+**Revisit if:** the handler ever accepts a non-http(s) URL. Then the gate must refuse extension URLs.
+**By:** Claude (contract-level; listed under Open decisions for the user; S1 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S1.md` §5)
+
+### 2026-10-24 · S1: Rule 7 unwraps wrapper URLs and compares case-insensitively (#153)
+**Decided:** `isExtensionUrl` and `isOwnExtensionPage` unwrap `blob:`, `filesystem:` and `view-source:` up to
+4 levels deep (rule 5's bound), and compare the scheme and the extension id case-insensitively. So
+`view-source:chrome-extension://<own id>/options.html` is refused for `navigate`/`newTab` and hidden as an own
+page. A URL wrapped 5 or more levels deep is treated as not an extension URL.
+**Why:** rule 5 already tests these wrappers by their inner URL, and rule 7 read literally missed them
+(verifier finding 4). The change is stricter only: no reply changes for a URL that is not an extension page. No
+way to re-arm through the gap was found.
+**Instead of:** rule 7 read literally, with a SAFE row added in S4; refusing every over-deep wrapper (that would
+change today's answer for nested `view-source:` around `https:`).
+**Revisit if:** a live row shows Chrome opening a URL wrapped more than 4 levels deep.
+**By:** Claude (contract-level; listed under Open decisions for the user; S1 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S1.md` §5)
+
+### 2026-10-24 · S1: A target form a class does not take throws, and so does an empty target list (#152)
+**Decided:** `TARGETS_BY_CLASS` lists the forms each class takes, and any other form throws. The error names the
+method and the target kind, never a URL. `safetyDecisionAll([])` throws for every class but `state` and
+`listTabs`, in every state, disarmed included. S2a's router turns the throw into `INTERNAL`.
+**Why:** a wiring slip must refuse, never quietly allow (verifier finding 2).
+**Instead of:** treating an unknown form as `none`, which would allow the call; checking the state first.
+**Revisit if:** S2a needs a form the table lacks. Then add the form; never relax the check. **By:** Claude (S1 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S1.md` §5)
+
+### 2026-10-24 · S1: At receipt, a tab already gone is left to the handler, except for the network methods (#151)
+**Decided:** #137 as written. At receipt, after the state checks, a `gone` target is allowed for every class but
+`network`, so the handler answers `TAB_UNKNOWN` as today. A network `tabId` on a closed tab is tested by its last
+known URL (0.3's F30 note). The effect and post phases test a gone tab by its last known URL.
+**Why:** #137 and S1.2's required row ("a tab unreadable at receipt × armed → allow"). The builder's first
+version refused a gone tab whose last URL was blocked, and the verifier rated that MAJOR.
+**Instead of:** the builder's rule, which was stricter but is a refusal code #137 did not choose.
+**Revisit if:** a blocked page is shown to close itself to slip a reply past the gate (#137's own Revisit-if).
+**By:** Claude (S1 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S1.md` §5)
+
+### 2026-10-24 · S1: `downloadChunk` and `downloadEnd` are refused on the state alone (#150)
+**Decided:** class `state`. They are refused `DISARMED {scope:"all"}` while disarmed and never by the block list.
+**Why:** 0.3 says "the network and download methods" are refused while disarmed. They carry no URL, and their
+`downloadStart` was already checked. Nothing changes while armed. The verifier judged this not a change to what
+is gated (S1-verifier.md finding 5(e)).
+**Instead of:** leaving them free while disarmed.
+**Revisit if:** a pull after a quick re-arm is wanted. **By:** Claude (S1 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S1.md` §5)
+
+### 2026-10-24 · S1: S1's module layout: the matcher in `safety-match.ts`, the gate in `safety.ts` (#149)
+**Decided:** two pure modules. The parser, matcher and URL helpers go in `safety-match.ts`, which S2b's options page can
+import alone. The table, gate, redaction and network predicate go in `safety.ts`.
+**Why:** the options page needs only the parser. **Instead of:** one file.
+**Revisit if:** S2b's options bundle should carry neither. **By:** Claude (S1 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S1.md` §5)
 
 ### 2026-10-24 · The SDK's `TabInfo` keeps `title` and `url` as strings and gains an optional `hidden` (#148)
 **Decided:** for a hidden row (#134) the SDK's exported `TabInfo` (`sdk/src/client.ts`) keeps `title: string`
