@@ -111,6 +111,8 @@ $env:BRIDGE_TOKEN="<your-token>"; npx @modelcontextprotocol/inspector node mcp/d
 3. Click **Load unpacked** and select the `extension/` folder.
 4. Open the extension's **Options** (Details → Extension options, or the puzzle-piece menu).
 5. Set **Port** = `9234` and **Token** = `<your-token>`, then **Save**.
+6. Pin the extension's toolbar button (puzzle-piece menu → pin): it is the kill switch, and so is
+   `Alt+Shift+K` (see [Safety](#safety)).
 
 Open the extension's **service worker** console (chrome://extensions → the extension →
 "service worker"). You should see `[bridge] connection: up`.
@@ -128,7 +130,7 @@ acts on **this session's tab**.
 
 | Tool | What it does |
 |---|---|
-| `browser_status()` | Diagnose the bridge: daemon connected (build, clients by name)? extension connected? the human's active tab, by handle; this session's tab (`Cursor:`), and the human's tab again when it is a different one. Call it first when other tools fail |
+| `browser_status()` | Diagnose the bridge: daemon connected (build, clients by name)? extension connected? the human's active tab, by handle; this session's tab (`Cursor:`), and the human's tab again when it is a different one; then a `Safety:` line (on or off, JavaScript, the number of blocked sites — [Safety](#safety)). Call it first when other tools fail |
 | `browser_use_active_tab()` | Make the tab you (the human) are looking at this session's tab. Claude calls it when you say "this tab" or "the tab I'm on" — the only way this session's tab follows you |
 | `browser_navigate(url)` *tab* | Navigate the tab |
 | `browser_snapshot()` *tab* | Accessibility outline of the tab with element refs |
@@ -537,6 +539,10 @@ detaches and you get `Timed out after Ns …` — but **work the page already st
 **The banner.** Every call attaches `chrome.debugger`, so Chrome shows the "an extension is debugging
 this browser" banner for the duration, exactly like `trusted:true` input.
 
+**The JavaScript switch.** Untick **Allow JavaScript (browser_evaluate)** in the options page and
+every `browser_evaluate` (and `asRef`) is refused `DISARMED` with scope `evaluate`, while every other
+tool keeps working; the Blackboard recipes need it ticked. See [Safety](#the-javascript-switch).
+
 **`userGesture`.** The expression runs with transient user activation, so popups, autoplay and other
 gesture-gated APIs work — but activation is **not window focus**. Anything gated on
 `document.hasFocus()`, notably `navigator.clipboard.writeText`, still fails with `NotAllowedError`
@@ -627,6 +633,200 @@ breakdown (DNS/TLS/TTFB). Also note:
 log. Closing a tab forgets its entries. The log lives in the extension's session storage and is gone
 when Chrome exits or the extension is reloaded.
 
+## Safety
+
+Since Step 9 (Phase E), three controls in Chrome let you stop agents, take JavaScript away from them,
+or keep them off chosen sites. They are enforced inside the extension, so they hold whatever a client,
+the daemon or anyone holding the token does: no tool, SDK call or daemon method can change them; only
+you can, in Chrome (decisions.md · 2026-10-24 · Phase E's design: the kill switch, the disarmed state,
+blocked sites, the JavaScript switch). The defaults — on, JavaScript allowed, no blocked sites — behave
+as the bridge did before Step 9, except that the bridge never opens extension pages (see "The bridge
+never opens its own pages" below). Row IDs below (`SAFE-2`, `SAFE-7d`, …) name rows of the live test
+plan, `docs/e2e-test-plan.md` §4.20, whose results are Run 13 in §5.
+
+### The kill switch: three ways to turn the bridge off
+
+- **The toolbar button** "Chrome Agent Bridge". One click turns the bridge off, the next turns it on.
+  **Pin it** (the puzzle-piece Extensions menu → the pin beside Chrome Agent Bridge): until it is
+  pinned, Chrome may keep it inside that menu, one click further away from when you need it.
+- **The shortcut `Alt+Shift+K`** does the same as a click. It is the extension's "Activate the
+  extension" command (`_execute_action`; decisions.md · 2026-10-24 · The shortcut is
+  `_execute_action`). Change or clear it at `chrome://extensions/shortcuts`; the options page has a
+  button, **Change the keyboard shortcut**, that opens it. Measured on Chrome 156, Windows 11: the
+  shortcut was assigned when the extension loaded, and pressing it left the Windows keyboard layout
+  unchanged (Run 13, row SAFE-2).
+- **The options page**, box **Safety**: **Bridge on (agents may use this browser)** and **Allow
+  JavaScript (browser_evaluate)**. Both save as soon as you tick or untick them.
+
+A press that would turn the bridge back on within 1 s of turning it off is ignored, so a double-click
+leaves it off; turning off is never ignored (decisions.md · 2026-10-24 · A re-arm right after a disarm
+is ignored). The state lives in the extension's `chrome.storage.local`, so what you turned off stays off
+across a reload of the extension (measured: Run 13, row SAFE-9) and, because `storage.local` is kept,
+across an update of the extension or a restart of Chrome (by construction; not measured). A reload
+closes an open options page.
+
+**The badge and the title** (hover over the button) show the state; `OFF` wins over `JS`
+(decisions.md · 2026-10-24 · Badge and title; `extension/src/badge.ts`):
+
+| Badge | Title | Meaning |
+|---|---|---|
+| none | `Chrome Agent Bridge — armed (click to turn off)` | On; agents may work |
+| `JS` (amber) | `Chrome Agent Bridge — armed, JavaScript off (click to turn off)` | On, JavaScript switch off |
+| `OFF` (red) | `Chrome Agent Bridge — OFF: agents are refused (click to turn on)` | Off |
+| `OFF` (red) | `… OFF: the safety state cannot be read, so agents are refused (check the options page)` | See [When the state cannot be read or saved](#when-the-state-cannot-be-read-or-saved) |
+| `OFF` (red) | `… OFF, but not saved (storage write failed): …` / `… OFF: turning on failed (storage write failed), …` | Same |
+
+### What agents see while the bridge is off
+
+- **Every call that reads or acts on a page is refused** with the code `DISARMED` and `data:
+  {scope: "all"}` — navigation, snapshots, screenshots, every action, waits, `evaluate`, `locate`, the
+  network tools, downloads, `focusTab` and `closeTab`. The extension's message is "The user has turned
+  the bridge off in Chrome, so every page call is refused. Stop and ask the user to turn it back on; do
+  not retry." Claude sees one line instead of a failure report (no screenshot, no snapshot): `DISARMED:
+  the user has turned the bridge off in Chrome. Stop and ask the user to turn it back on; do not retry.`
+  (`sdk/src/error.ts` `safetyRefusalLine`; Run 13 row SAFE-1, verbatim).
+- **Still answered:** `browser_status` adds a line `Safety: DISARMED by the user · JavaScript on · 0
+  blocked sites` (while armed: `Safety: armed · …`; before the extension reports: `Safety: not reported
+  (reload the extension)`). `browser_list_tabs` keeps the handles, the `*` and the owners, but every
+  tab reads `(hidden: the bridge is off)` — no title, no URL. The daemon withholds URLs and titles from
+  its status rows and tab events while off. Claiming a tab still works, but a lease grants nothing:
+  every call on the tab is refused. The connection stays up.
+- **Work already running stops.** The disarm detaches every debugger session the bridge holds, ends
+  running waits and drops downloads held for pickup. Measured in Run 13: a trusted `type` stopped 14 ms
+  after the press, but Chrome's "is debugging this browser" banner was still shown 3 s later and gone by
+  14 s (row SAFE-4 (b)); a running `waitFor` was refused 54–92 ms after the press (SAFE-4 (a), 4c).
+- **The network log records nothing while off.** Requests recorded before stay, and the network tools
+  show them again once you turn the bridge back on.
+
+### The JavaScript switch
+
+With **Allow JavaScript (browser_evaluate)** unticked, `browser_evaluate` (with or without `asRef`; the
+SDK's `tab.evaluate` and `tab.evaluateRef`) and a `browser_navigate`/`browser_new_tab` to a
+`javascript:`, `data:` or `blob:` URL are refused `DISARMED` with `data: {scope: "evaluate"}`; every
+other tool keeps working (decisions.md · 2026-10-24 · The JavaScript switch reuses `DISARMED` with a
+scope; · Script URLs and the JavaScript switch; own pages of every extension). Claude sees: `DISARMED:
+the user has turned JavaScript off for the bridge in Chrome, so evaluate (browser_evaluate) is refused;
+every other call still works. Ask the user before relying on it; do not retry it.` The badge shows
+`JS`. Turning the bridge off overrides it. With JavaScript on, script URLs behave as before; Chrome
+itself answers a `javascript:` navigation through the bridge with `NAV_FAILED` and leaves the page
+unchanged (Run 13 row SAFE-6c).
+
+**The Blackboard recipes need JavaScript on.** `recipes/blackboard/boot-bb.ts` loads `bb.js` into the
+course tab by `evaluate`, and `export-grades.ts` reads the gradebook by `evaluate`; with the switch off
+they stop with `DISARMED` (scope `evaluate`).
+
+### Blocked sites
+
+The options page's **Blocked sites** box takes one pattern per line; **Save blocked sites** stores
+them. The grammar (decisions.md · 2026-10-24 · The block-list grammar; · S1: Matcher details §5 leaves
+implicit; `extension/src/safety-match.ts`):
+
+| Line | Blocks |
+|---|---|
+| `bank.example` | `bank.example` and every subdomain (`www.bank.example`, `a.b.bank.example`), any port. Not `notbank.example`, not `bank.example.evil.test`: matching is only at a dot boundary |
+| `*.bank.example` | subdomains only, not `bank.example` itself |
+| `bank.example:8443` | only that port. The port is the effective one (80 for `http`, 443 for `https`), so `bank.example:443` blocks `https://bank.example/` |
+| `https://www.bank.example/login?next=1` | a pasted `http`/`https`/`ws`/`wss` address is reduced to its host (and a non-default port): the whole host `www.bank.example` |
+| an IPv4 address, or an IPv6 address in brackets | only that address (`*.` never goes before an address) |
+| `# a comment`, an empty line | nothing |
+
+Case does not matter, a trailing dot is ignored, and a non-ASCII name is matched in its punycode form.
+An address is tested by its host and effective port; `blob:`, `filesystem:` and `view-source:`
+addresses by the address inside them; a `file://server/…` address by its server; an address with no
+host (`about:`, `data:`, `chrome:`, `file:///…`) never matches. Any other line is **invalid**: it is
+kept in the box, listed in red as `Line <n>: “<text>” — not a site pattern: write a host
+(bank.example), *.host for its subdomains only, host:port, an IP address, or paste an http(s) address`,
+matches nothing and is not counted. The summary under the box counts the valid lines, e.g. `1 blocked
+site. 1 invalid line is not counted (marked below).` (Run 13 row SAFE-OPT-1). Agents see only that
+count (`browser_status`, `client.safety()`), never the patterns.
+
+What a blocked site means for agents:
+- Every call on a tab whose address (or the address it is loading) is blocked is refused
+  `DOMAIN_BLOCKED`; so is a navigation, a new tab or a download to a blocked address. The messages
+  never name the site or the pattern. Claude sees `DOMAIN_BLOCKED: the user has blocked this site for
+  the bridge in Chrome. Stop and ask the user; do not retry, and do not try to reach the site another
+  way.`
+- `browser_list_tabs` shows such a tab as `(hidden: blocked site)`; tab events and the daemon drop its
+  URL and title.
+- The network log drops every request whose address, redirect address or initiator is blocked, or
+  whose tab shows a blocked site — when it records and again at every query, so a pattern added later
+  also hides older entries.
+- A tab that moves onto a blocked site during a call gets its reply refused, and every later call.
+- A blocked tab can still be claimed; every call on it is refused (decisions.md · 2026-10-24 ·
+  `tabs.claim` on a blocked tab is granted, every call on it refused).
+
+**What the block list does not do.** It is not a network firewall. It refuses bridge calls on a tab
+whose top-level address is blocked, and navigations the bridge itself starts to one. It does not stop
+a page from loading a blocked site: script on an allowed page (an agent's `evaluate` included), a meta
+refresh, a link, or `back`/`forward` can make Chrome load it with your cookies; the bridge refuses to
+read or act there only afterwards. A redirect hop is still requested: a `browser_navigate` that an
+allowed address redirects onto a blocked one sends that request, and so does a `browser_download`
+whose redirect lands on one — the download is refused on its final address and its bytes are dropped,
+but the request went out (`downloadStart` checks its own address before the fetch). Blocking the hop
+itself would need a `declarativeNetRequest` rule, which is not built (decisions.md · 2026-10-24 ·
+`downloadStart` and redirects onto a blocked host; · S1: `downloadStart` checks its own URL against the
+block list only). The download's check of its final address is unit-tested but **not yet measured
+live**: Run 13's redirect test timed out on its own test server, and Step 10 measures it again
+(decisions.md · 2026-10-24 · S4: SAFE-5c's redirect half, SAFE-POP-1, SAFE-3 and SAFE-4(b) are
+re-measured in the next live wave (Step 10)). Finally, a blocked site framed inside an allowed page is
+not in that page's snapshot (cross-origin frames are never walked), but **it shows in a screenshot** of
+the allowed page.
+
+### The bridge never opens its own pages
+
+Not configurable: every call on a tab that shows one of this extension's own pages (its options page)
+is refused `DOMAIN_BLOCKED` ("This tab shows one of the bridge extension's own pages, which the bridge
+never reads or acts on."), and that tab is listed as a blocked site. A navigation or a new tab to
+**any** `chrome-extension://` address, of any extension, is refused `DOMAIN_BLOCKED` ("The bridge
+never opens extension pages."), also when it is written as a relative address that would resolve to
+one (Run 13 rows SAFE-7, SAFE-REL-1). So an agent cannot open the options page to turn itself back on
+or empty the list. The settings themselves are closed to page-adjacent code (`chrome.storage.local`
+locked to the extension's trusted contexts; built, not measured live — row ACL-1 was not run), and
+`chrome://extensions` is out of reach of every
+extension (a trusted click there answered `RESTRICTED_URL`, row SAFE-7d) (decisions.md · 2026-10-24 ·
+Script URLs and the JavaScript switch; own pages of every extension; · The state is read per call,
+fails closed, and is locked to trusted contexts).
+
+### When the state cannot be read or saved
+
+The bridge fails closed: when in doubt, it is off.
+- **Cannot be read** (storage fails, or a stored value has the wrong type): every page call is refused
+  `DISARMED` ("The bridge could not read its safety state in Chrome, so it refuses the call. Ask the
+  user to check the extension."), the badge shows `OFF` with the "cannot be read" title, and the
+  options page says `The safety state cannot be read, so agents are refused.` The extension sends no
+  state to the daemon meanwhile, so `browser_status` shows the last state it heard, or `not reported`
+  on a fresh connection (decisions.md ·
+  2026-10-24 · The state is read per call, fails closed, and is locked to trusted contexts; · S2a:
+  storage keys, and a wrong-typed value makes the state unreadable; · S2a: no `safetyState` is sent
+  while the state cannot be read).
+- **Turning off could not be saved** (the storage write failed twice): the bridge is off anyway, held
+  in the service worker's memory, every call refused, and the title says `OFF, but not saved (storage
+  write failed)`. That lasts until the service worker restarts and reads storage again — then the
+  bridge is on. The options page meanwhile shows the stored state (`Bridge armed.`, the switch ticked);
+  press the button or untick the switch again (decisions.md · 2026-10-24 · S2a: a disarm whose write
+  fails twice returns `"write-failed"` and stays disarmed in memory; the options page showing the stored state is finding F4 of Step 9's stage
+S2b verifier, `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2b-verifier.md`).
+- **Turning on could not be saved**: the bridge stays off, the title says `turning on failed`, and the
+  next press tries again (decisions.md · 2026-10-24 · S2c: a rejected re-arm write returns memory to
+  disarmed without counting as a disarm).
+- An options-page switch that fails to save says so (`Could not save the bridge switch (storage write
+  failed). Showing the stored state.`); a block list that fails to save keeps your text.
+
+An options page left open in a background window may not show a change made elsewhere (the button,
+the shortcut) until you bring it to the front (Run 13 row SAFE-3; cause not determined). The badge is
+the reliable indicator.
+
+### For scripts
+
+`await client.safety()` returns `{armed, evaluate, blockedCount}` as the daemon last heard it, or
+`null` before the extension has reported; `client.on("safetyStatus", (s) => …)` fires on every change.
+Both are read-only. A refused call throws a `BridgeError` with `code` `DISARMED` (`data.scope` `"all"`
+or `"evaluate"`) or `DOMAIN_BLOCKED`, with no failure report attached (no screenshot, no snapshot)
+and no `report` property; the one line Claude sees is `safetyRefusalLine(err.code, err.data)` from
+`@bridge/sdk/report` (decisions.md · 2026-10-24 · S3: Safety refusals get no `report` property; the
+wording is `safetyRefusalLine` on `@bridge/sdk/report`). `client.tabs()` marks withheld rows with `hidden:
+"disarmed" | "blocked"`, their `title` and `url` then `""`. A script should stop and ask, not retry.
+
 ## Security notes
 
 - The WebSocket binds to `127.0.0.1` only and requires the shared token.
@@ -638,10 +838,17 @@ when Chrome exits or the extension is reloaded.
 - **`browser_evaluate` is the sharpest tool here.** It runs with the full authority of the
   logged-in page, plus a user gesture — anything you could do in that tab's DevTools console the
   agent can do: read tokens out of `localStorage`, call authenticated APIs with the page's cookies,
-  submit forms, open popups, write the clipboard. The localhost bind and the shared token remain the
-  only boundary; there is no per-domain allow-list yet (an arm/disarm toggle is on the roadmap).
+  submit forms, open popups, write the clipboard. Untick **Allow JavaScript** in the options page to
+  refuse it while keeping every other tool ([Safety](#safety)).
   Neither the expression nor its result is ever logged — the service worker records only the
-  expression's length.
+  expression's length. *Superseded 2026-10-24: was "The localhost bind and the shared token remain
+  the only boundary; there is no per-domain allow-list yet (an arm/disarm toggle is on the roadmap)",
+  because Step 9 added the kill switch, the JavaScript switch and blocked sites.*
+- **Your controls in Chrome** ([Safety](#safety)): the toolbar button or `Alt+Shift+K` turns the
+  bridge off, the JavaScript switch takes `browser_evaluate` away, and the block list keeps agents off
+  chosen sites. They are enforced in the extension, so they hold even against someone holding the
+  token. The block list is not a network firewall: see [what it does not
+  do](#blocked-sites).
 - **Network capture records URLs, and URLs carry secrets.** `browser_network_requests` keeps the
   **whole query string** — that is what makes it useful for debugging an API — so an
   `?access_token=…` in a URL will reach the model, the same way `browser_evaluate` can read
@@ -664,6 +871,9 @@ when Chrome exits or the extension is reloaded.
 - **Start with `browser_status`.** It tells you which part is broken: the daemon
   (`Daemon: not connected` plus a `Problem:` line), the extension (not connected), or neither (then
   look at the active tab it reports).
+- **Every call answers `DISARMED`, or one tab answers `DOMAIN_BLOCKED`**: the bridge is off, JavaScript
+  is off (scope `evaluate`), or the site is on your block list — your own controls, working as meant.
+  Check the badge and the `Safety:` line of `browser_status`; see [Safety](#safety).
 - **"No welcome from 127.0.0.1:9234 within 2 s after hello: a pre-Step-6 bridge server holds port
   9234"** from `browser_status` or any tool: an old Claude session still runs the previous bridge
   server. End that session, or stop the process listening on the port (`Stop-Process -Id

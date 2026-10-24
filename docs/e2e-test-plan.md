@@ -132,6 +132,13 @@ Record outcomes in the [Results template](#results-template). A run "passes" whe
      `recipes/t5.ts`, `recipes/t5-actor.ts`, `recipes/t5-png.ts` and `recipes/t5-win.ps1` (§4.14); the
      order of work is the wave sheet `docs/plans/2026-10-21-step7-multi-actor-tabs-steps/T5-wave-sheet.md`.
      `python` here is `$HOME\miniconda3\python.exe` (not on PowerShell's PATH; W1 finding 3).
+   - **Step 9 safety wave (§4.20)** — *added 2026-10-24 by Step 9 S5, after Run 13:* `recipes/s9.ts` (the
+     SDK rows), `recipes/s9-rules.ts` (their pass rules, tested by `recipes/test/s9-rules.test.ts`),
+     `recipes/s9-actor.ts` (headless MCP actors), `recipes/s9-win.ps1` (UI Automation: the toolbar
+     button, the shortcut, the options page, the worker's console), `recipes/s9-redirect.py` (the
+     port-8083 redirect server), typechecked with `npx tsc --noEmit -p recipes/tsconfig.s9.json`; the
+     order of work is the wave sheet `docs/plans/2026-10-24-step9-phase-e-safety-steps/S4-wave-sheet.md`.
+     The wave changes the human's safety state and must restore it and read it back (S4.4).
    - **Where to look:** Claude Code does not show the MCP's stderr, so the evidence is
      `browser_status`, the recipe's output, the process listings and `daemon.log` (lines are
      `<UTC time, whole seconds> <message>`).

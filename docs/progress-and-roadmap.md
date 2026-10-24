@@ -2,7 +2,7 @@
 
 - **Date:** 2026-10-24
 - **Branch:** `main` (merged from `feat/agent-bridge`; public on GitHub, MIT, since 2026-09-03)
-- **Status:** **Step 8 (the SDK surface: locators, typed `Tab`, failure reports, the MCP cursor, first recipes) built and E2E-run (Runs 11–12), 2026-10-23/24, and closed 2026-10-24 (wave W2: 25 decisions ruled, #106–#127)** *(updated 2026-10-24, W2: was "its gate waits on the docs stage S7 and the user's open decisions", corrected the same day by the Step 8 propagator to "the open decisions and G8-3")* ([Step 8 block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026-10-2324)); **23 tools, 1714 unit tests green** (`npm test` → 1714 passed, 85 files, at `eb6b991`, 2026-10-24). *Superseded 2026-10-24: was "next: Step 8; 22 tools, 950 unit tests green (… 59 files, on the T6 tree)", because Step 8's stages Stage 0–S6b landed.* **Step 7 (multi-actor tabs) built, E2E-run (Runs 8–10) and closed 2026-10-23** ([Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23)). *Superseded 2026-10-23: was "Step 6 … closed 2026-10-22 — next: Step 7; 21 tools, 542 unit tests green", because Step 7's stages T0–T5b, RELOAD-AUTO and the BG-FLAGS run landed.* **Step 6 (daemon + SDK + MCP as an SDK client) built, E2E-tested live (wave W1) and closed 2026-10-22** ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
+- **Status:** **Step 9 (Phase E safety: the kill switch, the JavaScript switch, blocked sites) built and E2E-run (Run 13), 2026-10-24; not closed — the user's ruling on Run 13 (#192) and 32 open decisions wait at the gate** ([Step 9 block](#step-9--phase-e-safety-the-kill-switch-the-javascript-switch-blocked-sites-2026-10-24)); **23 tools, 25 codes, 2720 unit tests green** (`npm test` → 2720 passed, 116 files, at `ba6029e`, 2026-10-24). *Superseded 2026-10-24 (Step 9 S5): was "23 tools, 1714 unit tests green (… 85 files, at `eb6b991`)" as the current count, because Step 9's stages Stage 0–S4 landed.* **Step 8 (the SDK surface: locators, typed `Tab`, failure reports, the MCP cursor, first recipes) built and E2E-run (Runs 11–12), 2026-10-23/24, and closed 2026-10-24 (wave W2: 25 decisions ruled, #106–#127)** *(updated 2026-10-24, W2: was "its gate waits on the docs stage S7 and the user's open decisions", corrected the same day by the Step 8 propagator to "the open decisions and G8-3")* ([Step 8 block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026-10-2324)); at its close 23 tools, 1714 unit tests green (`npm test` → 1714 passed, 85 files, at `eb6b991`, 2026-10-24). *Superseded 2026-10-24: was "next: Step 8; 22 tools, 950 unit tests green (… 59 files, on the T6 tree)", because Step 8's stages Stage 0–S6b landed.* **Step 7 (multi-actor tabs) built, E2E-run (Runs 8–10) and closed 2026-10-23** ([Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23)). *Superseded 2026-10-23: was "Step 6 … closed 2026-10-22 — next: Step 7; 21 tools, 542 unit tests green", because Step 7's stages T0–T5b, RELOAD-AUTO and the BG-FLAGS run landed.* **Step 6 (daemon + SDK + MCP as an SDK client) built, E2E-tested live (wave W1) and closed 2026-10-22** ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
 
 ---
 
@@ -166,6 +166,7 @@ out of.
 | Step 6 | Daemon + protocol v2: `daemon/ sdk/ mcp/` split, a shared detached daemon (roles, welcome, error codes, build-hash handover, idle exit, log), the SDK's `connect()`, the MCP as an SDK client | ✅ Done 2026-10-22 (E2E-verified in wave W1; MUX-5 accepted on re-measurement) |
 | Step 7 | Multi-actor tabs: `tabId` on every method, handles, leases, the visibility lock, tab events, error codes, data results with the formatters in the SDK, `browser_focus_tab`, the MCP cursor | Closed 2026-10-23 (built; E2E Runs 8–10) |
 | Step 8 | SDK surface: locators by the snapshot's rules, `waitFor {locator}`, `evaluate {asRef}`, the typed `Tab` and cursor, failure reports, the `focusFirst` input policy, the Step 6 compatibility path removed, the session marker, `browser_use_active_tab`, the first recipes | Built and E2E-run 2026-10-23/24 (Runs 11–12); closed 2026-10-24 (W2) |
+| Step 9 | Phase E safety: the kill switch (toolbar button, `Alt+Shift+K`, options page), the JavaScript switch, a block list, the own-page block; one gate over every router method; `DISARMED`/`DOMAIN_BLOCKED`; the `Safety:` line and `client.safety()` | Built and E2E-run 2026-10-24 (Run 13); gate open for the user (#192) |
 
 **Quality state:** 542 unit tests pass in 42 files (`npm test` at D5b commit `033b1bc`,
 2026-10-22); `tsc` typecheck clean across all five packages (`shared daemon sdk mcp extension`);
@@ -182,6 +183,8 @@ block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23)).* *Corrected 2
 again at `e963bff`, `recipes/test/` included); typecheck across the five packages, with recipes
 checked by their own `tsconfig*.json` ([Step 8
 block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026-10-2324)).*
+*Updated 2026-10-24 (Step 9 S5): Step 9 — 2720 tests in 116 files (`npm test` at `ba6029e`; [Step 9
+block](#step-9--phase-e-safety-the-kill-switch-the-javascript-switch-blocked-sites-2026-10-24)).*
 
 **23 tools** (*superseded 2026-10-24: was 22, because Step 8 S5 added `browser_use_active_tab`*;
 *superseded 2026-10-23: was 21, because Step 7 T4 added `browser_focus_tab`*):
@@ -189,6 +192,72 @@ block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026
 `browser_click`, `browser_type`, `browser_press_key`, `browser_scroll`, `browser_hover`,
 `browser_select_option`, `browser_back`, `browser_forward`, `browser_list_tabs`, `browser_select_tab`,
 `browser_focus_tab`, `browser_new_tab`, `browser_close_tab`, `browser_wait_for`, `browser_evaluate`, `browser_network_requests`, `browser_network_clear`, `browser_download` (2026-10-06, live-verified: two Blackboard files, 0.4 MB and 7.2 MB, through the bbcswebdav → S3 redirect, sha256-identical to copies fetched another way).
+
+### Step 9 — Phase E safety: the kill switch, the JavaScript switch, blocked sites (2026-10-24)
+
+Phase doc `docs/plans/2026-10-24-step9-phase-e-safety.md`; contracts and deviations in `…-asbuilt.md`;
+reports, run record and logs in `…-steps/`; decisions in `docs/decisions.md` 2026-10-24 #128–#197.
+**Built and E2E-run (Run 13); not closed:** the user's ruling on Run 13 (#192) and the open decisions
+below wait at the gate.
+
+- **What exists:** the human turns the bridge off by the toolbar button, `Alt+Shift+K`
+  (`_execute_action`) or the options page; while off, every page call is refused `DISARMED`
+  (`data.scope: "all"`), debugger sessions detach, waits end, the network log records nothing, and
+  `listTabs`, tab events and the daemon withhold titles and URLs (`hidden: "disarmed"`). A separate
+  JavaScript switch refuses `evaluate` and `javascript:`/`data:`/`blob:` navigation (`DISARMED`,
+  `scope: "evaluate"`). A block list, empty by default, refuses every call on a blocked tab and every
+  navigation or download to a blocked address (`DOMAIN_BLOCKED`), hides those tabs and filters the
+  network log; the bridge never opens extension pages. One pure gate (`extension/src/safety.ts`, a
+  table over all 23 router methods, served through `GatedRouter`) runs at receipt, before each first
+  side effect and before the reply; the state lives in `storage.local`, is read per call and fails
+  closed. Badge `OFF`/`JS`; `browser_status` prints a `Safety:` line; the SDK gains `client.safety()`
+  and the `safetyStatus` event. **25 codes** (`DISARMED`, `DOMAIN_BLOCKED` added), **23 tools**
+  (unchanged). How to use it: `docs/setup.md` → "Safety".
+- **Tests per stage** (`npm test` at each stage's verifier, as the as-built register records):
+
+| Stage | Commit | Tests | Files |
+|---|---|---|---|
+| Baseline (Step 8 close) | `59be263` | 1714 | 85 |
+| Stage 0 — spec audit (43 findings) | `0e72503` | 1714 | 85 |
+| S0 — types and codes | `5dbbce7` | 1783 | 86 |
+| S1 — the gate and the host matcher | `2091f6b` | 2256 (S1 alone) | 91 (derived: 86 + 5) |
+| S3 — daemon relay, SDK, MCP | `782b1d5` | 2329 (with S1) | 96 |
+| S2a — extension enforcement | `a27ab45` | 2561 | 106 |
+| S2b — badge, shortcut, options page, log scan | `59388ed` | 2660 | 113 |
+| S2c — fix: failed re-arm write; narrow badge read | `6fef83c` | 2685 | 115 |
+| S4 — E2E Run 13 (recipe rule tests) | `46d765b` | 2720 | 116 |
+| S5 — docs | — | 2720 | 116 |
+
+  `npm test` at `ba6029e` (2026-10-24): 2720 passed, 116 files.
+- **Live E2E — Run 13** (`docs/e2e-test-plan.md` §4.20 rows, §5 Run 13; `…-steps/S4-run-record.md`;
+  Chrome 156, Windows 11; run by Claude end to end, headless Claude sessions as the MCP actors, the
+  button and the shortcut pressed by UI automation in the driver's own windows): by the live
+  verifier's count **24 PASS, 7 FAIL, 3 RECORD, 5 NOT MEASURED**. The kill switch refused SDK and MCP
+  calls with the exact text (SAFE-1), a running `waitFor` 54–92 ms after the press (SAFE-4 (a), 4c); the
+  state survived an extension reload (SAFE-9's state half); the own options page and relative addresses
+  to it were refused (SAFE-0, SAFE-7, SAFE-REL-1); nothing reached the network log while off (SAFE-8);
+  the logs held 0 tokens, 0 non-fixture URLs and 0 test patterns (SAFE-10). The FAILs: two tooling
+  faults (SAFE-11 start, SAFE-POP-1), SAFE-5c's redirect half (a `TIMEOUT` on the single-threaded test
+  server, so the post-redirect download check is unmeasured live), SAFE-4 (b) (the banner still shown
+  3 s after the disarm, gone by 14 s), SAFE-3 (a background options window did not show the re-arm
+  until foregrounded), and two wrong expected texts (SAFE-9's log order, SAFE-10's window title; dated
+  notes, #195). None is shown to be a product defect. The safety state read back at the end equal to
+  the state found. The runner resolved four STOP points itself instead of returning — a process
+  deviation recorded for the user (#192) — and later waves return on every stop (#193).
+- **Open for the user** (`docs/decisions.md` → Open decisions → Step 9): #131 the phase doc's
+  proposals; #132 the safety state as two events and a `daemon.status` field; #133 `DISARMED` with a
+  scope for the JavaScript switch; #134 what `listTabs`, tab events and the daemon reveal; #135 the
+  block-list grammar; #136 claims on a blocked tab; #137 in-flight work at disarm; #138 script URLs and
+  own pages (the every-extension rule offered as the alternative); #139 the per-call, fail-closed read;
+  #140 `downloadStart` and redirect hops (`declarativeNetRequest` not built); #141 stricter exit checks;
+  #144 the 1 s re-arm guard; #148 the SDK `TabInfo.hidden`; #153 rule 7's unwrapping; #154
+  `downloadStart`'s own-URL check; #155 own pages in the network filter; #156 matcher details; #159
+  `safetyStatus` never null; #160 redaction across extension sockets; #161 `leaseGranted.url` while
+  disarmed; #162 the `Safety:` line as a second text item; #163 no `report` on safety refusals; #168
+  the exported types; #174 the `"write-failed"` disarm; #175 gating on the URL Chrome will open; #176 a
+  memory disarm wins; #177 the wrong-tab capture refusal; #178 the post-check on error replies; #179 the
+  network ingest's dropped requests; #180 no state sent while unreadable; #188 no
+  `storage.local.remove`/`clear`; **#192 Run 13 stands as recorded** (the S4 gate item).
 
 ### Step 8 — the SDK surface: locators, `Tab`, failure reports, the MCP cursor (2026-10-23/24)
 
@@ -489,8 +558,13 @@ measured, though DPR 1.25 and 1.5 both needed no correction.
   `browser_focus_tab`. A failure report's screenshot flashes the failed tab the same way (Run 12
   REP-0). *Superseded 2026-10-24: was "Step 8 sets the policy", because Step 8 set it (Step 8 block).*
 - **Tab safety** — a Claude session claims the tab the human is looking at on its first call, and any
-  actor can claim an unowned tab by handle, sensitive ones included. Mitigations today are
-  localhost-only + token + the debugger banner. *Superseded 2026-10-23: was "the agent acts on
+  actor can claim an unowned tab by handle, sensitive ones included. Mitigations: localhost-only +
+  token + the debugger banner, and since Step 9 the human's controls in Chrome — the kill switch, the
+  JavaScript switch and a block list (`docs/setup.md` → "Safety"). The block list is not a network
+  firewall: a page, or a redirect hop of a bridge navigation or download, can still load a blocked
+  host (decisions.md · 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140)).
+  *Superseded 2026-10-24: was "Mitigations today are localhost-only + token + the debugger banner",
+  because Step 9 built Phase E.* *Superseded 2026-10-23: was "the agent acts on
   whatever tab is focused", because of Step 7's cursor.*
 - **Keepalive** — measured (2026-09-03): the offscreen-document socket survived 9.5 minutes of idle
   Chrome, and a killed Chrome is noticed on the next call because its exit closes the socket. The
@@ -539,7 +613,11 @@ decided with the user, #128: toolbar/options/shortcut kill switch, disarmed refu
 list empty by default, a JavaScript switch); **Step 10 — the Step 8 follow-ups** (W2's work items #106,
 #117, #125, #126, #127 and the carried inputs); **Step 11 — D3 file upload**; **Step 12 — Phase F**
 (`args` for `browser_evaluate`, console capture, keep-attached debugger session). The order of 10–12 is
-open for the user's veto.* *Superseded 2026-10-22 (W1): was "its
+open for the user's veto.* *Updated 2026-10-24 (Step 9 S5): Step 9 is built and E2E-run (Run 13; [§1
+Step 9 block](#step-9--phase-e-safety-the-kill-switch-the-javascript-switch-blocked-sites-2026-10-24)),
+its gate open for the user (#192). Step 10's inputs gain Run 13's four re-measurements (SAFE-5c's
+redirect half, SAFE-POP-1, SAFE-3, SAFE-4 (b); #194; see Phase E below). Steps 11 (D3 file upload) and
+12 (Phase F) are unchanged.* *Superseded 2026-10-22 (W1): was "its
 live E2E waits for the D6 wave with the user. Next after that: Step 7, then Step 8".* *Superseded 2026-10-22: was "Step 6 starts
 by pasting it into a fresh session that does not use the bridge MCP. Nothing is built.", because
 Step 6's code stages D0–D5b landed.*
@@ -572,11 +650,22 @@ missing scroll-into-view, now fixed with an explicit off-screen error. Both E2E-
 `DOM.setFileInputFiles` (sketched in the plan). Also still open: drag, native-dialog handling,
 modifier chords for `press_key`, and caret-preserving trusted typing.
 
-**Phase E — Safety.** An explicit arm/disarm toggle in the options page; optional per-domain
-allow/block list; never log page content or tokens. **Higher priority since Step 4:** `browser_evaluate`
-runs arbitrary JavaScript with the logged-in page's full authority plus a user gesture, so a kill
-switch the user can reach in one click is worth more than it was when the tool set was fixed.
-(Nothing is logged today beyond the expression's length.)
+**Phase E — Safety.** Built as Step 9 (2026-10-24; [§1 Step 9
+block](#step-9--phase-e-safety-the-kill-switch-the-javascript-switch-blocked-sites-2026-10-24)): a kill
+switch by toolbar button, `Alt+Shift+K` and the options page; a JavaScript switch; a block list, empty
+by default; the own-page block; a log scan that keeps patterns, URLs and the token out of every log.
+Its gate waits for the user's ruling on Run 13 (#192). Not built: blocking a redirect hop onto a
+blocked host (`declarativeNetRequest`, #140), and an allow-list mode (#128 turned it down).
+*Superseded 2026-10-24: was "An explicit arm/disarm toggle in the options page; optional per-domain
+allow/block list; never log page content or tokens. Higher priority since Step 4 …", because Step 9
+built it.*
+
+**Step 10 inputs from Step 9** (decisions.md · 2026-10-24 · S4: SAFE-5c's redirect half, SAFE-POP-1,
+SAFE-3 and SAFE-4(b) are re-measured in the next live wave (Step 10) (#194)): re-measure **SAFE-5c's
+redirect half** with a threaded redirect server (the post-redirect `downloadStart` check of #140 is
+unmeasured live until then), **SAFE-POP-1** with a recipe that claims the opener first, **SAFE-3** with
+the options window visible or a page-side reporter, and **SAFE-4 (b)** polling the banner for at least
+10 s. No product change unless one of them reproduces.
 
 **Phase F — Ergonomics.** `wait_for` variants (element-visible; network-idle shipped in Step 5's
 Part N6) — ✅ **element-visible done in Step 8** (2026-10-23: `browser_wait_for({locator, state})`
