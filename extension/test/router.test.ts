@@ -104,3 +104,46 @@ describe("splitCoded", () => {
     expect(splitCoded("ref_stale:lower")).toEqual({ code: "INTERNAL", message: "ref_stale:lower" });
   });
 });
+
+describe("every router error path sends a non-empty code (Step 8 S2b.4, decisions.md #73 — regression guard)", () => {
+  const throwers: Array<[string, () => unknown]> = [
+    ["a BridgeError", () => new BridgeError("REF_STALE", "stale")],
+    ["a BridgeError with an empty code", () => new BridgeError("", "no code")],
+    ["a plain Error", () => new Error("plain")],
+    ["an Error with an empty message", () => new Error("")],
+    ["a string", () => "just a string"],
+    ["undefined", () => undefined],
+    ["null", () => null],
+    ["a number", () => 42],
+    ["a plain object", () => ({ message: "object" })],
+    ["an object with a numeric code", () => ({ code: 5, message: "numeric" })],
+  ];
+  for (const [label, make] of throwers) {
+    it(`a thrown ${label}`, async () => {
+      const r = new Router();
+      r.on("boom", async () => {
+        throw make();
+      });
+      const out = JSON.parse((await r.handle(JSON.stringify({ id: "x", method: "boom" })))!);
+      expect(typeof out.error.code).toBe("string");
+      expect(out.error.code).not.toBe("");
+      expect(typeof out.error.message).toBe("string");
+    });
+  }
+
+  it("a synchronously throwing handler and an unknown method", async () => {
+    const r = new Router();
+    r.on("sync", (() => {
+      throw new Error("sync");
+    }) as unknown as () => Promise<unknown>);
+    for (const method of ["sync", "nope"]) {
+      const out = JSON.parse((await r.handle(JSON.stringify({ id: "y", method })))!);
+      expect(typeof out.error.code).toBe("string");
+      expect(out.error.code).not.toBe("");
+    }
+  });
+
+  it("toWireError: a BridgeError with an empty code goes out as INTERNAL", () => {
+    expect(toWireError(new BridgeError("", "no code"))).toEqual({ code: "INTERNAL", message: "no code" });
+  });
+});

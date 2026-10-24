@@ -1,4 +1,6 @@
-// Step 7 T2 — the daemon's one method table (decisions.md #39; #53 for selectTab's lock class).
+// Step 7 T2 — the daemon's one method table (decisions.md #39; #53 for the lock class). Step 8 S2b
+// removed the Step 6 compatibility forms (#41, #54, #81, #85 item 4): the Step 6 alias of `focusTab` is
+// gone from this table and refused by the tab layer itself.
 // Every extension method is in exactly one class; a new extension method must enter this table.
 
 /** Tab-carrying and lease-checked: resolved to a numeric `tabId` before forwarding. */
@@ -16,9 +18,9 @@ export const TAB_METHODS: ReadonlySet<string> = new Set([
   "forward",
   "waitFor",
   "evaluate",
+  "locate",
   "networkClear",
   "focusTab",
-  "selectTab",
 ]);
 
 /** Free (no lease check), forwarded. `networkRequests` still has its scope resolved (#40). */
@@ -32,13 +34,23 @@ export const FREE_METHODS: ReadonlySet<string> = new Set([
 /** Handled by the daemon itself, never forwarded (`daemon.*` too). */
 export const DAEMON_METHODS: ReadonlySet<string> = new Set(["tabs.claim", "tabs.release"]);
 
-/** Methods whose Step 6 form names a Chrome tab id as `id` (#41's legacy path). */
-export const LEGACY_ID_METHODS: ReadonlySet<string> = new Set(["closeTab", "selectTab", "focusTab"]);
+/**
+ * Methods the daemon answers `UNKNOWN_METHOD` itself, before any resolution or lease check (decisions.md
+ * · 2026-10-23 · #85 item 4): a Step 7 extension still answers them, so dropping them from the table
+ * alone would forward them as unlisted tab methods without the visibility lock (Stage 0 F10).
+ */
+export const REMOVED_METHODS: ReadonlyMap<string, string> = new Map([
+  ["selectTab", "was removed in Step 8 — call focusTab"],
+]);
 
-/** Methods whose `tab` is a scope: a handle, "all", "active"/absent (#40), or a legacy id (#54). */
+/** Methods whose `tab` is a scope: a handle, "all", or "active"/absent (#40, #81). */
 export const NETWORK_METHODS: ReadonlySet<string> = new Set(["networkRequests", "networkClear"]);
 
-export type MethodClass = "daemon" | "tab" | "closeTab" | "newTab" | "listTabs" | "free";
+/**
+ * `untargeted` (S2b, #81 F8): an unlisted method that names no tab — refused `BAD_PARAMS "tab is
+ * required"`, never forwarded (before S2b it was forwarded free and acted on the human's tab unchecked).
+ */
+export type MethodClass = "daemon" | "tab" | "closeTab" | "newTab" | "listTabs" | "free" | "untargeted";
 
 function hasTab(params: Record<string, unknown> | undefined): boolean {
   return params !== undefined && params.tab !== undefined;
@@ -51,16 +63,16 @@ export function classify(method: string, params: Record<string, unknown> | undef
   if (method === "listTabs") return "listTabs";
   if (TAB_METHODS.has(method)) return "tab";
   if (FREE_METHODS.has(method)) return "free";
-  // Unlisted: free when it names no tab; with a `tab` it is resolved and lease-checked.
-  return hasTab(params) ? "tab" : "free";
+  // Unlisted: with a `tab` it is resolved and lease-checked; without one it is refused.
+  return hasTab(params) ? "tab" : "untargeted";
 }
 
 /**
  * Needs-screen methods take the visibility lock: `screenshot` unless `mode === "cdp"` or `fullPage`
- * (an unknown mode falls on the locking side, #50), `focusTab`, and its alias `selectTab` (#53).
+ * (an unknown mode falls on the locking side, #50), and `focusTab` (#53).
  */
 export function takesLock(method: string, params: Record<string, unknown> | undefined): boolean {
-  if (method === "focusTab" || method === "selectTab") return true;
+  if (method === "focusTab") return true;
   if (method !== "screenshot") return false;
   return params?.mode !== "cdp" && !params?.fullPage;
 }

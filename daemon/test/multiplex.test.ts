@@ -137,8 +137,9 @@ describe("WsHost v2 — roles, routing, daemon methods", () => {
     const a = track(await client(port, "A"));
     const b = track(await client(port, "B"));
 
-    a.send({ id: "1", method: "whoami", params: { who: "A" } });
-    b.send({ id: "1", method: "whoami", params: { who: "B" } });
+    // 2026-10-23 (Step 8 S2b, decisions.md #81 F8): was "whoami" — an unlisted method without tab is now refused (VERSION against this no-proto fake, BAD_PARAMS against a proto:2 one); a free method routes the same way
+    a.send({ id: "1", method: "downloadChunk", params: { who: "A" } });
+    b.send({ id: "1", method: "downloadChunk", params: { who: "B" } });
     await ext.until(() => requests(ext).length === 2);
 
     const [r1, r2] = requests(ext);
@@ -161,8 +162,9 @@ describe("WsHost v2 — roles, routing, daemon methods", () => {
     const b = track(await client(port, "B"));
     const errors = vi.spyOn(console, "error");
 
-    a.send({ id: "a1", method: "slow", params: {} });
-    b.send({ id: "b1", method: "slow", params: {} });
+    // 2026-10-23 (Step 8 S2b, decisions.md #81 F8): were "slow"/"again" — an unlisted method without tab is now refused (VERSION against this no-proto fake, BAD_PARAMS against a proto:2 one); free methods route the same way
+    a.send({ id: "a1", method: "downloadStart", params: {} });
+    b.send({ id: "b1", method: "downloadStart", params: {} });
     await ext.until(() => requests(ext).length === 2);
     const framesBefore = a.frames.length;
 
@@ -177,7 +179,7 @@ describe("WsHost v2 — roles, routing, daemon methods", () => {
     expect(errors).not.toHaveBeenCalled();
 
     // The host still serves B afterwards.
-    b.send({ id: "b2", method: "again" });
+    b.send({ id: "b2", method: "downloadEnd" });
     await ext.until(() => requests(ext).length === 3);
     ext.send({ id: requests(ext)[2].id, result: 2 });
     expect(await b.frame(response("b2"))).toEqual({ id: "b2", result: 2 });
@@ -190,8 +192,9 @@ describe("WsHost v2 — roles, routing, daemon methods", () => {
     const b = track(await client(port, "B"));
 
     // 2026-10-22 (decisions.md #52, applying #42): was "snapshot" — a no-proto extension now gets VERSION for tab methods
-    a.send({ id: "a1", method: "slow" });
-    b.send({ id: "b1", method: "slow" });
+    // 2026-10-23 (Step 8 S2b, decisions.md #81 F8): was "slow" — an unlisted method without tab is now refused (VERSION against this no-proto fake, BAD_PARAMS against a proto:2 one); a free method routes the same way
+    a.send({ id: "a1", method: "downloadStart" });
+    b.send({ id: "b1", method: "downloadStart" });
     await ext.until(() => requests(ext).length === 2);
     ext.ws.close();
 

@@ -72,6 +72,31 @@ describe("unwrapResult — codes (Step 7 0.6, #38)", () => {
   });
 });
 
+describe("unwrapResult — data beside the marker (#82, S1 D10)", () => {
+  const caught = (fn: () => unknown): BridgeError => {
+    try {
+      fn();
+    } catch (e) {
+      return e as BridgeError;
+    }
+    throw new Error("expected a throw");
+  };
+
+  it("hands __bridgeData on as the BridgeError's data", () => {
+    const e = caught(() =>
+      unwrapResult({ result: { __bridgeError: "LOCATOR_NOT_FOUND:no button", __bridgeData: { candidates: [] } } }),
+    );
+    expect(e.code).toBe("LOCATOR_NOT_FOUND");
+    expect(e.message).toBe("no button");
+    expect(e.data).toEqual({ candidates: [] });
+  });
+
+  it("no __bridgeData → data undefined (unchanged)", () => {
+    const e = caught(() => unwrapResult({ result: { __bridgeError: "OFFSCREEN:x" } }));
+    expect(e.data).toBeUndefined();
+  });
+});
+
 describe("classifyInjectError", () => {
   it("No tab with id → TAB_UNKNOWN", () => {
     expect(classifyInjectError("No tab with id: 412.")).toBe("TAB_UNKNOWN");
@@ -89,5 +114,34 @@ describe("classifyInjectError", () => {
   });
   it("anything else → INTERNAL", () => {
     expect(classifyInjectError("Frame with ID 0 was removed.")).toBe("INTERNAL");
+  });
+});
+
+// Step 8 S2 additions (imports are hoisted; the lines above are unchanged).
+import { vi, afterEach } from "vitest";
+import { ensureContent, callInPage } from "../src/inject.js";
+
+describe("F33: inject errors name the target tab, not the active tab (Step 8 S2)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  async function messageOf(p: Promise<unknown>): Promise<string> {
+    try {
+      await p;
+    } catch (e) {
+      return (e as Error).message;
+    }
+    throw new Error("expected a rejection");
+  }
+
+  it("ensureContent and callInPage say 'the target tab'", async () => {
+    vi.stubGlobal("chrome", {
+      scripting: { executeScript: vi.fn(async () => { throw new Error("Cannot access a chrome:// URL"); }) },
+    });
+    const a = await messageOf(ensureContent(7));
+    const b = await messageOf(callInPage(7, () => 1));
+    for (const msg of [a, b]) {
+      expect(msg).toContain("the target tab");
+      expect(msg).not.toContain("the active tab");
+    }
   });
 });

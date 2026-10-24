@@ -31,8 +31,26 @@ interface Entry {
   diedAt?: number;
 }
 
+/**
+ * Where handle numbers come from (Step 8 S2b.9, decisions.md · 2026-10-23 · A new daemon never reuses a
+ * handle number (#79)). `next()` returns a number never returned before, by this source or by an
+ * earlier daemon's (`createHandleMark` in `handle-mark.ts`); it is called once per new handle, before
+ * the handle exists.
+ */
+export interface HandleNumbers {
+  next(): number;
+}
+
+/** Today's in-memory numbering: 1, 2, 3, … per instance. */
+export function counterFrom(first = 1): HandleNumbers {
+  let n = first;
+  return { next: () => n++ };
+}
+
 export interface HandleTableOptions {
   now?: () => number;
+  /** Default `counterFrom(1)` (T1, T2, …); production injects the high-water mark. */
+  numbers?: HandleNumbers;
 }
 
 export class HandleTable {
@@ -41,18 +59,19 @@ export class HandleTable {
   private readonly byTab = new Map<number, string>();
   /** The newest handle (live or dead) that named each tab id — for annotating old network entries. */
   private readonly lastByTab = new Map<number, string>();
-  private next = 1;
+  private readonly numbers: HandleNumbers;
   private readonly now: () => number;
 
   constructor(options: HandleTableOptions = {}) {
     this.now = options.now ?? Date.now;
+    this.numbers = options.numbers ?? counterFrom(1);
   }
 
   /** The live handle of `tabId`, minting one when it has none. Idempotent. */
   mint(tabId: number): string {
     const existing = this.byTab.get(tabId);
     if (existing) return existing;
-    const handle = `T${this.next++}`;
+    const handle = `T${this.numbers.next()}`;
     this.byHandle.set(handle, { handle, tabId, live: true });
     this.byTab.set(tabId, handle);
     this.lastByTab.set(tabId, handle);
@@ -146,6 +165,18 @@ export class HandleTable {
     if (last.lastTitle !== undefined) e.title = last.lastTitle;
     this.kill(h);
     return h;
+  }
+
+  /**
+   * The extension's session changed (Step 8 S2b.5, decisions.md · 2026-10-23 · #74 as amended by #80):
+   * every live handle becomes gone, keeping its cached url/title (the pre-restart page's), and its tab
+   * id is freed so a reused id gets a new handle. Returns the retired handles in mint order.
+   */
+  retireAll(): string[] {
+    const retired: string[] = [];
+    for (const e of this.byHandle.values()) if (e.live) retired.push(e.handle);
+    for (const h of retired) this.kill(h);
+    return retired;
   }
 
   private kill(handle: string): void {

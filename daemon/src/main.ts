@@ -8,6 +8,7 @@ import path from "node:path";
 import { resolveToken as sdkResolveToken } from "@bridge/sdk/token";
 import { Bridge } from "./bridge.js";
 import { buildHash } from "./build.js";
+import { createHandleMark } from "./handle-mark.js";
 import { IdleTimer, MAX_IDLE_MS } from "./idle.js";
 import type { Logger } from "./log.js";
 import type { ClientInfo } from "./registry.js";
@@ -49,6 +50,12 @@ export interface DaemonDeps {
   resolveToken?: (env: Env) => string;
   setTimeout?: (fn: () => void, ms: number) => TimerHandle;
   clearTimeout?: (handle: TimerHandle) => void;
+  /**
+   * The state directory holding the handle high-water mark (Step 8 S2b.9, decisions.md #79). `index.ts`
+   * passes the daemon log's directory (`~/.chrome-agent-bridge/`). Absent → no mark file: handle numbers
+   * start at T1 per process, so a test that runs `runDaemon` never touches the real directory.
+   */
+  stateDir?: string;
 }
 
 /** A TCP port 1–65535 written as plain digits, else null. */
@@ -152,9 +159,13 @@ export async function runDaemon(deps: DaemonDeps): Promise<void> {
     build,
     // Every shutdown — a signal, the idle timer, or a client's `daemon.shutdown` (4002) — ends here.
     onShutdown: (code) => exitOnce(0, `shutdown ${code}`),
-    // Step 7: legacy-client and resync lines (handles, names, counts — never a URL or title).
+    // Step 7: resync lines; Step 8 S2b: session-change, codeless-error and handle-mark lines (handles,
+    // methods, counts — never a URL, title or the session marker).
     log: (msg) => logger.log(msg),
   };
+  if (deps.stateDir !== undefined) {
+    options.handleNumbers = createHandleMark({ dir: deps.stateDir, log: (msg) => logger.log(msg) });
+  }
   host = (deps.createHost ?? ((o) => new WsHost(new Bridge(), o)))(options);
   const live = host;
 

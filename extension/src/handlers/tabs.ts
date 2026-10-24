@@ -39,11 +39,12 @@ export async function listTabs(): Promise<{ tabs: ListedTab[] }> {
 }
 
 /**
- * The tab id a tab-management call names: `tabId` (Step 7), else the Step 6 `id`. Neither →
- * `BAD_PARAMS`; never the active tab (Stage 0 F4: `closeTab` must not close whatever is in front).
+ * The tab id a tab-management call names: an integer `tabId`. Absent → `BAD_PARAMS`; never the
+ * active tab (Stage 0 F4: `closeTab` must not close whatever is in front). The Step 6 `id` form was
+ * removed in Step 8 S2b (fixer 1, verifier F3): the S2b daemon refuses `id` and never forwards it.
  */
 export function explicitTabId(p: Record<string, unknown>, method: string): number {
-  const raw = p.tabId ?? p.id;
+  const raw = p.tabId;
   if (raw === undefined || raw === null) throw new BridgeError(ErrorCodes.BAD_PARAMS, `${method} requires tabId`);
   return requireTabId(raw);
 }
@@ -65,9 +66,6 @@ export async function focusTab(p: Record<string, unknown>): Promise<{ ok: true }
   }
   return { ok: true };
 }
-
-/** The Step 6 name of `focusTab`, kept for one release (decisions.md · 2026-10-21); Step 8 S2 removes it. */
-export const selectTab = focusTab;
 
 /** Opens a tab in the background unless `active === true` is passed (plan 0.8). */
 export async function newTab(p: Record<string, unknown>): Promise<{ id: number }> {

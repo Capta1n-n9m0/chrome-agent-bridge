@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { classify, takesLock, TAB_METHODS, FREE_METHODS, LEGACY_ID_METHODS, NETWORK_METHODS } from "../src/methods.js";
+import { classify, takesLock, TAB_METHODS, FREE_METHODS, NETWORK_METHODS } from "../src/methods.js";
+import { Bridge } from "../src/bridge.js";
+import type { ExtensionConnection } from "../src/connection.js";
+import { TabLayer } from "../src/intercept.js";
 
 /** Step 7 T2 (decisions.md #39, #53): the one method table. */
 
@@ -20,9 +23,9 @@ describe("method table", () => {
         "forward",
         "waitFor",
         "evaluate",
+        "locate",
         "networkClear",
         "focusTab",
-        "selectTab",
       ].sort(),
     );
     for (const m of TAB_METHODS) expect(classify(m, {})).toBe("tab");
@@ -49,13 +52,52 @@ describe("method table", () => {
     expect(classify("tabs.release", {})).toBe("daemon");
   });
 
-  it("an unlisted method is free without tab, tab-carrying with one", () => {
-    expect(classify("slow", {})).toBe("free");
-    expect(classify("slow", undefined)).toBe("free");
+  it("S2b (#81 F8): an unlisted method without tab is untargeted (refused BAD_PARAMS by the tab layer); with one it is tab-carrying", () => {
+    expect(classify("slow", {})).toBe("untargeted");
+    expect(classify("slow", undefined)).toBe("untargeted");
     expect(classify("slow", { tab: "T1" })).toBe("tab");
+    expect(classify("selectTab", { tab: "T1" })).toBe("tab"); // no longer in the table; the tab layer refuses it first (#85 item 4)
   });
 
-  it("lock class: default screenshot, focusTab, selectTab — never cdp or fullPage screenshots", () => {
+  it("locate without tab is a tab method (after S2b: BAD_PARAMS, never an unlisted method)", () => {
+    // Step 8 S2.6 (stage0-audit.md F8): an unlisted `locate` would be forwarded free with no tabId.
+    expect(classify("locate", {})).toBe("tab");
+    expect(classify("locate", undefined)).toBe("tab");
+    expect(classify("locate", { tab: "T1" })).toBe("tab");
+    expect(classify("notAMethod", {})).toBe("untargeted");
+    expect(takesLock("locate", {})).toBe(false);
+  });
+
+  it("locate through the TabLayer: no tab → BAD_PARAMS (S2b; was the human's tab, lease-checked); with a handle → lease-checked, forwarded with tabId", async () => {
+    const forwarded: Array<{ method: string; params?: Record<string, unknown> }> = [];
+    const conn = {
+      call: async (method: string, params?: Record<string, unknown>) => {
+        forwarded.push({ method, params });
+        if (method === "listTabs") return { tabs: [{ id: 41, title: "", url: "", active: true, current: true }] };
+        return { ref: "e1", role: "button", name: "Go" };
+      },
+    } as unknown as ExtensionConnection;
+    const bridge = new Bridge();
+    bridge.setConnection(conn);
+    const names: Record<string, string> = { a: "A", b: "B" };
+    const layer = new TabLayer({ bridge, nameOf: (id) => names[id], sendTo: () => {} });
+    layer.extensionConnected(conn, true);
+    const A = { clientId: "a", name: "A" };
+    const B = { clientId: "b", name: "B" };
+
+    expect(await layer.request(A, "tabs.claim", { active: true }, undefined)).toEqual({ tab: "T1" });
+    const locator = { role: "button", name: "Go" };
+    await expect(layer.request(B, "locate", { locator }, undefined)).rejects.toMatchObject({ code: "BAD_PARAMS", message: "tab is required" });
+    await expect(layer.request(A, "locate", { locator }, undefined)).rejects.toMatchObject({ code: "BAD_PARAMS", message: "tab is required" });
+    await expect(layer.request(B, "locate", { tab: "T1", locator }, undefined)).rejects.toMatchObject({ code: "TAB_HELD" });
+    expect(forwarded.filter((f) => f.method === "locate")).toHaveLength(0);
+
+    expect(await layer.request(A, "locate", { tab: "T1", locator }, undefined)).toEqual({ ref: "e1", role: "button", name: "Go" });
+    const sent = forwarded.filter((f) => f.method === "locate").map((f) => f.params);
+    expect(sent).toEqual([{ locator, tabId: 41 }]);
+  });
+
+  it("lock class: default screenshot, focusTab — never cdp or fullPage screenshots", () => {
     expect(takesLock("screenshot", {})).toBe(true);
     expect(takesLock("screenshot", undefined)).toBe(true);
     expect(takesLock("screenshot", { mode: "switch" })).toBe(true);
@@ -64,14 +106,12 @@ describe("method table", () => {
     expect(takesLock("screenshot", { mode: "cdp" })).toBe(false);
     expect(takesLock("screenshot", { fullPage: true })).toBe(false);
     expect(takesLock("focusTab", {})).toBe(true);
-    expect(takesLock("selectTab", {})).toBe(true);
     for (const m of ["click", "snapshot", "closeTab", "newTab", "listTabs", "networkClear", "slow"]) {
       expect(takesLock(m, {})).toBe(false);
     }
   });
 
-  it("names the legacy-id methods and the network methods", () => {
-    expect([...LEGACY_ID_METHODS].sort()).toEqual(["closeTab", "focusTab", "selectTab"]);
+  it("names the network methods", () => {
     expect([...NETWORK_METHODS].sort()).toEqual(["networkClear", "networkRequests"]);
   });
 });

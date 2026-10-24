@@ -18,11 +18,6 @@ export async function humansTab(): Promise<chrome.tabs.Tab> {
   return tab;
 }
 
-/** The Step 6 fallback target. Module-private: only `targetTab` calls it (exit check T1.2). */
-async function activeTab(): Promise<chrome.tabs.Tab> {
-  return humansTab();
-}
-
 /** "No tab with id: N." from `chrome.tabs.*` → `TAB_UNKNOWN` (plan 0.1); anything else unchanged. */
 export function asTabUnknown(err: unknown): unknown {
   const message = err instanceof Error ? err.message : String(err);
@@ -38,14 +33,12 @@ export function requireTabId(value: unknown): number {
   return value;
 }
 
-const warned = new Set<string>();
-
 /**
  * The tab a call acts on (Step 7 plan 0.1). `p.tabId` (an integer) → that tab, `TAB_UNKNOWN` when
  * Chrome has no such tab; present but not an integer → `BAD_PARAMS`. A string `p.tab` without
  * `tabId` is a handle a Step 6 daemon forwarded unresolved → `BAD_PARAMS` (Stage 0 F17). Absent →
- * the human's tab, with a warning naming the method only, once per method per worker lifetime.
- * Step 8 removes the fallback.
+ * `BAD_PARAMS`: Step 8 S2b removed the human's-tab fallback (decisions.md · 2026-10-23 · S2's daemon
+ * half becomes stage S2b (#72)); the daemon always forwards a `tabId`.
  */
 export async function targetTab(p: Record<string, unknown>, method: string): Promise<chrome.tabs.Tab> {
   if (p.tabId !== undefined) {
@@ -62,11 +55,7 @@ export async function targetTab(p: Record<string, unknown>, method: string): Pro
       "got a tab handle — the bridge daemon is older than the extension; run npm run build and reconnect",
     );
   }
-  if (!warned.has(method)) {
-    warned.add(method);
-    console.warn(`[bridge] ${method}: no tabId given — falling back to the human's active window (Step 6 fallback)`);
-  }
-  return activeTab();
+  throw new BridgeError(ErrorCodes.BAD_PARAMS, `${method} requires tabId`);
 }
 
 /**
@@ -85,10 +74,12 @@ export async function pageTab(p: Record<string, unknown>, method: string): Promi
   return assertNotDiscarded(await targetTab(p, method));
 }
 
-/** Test hook: forget which methods already warned. */
-export function resetFallbackWarnings(): void {
-  warned.clear();
-}
+/**
+ * The switch mode's refusal for a minimized window. Step 8 S2b (decisions.md · 2026-10-23 · T5b's three
+ * fixes (#63)): it no longer suggests mode cdp, which refuses a minimized window as well.
+ */
+export const SWITCH_MINIMIZED_MESSAGE =
+  "Chrome's window is minimized, so the tab cannot be captured — restore the window, or call focusTab first";
 
 export const CDP_MINIMIZED_MESSAGE =
   "Chrome's window is minimized, so CDP cannot capture the tab — restore the window, or call focusTab first";
@@ -191,10 +182,7 @@ async function captureOnce(tab: chrome.tabs.Tab, releaseChain: () => void): Prom
   try {
     const win = await chrome.windows.get(windowId);
     if (win.state === "minimized") {
-      throw new BridgeError(
-        ErrorCodes.WINDOW_MINIMIZED,
-        `Chrome's window is minimized, so the tab cannot be captured — restore the window, or pass mode:"cdp"`,
-      );
+      throw new BridgeError(ErrorCodes.WINDOW_MINIMIZED, SWITCH_MINIMIZED_MESSAGE);
     }
     await reserveCaptureSlot();
     const [prev] = await chrome.tabs.query({ active: true, windowId });

@@ -1,5 +1,5 @@
 import type { EvalEnvelope } from "@bridge/shared";
-import { keyEventParams, type KeyEventParams } from "./keys.js";
+import { trustedInputBody, trustedInputCleanup, type TrustedInput, type TrustedStep } from "./trusted-input.js";
 import { describeDebuggerError, isExecutionTerminated, timeoutMessage } from "./debugger-errors.js";
 import { BridgeError, ErrorCodes } from "./errors.js";
 import { SERIALIZER_SRC, type SerializeLimits } from "./evaluate/serialize.js";
@@ -43,41 +43,71 @@ function debuggerError(err: unknown, what: string): BridgeError {
   return new BridgeError(d.code, d.message, d.data);
 }
 
-export async function trustedClick(tabId: number, x: number, y: number): Promise<void> {
-  // Coords are CSS pixels of the layout viewport — exactly getBoundingClientRect's space, with no
-  // scaling. Measured at zoom 1.0/1.5 and DPR 1/1.25/1.5: the event's clientX,clientY came back
-  // identical to what was sent every time, so Chrome folds in both page zoom and DPR itself.
-  // The caller must ensure the point is on screen (see centerForInput) — CDP does not clamp, and a
-  // point past the viewport edge hit-tests the root element and does nothing.
-  await send(tabId, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1, buttons: 1 });
-  await send(tabId, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1, buttons: 0 });
+export interface TrustedRunOptions {
+  /** `true` wraps the input in CDP focus emulation (stage FE); anything else sends today's commands. */
+  focusEmulation: boolean;
+  /**
+   * `type`'s focus step (`focusForTyping` in the page). Runs inside the session, after the enable,
+   * only when the option is on (#85 item 3); without it the handler focuses before attaching.
+   */
+  focus?: () => Promise<unknown>;
 }
 
 /**
- * Real keystrokes for each character of `text`. A "\n" becomes a genuine Enter — a char-`text`-only
- * event can't express it. Assumes the target is already focused (and, for replace-semantics, that its
- * contents are selected) — see `focusForTyping` in the content script.
+ * One trusted input in one debugger session: attach → the steps of `trustedInputBody` → the cleanup
+ * (`trustedInputCleanup`) in a `finally` → detach.
+ * Returns `true` exactly when focus emulation was enabled for it.
+ *
+ * Without the option the steps are the pre-FE `Input.*` commands and nothing else (asserted against
+ * `extension/test/fixtures/fe-cdp-baseline.json`). With it: enable → (type) focus → `Input.*` →
+ * disable in a `finally`, so emulation is turned off after a failing input too. A failing disable
+ * never masks the input's own error, and after a successful input it is only warned about: Chromium
+ * clears focus emulation when the session detaches (`EmulationHandler::Disable()`, called by
+ * `DevToolsSession::Dispose()`; stage0-audit.md §8, unconfirmed for Chrome 156), and the input has
+ * already happened, so failing the call would invite a retry that repeats it.
+ *
+ * The steps are computed inside the session, one character at a time, so an unsupported key keeps
+ * today's mapping (thrown inside `withDebugger`) and a rejected character in `type`'s text is reached
+ * only after the keys before it were sent, as before. Nothing here focuses a window or activates a tab.
  */
-export async function trustedType(tabId: number, text: string): Promise<void> {
-  for (const ch of text) {
-    if (ch === "\n" || ch === "\r") {
-      await trustedPressKey(tabId, "Enter");
-      continue;
+export async function runTrustedInput(tabId: number, input: TrustedInput, opts: TrustedRunOptions): Promise<boolean> {
+  let pageFailure: { err: unknown } | undefined;
+  await withDebugger(tabId, async () => {
+    // The body is lazy (one character at a time, as the pre-FE trustedType sent them); the cleanup
+    // (the disable, with the option) is known up front, so it runs even when the body throws.
+    const body = trustedInputBody(input, opts.focusEmulation);
+    const cleanup = trustedInputCleanup(opts.focusEmulation).filter((s): s is Extract<TrustedStep, { op: "cdp" }> => s.op === "cdp");
+    let bodyDone = false;
+    try {
+      for (const step of body) {
+        if (step.op === "focus") {
+          if (!opts.focus) throw new Error("internal: the focus step has no focus function");
+          try {
+            await opts.focus();
+          } catch (err) {
+            // A page failure (stale ref, …) is not a debugger failure: hand it out unchanged, after
+            // the finally below has disabled emulation and withDebugger has detached.
+            pageFailure = { err };
+            return;
+          }
+          continue;
+        }
+        await send(tabId, step.method, step.params);
+      }
+      bodyDone = true;
+    } finally {
+      for (const step of cleanup) {
+        try {
+          await send(tabId, step.method, step.params);
+        } catch (err) {
+          // Never mask the input's own error; detach clears emulation anyway (see above).
+          if (bodyDone) console.warn("[bridge] focus emulation: disable failed; detach clears it:", describeDebuggerError(err).code);
+        }
+      }
     }
-    await dispatchKey(tabId, keyEventParams(ch));
-  }
-}
-
-/** One real key press/release, e.g. "Enter", "Tab", "ArrowDown". */
-export async function trustedPressKey(tabId: number, key: string): Promise<void> {
-  await dispatchKey(tabId, keyEventParams(key));
-}
-
-async function dispatchKey(tabId: number, p: KeyEventParams): Promise<void> {
-  // Spread into a fresh literal: sendCommand wants an index-signature type, which the interface lacks.
-  const base = { key: p.key, code: p.code, windowsVirtualKeyCode: p.windowsVirtualKeyCode, text: p.text, modifiers: p.modifiers };
-  await send(tabId, "Input.dispatchKeyEvent", { ...base, type: "keyDown" });
-  await send(tabId, "Input.dispatchKeyEvent", { ...base, type: "keyUp" });
+  });
+  if (pageFailure) throw pageFailure.err;
+  return opts.focusEmulation;
 }
 
 export async function fullPageScreenshot(tabId: number): Promise<string> {

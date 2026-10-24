@@ -96,3 +96,42 @@ describe("ExtensionConnection error codes (decision 0.4)", () => {
     await expect(p).rejects.toMatchObject({ name: "BridgeError", code: "NOT_CONNECTED", message: "extension disconnected" });
   });
 });
+
+describe("ExtensionConnection: an error without a code (Step 8 S2b.4, decisions.md #73)", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("is still delivered as INTERNAL; onMissingCode is told the method once per connection, never the message", async () => {
+    const reported: string[] = [];
+    const conn = new ExtensionConnection(() => {}, 1000, { onMissingCode: (method) => reported.push(method) });
+    const bodies: unknown[] = [{ message: "m1" }, { code: "", message: "m2" }, { code: 7, message: "m3" }, { code: null, message: "m4" }];
+    for (const [i, body] of bodies.entries()) {
+      const p = conn.call(i === 0 ? "snapshot" : "click", {});
+      conn.handleMessage(JSON.stringify({ id: String(i + 1), error: body }));
+      await expect(p).rejects.toMatchObject({ name: "BridgeError", code: "INTERNAL", message: `m${i + 1}` });
+    }
+    expect(reported).toEqual(["snapshot"]);
+  });
+
+  it("a coded error, an unknown code (passed through verbatim) and a result never report", async () => {
+    const reported: string[] = [];
+    const conn = new ExtensionConnection(() => {}, 1000, { onMissingCode: (method) => reported.push(method) });
+    const p1 = conn.call("click", {});
+    conn.handleMessage(JSON.stringify({ id: "1", error: { code: "REF_STALE", message: "s" } }));
+    await expect(p1).rejects.toMatchObject({ code: "REF_STALE" });
+    const p2 = conn.call("click", {});
+    conn.handleMessage(JSON.stringify({ id: "2", error: { code: "WEIRD", message: "w" } }));
+    await expect(p2).rejects.toMatchObject({ code: "WEIRD", message: "w" });
+    const p3 = conn.call("click", {});
+    conn.handleMessage(JSON.stringify({ id: "3", result: { ok: true } }));
+    await expect(p3).resolves.toEqual({ ok: true });
+    expect(reported).toEqual([]);
+  });
+
+  it("without the option (a no-proto peer) nothing is reported and the error is INTERNAL as before", async () => {
+    const conn = new ExtensionConnection(() => {}, 1000);
+    const p = conn.call("click", {});
+    conn.handleMessage(JSON.stringify({ id: "1", error: { message: "old" } }));
+    await expect(p).rejects.toMatchObject({ code: "INTERNAL", message: "old" });
+  });
+});

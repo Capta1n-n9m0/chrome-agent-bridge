@@ -6,12 +6,14 @@ import { back, forward } from "./handlers/history.js";
 import { listTabs, focusTab, newTab, closeTab } from "./handlers/tabs.js";
 import { waitFor } from "./handlers/wait.js";
 import { evaluate } from "./handlers/evaluate.js";
+import { locate } from "./handlers/locate.js";
 import { networkRequests, networkClear } from "./handlers/network.js";
 import { downloadStart, downloadChunk, downloadEnd } from "./handlers/download.js";
 import { log as networkLog, ownPort, scheduleFlush, setOwnPort } from "./network-state.js";
 import { isOwnTraffic } from "./network-log.js";
 import type { WebRequestDetails, WebRequestEvent } from "./network-log.js";
 import { TabInfoCache, eventFrame, tabCreatedParams, tabRemovedParams, tabReplacedParams } from "./tab-events.js";
+import { MARKER_KEY, SessionMarker, type MarkerStore } from "./session-marker.js";
 
 const DEFAULT_PORT = 9234;
 const router = new Router();
@@ -28,12 +30,11 @@ router.on("back", back);
 router.on("forward", forward);
 router.on("listTabs", listTabs);
 router.on("focusTab", focusTab);
-// The Step 6 name, kept as an alias for one release (T3.5): the same handler object.
-router.on("selectTab", focusTab);
 router.on("newTab", newTab);
 router.on("closeTab", closeTab);
 router.on("waitFor", waitFor);
 router.on("evaluate", evaluate);
+router.on("locate", locate);
 router.on("networkRequests", networkRequests);
 router.on("networkClear", networkClear);
 router.on("downloadStart", downloadStart);
@@ -123,7 +124,34 @@ chrome.tabs.onReplaced.addListener((addedTabId, removedTabId) => {
 // Refill the cache after a worker restart (Stage 0 F16). Not awaited: no top-level `await` here.
 chrome.tabs.query({}).then((all) => tabInfo.fill(all)).catch(() => {});
 
+// --- The session marker (Step 8 S2b.5; decisions.md · 2026-10-23 · #74, amended by #80) ----------------
+// Same across worker restarts and extension reloads, new when Chrome restarts; sent in the hello so the
+// daemon retires every handle after a Chrome restart. The onStartup/onInstalled listeners below are
+// registered synchronously at the top level and only record the event, so an event that fires before
+// connect() awaits the marker is not lost. Never logged.
+
+function stored(value: unknown): string | undefined {
+  return typeof value === "string" && value !== "" ? value : undefined;
+}
+
+const markerStore: MarkerStore = {
+  getSession: async () => stored((await chrome.storage.session.get(MARKER_KEY))[MARKER_KEY]),
+  getLocal: async () => stored((await chrome.storage.local.get(MARKER_KEY))[MARKER_KEY]),
+  setBoth: async (marker) => {
+    await Promise.all([chrome.storage.session.set({ [MARKER_KEY]: marker }), chrome.storage.local.set({ [MARKER_KEY]: marker })]);
+  },
+};
+
+const sessionMarker = new SessionMarker({
+  store: markerStore,
+  random: () => crypto.randomUUID(),
+  delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  onRotate: () => void connect(),
+});
+
 let connecting = false;
+/** A connect() asked for while one was running (e.g. a marker rotation): run once more after it. */
+let connectAgain = false;
 
 async function getConfig(): Promise<{ port: number; token: string }> {
   const { port, token } = await chrome.storage.local.get(["port", "token"]);
@@ -142,7 +170,10 @@ async function ensureOffscreen(): Promise<void> {
 }
 
 async function connect(): Promise<void> {
-  if (connecting) return;
+  if (connecting) {
+    connectAgain = true;
+    return;
+  }
   connecting = true;
   try {
     const { port, token } = await getConfig();
@@ -150,12 +181,18 @@ async function connect(): Promise<void> {
       console.warn("[bridge] no token set — open the extension options page to configure.");
       return;
     }
+    // Waits at most 2 s, and only on a worker start without a stored marker (S2b.5).
+    const session = await sessionMarker.current();
     await ensureOffscreen();
-    await chrome.runtime.sendMessage({ target: "offscreen", type: "connect", port, token });
+    await chrome.runtime.sendMessage({ target: "offscreen", type: "connect", port, token, session });
   } catch (err) {
     console.error("[bridge] connect failed:", err);
   } finally {
     connecting = false;
+    if (connectAgain) {
+      connectAgain = false;
+      void connect();
+    }
   }
 }
 
@@ -180,8 +217,14 @@ chrome.debugger.onDetach.addListener((source, reason) => {
   console.warn("[bridge] debugger detached, tabId", source.tabId, "reason:", reason);
 });
 
-chrome.runtime.onInstalled.addListener(() => void connect());
-chrome.runtime.onStartup.addListener(() => void connect());
+chrome.runtime.onInstalled.addListener((details) => {
+  sessionMarker.installed(details?.reason);
+  void connect();
+});
+chrome.runtime.onStartup.addListener(() => {
+  sessionMarker.startup();
+  void connect();
+});
 
 chrome.alarms.get("keepalive", (existing) => {
   if (!existing) chrome.alarms.create("keepalive", { periodInMinutes: 0.41 }); // ~25s

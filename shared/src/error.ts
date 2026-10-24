@@ -1,14 +1,20 @@
 import { ErrorCodes, type ErrorCode } from "./codes.js";
 
 /**
- * The `error` of an error response. `code` is optional on the wire: the unmodified v1 extension
- * sends `{message}` only, and `fromWire` reads that as `INTERNAL` (spec §10, decision 0.4).
+ * The `error` of an error response, as every sender builds it: `code` is required (Step 8 S2b,
+ * decisions.md · 2026-10-23 · S2b makes `code` required on error frames (#73)). Receivers still read a
+ * frame with no usable code — the unmodified v1 extension sends `{message}` only — through `fromWire`,
+ * whose input is lenient (`WireErrorInput`) and reads it as `INTERNAL` (spec §10, decision 0.4); such a
+ * frame is never dropped.
  */
 export interface WireError {
-  code?: ErrorCode | string;
+  code: ErrorCode | string;
   message: string;
   data?: unknown;
 }
+
+/** What may arrive in a received frame's `error`: anything, read leniently by `fromWire`. */
+export type WireErrorInput = { code?: unknown; message?: unknown; data?: unknown } | string | null | undefined | unknown;
 
 /** An error with a protocol code. `message` is what the MCP renders, unchanged from v1. */
 export class BridgeError extends Error {
@@ -34,7 +40,7 @@ export class BridgeError extends Error {
  * outside the 22 is kept as a string); a v1 `{message}` — or a missing/non-string/empty code —
  * becomes `INTERNAL`. Never throws.
  */
-export function fromWire(err: unknown): BridgeError {
+export function fromWire(err: WireErrorInput): BridgeError {
   if (typeof err !== "object" || err === null) {
     const message = typeof err === "string" && err !== "" ? err : "unknown error";
     return new BridgeError(ErrorCodes.INTERNAL, message);

@@ -37,3 +37,17 @@ export function validateHello(data: string, expectedToken: string): HandshakeRes
   const result = parseHello(data, expectedToken);
   return result.ok ? { ok: true } : result;
 }
+
+/**
+ * The extension's session marker from an (already validated) hello: a non-empty string, else undefined
+ * ("none") — Step 8 S2b.5 (decisions.md · 2026-10-23 · #74, amended by #80). Read beside `parseHello`,
+ * whose result shape Step 6 tests pin. The marker is compared, never logged.
+ */
+export function helloSession(data: string): string | undefined {
+  try {
+    const session = (JSON.parse(data) as { session?: unknown }).session;
+    return typeof session === "string" && session !== "" ? session : undefined;
+  } catch {
+    return undefined;
+  }
+}
