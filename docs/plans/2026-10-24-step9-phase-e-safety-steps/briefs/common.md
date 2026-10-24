@@ -279,4 +279,4 @@ plan-side with a dated note.
 
 ## Running state (session agent updates this section at each dispatch)
 
-- S1 (2091f6b) and S3 (782b1d5) closed; 2329 tests / 96 files. S2a dispatched alone (rulings to #168). Nothing running; port 9234 free.
+- S2a closed a27ab45 (2561 tests / 106 files). S2b dispatched alone (rulings to #180). Nothing running; port 9234 free.

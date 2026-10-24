@@ -91,12 +91,91 @@ Step 9 (2026-10-24 on), for the user at the gate:
 21. "S3: `browser_status`'s Safety line is a second text item, shown only while the extension is connected" (#162).
 22. "S3: Safety refusals get no `report` property; the wording is `safetyRefusalLine` on `@bridge/sdk/report`" (#163).
 23. "S3: The SDK exports the types `SafetyState` and `HiddenReason`" (#168).
+24. "S2a: a disarm whose write fails twice returns `"write-failed"` and stays disarmed in memory" (#174).
+25. "S2a: `navigate`/`newTab` are gated on the URL Chrome will open" (#175).
+26. "S2a: a disarm held in memory wins over a storage read" (#176).
+27. "S2a: a capture whose window showed another tab is refused `OFFSCREEN`" (#177).
+28. "S2a: the post-check also replaces error replies; `listTabs` with an unreadable state is refused, and has no post-check" (#178).
+29. "S2a: the network ingest drops a request for good once one of its events was dropped" (#179).
+30. "S2a: no `safetyState` is sent while the state cannot be read" (#180).
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-24 · S2a: no `safetyState` is sent while the state cannot be read (#180)
+**Decided:** sent only from a successful read; the daemon keeps "not reported" (#159). **Why:** an unreadable state has no
+honest `blockedCount`. **Instead of:** reporting `{armed:false, evaluate:false, blockedCount:0}`. **Revisit if:** the user
+prefers the disarmed report. **By:** Claude (contract-level; listed under Open decisions for the user; S2a report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2a.md` §5)
+
+### 2026-10-24 · S2a: the network ingest drops a request for good once one of its events was dropped (#179)
+**Decided:** a dropped request id is remembered (≤ 5 000) and its later events dropped; a blocked event discards the
+request's recorded hops; a disarmed drop does not discard entries recorded while armed; the pre-ready buffer holds ≤ 2 000
+events, oldest out. **Why:** otherwise a later event rebuilds the entry (traffic of the disarmed period, a blocked redirect).
+**Instead of:** per-event drop only. **Revisit if:** a request begun while disarmed is needed after re-arming. **By:** Claude (contract-level; listed under Open decisions for the user; S2a report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2a.md` §5)
+
+### 2026-10-24 · S2a: the post-check also replaces error replies; `listTabs` with an unreadable state is refused, and has no post-check (#178)
+**Decided:** a handler's error is replaced by the post-check's refusal like a result (errors can carry page data); `listTabs`
+at receipt with an unreadable state → `DISARMED` (unreadable); once its rows were redacted under a successful read, no
+post-check. **Why:** fail closed (#139); #134 redacts rather than refuses on a known state. **Instead of:** results only;
+rows all redacted as `"disarmed"`. **Revisit if:** an agent needs a listing while the state is unreadable. **By:** Claude (contract-level; listed under Open decisions for the user; S2a report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2a.md` §5)
+
+### 2026-10-24 · S2a: a capture whose window showed another tab is refused `OFFSCREEN` (#177)
+**Decided:** after `captureVisibleTab` the window's active tab is re-read; not the target → image discarded, `OFFSCREEN`
+with a message naming no URL or title (F11). **Why:** F11 says discard and refuse; `OFFSCREEN` fits; no new code.
+**Instead of:** `INTERNAL`; returning the image. Changes a reply while armed only in that race (today: the wrong tab's
+pixels). A narrow race remains (switch away and back between capture and re-read; verifier NIT 7). **Revisit if:** S4
+shows it firing in normal use. **By:** Claude (contract-level; listed under Open decisions for the user; S2a report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2a.md` §5)
+
+### 2026-10-24 · S2a: a disarm held in memory wins over a storage read (#176)
+**Decided:** `read()` reports disarmed while the memory copy is disarmed even if storage still reads armed (a write in
+flight or failed). **Why:** no call acts after the human pressed OFF; it only ever refuses. **Instead of:** F10 literally.
+**Revisit if:** memory and storage drift long enough to matter. **By:** Claude (contract-level; listed under Open decisions for the user; S2a report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2a.md` §5)
+
+### 2026-10-24 · S2a: `navigate`/`newTab` are gated on the URL Chrome will open (#175)
+**Decided:** a URL the WHATWG parser takes as absolute is tested as written; any other string is resolved against
+`chrome-extension://<id>/` and tested as that URL, so `/options.html`, `options.html`, `example.com`, `//host` are refused
+`DOMAIN_BLOCKED` (#138); a string that cannot be resolved is refused too. The caller's string is still what reaches Chrome.
+**Why:** Chrome resolves a non-absolute URL inside the extension (documented; verifier r1 finding 1, CRITICAL — the own-page
+refusal was passable by its relative form). **Instead of:** refusing every scheme-less URL by rule; leaving unparseable
+strings to Chrome. **Revisit if:** SAFE-REL-2 shows Chrome resolving elsewhere. Note: refusing an unparseable string (e.g.
+`http://exa mple.com`) changes today's reply while armed with an empty list (today's answer unmeasured; verifier R2-1).
+**By:** Claude (contract-level; listed under Open decisions for the user; S2a report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2a.md` §5)
+
+### 2026-10-24 · S2a: a disarm whose write fails twice returns `"write-failed"` and stays disarmed in memory (#174)
+**Decided:** one retry; memory is never re-armed by a failed write; a failed **arm** write rejects (S2b shows it as still
+`OFF`). **Why:** the human's press must hold; a rejection would hide that the disarm is in force. **Instead of:** rejecting;
+re-arming memory. **Revisit if:** S2b finds the badge cannot show it. **By:** Claude (contract-level; listed under Open decisions for the user; S2a report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2a.md` §5)
+
+### 2026-10-24 · S2a: the offscreen document accepts only this extension's non-tab senders (#173)
+**Decided:** `sender.tab === undefined && sender.id === chrome.runtime.id`, checked before the message is read.
+**Why:** a content-script world could otherwise send frames or reconnect the socket (verifier finding 3; not reachable by a
+page). **Instead of:** matching the worker's script URL (unmeasured). **Revisit if:** SAFE-0 fails. **By:** Claude (S2a report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2a.md` §5)
+
+### 2026-10-24 · S2a: the `seconds` wait runs in 100 ms re-checked ticks; tab events wait for a fresh read, in order (#172)
+**Decided:** as named; a closed tab's last URL is kept 610 s (≤ 1 000 tabs) and a replaced tab followed (≤ 4 hops) for the
+post-check (R2-1). **Why:** a disarm ends a wait within one tick; F10 keeps the memory copy for webRequest only.
+**Instead of:** one sleep; the memory copy for events. **Revisit if:** S4 measures the event delay breaking the opener rule.
+**By:** Claude (S2a report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2a.md` §5)
+
+### 2026-10-24 · S2a: storage keys, and a wrong-typed value makes the state unreadable (#171)
+**Decided:** keys `safety.armed`, `safety.evaluate`, `safety.blockList` (defaults true, true, ""); a present key of the wrong
+type → unreadable → every call refused, the ingest drops everything, the toggle writes disarmed. **Why:** fail closed
+(#139). **Instead of:** treating a wrong type as its default. **Revisit if:** a key needs migrating. **By:** Claude (S2a report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2a.md` §5)
+
+### 2026-10-24 · S2a: an unknown method is `UNKNOWN_METHOD` in every state (#170)
+**Decided:** no state read, no handler. **Why:** nothing to gate; the answer reveals nothing about the state and keeps the
+stale-extension diagnostic. **Instead of:** `DISARMED` while disarmed. **Revisit if:** the user wants every frame answered
+alike while disarmed. **By:** Claude (S2a report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2a.md` §5)
+
+### 2026-10-24 · S2a: the gated router sits beside the unchanged `Router` core (#169)
+**Decided:** `GatedRouter` in `router.ts`: `on` throws on a method with no safety class; `handle` gates before dispatch and
+post-checks before the reply; a throw from the gate → `INTERNAL`. `Router` unchanged; `sw.ts` constructs only `GatedRouter`
+(static test). **Why:** `router.test.ts` registers unclassified names and must pass unchanged; S1.1's second half (#147).
+**Instead of:** `Router.on` throwing (edits existing tests); a subclass sharing the handler map. **Revisit if:** an
+ungated construction is needed outside tests. **By:** Claude (S2a report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2a.md` §5)
 
 ### 2026-10-24 · S3: The SDK exports the types `SafetyState` and `HiddenReason` (#168)
 **Decided:** type-only exports from `sdk/src/index.ts`. No value is added to the main entry.

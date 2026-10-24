@@ -45,3 +45,13 @@
 - Created the as-built register (Stage 0, S0, S1, S3).
 - For S4: a row must read `browser_status`'s second text item (the `Safety:` line) from a live transcript (#162).
 - Next: S2a (extension enforcement) alone; S2b after it.
+
+## 2026-10-24 — S2a closed (a27ab45); S2b dispatched
+
+- S2a: DONE, PASS-with-notes after one fix round (round 1 CRITICAL: a relative `/options.html` passed the
+  own-page rule; now gated on the URL Chrome will open). Tests 2329/96 → 2561/106; typecheck, build 0.
+- Session-agent spot check: `sw.ts` constructs only `GatedRouter` (grep `new .*Router`), so no method is
+  reachable without the gate.
+- Recorded #169–#180; #174–#180 contract-level, under Open decisions. As-built updated.
+- S4 inputs so far: S2a.md §7 (eleven Chrome-only rows incl. SAFE-REL-1/2), stage0-audit.md §7, #162's row.
+- Next: S2b (manifest action + `_execute_action`, badge, options page, 0.7 log scan) alone.

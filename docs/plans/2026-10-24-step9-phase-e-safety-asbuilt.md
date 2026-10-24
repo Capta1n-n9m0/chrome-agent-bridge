@@ -83,5 +83,31 @@ session agent; one section per stage, written at each stage close.
 - 2.5 h estimated; about 40 min in parallel with S1. daemon/sdk/mcp tests 771 / 44 → 844 / 49; full suite
   with S1: 2329 / 96, 0 failures.
 
+## Stage S2a — Extension enforcement · 2026-10-24 · verifier: PASS-with-notes · commit a27ab45
+
+### Contracts (binding forward)
+- `sw.ts` serves every method through `GatedRouter` (`extension/src/router.ts`), the only router the worker
+  constructs; the old `Router` core is kept unchanged beside it (#169). `GatedRouter.on` throws on a method
+  with no safety class (S1.1's second half). An unknown method is `UNKNOWN_METHOD` in every state (#170).
+- The state is read from `storage.local` per call, fails closed on an unreadable or wrong-typed value (#171);
+  a disarm held in memory wins over a storage read (#176); a disarm whose write fails twice stays disarmed
+  in memory and returns `"write-failed"` (#174). The toggle S2b calls: `safety.toggle()` →
+  `"disarmed" | "armed" | "ignored" | "write-failed"`; the options page writes through `writeSafety`.
+- Gate at receipt, before each first side effect and as the post-check, which also replaces error replies
+  (#178); `navigate`/`newTab` are gated on the URL Chrome will open, so a relative URL cannot reach this
+  extension's pages (#175, the round-1 CRITICAL); the offscreen document accepts only this extension's
+  non-tab senders (#173).
+- Disarm detaches every debugger session (a pure registry), waits re-check every 100 ms (#172), downloads are
+  cleared and checked on their final URL, the network ingest drops events while disarmed and a request for
+  good once one event was dropped (#179); `listTabs`/events redacted; a capture whose window showed another
+  tab is refused `OFFSCREEN` (#177); `safetyState` is sent on connect and on change, never while the state
+  is unreadable (#180).
+
+### Decisions taken
+- #169–#180 (S2a report §5); #174–#180 contract-level, under Open decisions.
+
+### Estimates vs actuals
+- 3 h estimated; about 62 min (one fix round, which fixed one CRITICAL). Tests 2329 / 96 → 2561 / 106.
+
 ## Open decisions for the user (running list; also in `docs/decisions.md` → Open decisions)
-- #131–#141, #144 (Stage 0), #148 (S0), #153–#156 (S1), #159–#163, #168 (S3).
+- #131–#141, #144 (Stage 0), #148 (S0), #153–#156 (S1), #159–#163, #168 (S3), #174–#180 (S2a).
