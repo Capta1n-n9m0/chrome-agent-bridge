@@ -12,7 +12,8 @@
  *   read per call, fails closed, and is locked to trusted contexts (#139)).
  * - The toggle updates the in-memory copy before it writes, and a disarm held in memory wins over a read
  *   that still says armed (the write in flight). A re-arm within 1 000 ms of the last disarm is ignored; a
- *   disarm never is (decisions.md · 2026-10-24 · A re-arm right after a disarm is ignored (#144)).
+ *   disarm never is (decisions.md · 2026-10-24 · A re-arm right after a disarm is ignored (#144)). A re-arm whose
+ *   write is rejected puts the memory copy back to disarmed and rejects (S2c, #189; #174).
  * - Nothing here is reachable from the router: only the worker's own listeners and the options page call it.
  *
  * No log call here, and nothing that could print a pattern (phase doc 0.7).
@@ -99,6 +100,15 @@ export async function writeSafety(set: (items: Record<string, unknown>) => Promi
   await set(toStorageItems(change));
 }
 
+/**
+ * The stored `armed` switch, read for the badge (S2b verifier F5), asking `storage.local` for the safety keys
+ * only — never the whole area, which holds the token too (S2c, #183). `get` is `chrome.storage.local.get`. A
+ * wrong-typed value throws (the caller treats it as unknown).
+ */
+export async function readStoredArmed(get: (keys: readonly string[]) => Promise<Record<string, unknown>>): Promise<boolean> {
+  return parseStoredSafety(await get(SAFETY_KEY_NAMES)).armed;
+}
+
 /** True when a `storage.onChanged` batch touches a safety key. */
 export function touchesSafety(changes: Record<string, unknown>): boolean {
   return SAFETY_KEY_NAMES.some((k) => Object.prototype.hasOwnProperty.call(changes, k));
@@ -159,6 +169,8 @@ export class SafetyStore {
   private chain: Promise<unknown> = Promise.resolve();
   private lastText: string | null = null;
   private lastList: BlockList = EMPTY_BLOCK_LIST;
+  /** Counts `storage.onChanged` batches that touched `safety.armed` (S2c fixer 1: the failed arm's revert). */
+  private armedChanges = 0;
 
   constructor(private readonly deps: SafetyStoreDeps) {}
 
@@ -221,6 +233,7 @@ export class SafetyStore {
    */
   applyChanges(changes: Record<string, unknown>): void {
     if (!touchesSafety(changes)) return;
+    if (Object.prototype.hasOwnProperty.call(changes, SAFETY_KEYS.armed)) this.armedChanges++;
     const base: StoredSafety = this.mem === null || this.mem.unreadable === true ? { ...DEFAULT_STORED_SAFETY } : { ...this.mem };
     const merged: Record<string, unknown> = {
       [SAFETY_KEYS.armed]: base.armed,
@@ -274,8 +287,24 @@ export class SafetyStore {
       return this.writeDisarm();
     }
     if (this.deps.now() - this.lastDisarmAt < REARM_GUARD_MS) return "ignored";
+    const armedChangesAtApply = this.armedChanges;
     this.apply({ ...current, armed: true }, "toggle");
-    await this.deps.set(toStorageItems({ armed: true }));
+    try {
+      await this.deps.set(toStorageItems({ armed: true }));
+    } catch (err) {
+      // S2c (#189, S2b.md §6 finding 1): a rejected arm write must not leave memory armed while storage says
+      // OFF. Memory's `armed` goes back to false (fail closed; `onDisarm` fires), the other fields as they are
+      // in memory now (a newer block list or JavaScript switch stands), unless a storage change that touched
+      // `safety.armed` landed meanwhile (storage itself spoke about `armed`; the copy already reflects it).
+      // Not by object identity: `applyChanges` merges over the copy, so a change to another key carries the
+      // unsaved `armed: true` forward (S2c verifier F1). An unreadable copy stays unreadable. `lastDisarmAt` is
+      // not moved: the human did not disarm, so the next press is a retry. A failed arm still rejects (#174).
+      const now = this.mem;
+      if (this.armedChanges === armedChangesAtApply && now !== null && now.unreadable !== true && now.armed) {
+        this.apply({ ...now, armed: false }, "revert");
+      }
+      throw err;
+    }
     return "armed";
   }
 
@@ -296,13 +325,14 @@ export class SafetyStore {
     return "write-failed";
   }
 
-  private apply(next: MemoryState, source: "load" | "change" | "toggle"): void {
+  /** `"revert"`: a failed arm write undone (S2c) — a transition to disarmed that is not the human's disarm. */
+  private apply(next: MemoryState, source: "load" | "change" | "toggle" | "revert"): void {
     const prev = this.mem;
     this.mem = next;
     const wasArmed = prev === null ? null : prev.unreadable !== true && prev.armed;
     const nowArmed = next.unreadable !== true && next.armed;
     if (!nowArmed && wasArmed !== false) {
-      if (source !== "load") this.lastDisarmAt = this.deps.now();
+      if (source !== "load" && source !== "revert") this.lastDisarmAt = this.deps.now();
       this.deps.onDisarm?.();
     } else if (nowArmed && wasArmed === false) {
       this.deps.onArm?.();

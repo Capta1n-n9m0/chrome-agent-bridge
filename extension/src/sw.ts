@@ -14,7 +14,7 @@ import { isOwnTraffic } from "./network-log.js";
 import type { WebRequestDetails, WebRequestEvent } from "./network-log.js";
 import { TabInfoCache, eventFrame, tabCreatedParams, tabRemovedParams, tabReplacedParams } from "./tab-events.js";
 import { MARKER_KEY, SessionMarker, type MarkerStore } from "./session-marker.js";
-import { DISARMED_ALL, SafetyReporter, SafetyStore, failClosedView, parseStoredSafety, reportOf, touchesSafety, type SafetyView } from "./safety-state.js";
+import { DISARMED_ALL, SafetyReporter, SafetyStore, failClosedView, readStoredArmed, reportOf, touchesSafety, type SafetyView } from "./safety-state.js";
 import { CallSafety, acceptRelaySender, type CallSafetyDeps } from "./safety-call.js";
 import { NetworkIngestGate } from "./safety-network.js";
 import { redactTabCreated, redactTabRemoved } from "./safety.js";
@@ -363,7 +363,7 @@ const badge = new BadgeController({
   read: () => safety.read().then((v) => v.switches),
   // F5 (S2b verifier): the stored switch, unmasked by a disarm held in memory, so a "not saved" title ends
   // once the OFF is saved. A wrong-typed value throws → unknown (the note stays; the badge is OFF anyway).
-  storedArmed: () => chrome.storage.local.get(null).then((raw) => parseStoredSafety(raw).armed),
+  storedArmed: () => readStoredArmed((keys) => chrome.storage.local.get([...keys])),
 });
 
 chrome.action.onClicked.addListener(() => void badge.press(() => safety.toggle()));
