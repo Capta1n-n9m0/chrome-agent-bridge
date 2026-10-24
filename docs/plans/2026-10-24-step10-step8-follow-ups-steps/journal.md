@@ -36,3 +36,9 @@
 ## 2026-10-25 — S1 dispatched
 
 - Stage 0 rulings committed (`b016712`). S1 (Run 14, live, alone) dispatched; pinning rule: already pinned → proceed, else the runner returns and the user is asked once.
+
+## 2026-10-25 — S1 closed (`f717682`); S2 ∥ S6 dispatched
+
+- S1: PASS-with-notes. R14-4b, R14-5c, R14-REL-3 PASS; R14-POP-1 FAIL; R14-3 NOT MEASURED; R14-TEARDOWN FAIL (scanner). Four attempts, three returns, all correct under #193; state read back equal. Tests 2720 → 2763. Recorded #210–#213; as-built register created.
+- Lesson for me: commit every bookkeeping edit before dispatching a live runner (my uncommitted journal tripped the clean-tree guard, Return 1).
+- Next: S2 (MCP focus-first) ∥ S6 (release/step8, separate worktree, Variant C per #208).

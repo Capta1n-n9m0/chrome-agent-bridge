@@ -114,6 +114,45 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-25 · S1: Run 14's wave mechanics are kept for Run 15 (#213)
+**Decided:** S7's wave reuses `recipes/s9-r14.ps1`'s model: one STOP path that restores and refuses later blocks;
+a resume only through a narrow, named `-Attempt/-Skip` form that cannot re-run an observed row; window placements
+cut at the taskbar; a fixed cursor park before occlusion guards; every brief fill-in committed before the runner
+starts; the found-state guard as Run 13's. S7's prep also fixes the raw-output scan (count `scheme://host`, not a bare
+`://`, which the helper's own lines carry) and makes a teardown scan failure print STOP, as §4.21 says; Run 14's
+R14-TEARDOWN stays FAIL. **Why:** Run 14's three returns were all tooling and each was caught before a wrong
+observation (S1 live verifier F1/F2, N3). **Instead of:** a free-form runner resume; re-judging R14-TEARDOWN.
+**Revisit if:** S7's rows need a state the guard refuses, or a scan counts a real non-fixture URL.
+**By:** Claude (S1 report `…step10…-steps/S1.md`)
+
+### 2026-10-25 · S1: R14-3 (the options page's view of a re-arm) is re-measured in Run 15 (#212)
+**Decided:** R14-3 is NOT MEASURED in Run 14 (a Chrome window that was not the driver's covered the options page ~2 s
+after the disarm, so the guard stopped the row); Run 15 re-measures it as a new row with occluder diagnostics (rect,
+owner, styles, cursor) and the fixed cursor park. **Why:** its first observation was made in attempt 3, so re-running
+it inside Run 14 would re-run an observed row. **Instead of:** a re-run in attempt 4. **Revisit if:** the occluder
+recurs in Run 15 — identify it before anyone exempts it from the guard (that exemption is the user's call).
+**By:** Claude (S1 report)
+
+### 2026-10-25 · S1: R14-POP-1's missing `leaseGranted` gets a diagnostic row in Run 15 (#211)
+**Decided:** Run 14's R14-POP-1 FAIL stands (the opener was claimed before the click, a popup opened, no
+`leaseGranted` arrived). Run 15 adds R15-POP-2: it prints the popup's `openerTabId` class (the held opener, another
+tab, none) with the opener (a) in front and (b) in the background of its window, then judges `leaseGranted`.
+**Why:** the daemon's opener rule and the SDK's event delivery read sound; the passing LEASE-3 / R9-LEASE-3 had the
+opener in front and Run 14's was a background tab, so the conjecture that Chrome then names another opener is
+unshown. **Instead of:** re-running R14-POP-1 or changing the opener rule now. **Revisit if:** R15-POP-2 shows the
+held opener named and still no grant — a product defect, then a fix stage.
+**By:** Claude (S1 report)
+
+### 2026-10-25 · S1: Run 14's results stand as recorded (#210)
+**Decided:** Run 14 (S1, `f717682`, verifier PASS-with-notes) stands: R14-4b PASS (disarm ended a running trusted
+`type` 5 ms after the press, 571/1000 typed; a trusted call after re-arm succeeded; banner gone between +4.7 s and
++5.0 s, a record); R14-5c PASS (first live run of the post-redirect `downloadStart` check — `DOMAIN_BLOCKED`, no file,
+hop and target each requested once, #140's limit); R14-REL-3 PASS (`view-source / http / own=no`); R14-POP-1 FAIL;
+R14-3 NOT MEASURED; R14-TEARDOWN FAIL on a scanner bug. Four attempts, three stops, each a return (#193); the safety
+state read back equal by hash. **Why:** the fresh live verifier matched every STOP line to a ledger return and every
+observed text to the pre-written text. **Instead of:** re-running failed rows in the wave. **Revisit if:** Run 15
+contradicts a Run 14 row. **By:** Claude
+
 ### 2026-10-25 · Stage 0: count corrections, stricter checks, SW-1 as a differential row, the retirement set, bb-login's bound (#209)
 **Decided:** the Stage 0 rulings that are mechanical or stricter only, applied to the phase doc as dated amendments
 (texts in `docs/plans/2026-10-24-step10-step8-follow-ups-steps/stage0.md` §6): (1) F8 — the Step 9 log scan has 54
