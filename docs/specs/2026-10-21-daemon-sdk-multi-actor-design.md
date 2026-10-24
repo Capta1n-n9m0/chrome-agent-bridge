@@ -571,6 +571,19 @@ The block itself is left as written.*
     and `TAB_GONE`; `leaseGranted.url` is then `""` (#134).*
   - *No method of any layer arms, disarms, edits the block list or turns JavaScript on: only the human
     changes the safety state, in Chrome (§6.5).*
+- *Added 2026-10-24 (Step 9 S0 fixer r1; the note above reads as a complete definition of both codes, but it is
+  narrower than decisions.md · 2026-10-24 · Script URLs and the JavaScript switch; own pages of every extension
+  (#138), which this note adds):*
+  - *`DISARMED` with `data: {scope: "evaluate"}` also answers `navigate`/`newTab` to a `javascript:`, `data:` or
+    `blob:` URL while JavaScript is off; while JavaScript is on, those navigations behave as before Step 9 (#138).*
+  - *`DOMAIN_BLOCKED` also answers `navigate`/`newTab` to **any** `chrome-extension://` URL (any extension id),
+    and every method on a tab showing **this** extension's own page (by its `url` or `pendingUrl`); such a tab's
+    `listTabs` row and events are hidden as a blocked tab's are. `chrome://` navigation is unchanged (#138).*
+  - *"`DOMAIN_BLOCKED` reveals no host or pattern in message or data" comes from Stage 0's row SAFE-5
+    (`docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §7: "`DOMAIN_BLOCKED` with no host or
+    pattern in message/data"), not from #132–#134.*
+  - *`leaseGranted.url` is `""` also for a tab opened onto a blocked URL, not only while disarmed (#134; phase
+    doc 0.3's F40 note).*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
