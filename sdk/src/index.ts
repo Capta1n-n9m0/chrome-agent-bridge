@@ -1,9 +1,30 @@
-// @bridge/sdk — the public surface (Step 6 D4.3). Exactly five values; everything else is a type.
+// @bridge/sdk — the public surface. Exactly eight values (Step 6 D4.3's five, plus Step 8's `Tab` and
+// the two formatters, decisions.md · 2026-10-23 #75); everything else is a type.
 export { connect } from "./connect.js";
 export type { ConnectOptions } from "./connect.js";
 export { BridgeClient } from "./client.js";
-export type { BridgeClientOptions, CallOptions, Timers } from "./client.js";
+export type { BridgeClientOptions, CallOptions, TabInfo, Timers } from "./client.js";
+export { Tab } from "./tab.js";
+export type { DownloadOptions, NetworkListOptions, ScreenshotOptions, ScrollOptions, TrustedOption } from "./tab.js";
+export type { Target } from "./locator.js";
 export { BridgeError, ErrorCodes } from "@bridge/shared";
-export type { ErrorCode, EventMessage, WelcomeMessage, WireError } from "@bridge/shared";
+export type {
+  ErrorCode,
+  EvalEnvelope,
+  EventMessage,
+  LocateResult,
+  Locator,
+  LocatorName,
+  NetworkEntry,
+  ScreenshotMode,
+  SnapshotElement,
+  SnapshotResult,
+  WaitForParams,
+  WelcomeMessage,
+  WireError,
+} from "@bridge/shared";
 export { downloadToFile } from "./download.js";
 export type { DownloadOutcome } from "./download.js";
+// The formatters are also on the `@bridge/sdk/format` subpath, which the MCP uses (#46, #75).
+export { formatSnapshot, formatNetwork } from "./format/index.js";
+export type { FormatNetworkOptions, FormattableResult } from "./format/index.js";

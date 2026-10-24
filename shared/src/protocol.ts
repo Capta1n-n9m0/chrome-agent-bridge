@@ -42,6 +42,14 @@ export interface HelloMessage {
   name?: string;
   build?: string;
   proto?: number;
+  /**
+   * The extension's session marker: the same across service-worker restarts and extension reloads,
+   * new after a Chrome restart. S0 adds only the field and its type check; S2b gives it behaviour (the
+   * daemon retires every handle when it changes). Never log it (decisions.md · 2026-10-23 · The
+   * extension hello carries an optional session marker (#74); amended by · The session marker's
+   * mechanism, amended (#80)).
+   */
+  session?: string;
 }
 
 /** The daemon's answer to a client's hello (spec §10). */
@@ -148,6 +156,7 @@ export function isHello(value: unknown): value is HelloMessage {
   if ("name" in v && typeof v.name !== "string") return false;
   if ("build" in v && typeof v.build !== "string") return false;
   if ("proto" in v && typeof v.proto !== "number") return false;
+  if ("session" in v && typeof v.session !== "string") return false;
   return true;
 }
 
@@ -278,6 +287,11 @@ export interface EvalEnvelope {
   description: string;
   /** Any limit (depth / items / string / total chars) was hit. */
   truncated: boolean;
+  /**
+   * A RefMap ref ("e12") for the value, set only when the call passed `asRef: true` and the value is an
+   * `Element` (Step 8 phase doc 0.3: the CDP path marks the node, the content script mints the ref).
+   */
+  ref?: string;
 }
 
 /**
@@ -358,4 +372,131 @@ export interface NetworkRequestsResult {
   /** Epoch ms — when this log started (extension load / last clear of "all"). */
   recordingSince: number;
   // `text` was removed in Step 7 T4 (decisions.md #49): the SDK's `formatNetwork` renders `entries`.
+}
+
+// ── Step 8 (docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor.md) ───────────────────────────────
+// The params below are a method's own params. The routing keys are not part of them: a client adds
+// `tab` (a handle, "T3"), and the daemon replaces it with a numeric `tabId` before forwarding.
+
+/**
+ * A role locator's `name`: a string (case-insensitive substring, or equality with `exact: true`) or a
+ * `{regex, flags?}` pattern, built in the page as `new RegExp(regex, flags)` (phase doc 0.1).
+ */
+export type LocatorName = string | { regex: string; flags?: string };
+
+/**
+ * What a script names an element by instead of a ref (phase doc 0.1). Resolved in the content script by
+ * the snapshot's rules:
+ * - `{role, name?}` matches only what a snapshot lists (same role and accessible name computation).
+ * - `{text}` matches the innermost element that survives the snapshot's pruning gates
+ *   (`aria-hidden`/`inert`/`hidden`/`display:none`, zero-size when the document has layout) whose
+ *   normalised text contains the needle, case-insensitive; `exact: true` means equality (decisions.md ·
+ *   2026-10-23 · Locator rules, the MCP locator schema and the exported `BridgeError` (#83) item 1).
+ * - `{css}` matches any element, interactive or not; the ref is minted on the spot.
+ * `nth` (0-based) picks one of several matches in the snapshot's walk order; without it more than one
+ * match is `LOCATOR_AMBIGUOUS`, none `LOCATOR_NOT_FOUND`. `exact` exists on the role and text variants
+ * only. The type cannot reject every mix of variants (see `shared/test/protocol-step8.test.ts`); a
+ * locator that crosses the wire is checked with `isLocator`.
+ */
+export type Locator =
+  | { role: string; name?: LocatorName; exact?: boolean; nth?: number }
+  | { text: string; exact?: boolean; nth?: number }
+  | { css: string; nth?: number };
+
+/** The value of a `locate` call (phase doc 0.1). `ref` stays valid with the last snapshot's refs. */
+export interface LocateResult {
+  ref: string;
+  role: string;
+  name: string;
+}
+
+/**
+ * `waitFor`'s params: exactly one of four arms (phase doc 0.2, 0.4). The locator arm polls `locate`
+ * every 100 ms up to `timeoutMs` (default 10 s); `state: "hidden"` resolves when `locate` answers
+ * `LOCATOR_NOT_FOUND`. `{text: string}` is required (not 0.4's `{text?}`, which made `{}` valid) and
+ * `timeoutMs?` is on the locator arm as 0.2 says (stage0-audit.md F28, S0 step agent).
+ */
+export type WaitForParams =
+  | { text: string }
+  | { locator: Locator; state?: "visible" | "hidden"; timeoutMs?: number }
+  | { networkIdle: true; idleMs?: number }
+  | { seconds: number };
+
+/** An action's target: a ref from a snapshot or a locator, exactly one (phase doc 0.2). */
+export type ActionTarget = { ref: string; locator?: never } | { locator: Locator; ref?: never };
+
+/**
+ * Options of the trusted-capable input methods (`click`, `type`, `pressKey`). `trusted` sends real CDP
+ * input through the debugger. `focusEmulation` asks the extension to turn on CDP focus emulation for
+ * that input, so a background tab can receive it; stage FE measures whether it works, and
+ * `sdk/src/policy.ts` (S3) decides when the SDK sends it (decisions.md · 2026-10-23 · FE's rows and
+ * outcome table, amended before anything is measured (#78)).
+ */
+export interface TrustedInputOptions {
+  trusted?: boolean;
+  focusEmulation?: boolean;
+}
+
+/** `click`'s params (phase doc 0.2). */
+export type ClickParams = ActionTarget & TrustedInputOptions;
+
+/** `type`'s params (phase doc 0.2). `submit` presses Enter after the text. */
+export type TypeParams = ActionTarget & TrustedInputOptions & { text: string; submit?: boolean };
+
+/** `pressKey`'s params: it acts on the focused element, so it takes no target. */
+export interface PressKeyParams extends TrustedInputOptions {
+  key: string;
+}
+
+/**
+ * `evaluate`'s params. `asRef: true` asks for a ref to the value when it is an `Element`, returned as
+ * `EvalEnvelope.ref` (phase doc 0.3).
+ */
+export interface EvaluateParams {
+  expression: string;
+  timeoutMs?: number;
+  asRef?: boolean;
+}
+
+const LOCATOR_KINDS = ["role", "text", "css"] as const;
+const LOCATOR_KEYS: Record<(typeof LOCATOR_KINDS)[number], readonly string[]> = {
+  role: ["role", "name", "exact", "nth"],
+  text: ["text", "exact", "nth"],
+  css: ["css", "nth"],
+};
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return isObject(value) && !Array.isArray(value);
+}
+
+/** Own keys whose value is not `undefined` (JSON drops those, so in-process and wire forms agree). */
+function definedKeys(v: Record<string, unknown>): string[] {
+  return Object.keys(v).filter((k) => v[k] !== undefined);
+}
+
+function isLocatorName(v: unknown): v is LocatorName {
+  if (typeof v === "string") return true;
+  if (!isPlainObject(v)) return false;
+  if (typeof v.regex !== "string" || !optional(v, "flags", isString)) return false;
+  return definedKeys(v).every((k) => k === "regex" || k === "flags");
+}
+
+/**
+ * A `Locator` as it arrives untyped (from a script, the MCP or the wire): a plain object with exactly
+ * one of `role`/`text`/`css` as a non-empty string; `name` (role only) a string or `{regex, flags?}`
+ * with no other keys; `exact` (role and text only) a boolean; `nth` a non-negative safe integer; no
+ * other key. A key whose value is `undefined` counts as absent, as in the event guards above.
+ */
+export function isLocator(value: unknown): value is Locator {
+  if (!isPlainObject(value)) return false;
+  const keys = definedKeys(value);
+  const kinds = LOCATOR_KINDS.filter((k) => keys.includes(k));
+  if (kinds.length !== 1) return false;
+  const kind = kinds[0];
+  const needle = value[kind];
+  if (typeof needle !== "string" || needle === "") return false;
+  if (!keys.every((k) => LOCATOR_KEYS[kind].includes(k))) return false;
+  if (!optional(value, "name", isLocatorName)) return false;
+  if (!optional(value, "exact", (v) => typeof v === "boolean")) return false;
+  return optional(value, "nth", (v) => Number.isSafeInteger(v) && (v as number) >= 0);
 }
