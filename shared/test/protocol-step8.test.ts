@@ -175,8 +175,11 @@ describe("Step 8 types (exit check S0.3)", () => {
     is<CssArm>({ css: "a", name: "x" });
   });
 
-  it("LocateResult is {ref, role, name}", () => {
-    expectTypeOf<LocateResult>().toEqualTypeOf<{ ref: string; role: string; name: string }>();
+  // Amended 2026-10-25 (Step 10 S3): was `toEqualTypeOf<{ ref: string; role: string; name: string }>()`,
+  // because phase doc 0.3 (#117, #206) adds the optional `pastSnapshotCap?: true`; the three fields stay.
+  it("LocateResult is {ref, role, name} plus the optional pastSnapshotCap (Step 10 S3)", () => {
+    expectTypeOf<LocateResult>().toEqualTypeOf<{ ref: string; role: string; name: string; pastSnapshotCap?: true }>();
+    expectTypeOf<Omit<LocateResult, "pastSnapshotCap">>().toEqualTypeOf<{ ref: string; role: string; name: string }>();
   });
 
   it("WaitForParams: the four arms; {} is rejected", () => {

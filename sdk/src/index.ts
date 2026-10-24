@@ -5,7 +5,14 @@ export type { ConnectOptions } from "./connect.js";
 export { BridgeClient } from "./client.js";
 export type { BridgeClientOptions, CallOptions, TabInfo, Timers } from "./client.js";
 export { Tab } from "./tab.js";
-export type { DownloadOptions, NetworkListOptions, ScreenshotOptions, ScrollOptions, TrustedOption } from "./tab.js";
+export type {
+  BridgeWarning,
+  DownloadOptions,
+  NetworkListOptions,
+  ScreenshotOptions,
+  ScrollOptions,
+  TrustedOption,
+} from "./tab.js";
 export type { Target } from "./locator.js";
 export { BridgeError, ErrorCodes } from "@bridge/shared";
 export type {

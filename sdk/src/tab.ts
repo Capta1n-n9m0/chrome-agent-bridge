@@ -31,6 +31,23 @@ export interface TabHost {
    * reports off. Absent = off.
    */
   failureReports?(): FailureReportConfig | null;
+  /**
+   * Step 10 S3 (#117, #206): delivers a client `warning` event. Absent = warnings go nowhere. Must not
+   * throw (the client swallows its listeners' throws).
+   */
+  notifyWarning?(warning: BridgeWarning): void;
+}
+
+/**
+ * Step 10 S3 (phase doc 0.3, amended by Stage 0 F5; decisions.md #117, #206): the payload of
+ * `client.on("warning", …)`. `tab` is the handle, `method` the wire method of the action whose reply
+ * said `pastSnapshotCap: true` — the element it acted on is past the snapshot's 800-element cap, so a
+ * `snapshot()` does not list it. Never carries the locator or the element's text.
+ */
+export interface BridgeWarning {
+  tab: string;
+  method: string;
+  kind: "pastSnapshotCap";
 }
 
 /** The extension's own ceiling for `waitFor {text}` / `{networkIdle}`, and the locator arm's default. */
@@ -165,7 +182,19 @@ export class Tab {
   async #trusted(method: string, params: Record<string, unknown>, trusted: boolean | undefined): Promise<void> {
     this.#guard();
     if (trusted === true && this.#policy === "focusFirst") await this.#send("focusTab");
-    await this.#send(method, { ...params, trusted });
+    await this.#action(method, { ...params, trusted });
+  }
+
+  /**
+   * An action (`#send`), then one `warning` event when its reply says `pastSnapshotCap: true` (Step 10
+   * S3, #206): emitted after the reply arrives and before the action's promise settles. The action
+   * still resolves `undefined`.
+   */
+  async #action(method: string, params: Record<string, unknown>): Promise<void> {
+    const reply = await this.#send(method, params);
+    if (typeof reply === "object" && reply !== null && (reply as { pastSnapshotCap?: unknown }).pastSnapshotCap === true) {
+      this.#host.notifyWarning?.({ tab: this.handle, method, kind: "pastSnapshotCap" });
+    }
   }
 
   async navigate(url: string): Promise<void> {
@@ -217,7 +246,7 @@ export class Tab {
   }
 
   async hover(target: Target): Promise<void> {
-    await this.#send("hover", normalizeTarget(target));
+    await this.#action("hover", normalizeTarget(target));
   }
 
   /**
@@ -234,14 +263,18 @@ export class Tab {
       );
     }
     const where = options.target === undefined ? {} : normalizeTarget(options.target);
-    await this.#send("scroll", { ...where, direction: options.direction });
+    await this.#action("scroll", { ...where, direction: options.direction });
   }
 
   async selectOption(target: Target, values: string[]): Promise<void> {
-    await this.#send("selectOption", { ...normalizeTarget(target), values });
+    await this.#action("selectOption", { ...normalizeTarget(target), values });
   }
 
-  /** The one element `locator` matches, as `{ref, role, name}`; `LOCATOR_NOT_FOUND` / `_AMBIGUOUS` else. */
+  /**
+   * The one element `locator` matches, as `{ref, role, name}`; `LOCATOR_NOT_FOUND` / `_AMBIGUOUS` else.
+   * With `pastSnapshotCap: true` when the element is past the snapshot's 800-element cap (a `snapshot()`
+   * does not list it); no `warning` event — the flag is in the result (Step 10 S3, #117).
+   */
   async locate(locator: Locator): Promise<LocateResult> {
     return (await this.#send("locate", { locator: requireLocator(locator, "locate") })) as LocateResult;
   }

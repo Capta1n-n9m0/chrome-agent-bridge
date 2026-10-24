@@ -1,7 +1,8 @@
 /**
  * The `locate` wire method (Step 8 phase doc 0.1; S2.6): a lease-checked tab method in the daemon's
  * table (`daemon/src/methods.ts`). Returns the content script's `{ref, role, name}`; `LOCATOR_*`
- * failures arrive with their data (decisions.md · 2026-10-23 · #82). Nothing here is logged.
+ * failures arrive with their data (decisions.md · 2026-10-23 · #82). Nothing here is logged. The
+ * content script's `pastSnapshotCap: true` (Step 10 S3, #117) passes through unchanged.
  */
 import { isLocator, type LocateResult } from "@bridge/shared";
 import { pageTab } from "../tabs.js";

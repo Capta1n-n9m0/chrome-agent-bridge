@@ -21,12 +21,34 @@ export function locateInPage(tabId: number, locator: unknown): Promise<LocateRes
  * unchanged — so a call with a ref, or with neither, behaves exactly as before Step 8.
  */
 export async function resolveTarget(tabId: number, p: Record<string, unknown>, call?: HandlerSafety): Promise<string | undefined> {
+  return (await resolveTargetCapped(tabId, p, call)).ref;
+}
+
+/** A resolved target: the ref, and whether `locate` said the element is past the snapshot's cap. */
+export interface ResolvedTarget {
+  ref: string | undefined;
+  /** Step 10 S3 (#117): true only for a locator whose `locate` answered `pastSnapshotCap: true`. */
+  pastSnapshotCap: boolean;
+}
+
+/** `resolveTarget`, keeping the locate's `pastSnapshotCap` (a ref, or neither, is never past the cap). */
+export async function resolveTargetCapped(tabId: number, p: Record<string, unknown>, call?: HandlerSafety): Promise<ResolvedTarget> {
   checkTarget(p);
   if (present(p.locator)) {
     await call?.effect(); // Step 9: the locate is a page call too (#137)
-    return (await locateInPage(tabId, p.locator)).ref;
+    const found = await locateInPage(tabId, p.locator);
+    return { ref: found.ref, pastSnapshotCap: found.pastSnapshotCap === true };
   }
-  return p.ref as string | undefined;
+  return { ref: p.ref as string | undefined, pastSnapshotCap: false };
+}
+
+/**
+ * `reply` with `pastSnapshotCap: true` added last when `past` (an object reply only); otherwise the
+ * very same `reply`, so an action without the flag answers exactly as before S3.
+ */
+export function withCapFlag<T>(reply: T, past: boolean): T {
+  if (!past || typeof reply !== "object" || reply === null) return reply;
+  return { ...reply, pastSnapshotCap: true as const };
 }
 
 /**

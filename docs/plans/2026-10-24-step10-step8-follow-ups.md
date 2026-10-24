@@ -117,6 +117,9 @@ the MCP say so. *Proposed details:*
 - *Amended 2026-10-24 (Stage 0 F18): `waitFor {locator}` carries no flag; the count stops measuring at the 800th
   listable element.* (decisions.md · 2026-10-25 · Stage 0: count corrections, stricter checks, SW-1 as a differential
   row, the retirement set, bb-login's bound (#209).)
+  *Superseded 2026-10-25 (S3, mechanical): was "the count stops measuring at the 800th listable element", because
+  0.3's "more than 800" needs to know whether an 801st exists (S3 verifier finding 1): the count stops at the 801st,
+  at most 801 zero-size checks.* (S3.md.)
 
 ### 0.4 `browser_evaluate {saveTo}` (user)
 

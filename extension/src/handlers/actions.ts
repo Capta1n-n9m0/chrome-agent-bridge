@@ -2,14 +2,14 @@ import { pageTab } from "../tabs.js";
 import { ensureContent, callInPage } from "../inject.js";
 import { runTrustedInput } from "../debugger.js";
 import { codeOf } from "../errors.js";
-import { checkTarget, resolveTarget } from "./target.js";
+import { checkTarget, resolveTargetCapped, withCapFlag } from "./target.js";
 import type { HandlerSafety } from "../safety-call.js";
 
 /**
  * A trusted-path result: `focusEmulation: "on"` exactly when the input ran under CDP focus emulation
  * (stage FE), so a stale extension — which ignores the unknown param — is detectable (#71).
  */
-type ActionResult = { ok: true; focusEmulation?: "on" };
+type ActionResult = { ok: true; focusEmulation?: "on"; pastSnapshotCap?: true };
 function trustedResult(emulated: boolean): ActionResult {
   return emulated ? { ok: true, focusEmulation: "on" } : { ok: true };
 }
@@ -25,7 +25,8 @@ function trustedResult(emulated: boolean): ActionResult {
 /**
  * `checkTarget` (params only, no page call) → pageTab → ensureContent → `resolveTarget` (Step 8:
  * `ref | locator`) → the page call, whose args are built from the resolved ref. With a `ref` (or
- * neither) nothing is added to the page-call sequence.
+ * neither) nothing is added to the page-call sequence. Step 10 S3 (#117): a locator that `locate` found
+ * past the snapshot's cap adds `pastSnapshotCap: true` to the reply (`withCapFlag`), on every branch.
  */
 async function inTargetTab<T>(
   p: Record<string, unknown>,
@@ -38,9 +39,9 @@ async function inTargetTab<T>(
   const tab = await pageTab(p, method);
   await call?.effect();
   await ensureContent(tab.id!);
-  const ref = await resolveTarget(tab.id!, p, call);
+  const { ref, pastSnapshotCap } = await resolveTargetCapped(tab.id!, p, call);
   await call?.effect();
-  return callInPage(tab.id!, fn, args(ref));
+  return withCapFlag(await callInPage(tab.id!, fn, args(ref)), pastSnapshotCap);
 }
 
 export async function click(p: Record<string, unknown>, call?: HandlerSafety): Promise<ActionResult> {
@@ -49,13 +50,13 @@ export async function click(p: Record<string, unknown>, call?: HandlerSafety): P
   await call?.effect();
   await ensureContent(tab.id!);
   // Before the content-path try: a LOCATOR_* / BAD_PARAMS from resolution never escalates (F23).
-  const target = await resolveTarget(tab.id!, p, call);
+  const { ref: target, pastSnapshotCap } = await resolveTargetCapped(tab.id!, p, call);
   const trusted = p.trusted === true;
   if (!trusted) {
     await call?.effect(); // outside the try: a refusal is never escalated
     try {
       await callInPage(tab.id!, (ref) => window.__agentBridge!.click(ref as string), [target]);
-      return { ok: true };
+      return withCapFlag<ActionResult>({ ok: true }, pastSnapshotCap);
     } catch (err) {
       // The code only: Chrome's raw message can carry a URL.
       console.warn("[bridge] content-script click failed; escalating to CDP trusted input:", codeOf(err));
@@ -69,7 +70,10 @@ export async function click(p: Record<string, unknown>, call?: HandlerSafety): P
     [target],
   );
   // centerForInput only scrolls and measures (it focuses nothing), so it stays before attaching.
-  return trustedResult(await runTrustedInput(tab.id!, { kind: "click", x, y }, { focusEmulation: p.focusEmulation === true }, call));
+  return withCapFlag(
+    trustedResult(await runTrustedInput(tab.id!, { kind: "click", x, y }, { focusEmulation: p.focusEmulation === true }, call)),
+    pastSnapshotCap,
+  );
 }
 
 /**
@@ -83,7 +87,8 @@ export async function type(p: Record<string, unknown>, call?: HandlerSafety): Pr
   await call?.effect();
   await ensureContent(tab.id!);
   // Before the content-path try: a LOCATOR_* / BAD_PARAMS from resolution never escalates (F23).
-  const ref = (await resolveTarget(tab.id!, p, call)) as string;
+  const resolved = await resolveTargetCapped(tab.id!, p, call);
+  const ref = resolved.ref as string;
   const value = p.text as string;
   const submit = p.submit === true;
   const trusted = p.trusted === true;
@@ -95,7 +100,7 @@ export async function type(p: Record<string, unknown>, call?: HandlerSafety): Pr
         (r, v, s) => window.__agentBridge!.type(r as string, v as string, s as boolean),
         [ref, value, submit],
       );
-      return { ok: true };
+      return withCapFlag<ActionResult>({ ok: true }, resolved.pastSnapshotCap);
     } catch (err) {
       // The code only: Chrome's raw message can carry a URL.
       console.warn("[bridge] content-script type failed; escalating to CDP trusted input:", codeOf(err));
@@ -111,7 +116,10 @@ export async function type(p: Record<string, unknown>, call?: HandlerSafety): Pr
     return callInPage(tab.id!, (r) => window.__agentBridge!.focusForTyping(r as string), [ref]);
   };
   if (!focusEmulation) await focus();
-  return trustedResult(await runTrustedInput(tab.id!, { kind: "type", text: value, submit }, { focusEmulation, focus }, call));
+  return withCapFlag(
+    trustedResult(await runTrustedInput(tab.id!, { kind: "type", text: value, submit }, { focusEmulation, focus }, call)),
+    resolved.pastSnapshotCap,
+  );
 }
 
 export const scroll = (p: Record<string, unknown>, call?: HandlerSafety) =>
@@ -165,12 +173,15 @@ async function pressKeyAt(p: Record<string, unknown>, key: string, call?: Handle
   const tab = await pageTab(p, "pressKey");
   await call?.effect();
   await ensureContent(tab.id!);
-  const ref = await resolveTarget(tab.id!, p, call);
+  const { ref, pastSnapshotCap } = await resolveTargetCapped(tab.id!, p, call);
   await call?.effect();
   await callInPage(tab.id!, (r) => window.__agentBridge!.focus(r as string), [ref]);
   if (p.trusted === true) {
-    return trustedResult(await runTrustedInput(tab.id!, { kind: "pressKey", key }, { focusEmulation: p.focusEmulation === true }, call));
+    return withCapFlag(
+      trustedResult(await runTrustedInput(tab.id!, { kind: "pressKey", key }, { focusEmulation: p.focusEmulation === true }, call)),
+      pastSnapshotCap,
+    );
   }
   await call?.effect();
-  return callInPage(tab.id!, syntheticKey, [key]);
+  return withCapFlag<ActionResult>(await callInPage(tab.id!, syntheticKey, [key]), pastSnapshotCap);
 }

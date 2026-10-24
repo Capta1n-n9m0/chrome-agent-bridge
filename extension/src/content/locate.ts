@@ -13,6 +13,9 @@
  * the RefMap, so the refs of the last snapshot stay valid. Failures throw `codedError` (guard.ts turns
  * that into the returned marker, with the candidates or matches as `data`, #82). Nothing is logged.
  *
+ * Step 10 S3 (phase doc 0.3; decisions.md #117): a result whose element comes after the snapshot's
+ * 800th listable element carries `pastSnapshotCap: true` (the key is absent otherwise); see `capCounter`.
+ *
  * Self-contained at runtime: the content script is an IIFE, so `@bridge/shared` is imported for types.
  */
 import type { LocateResult } from "@bridge/shared";
@@ -36,6 +39,45 @@ const KEYS: Record<Parsed["kind"], readonly string[]> = {
   text: ["text", "exact", "nth"],
   css: ["css", "nth"],
 };
+
+/**
+ * The snapshot's output cap (`snapshot.ts`'s `MAX_LINES`, which is not exported and stays untouched,
+ * S3.2). `s3-locate-cap.test.ts` pins that an 801-listable snapshot lists exactly this many.
+ */
+export const SNAPSHOT_CAP = 800;
+
+/**
+ * Counts, in walk order, the elements a snapshot lists — `roleOf(el) && !skippedAsZeroSize(el, layout)`,
+ * the snapshot's own test, called in its order — and stops counting at `SNAPSHOT_CAP + 1` (stage0-audit.md
+ * F18 said "at most 800 zero-size checks"; it takes one more listable element, the 801st, to know that
+ * the page has more than 800 — S3 fixer 1, verifier finding 1). Call `visit` on every element the walk
+ * enters, before anything else: it answers whether at least `SNAPSHOT_CAP` listable elements come before
+ * `el`. Such an element is past the cap only if `exceeded()` holds once the walk is done (the page has
+ * more than 800 listable elements; phase doc 0.3: "nothing changes on a page with <= 800"). So a listable
+ * element is past iff the snapshot does not list it (it is the 801st or later), and any other element iff
+ * it comes after the 800th listable one on a page that has an 801st.
+ */
+export function capCounter(layout: Map<Document, boolean> = new Map()): {
+  visit: (el: Element) => boolean;
+  listed: () => number;
+  exceeded: () => boolean;
+} {
+  let listed = 0;
+  return {
+    visit: (el) => {
+      if (listed > SNAPSHOT_CAP) return true;
+      const after = listed >= SNAPSHOT_CAP;
+      if (roleOf(el) && !skippedAsZeroSize(el, layout)) listed += 1;
+      return after;
+    },
+    listed: () => listed,
+    exceeded: () => listed > SNAPSHOT_CAP,
+  };
+}
+
+/** The candidates `visit` marked, if the finished walk found more than 800 listable elements; else none. */
+const pastIfExceeded = (cap: ReturnType<typeof capCounter>, marked: Set<Element>): Set<Element> =>
+  cap.exceeded() ? marked : new Set();
 
 const collapse = (s: string): string => s.replace(/\s+/g, " ").trim();
 
@@ -117,16 +159,24 @@ function resultOf(el: Element, refs: RefMap): LocateResult {
 interface Search {
   /** Matching elements, in walk order. */
   matches: Element[];
+  /** The matches that come after the snapshot's 800th listable element on a page with more than 800 (`capCounter`). */
+  pastCap: Set<Element>;
   /** The nearest elements to offer when nothing matched (computed only then). */
   candidates: () => Element[];
 }
 
 function searchRole(doc: Document, p: Extract<Parsed, { kind: "role" }>): Search {
   const layout = new Map<Document, boolean>();
+  const cap = capCounter(layout);
+  const pastCap = new Set<Element>();
   const sameRole: { el: Element; name: string }[] = [];
   walkElements<null>(doc, null, {
     enter: (el) => {
-      if (roleOf(el) === p.role && !skippedAsZeroSize(el, layout)) sameRole.push({ el, name: accessibleName(el) });
+      const past = cap.visit(el);
+      if (roleOf(el) === p.role && !skippedAsZeroSize(el, layout)) {
+        sameRole.push({ el, name: accessibleName(el) });
+        if (past) pastCap.add(el);
+      }
       return null;
     },
   });
@@ -141,6 +191,7 @@ function searchRole(doc: Document, p: Extract<Parsed, { kind: "role" }>): Search
   };
   return {
     matches: sameRole.filter((c) => test(c.name)).map((c) => c.el),
+    pastCap: pastIfExceeded(cap, pastCap),
     candidates: () =>
       p.name === undefined ? [] : nearest(p.name, sameRole, (c) => c.name, MAX_CANDIDATES).map((c) => c.el),
   };
@@ -178,14 +229,20 @@ function searchText(doc: Document, p: Extract<Parsed, { kind: "text" }>): Search
   };
 
   const lower = p.text.toLowerCase();
+  const cap = capCounter(layout);
+  const pastCap = new Set<Element>();
   const found: Element[] = [];
   const owners: { el: Element; own: string }[] = [];
   walkElements<null>(doc, null, {
     hides: isHidden,
     enter: (el) => {
+      const past = cap.visit(el);
       if (skippedAsZeroSize(el, layout)) return null;
       const text = collapse(textOf(el));
-      if (p.exact ? text === p.text : text.toLowerCase().includes(lower)) found.push(el);
+      if (p.exact ? text === p.text : text.toLowerCase().includes(lower)) {
+        found.push(el);
+        if (past) pastCap.add(el);
+      }
       const own = ownText(el);
       if (own) owners.push({ el, own });
       return null;
@@ -200,6 +257,7 @@ function searchText(doc: Document, p: Extract<Parsed, { kind: "text" }>): Search
   }
   return {
     matches: found.filter((el) => !hasMatchBelow.has(el)),
+    pastCap: pastIfExceeded(cap, pastCap),
     candidates: () => nearest(p.text, owners, (o) => o.own, MAX_CANDIDATES).map((o) => o.el),
   };
 }
@@ -211,30 +269,43 @@ function searchCss(doc: Document, p: Extract<Parsed, { kind: "css" }>): Search {
     bad(`locator css is not a valid selector: ${err instanceof Error ? err.message : String(err)}`);
   }
   const layout = new Map<Document, boolean>();
+  const cap = capCounter(layout);
+  const pastCap = new Set<Element>();
   const matches: Element[] = [];
   walkElements<null>(doc, null, {
     enter: (el) => {
-      if (el.matches(p.css) && !skippedAsZeroSize(el, layout)) matches.push(el);
+      const past = cap.visit(el);
+      if (el.matches(p.css) && !skippedAsZeroSize(el, layout)) {
+        matches.push(el);
+        if (past) pastCap.add(el);
+      }
       return null;
     },
   });
-  return { matches, candidates: () => [] };
+  return { matches, pastCap: pastIfExceeded(cap, pastCap), candidates: () => [] };
 }
 
 /**
  * Resolves `locator` in `doc` (its open shadow roots and same-origin frames included) to one element,
  * minting its ref in `refs` (or returning the ref it already has). Throws `BAD_PARAMS` for a malformed
  * locator, `LOCATOR_NOT_FOUND {candidates}` when nothing (or nothing at `nth`) matches, and
- * `LOCATOR_AMBIGUOUS {matches}` when several match and no `nth` was given.
+ * `LOCATOR_AMBIGUOUS {matches}` when several match and no `nth` was given. The chosen element's result
+ * carries `pastSnapshotCap: true` when it comes after the snapshot's 800th listable element; the
+ * failures' `candidates`/`matches` never carry it.
  */
 export function locate(doc: Document, refs: RefMap, locator: unknown): LocateResult {
   const p = parse(locator);
   const search = p.kind === "role" ? searchRole(doc, p) : p.kind === "text" ? searchText(doc, p) : searchCss(doc, p);
   const { matches } = search;
   const what = describe(p);
+  const chosen = (el: Element): LocateResult => {
+    const r = resultOf(el, refs);
+    if (search.pastCap.has(el)) r.pastSnapshotCap = true;
+    return r;
+  };
 
   if (p.nth !== undefined) {
-    if (p.nth < matches.length) return resultOf(matches[p.nth]!, refs);
+    if (p.nth < matches.length) return chosen(matches[p.nth]!);
     if (matches.length > 0) {
       const candidates = matches.slice(0, MAX_CANDIDATES).map((el) => resultOf(el, refs));
       throw codedError(
@@ -245,7 +316,7 @@ export function locate(doc: Document, refs: RefMap, locator: unknown): LocateRes
     }
   }
 
-  if (matches.length === 1 && p.nth === undefined) return resultOf(matches[0]!, refs);
+  if (matches.length === 1 && p.nth === undefined) return chosen(matches[0]!);
 
   if (matches.length > 1) {
     const listed = matches.slice(0, MAX_MATCHES).map((el) => {

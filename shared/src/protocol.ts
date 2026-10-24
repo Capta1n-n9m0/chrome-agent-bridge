@@ -424,6 +424,13 @@ export interface LocateResult {
   ref: string;
   role: string;
   name: string;
+  /**
+   * Step 10 S3 (phase doc 0.3; decisions.md #117, #206): set, and only ever to `true`, when the element
+   * comes after the 800th element a snapshot taken now would list (one `browser_snapshot` never shows).
+   * Absent otherwise, so a page with ≤ 800 listable elements answers exactly as before. An action
+   * resolved from a locator carries the same key on its reply; `waitFor {locator}` carries none.
+   */
+  pastSnapshotCap?: true;
 }
 
 /**

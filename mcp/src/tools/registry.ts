@@ -31,6 +31,19 @@ function text(s: string): ToolResult {
   return { content: [{ type: "text", text: s }] };
 }
 
+/**
+ * Step 10 S3 (phase doc 0.3; decisions.md #117): the last line of an action tool's answer when the
+ * extension's reply says the element is past the snapshot's 800-element cap. Never names the element.
+ */
+export const CAP_WARNING_LINE =
+  "Warning: this element is past the snapshot's 800-element cap — browser_snapshot does not list it.";
+
+/** `message`, plus the cap warning as its last line when `reply` carries `pastSnapshotCap: true`. */
+function capped(reply: unknown, message: string): ToolResult {
+  const past = typeof reply === "object" && reply !== null && (reply as { pastSnapshotCap?: unknown }).pastSnapshotCap === true;
+  return text(past ? `${message}\n${CAP_WARNING_LINE}` : message);
+}
+
 /** A tool error returned as a result without calling anything (no destructive default, #57). */
 function toolError(s: string): ToolResult {
   return { content: [{ type: "text", text: s }], isError: true };
@@ -488,8 +501,8 @@ export function registerTools(
       return onTab(tab, async (t) => {
         // #106: trusted input focuses the same handle first (a focusTab failure is the answer).
         if (trusted === true) await bridge.call("focusTab", { tab: t });
-        await bridge.call("click", { ...target, trusted: trusted ?? false, tab: t });
-        return text(`Clicked ${describeTarget(target)}`);
+        const reply = await bridge.call("click", { ...target, trusted: trusted ?? false, tab: t });
+        return capped(reply, `Clicked ${describeTarget(target)}`);
       });
     },
   );
@@ -512,8 +525,8 @@ export function registerTools(
       return onTab(tab, async (t) => {
         // #106: trusted input focuses the same handle first (a focusTab failure is the answer).
         if (trusted === true) await bridge.call("focusTab", { tab: t });
-        await bridge.call("type", { ...target, text: value, submit: submit ?? false, trusted: trusted ?? false, tab: t });
-        return text(`Typed into ${describeTarget(target)}`);
+        const reply = await bridge.call("type", { ...target, text: value, submit: submit ?? false, trusted: trusted ?? false, tab: t });
+        return capped(reply, `Typed into ${describeTarget(target)}`);
       });
     },
   );
@@ -526,8 +539,8 @@ export function registerTools(
       onTab(tab, async (t) => {
         // #106: trusted input focuses the same handle first (a focusTab failure is the answer).
         if (trusted === true) await bridge.call("focusTab", { tab: t });
-        await bridge.call("pressKey", { key, trusted: trusted ?? false, tab: t });
-        return text(`Pressed ${key}`);
+        const reply = await bridge.call("pressKey", { key, trusted: trusted ?? false, tab: t });
+        return capped(reply, `Pressed ${key}`);
       }),
   );
 
@@ -546,11 +559,11 @@ export function registerTools(
       const target = checked.target;
       return onTab(tab, async (t) => {
         if (target !== null && "locator" in target) {
-          await bridge.call("scroll", { locator: target.locator, direction: direction ?? "down", tab: t });
-          return text(`Scrolled to ${describeLocator(target.locator)}`);
+          const reply = await bridge.call("scroll", { locator: target.locator, direction: direction ?? "down", tab: t });
+          return capped(reply, `Scrolled to ${describeLocator(target.locator)}`);
         }
-        await bridge.call("scroll", { ref, direction: direction ?? "down", tab: t });
-        return text("Scrolled");
+        const reply = await bridge.call("scroll", { ref, direction: direction ?? "down", tab: t });
+        return capped(reply, "Scrolled");
       });
     },
   );
@@ -564,8 +577,8 @@ export function registerTools(
       if ("error" in checked) return checked.error;
       const target = checked.target!;
       return onTab(tab, async (t) => {
-        await bridge.call("hover", { ...target, tab: t });
-        return text(`Hovered ${describeTarget(target)}`);
+        const reply = await bridge.call("hover", { ...target, tab: t });
+        return capped(reply, `Hovered ${describeTarget(target)}`);
       });
     },
   );
@@ -584,8 +597,8 @@ export function registerTools(
       if ("error" in checked) return checked.error;
       const target = checked.target!;
       return onTab(tab, async (t) => {
-        await bridge.call("selectOption", { ...target, values, tab: t });
-        return text(`Selected ${values.join(", ")} in ${describeTarget(target)}`);
+        const reply = await bridge.call("selectOption", { ...target, values, tab: t });
+        return capped(reply, `Selected ${values.join(", ")} in ${describeTarget(target)}`);
       });
     },
   );

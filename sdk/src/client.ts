@@ -33,6 +33,7 @@ import {
   type NetworkListOptions,
   type ScreenshotOptions,
   type ScrollOptions,
+  type BridgeWarning,
   type TabHost,
   type TrustedOption,
 } from "./tab.js";
@@ -118,6 +119,7 @@ export function onClientFailure(client: BridgeClient, listener: FailureListener)
 
 type EventListener = (event: EventMessage) => void;
 type ReconnectListener = (welcome: WelcomeMessage) => void;
+type WarningListener = (warning: BridgeWarning) => void;
 
 /** The daemon → client events with typed params (spec §10), each checked before delivery. */
 interface TypedEvents {
@@ -194,6 +196,7 @@ export class BridgeClient {
   private nextId = 1;
   private readonly eventListeners = new Set<EventListener>();
   private readonly reconnectListeners = new Set<ReconnectListener>();
+  private readonly warningListeners = new Set<WarningListener>();
   private readonly typedListeners = new Map<TypedEventName, Set<TypedListener>>();
   private currentWelcome: WelcomeMessage | null = null;
   private extensionUp = false;
@@ -205,6 +208,7 @@ export class BridgeClient {
     call: (method, params, options) => this.call(method, params, options),
     generation: () => this.generation,
     failureReports: () => this.failureReports,
+    notifyWarning: (warning) => this.emitWarning(warning),
   };
 
   constructor(options: BridgeClientOptions) {
@@ -299,6 +303,13 @@ export class BridgeClient {
    * still reaches `"event"` listeners. Delivered synchronously from the socket's message callback, so
    * several frames from one read arrive in order, each after the previous listener returned.
    *
+   * `"warning"` (Step 10 S3, decisions.md #117, #206): a client-side event, never a daemon frame (so
+   * `"event"` listeners do not see it). Emitted once by a `Tab` action — and its cursor mirror here —
+   * whose reply said the element it acted on is past the snapshot's 800-element cap:
+   * `{tab, method, kind: "pastSnapshotCap"}`, with no locator or element text. Fired before the action's
+   * promise settles; a listener that throws is ignored (the action still succeeds) and later listeners
+   * still run. `locate()` emits none (its result carries `pastSnapshotCap`), nor does a raw `call()`.
+   *
    * Returns an unsubscribe.
    */
   on(type: "event", listener: EventListener): () => void;
@@ -307,10 +318,18 @@ export class BridgeClient {
   on(type: "leaseGranted", listener: (params: LeaseGrantedParams) => void): () => void;
   on(type: "extensionStatus", listener: (params: ExtensionStatusParams) => void): () => void;
   on(type: "safetyStatus", listener: (params: SafetyStatusParams) => void): () => void;
+  on(type: "warning", listener: (warning: BridgeWarning) => void): () => void;
   on(
-    type: "event" | "reconnected" | TypedEventName,
-    listener: EventListener | ReconnectListener | TypedListener,
+    type: "event" | "reconnected" | "warning" | TypedEventName,
+    listener: EventListener | ReconnectListener | WarningListener | TypedListener,
   ): () => void {
+    if (type === "warning") {
+      const l = listener as WarningListener;
+      this.warningListeners.add(l);
+      return () => {
+        this.warningListeners.delete(l);
+      };
+    }
     if (isTypedEventName(type)) {
       const l = listener as TypedListener;
       let set = this.typedListeners.get(type);
@@ -615,6 +634,18 @@ export class BridgeClient {
     this.failure = err;
     this.rejectAll(err);
     this.notifyFailure(err);
+  }
+
+  /** Delivers a `warning` to each listener; a listener's throw is swallowed (S3: it never fails the action). */
+  private emitWarning(warning: BridgeWarning): void {
+    for (const l of [...this.warningListeners]) {
+      if (!this.warningListeners.has(l)) continue;
+      try {
+        l({ tab: warning.tab, method: warning.method, kind: warning.kind });
+      } catch {
+        // ignored by design: the action already succeeded
+      }
+    }
   }
 
   private notifyFailure(err: BridgeError): void {
