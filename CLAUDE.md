@@ -9,19 +9,20 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-24, Step 9 built)
+## Current state (2026-10-24, Step 9 closed)
 
 - **Shipped:** Steps 1–8 (Step 7 — multi-actor tabs — closed 2026-10-23; Step 8 — the SDK surface —
   closed 2026-10-24, as-built `docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-asbuilt.md`).
   Public on GitHub (MIT). **23 tools, 25 codes, 2720 tests in 116 files** (`npm test` 2026-10-24 at
   `ba6029e`). *Superseded 2026-10-24: was "23 tools, 1714 tests in 85 files (… at `a1932a8`)", because
   Step 9 added two codes and 1006 tests in 31 files (Step 9 as-built, per stage).*
-- **Step 9 — Phase E safety — built and E2E-run (Run 13) 2026-10-24**, as-built
+- **Step 9 — Phase E safety — closed 2026-10-24**, as-built
   `docs/plans/2026-10-24-step9-phase-e-safety-asbuilt.md`: the kill switch (toolbar button,
   `Alt+Shift+K`, options page), the JavaScript switch, a block list, the own-page block; Run 13 24 PASS /
-  7 FAIL / 3 RECORD / 5 NOT MEASURED (live verifier), none shown a product defect. **Not closed:** the
-  user rules on Run 13 (#192, the runner's four self-resolved stops) and 31 other open decisions
-  (decisions.md → Open decisions → Step 9).
+  7 FAIL / 3 RECORD / 5 NOT MEASURED, none a product defect. The user ruled all 32 open decisions
+  (decisions.md · 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202)): all as
+  built, except a new code `JS_DISABLED` for "JavaScript is off" (Step 10) and a later network rule that stops
+  redirects onto blocked sites (#140).
 - **Step 8 closed 2026-10-24 (wave W2):** the user ruled its 25 open decisions (decisions.md
   #106–#127): 19 ratified as built, six with a work item for Step 10; the `blackboard-ultra` skill
   now boots by `npm --prefix ~/Projects/chrome-remote-extention run recipe --
@@ -29,12 +30,9 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
   one-release fallback; the course repos PP1-2026 and NLP-Bachelor allow the command).
 - **Reloads need no human:** `recipes/reload-extension.ps1` reloads the extension by UI automation
   and proves it (#65); an exit-2 reload may be re-run during waves (#99).
-- **Resume:** the Step 9 gate — the user's ruling on Run 13 (decisions.md · 2026-10-24 · S4: Run 13
-  stands as recorded, with the runner's four self-resolved stops listed (#192)) and the Step 9 open
-  decisions. If the user ratifies #192, Step 9 closes and the next step is Step 10; if the user asks
-  for a re-run of the affected rows (blocks 4–30: SAFE-0…SAFE-4b), that wave comes first, under #193's
-  stop rule. Interactive sessions using the bridge need `/mcp` or a fresh session (the daemon build
-  changed in Step 9).
+- **Resume:** Step 10 — the Step 8 follow-ups: kickoff `docs/plans/next-session-prompt.md`, phase doc
+  `docs/plans/2026-10-24-step10-step8-follow-ups.md` (its precondition, #192, is met). Interactive sessions
+  using the bridge need `/mcp` or a fresh session (the daemon build changed in Step 9).
 - **Next after Step 9** (decisions.md · 2026-10-24 · The roadmap after Step 8 (#129), order open for
   veto): **Step 10** — the Step 8 follow-ups: the MCP's trusted tools focus first (#106), a warning when
   a locator resolves past the snapshot's 800 cap (#117), a squashed `step8` release tag (#125), a live

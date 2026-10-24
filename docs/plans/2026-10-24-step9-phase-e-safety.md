@@ -1,6 +1,6 @@
 # Step 9 — Phase E: safety (the human's kill switch, a JavaScript switch, blocked sites)
 
-**Date:** 2026-10-24 · **Status:** Built and E2E-run (Run 13), 2026-10-24; gate open — the user rules on Run 13 (#192) and the Step 9 open decisions. *Superseded 2026-10-24: was "Planned (kickoff …)".*
+**Date:** 2026-10-24 · **Status:** Closed 2026-10-24 — built, E2E-run (Run 13), every open decision ruled by the user (decisions.md · 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202)). *Superseded 2026-10-24: was "Built and E2E-run (Run 13); gate open — the user rules on Run 13 (#192) and the Step 9 open decisions", because the user ruled.* *Superseded 2026-10-24: was "Planned (kickoff …)".*
 **Design of record:** this doc's "Decisions" (the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change: §5 layer contract, §6 the human, §10 protocol and codes) ·
 **Roadmap:** `docs/progress-and-roadmap.md` §5 Phase E · **As-built:**

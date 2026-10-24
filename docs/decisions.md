@@ -64,48 +64,71 @@ Step 8 (2026-10-23 on), for the user at the gate:
 None open now. *Updated 2026-10-24: all 25 Step 8 open decisions are ruled (#106–#127, wave W2).*
 
 Step 9 (2026-10-24 on), for the user at the gate:
-1. "The Step 9 phase doc's proposals, recorded before Stage 0 so the audit can attack them" (#131):
-   the gate's scope (0.1), `listTabs`/event redaction while disarmed and for blocked tabs, the network
-   log while disarmed and for blocked hosts, the own-page block, the safety state's wire shape (0.6) and
-   the JavaScript switch's code (0.5) — as amended by Stage 0.
-2. "The safety state travels as two events and a `daemon.status` field" (#132).
-3. "The JavaScript switch reuses `DISARMED` with a scope" (#133).
-4. "What `listTabs`, tab events and the daemon reveal while disarmed or for a blocked tab" (#134).
-5. "The block-list grammar" (#135).
-6. "`tabs.claim` on a blocked tab is granted, every call on it refused" (#136).
-7. "In-flight work at disarm and on a newly blocked tab" (#137).
-8. "Script URLs and the JavaScript switch; own pages of every extension" (#138) — the wider
-   every-extension rule is offered as the alternative.
-9. "The state is read per call, fails closed, and is locked to trusted contexts" (#139).
-10. "`downloadStart` and redirects onto a blocked host" (#140) — declarativeNetRequest not built.
-11. "Stricter exit checks for Step 9" (#141).
-12. "A re-arm right after a disarm is ignored" (#144).
-13. "The SDK's `TabInfo` keeps `title` and `url` as strings and gains an optional `hidden`" (#148).
-14. "S1: Rule 7 unwraps wrapper URLs and compares case-insensitively" (#153).
-15. "S1: `downloadStart` checks its own URL against the block list only" (#154).
-16. "S1: The network filter treats a tab showing this extension's own page as blocked" (#155).
-17. "S1: Matcher details §5 leaves implicit" (#156).
-18. "S3: `safetyStatus` is never sent with null" (#159).
-19. "S3: The daemon's redaction follows the last state it received, across extension sockets" (#160).
-20. "S3: `leaseGranted.url` is `""` while disarmed, whatever the event carried" (#161).
-21. "S3: `browser_status`'s Safety line is a second text item, shown only while the extension is connected" (#162).
-22. "S3: Safety refusals get no `report` property; the wording is `safetyRefusalLine` on `@bridge/sdk/report`" (#163).
-23. "S3: The SDK exports the types `SafetyState` and `HiddenReason`" (#168).
-24. "S2a: a disarm whose write fails twice returns `"write-failed"` and stays disarmed in memory" (#174).
-25. "S2a: `navigate`/`newTab` are gated on the URL Chrome will open" (#175).
-26. "S2a: a disarm held in memory wins over a storage read" (#176).
-27. "S2a: a capture whose window showed another tab is refused `OFFSCREEN`" (#177).
-28. "S2a: the post-check also replaces error replies; `listTabs` with an unreadable state is refused, and has no post-check" (#178).
-29. "S2a: the network ingest drops a request for good once one of its events was dropped" (#179).
-30. "S2a: no `safetyState` is sent while the state cannot be read" (#180).
-31. "S2b: the writers test refuses `storage.local.remove`/`clear` everywhere" (#188).
-32. "S4: Run 13 stands as recorded, with the runner's four self-resolved stops listed" (#192) — the S4 gate item waits for this ruling.
+1. ~~"The Step 9 phase doc's proposals, recorded before Stage 0 so the audit can attack them" (#131): the gate's scope (0.1), `listTabs`/event redaction while disarmed and for blocked tabs, the network log while disarmed and for blocked hosts, the own-page block, the safety state's wire shape (0.6) and the JavaScript switch's code (0.5) — as amended by Stage 0.~~ — *ruled by the user 2026-10-24 (#202).*
+2. ~~"The safety state travels as two events and a `daemon.status` field" (#132).~~ — *ruled by the user 2026-10-24 (#202).*
+3. ~~"The JavaScript switch reuses `DISARMED` with a scope" (#133).~~ — *ruled by the user 2026-10-24 (#202): changed — a new code `JS_DISABLED`, built in Step 10.*
+4. ~~"What `listTabs`, tab events and the daemon reveal while disarmed or for a blocked tab" (#134).~~ — *ruled by the user 2026-10-24 (#202).*
+5. ~~"The block-list grammar" (#135).~~ — *ruled by the user 2026-10-24 (#202).*
+6. ~~"`tabs.claim` on a blocked tab is granted, every call on it refused" (#136).~~ — *ruled by the user 2026-10-24 (#202).*
+7. ~~"In-flight work at disarm and on a newly blocked tab" (#137).~~ — *ruled by the user 2026-10-24 (#202).*
+8. ~~"Script URLs and the JavaScript switch; own pages of every extension" (#138) — the wider every-extension rule is offered as the alternative.~~ — *ruled by the user 2026-10-24 (#202).*
+9. ~~"The state is read per call, fails closed, and is locked to trusted contexts" (#139).~~ — *ruled by the user 2026-10-24 (#202).*
+10. ~~"`downloadStart` and redirects onto a blocked host" (#140) — declarativeNetRequest not built.~~ — *ruled by the user 2026-10-24 (#202); a network rule follows in a later step.*
+11. ~~"Stricter exit checks for Step 9" (#141).~~ — *ruled by the user 2026-10-24 (#202).*
+12. ~~"A re-arm right after a disarm is ignored" (#144).~~ — *ruled by the user 2026-10-24 (#202).*
+13. ~~"The SDK's `TabInfo` keeps `title` and `url` as strings and gains an optional `hidden`" (#148).~~ — *ruled by the user 2026-10-24 (#202).*
+14. ~~"S1: Rule 7 unwraps wrapper URLs and compares case-insensitively" (#153).~~ — *ruled by the user 2026-10-24 (#202).*
+15. ~~"S1: `downloadStart` checks its own URL against the block list only" (#154).~~ — *ruled by the user 2026-10-24 (#202).*
+16. ~~"S1: The network filter treats a tab showing this extension's own page as blocked" (#155).~~ — *ruled by the user 2026-10-24 (#202).*
+17. ~~"S1: Matcher details §5 leaves implicit" (#156).~~ — *ruled by the user 2026-10-24 (#202).*
+18. ~~"S3: `safetyStatus` is never sent with null" (#159).~~ — *ruled by the user 2026-10-24 (#202).*
+19. ~~"S3: The daemon's redaction follows the last state it received, across extension sockets" (#160).~~ — *ruled by the user 2026-10-24 (#202).*
+20. ~~"S3: `leaseGranted.url` is `""` while disarmed, whatever the event carried" (#161).~~ — *ruled by the user 2026-10-24 (#202).*
+21. ~~"S3: `browser_status`'s Safety line is a second text item, shown only while the extension is connected" (#162).~~ — *ruled by the user 2026-10-24 (#202).*
+22. ~~"S3: Safety refusals get no `report` property; the wording is `safetyRefusalLine` on `@bridge/sdk/report`" (#163).~~ — *ruled by the user 2026-10-24 (#202).*
+23. ~~"S3: The SDK exports the types `SafetyState` and `HiddenReason`" (#168).~~ — *ruled by the user 2026-10-24 (#202).*
+24. ~~"S2a: a disarm whose write fails twice returns `"write-failed"` and stays disarmed in memory" (#174).~~ — *ruled by the user 2026-10-24 (#202).*
+25. ~~"S2a: `navigate`/`newTab` are gated on the URL Chrome will open" (#175).~~ — *ruled by the user 2026-10-24 (#202).*
+26. ~~"S2a: a disarm held in memory wins over a storage read" (#176).~~ — *ruled by the user 2026-10-24 (#202).*
+27. ~~"S2a: a capture whose window showed another tab is refused `OFFSCREEN`" (#177).~~ — *ruled by the user 2026-10-24 (#202).*
+28. ~~"S2a: the post-check also replaces error replies; `listTabs` with an unreadable state is refused, and has no post-check" (#178).~~ — *ruled by the user 2026-10-24 (#202).*
+29. ~~"S2a: the network ingest drops a request for good once one of its events was dropped" (#179).~~ — *ruled by the user 2026-10-24 (#202).*
+30. ~~"S2a: no `safetyState` is sent while the state cannot be read" (#180).~~ — *ruled by the user 2026-10-24 (#202).*
+31. ~~"S2b: the writers test refuses `storage.local.remove`/`clear` everywhere" (#188).~~ — *ruled by the user 2026-10-24 (#202).*
+32. ~~"S4: Run 13 stands as recorded, with the runner's four self-resolved stops listed" (#192)~~ — *ruled by the user 2026-10-24 (#202).*
+
+None open now. *Updated 2026-10-24: all 32 Step 9 open decisions are ruled (#202).*
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202)
+**Decided:** the user ruled on every Step 9 open decision, after reading
+`docs/plans/2026-10-24-step9-open-decisions-review.md` (one plain explanation per decision, with options and a
+recommendation):
+- **#192 Run 13 stands as recorded.** Its four self-resolved stops stay recorded as a process deviation;
+  #193's rule (a live runner returns on every stop) binds later waves. The ruling ratifies Run 13's results;
+  it does not pre-approve pinning by mouse click in later waves (G10's pinning rule still asks once, unless
+  the button is already pinned). With #192 ruled, **Step 9 is closed**.
+- **#138 as built:** only this extension's own pages are hidden and untouchable; navigation to any
+  extension's page stays refused; the wider every-extension rule is not adopted.
+- **#133 changed:** while JavaScript is off, `browser_evaluate` (and a `javascript:`/`data:`/`blob:`
+  navigation, #138) gets a **new code `JS_DISABLED`**, not `DISARMED` with `scope: "evaluate"`. Built in
+  Step 10 (spec §10 amended first; 26 codes, 25 on the wire); until then the built behaviour stands.
+- **#140 as built, plus a later item:** the block list keeps checking the address before and after a
+  redirect; a later step adds a Chrome network rule (`declarativeNetRequest`, a new permission) so a
+  redirect hop onto a blocked site is never sent at all.
+- **All the others ratified as built:** #131, #132, #134–#137, #139, #141, #144, #148, #153–#156,
+  #159–#163, #168, #174–#180, #188.
+**Why:** the user's answers (2026-10-24): Run 13 — "Accept it (Recommended)"; #138 — "Only our own pages
+(Recommended)"; #133 — "New code JS_DISABLED"; the rest — "Accept all + plan #140b later (Recommended)".
+**Instead of:** re-running Run 13's blocks 4–30; hiding every extension's pages; keeping `DISARMED` +
+scope; leaving the block list without a network rule.
+**Revisit if:** a later wave contradicts a Run 13 row (#192's own Revisit-if).
+**By:** user
 
 ### 2026-10-24 · The Step 10 kickoff carries Run 13's live follow-ups as its first wave (#201)
 **Decided:** the Step 10 kickoff lists #194's four re-measurements (SAFE-5c's redirect half with a threaded
@@ -628,6 +651,7 @@ effect the post-check refuses to report but cannot undo).
 **Instead of:** `redirect: "error"` (breaks Blackboard → S3 downloads); DNR now (outside the lane); two separate
 DNR decisions.
 **Revisit if:** the user wants either hop blocked (then DNR in a later step, for both).
+*Ruled 2026-10-24 by the user (#202): ratified, and the DNR network rule is planned for a later step.*
 **By:** Claude (contract-level — listed under Open decisions for the user; Stage 0 audit D9, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
 
 ### 2026-10-24 · The state is read per call, fails closed, and is locked to trusted contexts (#139)
@@ -737,6 +761,7 @@ and ask them; `"evaluate"` — the user turned JavaScript off, every other tool 
 tells them apart without a third code or message parsing; S0.2's count is pre-registered.
 **Instead of:** a third code `JS_DISABLED` (clearer name, but changes a pre-registered check and the spec twice).
 **Revisit if:** a client must branch on it often enough that `data.scope` proves awkward.
+*Ruled 2026-10-24 by the user (#202): changed — a new code `JS_DISABLED` replaces `DISARMED` + `scope: "evaluate"`, built in Step 10.*
 **By:** Claude (contract-level — listed under Open decisions for the user; Stage 0 audit D2, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
 
 ### 2026-10-24 · The safety state travels as two events and a `daemon.status` field (#132)

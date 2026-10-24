@@ -19,6 +19,10 @@ dated notes) · **Roadmap:** `docs/progress-and-roadmap.md` §5 ("Step 10 inputs
 > (decisions.md · 2026-10-24 · The Step 10 kickoff carries Run 13's live follow-ups as its first wave (#201),
 > its "Revisit if"). If #192 is unruled, the session agent stops before Stage 0 and asks.
 
+*Met 2026-10-24: the user ratified Run 13 (decisions.md · 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202)); no re-run. S1 runs as written. The ruling does not
+pre-approve pinning by mouse click: a wave that cannot pin by UI Automation asks the user once (or finds the button
+already pinned).*
+
 ## Why
 
 Step 8 shipped the SDK surface and Step 9 the human's safety controls. The user's rulings on Step 8's open
@@ -240,6 +244,19 @@ fails closed, and is locked to trusted contexts (#139)); the extension's own pag
 pattern, URL, title, the token, an evaluated value or a `saveTo` path. With the bridge armed, JavaScript on and an
 empty block list, every Step 9 test and tool behaves as at `f45e3bf`.
 
+### 0.12 A new code `JS_DISABLED` for "JavaScript is off" (user)
+
+The user changed Step 9's #133 (decisions.md · 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202)): while the human has turned JavaScript off,
+`evaluate` (with or without `asRef`) and a `navigate`/`newTab` to a `javascript:`, `data:` or `blob:` URL (#138) are
+refused with a new code **`JS_DISABLED`**, not `DISARMED` with `data.scope: "evaluate"`. Spec §10 is amended first
+(dated note); `shared/src/codes.ts` goes to 26 codes (25 on the wire); the extension's refusal (`safety.ts`), the
+SDK's `safetyRefusalLine` and the MCP's one-line rendering ("the user turned JavaScript off; every other tool still
+works; ask them") follow; `JS_DISABLED` stays out of the failure-report attach set. While the bridge is off,
+`DISARMED` (scope `"all"`) still wins over `JS_DISABLED`. *Proposed, for the audit:* `DISARMED` keeps its
+`data.scope: "all"` for compatibility, and `"evaluate"` is no longer produced. The tests that pinned
+`DISARMED scope:"evaluate"` change their expected text **by this ruling**, each listed per file in the stage report
+(this is a contract change the user ordered, not the forbidden "edit a test's text to match a changed error").
+
 ## Stages
 
 **Lane** is the explicit grant a step agent needs under the `step-agent` ESCALATION list. Budgets are estimates.
@@ -278,6 +295,14 @@ run here first under the same rules.
 **Lane:** `extension/src/` (evaluate handler, a store module, `sw.ts` registration, `safety.ts` table — for (B) only),
 `daemon/src/methods.ts` (B only), `shared/src/protocol.ts`, `sdk/src/`, `mcp/src/tools/registry.ts`, their tests.
 **Parallel with:** S5, S6.
+
+### Stage S4b — The `JS_DISABLED` code (1.5 h, after S4)
+- [ ] 0.12: spec §10 note first; the code in `shared/src/codes.ts` and its type; the extension's refusal; the SDK and
+      MCP wording; `docs/setup.md`'s Safety section; tests first; the changed expected texts listed per file.
+**Lane:** `docs/specs/…-design.md` (§10 note), `shared/src/`, `extension/src/safety.ts`, `sdk/src/`,
+`mcp/src/tools/registry.ts`, their `test/` dirs, `recipes/s9-rules.ts` and its test if they pin the old text,
+`docs/setup.md` (Safety). **Parallel with:** S5, S6 (after S4 because both edit `registry.ts`).
+*Added 2026-10-24 by the user's ruling on #133 (decisions.md · 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202)).*
 
 ### Stage S5 — `bb-login.ps1`'s condition wait (1 h, any time after S1)
 - [ ] 0.9; the delayed-redirect fixture; dry runs old vs new on it.
@@ -347,6 +372,11 @@ file; `npm run typecheck` and `npm run build` exit 0; `git status --short` shows
   G10-3; otherwise both are recorded "not run — waits for the user". **S7.6** as S1.5–S1.6.
 - **S8.1** the retirement's removed tests listed per file with the count change; `grep -rn "assemble-mcp\|transcript.ts"
   recipes docs/setup.md` finds only dated history notes; every new `CLAUDE.md` gotcha cites its source.
+- **S4b.1** `codes.ts` lists 26 codes with `JS_DISABLED` on the wire list; spec §10's note precedes the code commit
+  (`git log` order). **S4b.2** with JavaScript off: `evaluate`, `evaluate {asRef}` and a `javascript:`/`data:`
+  navigation answer `JS_DISABLED`; with the bridge off they answer `DISARMED`; with JavaScript on nothing changes
+  (tests, each failing at the S4 close). **S4b.3** `JS_DISABLED` is not in `ATTACH_CODES` (test); the MCP renders it
+  as one line (test). *Added 2026-10-24 (#202).*
 
 ## Human gates
 
@@ -400,6 +430,10 @@ the token rule; making `BridgeClient` reconnect on a close code other than 4002;
 
 ## Follow-ups (decisions.md · 2026-10-24 · The roadmap after Step 8 (#129))
 
+- **A later step — the block list stops redirected requests** (decisions.md · 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202)): a `declarativeNetRequest`
+  session rule (a new permission) so a redirect hop of a download or a navigation onto a blocked site is never
+  sent (decisions.md · 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140)). Its place in the order is
+  set when Step 10 closes.
 - **Step 11 — D3 file upload:** `browser_upload_file` / `Tab.upload` via `DOM.setFileInputFiles`.
 - **Step 12 — Phase F:** `args` for `browser_evaluate`, console/error capture, the keep-attached debugger session if
   the design allows.

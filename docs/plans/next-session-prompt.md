@@ -18,6 +18,9 @@ re-measurements. This prompt is self-contained; its reading list is in §3.
 
 ## 0. PRECONDITION (check before anything else)
 
+*Met 2026-10-24: the user ratified Run 13 (decisions.md · 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202)); no re-run — go to Stage 0. The ruling does not
+pre-approve pinning by mouse click. The same ruling adds stage S4b, a new code `JS_DISABLED` (phase doc 0.12).*
+
 **The run starts only after the user has ruled on decisions.md · 2026-10-24 · S4: Run 13 stands as recorded, with
 the runner's four self-resolved stops listed (#192).** Read that entry and the Open decisions list in
 `docs/decisions.md`. The four stops the Run 13 runner resolved itself instead of returning (record blocks 4, 8, 9,
@@ -416,6 +419,7 @@ step report records the actual beside each. One commit per stage close.
 | **S2 — MCP focus-first** | phase doc S2 (0.2) | S2.1–S2.3 | 1 h | ∥ S5 or S6 | tests fail at `f45e3bf`; schemas unchanged; no focus on untrusted |
 | **S3 — The 800-cap warning** | phase doc S3 (0.3) | S3.1–S3.3 | 2 h | after S2; ∥ S5 or S6 | `a11y.ts`/`snapshot.ts` diff empty; the 46-fixture and format baselines pass; old clients see identical results |
 | **S4 — `saveTo`** | phase doc S4 (0.4) | S4.1–S4.5 | 3 h | after S3; ∥ S5 or S6 | cross-package over real `ws` with a fake extension; no slice of the value in any answer or log; safety classes for (B) |
+| **S4b — `JS_DISABLED`** | phase doc S4b (0.12) | S4b.1–S4b.3 | 1.5 h | after S4; ∥ S5 or S6 | spec §10 note before the code; every changed expected text listed per file and traced to #202; the attach set unchanged |
 | **S5 — `bb-login.ps1` wait** | phase doc S5 (0.9) | S5.1 | 1 h | beside S2–S4, never during S1/S7 | old-vs-new on the same delayed fixture; nothing pressed after the first press |
 | **S6 — `release/step8`** | phase doc S6 (0.6) | S6.1–S6.3 | 0.5 h | any time after Stage 0, never during S1/S7 | tree identity by `git diff`; `main` unchanged; no tag |
 | **S7 — Run 15 (live): Step 10's rows** | phase doc S7 (+ S7b only if SW-1 says so) | S7.1–S7.6 | 1.5 h prep + 2 h live | alone | MCPF-1 by the page's reporter; CAP-1 both clients; SAVE rows' files by hash; RET-1/pp1 only with grants |

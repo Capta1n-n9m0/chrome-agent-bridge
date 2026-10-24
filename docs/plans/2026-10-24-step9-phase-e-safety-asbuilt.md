@@ -204,3 +204,22 @@ session agent; one section per stage, written at each stage close.
 
 ## Open decisions for the user (running list; also in `docs/decisions.md` → Open decisions)
 - #131–#141, #144 (Stage 0), #148 (S0), #153–#156 (S1), #159–#163, #168 (S3), #174–#180 (S2a), #188 (S2b), #192 (S4 — the gate item waits for it).
+
+*Ruled 2026-10-24 (decisions.md · 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202)): every open decision above is ruled. All ratified as built except
+#133 (a new code `JS_DISABLED`, built in Step 10); #140 ratified with a `declarativeNetRequest` network rule planned
+for a later step; #192 ratifies Run 13. Step 9 is closed.*
+
+## Gate checklist (2026-10-24)
+
+| Item | Met? | Evidence |
+|---|---|---|
+| S0.1–S0.2 | yes | S0.md; spec notes aabc3b4/2cc0049 before the code commit 5dbbce7 |
+| S1.1–S1.3 | yes | S1.md; cases first 9722cd6; `Router.on` half at S2a |
+| S2.1–S2.4 | yes | S2a.md, S2b.md, S2c.md |
+| S3.1–S3.3 | yes | S3.md |
+| S4.1–S4.4 | yes; process deviation ratified | S4.md, S4-run-record.md; #192 |
+| S5.1 | yes | S5.md |
+| STOP rules | none fired unruled | journal.md; #192 ruled by the user |
+| Commits | one or more per stage, exact file lists, no `dist/`, token, `exports/` or screenshot | `git log a0700e0^..` |
+| Safety state restored | yes, equal by hash | S4.md §5 |
+| Open decisions | all ruled | #202 |
