@@ -14,11 +14,12 @@ import { isOwnTraffic } from "./network-log.js";
 import type { WebRequestDetails, WebRequestEvent } from "./network-log.js";
 import { TabInfoCache, eventFrame, tabCreatedParams, tabRemovedParams, tabReplacedParams } from "./tab-events.js";
 import { MARKER_KEY, SessionMarker, type MarkerStore } from "./session-marker.js";
-import { DISARMED_ALL, SafetyReporter, SafetyStore, failClosedView, reportOf, touchesSafety, type SafetyView } from "./safety-state.js";
+import { DISARMED_ALL, SafetyReporter, SafetyStore, failClosedView, parseStoredSafety, reportOf, touchesSafety, type SafetyView } from "./safety-state.js";
 import { CallSafety, acceptRelaySender, type CallSafetyDeps } from "./safety-call.js";
 import { NetworkIngestGate } from "./safety-network.js";
 import { redactTabCreated, redactTabRemoved } from "./safety.js";
 import { debuggerSessions } from "./debugger.js";
+import { BadgeController } from "./badge.js";
 
 const DEFAULT_PORT = 9234;
 
@@ -348,6 +349,30 @@ chrome.storage.onChanged.addListener((changes, area) => {
 void safety.start().then(() => ingestGate.flush());
 
 void connect();
+
+// --- The toolbar button, the shortcut and the badge (Step 9 S2b) ------------------------------------------
+// One top-level `action.onClicked` listener serves the button and the `_execute_action` shortcut (Chrome
+// dispatches that command as `action.onClicked`; there is no `commands.onCommand`) (decisions.md ·
+// 2026-10-24 · The shortcut is `_execute_action` (#142)). It is the only caller of `safety.toggle()`; nothing
+// the router serves reaches it. Each press logs one fixed line (`badge.ts`, phase doc 0.7). The badge is
+// re-derived from a fresh read at every worker start and on every safety-key change (F42, #144); not
+// awaited — no top-level `await`.
+
+const badge = new BadgeController({
+  api: chrome.action,
+  read: () => safety.read().then((v) => v.switches),
+  // F5 (S2b verifier): the stored switch, unmasked by a disarm held in memory, so a "not saved" title ends
+  // once the OFF is saved. A wrong-typed value throws → unknown (the note stays; the badge is OFF anyway).
+  storedArmed: () => chrome.storage.local.get(null).then((raw) => parseStoredSafety(raw).armed),
+});
+
+chrome.action.onClicked.addListener(() => void badge.press(() => safety.toggle()));
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && touchesSafety(changes)) void badge.refresh();
+});
+
+void badge.refresh();
 
 // Step 9 (#139, F4, V7): content scripts must not read or write `storage.local` (the token and the safety
 // state live there). After every listener registration, guarded so it cannot throw synchronously, not awaited.

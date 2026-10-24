@@ -7,5 +7,7 @@
   "background": { "service_worker": "dist/sw.js", "type": "module" },
   "permissions": ["debugger", "tabs", "scripting", "activeTab", "alarms", "storage", "offscreen", "webRequest"],
   "host_permissions": ["<all_urls>"],
-  "options_page": "options.html"
+  "options_page": "options.html",
+  "action": { "default_title": "Chrome Agent Bridge" },
+  "commands": { "_execute_action": { "suggested_key": { "default": "Alt+Shift+K" } } }
 }

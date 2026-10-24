@@ -1,12 +1,47 @@
 <!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>Chrome Agent Bridge — Options</title></head>
+  <head>
+    <meta charset="utf-8" />
+    <title>Chrome Agent Bridge — Options</title>
+    <style>
+      body { font: 14px system-ui, sans-serif; max-width: 46rem; margin: 1rem; }
+      fieldset { margin: 1rem 0; }
+      textarea { width: 100%; box-sizing: border-box; font-family: monospace; }
+      textarea[aria-invalid="true"] { outline: 2px solid #d93025; }
+      #invalid-lines li { color: #d93025; }
+      #safety-error, #blocklist-error, #blocklist-conflict { color: #d93025; }
+    </style>
+  </head>
   <body>
     <h1>Chrome Agent Bridge</h1>
     <label>Port <input id="port" type="number" value="9234" /></label><br />
     <label>Token <input id="token" type="password" size="40" /></label><br />
     <button id="save">Save</button>
     <span id="status"></span>
+
+    <fieldset id="safety">
+      <legend>Safety</legend>
+      <p id="safety-status" role="status"></p>
+      <label><input id="armed" type="checkbox" /> Bridge on (agents may use this browser)</label><br />
+      <label><input id="evaluate" type="checkbox" /> Allow JavaScript (browser_evaluate)</label><br />
+      <p id="safety-error" role="alert"></p>
+      <p>
+        The toolbar button and the shortcut turn the bridge off and on too.
+        <button id="shortcuts" type="button">Change the keyboard shortcut</button>
+      </p>
+    </fieldset>
+
+    <fieldset id="blocklist-section">
+      <legend>Blocked sites</legend>
+      <label for="blocklist">Blocked sites, one per line</label>
+      <textarea id="blocklist" rows="8" spellcheck="false"></textarea>
+      <button id="save-blocklist" type="button">Save blocked sites</button>
+      <span id="blocklist-saved" role="status"></span>
+      <p id="blocklist-summary"></p>
+      <p id="blocklist-conflict" role="alert"></p>
+      <p id="blocklist-error" role="alert"></p>
+      <ul id="invalid-lines"></ul>
+    </fieldset>
     <script type="module" src="dist/options.js"></script>
   </body>
 </html>
