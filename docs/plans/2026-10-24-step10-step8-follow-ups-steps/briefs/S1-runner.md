@@ -28,6 +28,11 @@ bug, not an "obvious" fix, not a re-read (Run 13's runner did, four times, and t
 "Resume after Return 2 (attempt 3)" instead of the table's full order — the first call is `-Block reset -Attempt 3
 -Skip rel3,pop1`; R14-REL-3 and R14-POP-1 are not re-run (recorded in attempt 2); every STOP is still a return.
 
+**Attempt 4 (resume after Return 3; added 2026-10-25 by the S1 wave fixer, round 3):** follow the wave sheet's
+subsection "Resume after Return 3 (attempt 4)" instead — the first call is `-Block reset -Attempt 4 -Skip rel3,pop1,r3`;
+R14-REL-3, R14-POP-1 and R14-3 (recorded NOT MEASURED in attempt 3) are not re-run; the cursor parking lines (`PARK …`)
+are records; every STOP is still a return.
+
 ## Grant and limits (decisions.md #33 standing grant of fixture waves; phase doc "Human gates")
 
 You drive the user's REAL Chrome profile on fixture pages only: windows YOU open (W, E, D, O), the toolbar button

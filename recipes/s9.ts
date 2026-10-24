@@ -62,6 +62,9 @@
 //                              first, then the others in the system's order (s9-rules `placementOrder`)
 //                              round 2: JSON {wWork, work, shell}; each area cut above any shell taskbar intersecting
 //                              it (`PLACEMENT work area […] cut to y=<n> by taskbar class=…`, s9-rules `taskbarCut`)
+//   park-point --rect <l,t,r,b>   round 3 (after Return 3): the fixed cursor park point in W's page area (s9-rules
+//                              `parkPoint`); rect-check also prints `OCCLUDER <i> …` and `CURSOR at (x,y)` lines when
+//                              there is an occluder (diagnostics only, `placementDiagnostics`)
 //   wait-safety … --guard      as wait-safety, but "not reached" is a STOP line (exit 2)
 //
 // It never prints the token, a non-fixture URL or title, or a block-list pattern read from Chrome; listTabs,
@@ -82,7 +85,9 @@ import {
   concurrentVerdict,
   followUpVerdict,
   logHits,
+  parkPoint,
   placementAttemptLine,
+  placementDiagnostics,
   placementLine,
   placementOrder,
   placementVerdict,
@@ -1059,11 +1064,13 @@ async function cmdRectCheck(): Promise<void> {
     const area = (p as Placement & { area?: Rect }).area;
     if (!Number.isInteger(n) || n < 1 || !area) throw new SetUp("SET-UP: rect-check --attempt <n ≥ 1> needs the JSON's `area`");
     say(`ROW ${row} placement-attempt-${n} ${placementLine(p)}`);
+    for (const l of placementDiagnostics(p)) say(l);
     say(placementAttemptLine(n, area, v));
     if (!v.pass) failed = true;
     return;
   }
   say(`ROW ${row} ${step} ${placementLine(p)}`);
+  for (const l of placementDiagnostics(p)) say(l); // round 3: diagnostics only (rect, owners, styles, cursor)
   say(checkLine(row, step, v));
   if (!v.pass) failed = true;
 }
@@ -1072,6 +1079,18 @@ async function cmdRectCheck(): Promise<void> {
  * S1 wave fixer (Return 2, ruling (a)): the order R14-3 tries work areas in (`placementOrder`). The JSON is
  * `{wWork: Rect, work: Rect[]}` (s9-win.ps1 `Find-S9FreePlacement`); one line `PLACEMENT order <n>: [l,t,r,b] …`.
  */
+/**
+ * Round 3 (after Return 3), ruling (c): the fixed park point for a page area (`parkPoint`): one line
+ * `PARK point (x,y) in page [l,t,r,b]`, or `PARK none: page [l,t,r,b] too small` (exit 0 either way).
+ */
+async function cmdParkPoint(): Promise<void> {
+  const m = /^(-?\d+),(-?\d+),(-?\d+),(-?\d+)$/.exec(option("--rect") ?? "");
+  if (!m) throw new SetUp("SET-UP: park-point --rect <l,t,r,b>");
+  const page: Rect = { left: Number(m[1]), top: Number(m[2]), right: Number(m[3]), bottom: Number(m[4]) };
+  const pt = parkPoint(page);
+  say(pt ? `PARK point (${pt.x},${pt.y}) in page ${rectText(page)}` : `PARK none: page ${rectText(page)} too small`);
+}
+
 async function cmdPlacementOrder(): Promise<void> {
   const file = option("--file");
   if (!file || !existsSync(file)) throw new SetUp("SET-UP: placement-order --file <json>");
@@ -1234,6 +1253,7 @@ const commands: Record<string, () => Promise<void>> = {
   "server-logs": cmdServerLogs,
   "rect-check": cmdRectCheck,
   "placement-order": cmdPlacementOrder,
+  "park-point": cmdParkPoint,
 };
 
 const run = commands[command];

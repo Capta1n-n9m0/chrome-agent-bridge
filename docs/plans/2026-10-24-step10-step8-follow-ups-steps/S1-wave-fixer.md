@@ -306,3 +306,139 @@ Updated: the wave sheet's resume subsection.
 | PowerShell parse | 0 errors in both files |
 | STOP RULE | the same sha256 (`ddce1848…`) in the sheet, the runner brief and §4.21 |
 | §4.21 rows and pass rules | unedited (only the italic note after the table grew) |
+
+## Round 3 (after Return 3)
+
+Fixer: Opus 5.5, level 2, 2026-10-25. The work applies the step agent's decision on Return 3 (`S1.ledger.md`, binding)
+at HEAD `bfadbbc`. The same limits held as before:
+- no live Chrome, no daemon, no connection to 9234, no block run against Chrome, no commit, no product code;
+- `%TEMP%\bridge-e2e\s14` was only read. Its globals are attempt 3's, with md5 `4487BE5B…` before and after the round.
+
+Every dry run used scratchpad copies (`scratchpad\r3\a|b|e`).
+
+**(a) Narrow resume for attempt 4.** `recipes/s9-r14.ps1` `B-reset` (`:485`) now accepts exactly two resumes:
+- `-Attempt 3 -Skip rel3,pop1`, from attempt 2's stop at r3. This one is unchanged.
+- `-Attempt 4 -Skip rel3,pop1,r3`, the three names in any order. It is accepted only when all of these hold:
+  - the stored state carries `S14Resume.Attempt = 3` with `Skip = rel3,pop1`;
+  - `S14Stopped` begins with `r3:`;
+  - `S14Done` is exactly `preflight … found`.
+
+Any other combination prints `USAGE: …`, never `STOP:`, exits 3 and archives nothing.
+
+Behaviour of attempt 4:
+- The daemon-log mark is the `S14LogMark` that attempt 3 carried, which is attempt 2's `2026-10-24T21:14:17.041Z`.
+- `-LogMark` is refused while that mark is stored.
+- The RESUME line is stored in `S14Resume.Line`: `RESUME attempt 4: rel3, pop1 recorded in attempt 2; r3 recorded NOT
+  MEASURED in attempt 3; not re-run`.
+- The order is preflight, servers, window, setup, safe0, found, type, ctl, 5c, restore, logs, teardown.
+- A skipped block refuses with that line. `type` prints the line again because it follows a skipped block.
+- `B-logs` for attempt 4 prints `… counted from <mark> (attempt 2's wave mark: …) - attempts 2, 3 and 4` and `R14-LOGS
+  attempts 2 and 3's worker consoles were not captured (…) - a recorded deviation; …`. Attempt 3's text is unchanged.
+
+Dry runs, each with its exit code:
+
+| Call | Result |
+|---|---|
+| attempt 4 with `-Skip rel3,pop1` | USAGE, 3 |
+| `-Skip rel3,pop1,r3,type` | USAGE, 3 |
+| `-Attempt 5` | USAGE, 3 |
+| `-Attempt 3` from attempt 3's state | USAGE, 3 |
+| `-LogMark` while the mark is stored | USAGE, 3 |
+| after all of the above | the folder still holds only `r14-globals.clixml` |
+| `-Attempt 4 -Skip r3,rel3,pop1` | both RESUME lines with the mark above, 0 |
+| `r3` and `pop1` | skipped, 3 |
+| `type` | `needs block found first`, 3 |
+| with done through found, `ctl` | `needs block type`, 3 |
+| attempt 4 again from the resumed state | USAGE, 3 |
+| attempt 4 from attempt 2's state | USAGE, 3; folder unchanged |
+| attempt 3 from attempt 2's state | still accepted, 0 |
+
+**(b) Diagnostics only.** Nothing that `OccluderList` counts has changed.
+
+`recipes/s9-win.ps1`:
+- `S9Geo` (`:131-139`) adds `OwnerOf` (GW_OWNER), `RootOwnerOf` (GA_ROOTOWNER), `StyleOf`, `ExStyleOf` and `Cursor`
+  (GetCursorPos).
+- `Get-S9OccluderIds` now gives each occluder:
+  - its `rect`;
+  - its `owner` and `rootOwner`, each as `W|E|D|O|other|none` (an unowned window's root owner is reported as `none`);
+  - its `styles`: topmost, popup, toolwindow and noactivate.
+- `Test-S9Placement` adds `cursor` to the JSON.
+
+`recipes/s9-rules.ts` (pure):
+- `styleFlags` (`:766`);
+- `occluderDetailLine` (`:779`), which prints `OCCLUDER <i> <id> rect […] owner=driver:W|other|none|?
+  rootOwner=… topmost=… popup=… toolwindow=… noactivate=…`;
+- `cursorLine` (`:788`);
+- `placementDiagnostics` (`:793`), which prints no lines when there are 0 occluders.
+
+`recipes/s9.ts` `rect-check` prints those lines after the ROW line in both modes (`:1067`, `:1073`).
+
+None of this reads a title. The ROW, CHECK and guard texts are unchanged.
+
+**(c) Guards a transient Chrome window could trip, and the cursor parking.** The rule was fixed before any measurement:
+- The park point is `parkPoint` (`s9-rules.ts:806-807`): `PARK_INSET_PX = 4` px right of and below the top-left corner
+  of W's UIA `RootWebArea`.
+- A page area no larger than 8 × 8 px gives no park point.
+- `s9.ts park-point --rect` (`:1086`) prints `PARK point (x,y) in page […]` or `PARK none: …`.
+
+`Park-S9Cursor` (`s9-win.ps1:941`):
+- It computes the point once for each W window rect and process, and caches it.
+- It prints `PARK cursor at (x,y) in W's page area (<why>)`.
+- With no W, no page area or no point, it prints `PARK skipped (…)` and moves nothing.
+
+The guards in the blocks attempt 4 runs, and where the cursor is parked:
+
+| Guard | Block | Park call |
+|---|---|---|
+| `Click-S9Element`: the foreground check and `FromPoint` | type, for the press and the re-arm | before both checks (`:392`) and after the click (`:401`). `B-type` parks once at its start (`s9-r14.ps1:372`), so the point is computed before the timed part. |
+| `Set-S9Omnibox`: the foreground and focus check | setup, found, restore, the stop procedure | `:288` |
+| `Wait-S9NewWindow`: exactly one new titled window | setup, found, restore | in `Open-S9ChromePage` (`:307`) and `Open-S9WorkerConsole` (`:570`) |
+| `Restore-S9Layout`: the foreground check | teardown, the stop procedure | `:501` |
+| `Restore-S9Desk`: the window count | teardown, the stop procedure | `:1119` (prints skipped, because W is closed by then) |
+
+The placement guards are not parked, since r3 is skipped. The UIA name and pattern reads and every `s9.ts` guard do not
+depend on where the cursor is. No guard is loosened.
+
+**Tests:** `recipes/test/s9-rules.test.ts:719-777`, five new tests. They ran red first (5 failed / 73 passed), then went
+green. They cover:
+- the style flags, including signed `GetWindowLong` values;
+- the OCCLUDER line, including unknown owner values shown as `?`;
+- the CURSOR line;
+- that diagnostics appear only when there is an occluder;
+- the park point, including a negative-x monitor and a page that is too small;
+- that the point lies inside the page area.
+
+**No-Chrome dry run:**
+- `Park-S9Cursor` with no W prints `PARK skipped`.
+- `S9Geo` compiles. `OccluderList(0)` returns 0 entries, and the cursor can be read.
+- `park-point` printed `PARK point (1924,124) in page [1920,120,3072,1078]` and `PARK none: page [0,0,8,8] too small`.
+- `rect-check` on fabricated JSON printed the `OCCLUDER 1 …` and `CURSOR at (3150,30)` lines between the ROW line and an
+  unchanged CHECK line.
+- The PowerShell regex parsed the PARK line.
+
+**Documentation:**
+- The wave sheet has a new subsection, "Resume after Return 3 (attempt 4)". It gives the exact calls, the refusals, the
+  logs lines, the record heading, and the parking rule with the guard table.
+- `briefs/S1-runner.md` has a new pointer paragraph.
+- §4.21 has a dated round-3 note after its table. Only the procedure changed; no table line changed (`git diff bfadbbc`
+  shows 0 table lines).
+
+**Checks (round 3)**
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit -p recipes/tsconfig.s9.json` | 0 |
+| `npm run typecheck` | 0 |
+| `npm test` | **2763 passed, 116 files**. Round 2 had 2758; +5, all in `recipes/test/s9-rules.test.ts` (73 → 78). |
+| `npm run build` | 0. The dist sha256 values are unchanged (`99bb55c5`, `5a2888f7`, `bcb20e28`, `a8beec6c`, `f8b52058`) and there is no dist change in `git status`. |
+| PowerShell parse | 0 errors in both files |
+| STOP RULE | the same sha256 (`ddce1848…`) in the sheet, the runner brief and §4.21 |
+
+**Notes for the step agent:**
+- The park moves the user's real mouse cursor, as the toolbar clicks already did under the grant, and only into W's
+  page margin.
+- Untested live:
+  - whether UIA's `RootWebArea` rect and `SetCursorPos` agree on this machine's DPI. `Click-S9Element` already mixes
+    them, and that worked in Runs 13 and 14.
+  - whether the park removes the attempt-3 occluder. That occluder is still unidentified; the conjecture is a tooltip or
+    a bubble.

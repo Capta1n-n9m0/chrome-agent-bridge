@@ -127,6 +127,16 @@ public static class S9Geo {
   // (GetWindow GW_HWNDPREV, walked to the top) that are visible, not minimized, not DWM-cloaked, not see-through
   // (above), with a non-empty rect intersecting target's with a positive area (touching edges do not count).
   public static int Occluders(IntPtr target) { return OccluderList(target).Length; }
+  // Round 3 (after Return 3), diagnostics only: an occluder's owner (GW_OWNER), root owner (GA_ROOTOWNER), styles, and
+  // the cursor position. Nothing here changes what OccluderList counts.
+  [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr h, uint flags);
+  [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
+  [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT p);
+  public static IntPtr OwnerOf(IntPtr h) { return GetWindow(h, 4); }
+  public static IntPtr RootOwnerOf(IntPtr h) { return GetAncestor(h, 3); }
+  public static int StyleOf(IntPtr h) { return GetWindowLong32(h, -16); }
+  public static int ExStyleOf(IntPtr h) { return GetWindowLong32(h, -20); }
+  public static string Cursor() { POINT p; return GetCursorPos(out p) ? (p.X + " " + p.Y) : ""; }
   // S1 wave fixer round 2 (S1-wave-verifier F1): every top-level shell taskbar window (Shell_TrayWnd,
   // Shell_SecondaryTrayWnd) and its rect, visible or not - recipes/s9-rules.ts taskbarCut decides which one cuts.
   public delegate bool WndEnumProc(IntPtr h, IntPtr l);
@@ -275,6 +285,7 @@ function Get-S9DocUrl([long]$Hwnd) {
 }
 
 function Set-S9Omnibox([long]$Hwnd, [string]$Url, [int]$TimeoutSec = 15) {
+  Park-S9Cursor 'before the omnibox foreground/focus guard'   # round 3, ruling (c)
   $omni = Get-S9Omnibox $Hwnd
   if (-not (Set-S9Foreground $Hwnd)) { throw "window $Hwnd is not in the foreground - no key sent" }
   $omni.SetFocus()
@@ -293,6 +304,7 @@ function Set-S9Omnibox([long]$Hwnd, [string]$Url, [int]$TimeoutSec = 15) {
 
 function Open-S9ChromePage([string]$Url) {
   if ($Url -notmatch "^(chrome://extensions|chrome-extension://$S9Id/)") { throw "Open-S9ChromePage opens chrome://extensions… or this extension's pages only" }
+  Park-S9Cursor 'before the one-new-window guard'   # round 3, ruling (c)
   $before = Get-S9ChromeWindows
   Start-Process -FilePath (Get-S9Chrome) -ArgumentList '--new-window', 'about:blank'
   $h = Wait-S9NewWindow $before
@@ -375,6 +387,9 @@ public static class S9Mouse {
 '@
 }
 function Click-S9Element([long]$Hwnd, $El) {
+  # Round 3 (after Return 3), ruling (c): the cursor parked in W's page area before the foreground and FromPoint guards
+  # (a tooltip or hover card under a resting cursor could be the element at the point), and again after the click.
+  Park-S9Cursor 'before the click guards'
   if (-not (Set-S9Foreground $Hwnd)) { throw "window $Hwnd is not in the foreground - nothing clicked" }
   $r = $El.Current.BoundingRectangle
   $x = [int]($r.X + $r.Width / 2); $y = [int]($r.Y + $r.Height / 2)
@@ -383,6 +398,7 @@ function Click-S9Element([long]$Hwnd, $El) {
   [void][S9Mouse]::SetCursorPos($x, $y); Start-Sleep -Milliseconds 50
   [S9Mouse]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero); [S9Mouse]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
   Say9 "CLICK '$($El.Current.Name)' at ($x,$y)"
+  Park-S9Cursor 'after the click'
 }
 
 # Pins (-Pin) or unpins (-Unpin) the button through W's Extensions menu. Prints only our row's element names.
@@ -482,6 +498,7 @@ function Send-S9Shortcut([long]$Hwnd) {
 # (at most 4 taps); prints each reading. Only the layout the wave changed is put back.
 function Restore-S9Layout([long]$Hwnd, [string]$Want) {
   for ($i = 0; $i -lt 4 -and (Get-S9Layout $Hwnd) -ne $Want; $i++) {
+    Park-S9Cursor 'before the layout tap foreground guard'   # round 3, ruling (c)
     if (-not (Set-S9Foreground $Hwnd)) { throw "window $Hwnd is not in the foreground - no key sent" }
     [S9Win]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero); [S9Win]::keybd_event(0x10, 0, 0, [UIntPtr]::Zero)
     [S9Win]::keybd_event(0x10, 0, 2, [UIntPtr]::Zero); [S9Win]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)
@@ -550,6 +567,7 @@ function Open-S9WorkerConsole([long]$Hwnd) {
   if (-not $span) { throw "no card for $S9Name ($S9Id) in window $Hwnd" }
   $link = @($span | Where-Object { $_.Current.ControlType -eq [Windows.Automation.ControlType]::Hyperlink -and $_.Current.Name -like 'service worker*' })
   if ($link.Count -ne 1) { throw "service worker links on our card: $($link.Count) (need 1)" }
+  Park-S9Cursor 'before the one-new-window guard'   # round 3, ruling (c)
   $before = Get-S9ChromeWindows
   $link[0].GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
   $d = Wait-S9NewWindow $before 15 'DevTools*'
@@ -889,15 +907,56 @@ function Set-S9SideBySide([long]$W, [long]$O, $Area = $null) {
 function Get-S9OccluderIds([long]$O) {
   $drivers = @{}
   foreach ($n in 'W', 'E', 'D', 'O') { $h = Get-Variable -Scope Global -Name $n -ValueOnly -ErrorAction SilentlyContinue; if ($h) { $drivers[[string][long]$h] = $n } }
+  # Round 3 (after Return 3), diagnostics only: each occluder also carries its rect, whether its owner and root owner
+  # are a driver window (W/E/D/O), another window or none, and its style flags (s9-rules occluderDetailLine prints them).
+  $kind = { param([IntPtr]$x) if ($x -eq [IntPtr]::Zero) { 'none' } elseif ($drivers.ContainsKey([string][long]$x)) { $drivers[[string][long]$x] } else { 'other' } }
   @([S9Geo]::OccluderList([IntPtr]$O) | ForEach-Object {
       $k = [string][long]$_
-      if ($drivers.ContainsKey($k)) { [pscustomobject]@{ driver = $drivers[$k] } }
+      $r = [S9Geo]::Rect($_)
+      $root = [S9Geo]::RootOwnerOf($_); if ($root -eq $_) { $root = [IntPtr]::Zero }   # GA_ROOTOWNER of an unowned window is itself
+      $st = [int][S9Geo]::StyleOf($_); $ex = [int][S9Geo]::ExStyleOf($_)
+      $d = [pscustomobject]@{
+        rect = [pscustomobject]@{ left = $r.Left; top = $r.Top; right = $r.Right; bottom = $r.Bottom }
+        owner = (& $kind ([S9Geo]::OwnerOf($_))); rootOwner = (& $kind $root)
+        styles = [pscustomobject]@{ topmost = (($ex -band 0x8) -ne 0); popup = (($st -band [int]::MinValue) -ne 0); toolwindow = (($ex -band 0x80) -ne 0); noactivate = (($ex -band 0x08000000) -ne 0) }
+      }
+      if ($drivers.ContainsKey($k)) { $d | Add-Member -NotePropertyName driver -NotePropertyValue $drivers[$k] }
       else {
         $wpid = [uint32]0; [void][S9Win]::GetWindowThreadProcessId($_, [ref]$wpid)
         $pn = (Get-Process -Id ([int]$wpid) -ErrorAction SilentlyContinue).ProcessName
-        [pscustomobject]@{ cls = [S9Win]::Cls($_); process = "$pn" }
+        $d | Add-Member -NotePropertyName cls -NotePropertyValue ([S9Win]::Cls($_))
+        $d | Add-Member -NotePropertyName process -NotePropertyValue "$pn"
       }
+      $d
     })
+}
+
+# Round 3 (after Return 3), ruling (c): park the mouse cursor at the FIXED point of recipes/s9-rules.ts parkPoint -
+# PARK_INSET_PX (4) right of and below the top-left corner of W's page area (UIA RootWebArea of $global:W) - before a
+# guard a transient Chrome window (tooltip, hover card, bubble) could trip, and after every FromPoint-verified click.
+# The point comes from `s9.ts park-point` once per page rect and process (cached, keyed by W's window rect), so the
+# timed press path of R14-4b costs one SetCursorPos. No W, no page area, or a page too small -> one PARK line and no
+# move (the guard then runs as before). Never moves any window; prints no title.
+$global:S9ParkCache = @{}
+function Park-S9Cursor([string]$Why) {
+  $w = $global:W
+  if (-not $w -or -not [S9Win]::IsWindow([IntPtr][long]$w)) { Say9 "PARK skipped ($Why): no driver window W"; return }
+  $wr = [S9Geo]::Rect([IntPtr][long]$w); $key = "$w $($wr.Left) $($wr.Top) $($wr.Right) $($wr.Bottom)"
+  if (-not $global:S9ParkCache.ContainsKey($key)) {
+    $doc = Get-S9Doc ([long]$w)
+    if (-not $doc) { Say9 "PARK skipped ($Why): W shows no page area"; return }
+    $b = $doc.Current.BoundingRectangle
+    $rect = "$([int]$b.Left),$([int]$b.Top),$([int]$b.Right),$([int]$b.Bottom)"
+    Push-Location $S9Repo
+    try { $out = @(node --import tsx recipes/s9.ts park-point --rect $rect) } finally { Pop-Location }
+    foreach ($l in $out) { Write-Host $l }; Write-S9Raw $out
+    $m = [regex]::Match("$($out | Select-Object -Last 1)", 'PARK point \((-?\d+),(-?\d+)\)')
+    $global:S9ParkCache[$key] = if ($m.Success) { @([int]$m.Groups[1].Value, [int]$m.Groups[2].Value) } else { $null }
+  }
+  $pt = $global:S9ParkCache[$key]
+  if (-not $pt) { Say9 "PARK skipped ($Why): no park point for W's page area"; return }
+  [void][S9Mouse]::SetCursorPos($pt[0], $pt[1])
+  Say9 "PARK cursor at ($($pt[0]),$($pt[1])) in W's page area ($Why)"
 }
 
 # S1 wave fixer (Return 2, ruling (a)): R14-3's placement, tried in the order fixed before attempt 3 - W's monitor work
@@ -938,7 +997,8 @@ function Find-S9FreePlacement([long]$W, [long]$O) {
 function Test-S9Placement([long]$W, [long]$O, [string]$Step = 'placement', [int]$Attempt = 0, $Area = $null) {
   $work = @([S9Geo]::WorkAreas() | ForEach-Object { [pscustomobject]@{ left = $_.Left; top = $_.Top; right = $_.Right; bottom = $_.Bottom } })
   $ids = @(Get-S9OccluderIds $O)
-  $p = [pscustomobject]@{ w = (Get-S9WinPlace $W); o = (Get-S9WinPlace $O); work = $work; occluders = $ids.Count; occluderIds = $ids }
+  $cur = "$([S9Geo]::Cursor())".Split(' ')
+  $p = [pscustomobject]@{ w = (Get-S9WinPlace $W); o = (Get-S9WinPlace $O); work = $work; occluders = $ids.Count; occluderIds = $ids; cursor = $(if ($cur.Count -eq 2) { [pscustomobject]@{ x = [int]$cur[0]; y = [int]$cur[1] } } else { $null }) }
   if ($Attempt -gt 0) { $p | Add-Member -NotePropertyName area -NotePropertyValue ([pscustomobject]@{ left = $Area.Left; top = $Area.Top; right = $Area.Right; bottom = $Area.Bottom }) }
   $f = Join-Path $env:S9_OUT 'r14-placement.json'
   [IO.File]::WriteAllText($f, ($p | ConvertTo-Json -Depth 5 -Compress), (New-Object Text.UTF8Encoding $false))
@@ -1054,6 +1114,9 @@ function Restore-S9Desk {
     if (Test-S9Live $h) { Close-S9Window $h; if (Test-S9Live $h) { $ok = $false } }
   }
   if ($null -ne $global:WinStart) {
+    # Round 3, ruling (c): W is closed by now, so Park-S9Cursor skips; the count is of titled windows (a tooltip or
+    # hover card has no title), recorded as listed in the sheet.
+    Park-S9Cursor 'before the window-count guard'
     $now = @(Get-S9ChromeWindows).Count
     Say9 "RESTORE desk: Chrome windows now $now (found $($global:WinStart))"
     if ($now -ne $global:WinStart) { $ok = $false }

@@ -291,3 +291,103 @@ table row (line 156) and the proposed decision (line 182).
 **R2-N1 (note, not a finding):** if an auto-hidden taskbar were docked at the *top*, the rule would cut a monitor's area
 to `bottom = top`, leaving it empty. The guard would then fail it ("rect is empty"), and with no free area that ends in
 the STOP. That fails closed, and it is not this desk's layout.
+
+## Round 3 check (2026-10-25, the fixer's "Round 3 (after Return 3)", against rulings (a)–(c) under Return 3)
+
+**Verdict: PASS-with-notes.** HEAD `bfadbbc` plus the uncommitted round-3 fix. The same limits held:
+- no Chrome, no daemon, nothing listening on 9234;
+- `%TEMP%\bridge-e2e\s14` only read: its globals are attempt 3's (md5 `4487be5b…` before and after), 16 files.
+
+The dry runs used scratch copies in `scratchpad\wv\e` (attempt 3's globals) and `wv\f` (attempt 2's globals).
+
+**(a) The narrow resume.** On `wv\e`, attempt 3's state, `status` shows `S14Stopped = r3: … before the toolbar click`,
+`S14Done = preflight,…,found` and `S14Resume = attempt=3 skip=rel3,pop1`.
+
+```
+-Attempt 4 -Skip rel3,pop1            → USAGE: -Skip 'rel3,pop1' refused for attempt 4 …          EXIT 3
+-Attempt 4 -Skip rel3,pop1,r3,type    → USAGE … refused for attempt 4 …                           EXIT 3
+-Attempt 4 -Skip rel3,r3,r3           → USAGE … refused for attempt 4 …                           EXIT 3
+-Attempt 5 -Skip rel3,pop1,r3         → USAGE: -Attempt 5 refused …                               EXIT 3
+-Attempt 3 -Skip rel3,pop1            → USAGE: the current globals is not attempt 2's stopped state … EXIT 3
+-Attempt 4 … -LogMark <iso>           → USAGE: -LogMark refused - attempt 2's wave mark is stored … EXIT 3
+(after those six: wv\e holds only r14-globals.clixml, md5 4487be5b… — nothing changed)
+wv\f (attempt 2's state): -Attempt 4 -Skip rel3,pop1,r3 → USAGE: … not attempt 3's stopped state … EXIT 3; folder unchanged
+-Attempt 4 -Skip r3,rel3,pop1         → archived …; RESUME attempt 4: rel3, pop1 recorded in attempt 2; r3 recorded NOT MEASURED in attempt 3; not re-run
+                                        RESUME attempt 4: blocks preflight, servers, window, setup, safe0, found, type, ctl, 5c, restore, logs, teardown; daemon.log mark 2026-10-24T21:14:17.041Z (attempt 2's wave mark carried …)   EXIT 0
+-Block rel3 / pop1 / r3               → NOT RUN: block … is skipped in this resume (RESUME attempt 4: …)   EXIT 3 each
+-Block type                           → NOT RUN: block type needs block found first (… minus the resume's skipped blocks)  EXIT 3
+-Block servers                        → NOT RUN: … needs block preflight first …                  EXIT 3
+the same reset again                  → USAGE: … not attempt 3's stopped state …                  EXIT 3
+status                                → S14Resume = attempt=4 skip=rel3,pop1,r3 mark=2026-10-24T21:14:17.041Z · S14LogMark = 2026-10-24T21:14:17.041Z
+```
+
+In `B-logs`, `$since = S14LogMark`, which is attempt 2's mark. For attempt 4 it prints "attempts 2, 3 and 4" and the
+line about the uncaptured consoles of attempts 2 and 3. `scan-log` is unchanged.
+
+**(b) Diagnostics only.**
+- Nothing is removed from `recipes/s9-rules.ts` or `recipes/s9.ts`: `git diff bfadbbc | grep '^-[^-]'` is empty for both.
+- These functions have the same md5 at `bfadbbc` and now:
+
+  | Function | md5 |
+  |---|---|
+  | `placementVerdict` | `199d14b2` |
+  | `placementLine` | `39063660` |
+  | `occluderText` | `5e1bd6c0` |
+  | `taskbarCut` | `1d4f63a6` |
+  | `placementOrder` | `cd4543d0` |
+  | `placementAttemptLine` | `e9c6dcc2` |
+  | `sideBySide` | `4bf640bb` |
+
+- `OccluderList` itself is unchanged.
+- The new fields are read with `Rect`, `GW_OWNER`, `GA_ROOTOWNER`, `GetWindowLong` (style and exstyle) and
+  `GetCursorPos`. Grepping the added lines for `GetWindowText`, `.Name` or `Title` finds nothing.
+- An owner or root owner prints as `driver:X`, `other` or `none`, never a handle or a title.
+- The ROW and CHECK lines and the guard's `Fail-S14` texts are untouched. The diagnostic lines go between ROW and CHECK,
+  and only when there is an occluder.
+
+**(c) The park.**
+- The point comes from `parkPoint`: the page area's top-left corner + `PARK_INSET_PX = 4`, a constant. It is not
+  measured and does not adapt, and the cache only avoids repeating the node call for the same W rect.
+- It always lies strictly inside W's UIA `RootWebArea`, so it is below Chrome's toolbar. On the fixture page it falls in
+  the body's 8 px default margin, before the `<h1>`, so not on a link.
+- Click-S9Element order: `Park` → `Set-S9Foreground` (throws if W is not in front) → `FromPoint` + `Compare` (throws if
+  that is not the target) → click → `Park`. So the FromPoint check still runs after the park.
+- No guard text, threshold or condition changed; parking only adds `SetCursorPos` calls and PARK lines.
+
+**Tests and mutants.**
+- `s9-rules.test.ts` has 78 tests (+5).
+- Mutant 1 (the park point without the inset) → 2 failed / 76 passed: the park-point test and the "inside the page"
+  test.
+- Mutant 2 (the cursor line printed with 0 occluders) → 1 failed / 77 passed: the diagnostics test.
+- After the mutants, `recipes/s9-rules.ts` was restored and `md5sum -c` → OK.
+
+**Checks.**
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit -p recipes/tsconfig.s9.json` | 0 |
+| `npm run typecheck` | 0 |
+| `npm test` | 116 files, **2763 passed** |
+| `npm run build` | 0 |
+| dist sha256 | `99bb55c5`, `5a2888f7`, `bcb20e28`, `a8beec6c`, `f8b52058`, unchanged; no dist path in `git status` |
+| PowerShell parse | 0 errors in both files |
+| STOP RULE, sha256 in the sheet, the runner brief and §4.21 | `ddce18480d7b4248` in all three |
+| `git diff bfadbbc -- docs/e2e-test-plan.md` | 0 removed lines, 0 added table rows (the dated note only) |
+| `git diff 5f17d54` | 0 removed lines |
+| `git diff -U0 f45e3bf` | a single hunk that only adds (`@@ -1193,0 +1194,99 @@`), so §4.20 is untouched |
+
+**Notes (none blocking).**
+- **R3-N1:** in `Invoke-S9ActionButton`, the press time `$last = Now9` is taken after `Click-S9Element` returns, and that
+  now includes the after-click park (one `SetCursorPos` and one `Say9` line). The recorded press time therefore comes a
+  few ms after the real click. In `r14TypeVerdict` that bias can only move a borderline press toward "after the reply"
+  (NOT DISCRIMINATING → the pre-registered re-run), never toward a pass. The live verifier should know about it.
+  Swapping it for the ms-scale cost would be a design change; I propose none.
+- **R3-N2:** nothing checks that no other window (for example E or D, wherever Chrome placed them) covers W at the park
+  point. That does not matter for the guards: the cursor's position is not a guard, and `FromPoint` still protects the
+  click. But "never over another window" holds by the point's position only, not by a check.
+- **R3-N3:** the park also runs inside the stop procedure's paths (`Set-S9Omnibox` during restore, `Restore-S9Layout`).
+  It returns early with no W or no page area, and its node call is in `try/finally`. A UIA exception there would surface
+  as a restore failure, which is a STOP and a return: fail-closed.
+- **Verifier process note:** two of my early dry-run batches, in round 2 and round 3, ran with a malformed `S9_OUT`.
+  They resolved to the empty `scratchpad\wv\`, every call was refused, and nothing was written there; I discarded them.
+  Only the batches above count.

@@ -746,6 +746,67 @@ export interface OccluderId {
   driver?: "W" | "E" | "D" | "O";
   cls?: string;
   process?: string;
+  /** Round 3 (after Return 3), diagnostics only: its rect, owner and root owner (a driver letter, other, none), styles. */
+  rect?: Rect;
+  owner?: OwnerKind;
+  rootOwner?: OwnerKind;
+  styles?: StyleFlags;
+}
+
+export type OwnerKind = "W" | "E" | "D" | "O" | "other" | "none";
+
+export interface StyleFlags {
+  topmost: boolean;
+  popup: boolean;
+  toolwindow: boolean;
+  noactivate: boolean;
+}
+
+/** GWL_STYLE / GWL_EXSTYLE → the four flags round 3 prints (WS_EX_TOPMOST 0x8, WS_POPUP 0x80000000, WS_EX_TOOLWINDOW 0x80, WS_EX_NOACTIVATE 0x08000000). */
+export function styleFlags(style: number, exStyle: number): StyleFlags {
+  const s = style >>> 0;
+  const x = exStyle >>> 0;
+  return { topmost: (x & 0x8) !== 0, popup: (s & 0x80000000) >>> 0 !== 0, toolwindow: (x & 0x80) !== 0, noactivate: (x & 0x08000000) !== 0 };
+}
+
+function ownerText(k: unknown): string {
+  if (typeof k === "string" && DRIVER_LETTERS.has(k)) return `driver:${k}`;
+  if (k === "other" || k === "none") return k;
+  return "?";
+}
+
+/** Round 3 (after Return 3): `OCCLUDER <i> <id> rect […] owner=… rootOwner=… topmost=… popup=… toolwindow=… noactivate=…` — never a title. */
+export function occluderDetailLine(i: number, o: OccluderId): string {
+  const f = (b: boolean | undefined): string => (typeof b === "boolean" ? String(b) : "?");
+  const st = o.styles;
+  return (
+    `OCCLUDER ${i} ${occluderText(o)} rect ${o.rect ? rectText(o.rect) : "not read"} owner=${ownerText(o.owner)} rootOwner=${ownerText(o.rootOwner)}` +
+    ` topmost=${f(st?.topmost)} popup=${f(st?.popup)} toolwindow=${f(st?.toolwindow)} noactivate=${f(st?.noactivate)}`
+  );
+}
+
+export function cursorLine(c: { x: number; y: number } | null | undefined): string {
+  return c && Number.isFinite(c.x) && Number.isFinite(c.y) ? `CURSOR at (${c.x},${c.y})` : "CURSOR not read";
+}
+
+/** The diagnostic lines rect-check prints after a placement line: one per occluder, then the cursor — none when 0. */
+export function placementDiagnostics(p: Placement & { cursor?: { x: number; y: number } | null }): string[] {
+  const ids = Array.isArray(p.occluderIds) ? p.occluderIds : [];
+  if (!ids.length) return [];
+  return [...ids.map((o, i) => occluderDetailLine(i + 1, o)), cursorLine(p.cursor)];
+}
+
+/**
+ * Round 3 (after Return 3), ruling (c): where the driver parks the mouse cursor before a guard a transient Chrome window
+ * could trip, and after each FromPoint-verified click — a FIXED rule, written before any measurement: PARK_INSET_PX
+ * right of and below the top-left corner of W's page area (UIA RootWebArea), i.e. in the page's own margin, off the
+ * toolbar and its tooltips. A page area not wider and taller than 2 × the inset → null (no park; the guard runs as
+ * before).
+ */
+export const PARK_INSET_PX = 4;
+export function parkPoint(page: Rect): { x: number; y: number } | null {
+  if (page.right - page.left <= 2 * PARK_INSET_PX || page.bottom - page.top <= 2 * PARK_INSET_PX) return null;
+  return { x: page.left + PARK_INSET_PX, y: page.top + PARK_INSET_PX };
 }
 
 const DRIVER_LETTERS = new Set(["W", "E", "D", "O"]);

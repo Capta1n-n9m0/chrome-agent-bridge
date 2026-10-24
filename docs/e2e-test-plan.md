@@ -1279,6 +1279,17 @@ window (`Shell_TrayWnd`, `Shell_SecondaryTrayWnd`) whose rect intersects it, an 
 included, printed as `PLACEMENT work area […] cut to y=<n> by taskbar class=<class>`; a fixed rule with no margin.
 The guard is unchanged: any window above O that overlaps it, a taskbar included, still counts and still STOPs.*
 
+*Note 2026-10-25 (S1 wave fixer round 3, after Run 14 attempt 3's Return 3; `…-steps/S1-wave-fixer.md` § Round 3):
+procedure steps changed, expected texts and pass rules did not. R14-3 is recorded NOT MEASURED in Run 14 (attempt 3
+observed its disarm half, then stopped at `placement-before-click` on a non-driver Chrome window) and is not re-run;
+attempt 4 runs R14-4b, R14-5c-ctl, R14-5c, R14-RESTORE, R14-LOGS and R14-TEARDOWN. Before each guard a transient Chrome
+window could trip — the toolbar click's foreground and `FromPoint` checks (R14-4b's press and re-arm), the omnibox
+foreground/focus check, the one-new-window check, the layout tap and the window count — the driver parks the mouse
+cursor at a fixed point, 4 px right of and below the top-left corner of W's page area, and again after each
+`FromPoint`-verified click (`PARK cursor at (x,y) in W's page area (…)`, a record). No guard is loosened. The placement
+guard lines also print, when there is an occluder, `OCCLUDER <i> …` (rect, owner and root owner, styles) and
+`CURSOR at (x,y)` (diagnostics, never a title).*
+
 ## 5. Results template
 
 Copy this and fill it in during the run:

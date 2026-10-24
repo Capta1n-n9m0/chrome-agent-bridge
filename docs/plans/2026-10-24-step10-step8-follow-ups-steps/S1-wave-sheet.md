@@ -134,6 +134,63 @@ pre-registered re-run as in the table) · `-Block ctl` · `-Block 5c` · `-Block
   Return 2`, from its SAFE-0 line on; attempt 2's lines (R14-REL-3 PASS, R14-POP-1 FAIL) stand as recorded. The
   preflight still needs a clean tracked tree: the step agent commits this fix and its bookkeeping first.
 
+### Resume after Return 3 (attempt 4)
+
+*Added 2026-10-25 by the S1 wave fixer, round 3 (`S1-wave-fixer.md` § Round 3), applying the step agent's decision on
+Return 3 (`S1.ledger.md`). Nothing ran against Chrome to write it.* Attempt 3 stopped at block 9 after R14-3's disarm half
+was observed, so R14-3 is recorded **NOT MEASURED** and is not re-run in Run 14 (its re-measurement is a Run 15 row);
+R14-REL-3 and R14-POP-1 stand as recorded in attempt 2. The first call archives attempt 3's state and starts attempt 4.
+It is accepted only exactly as written and only when the stored state is attempt 3's stop at r3 (attempt 3 itself the
+resume of attempt 2, done exactly preflight … found); anything else prints `USAGE: …` (never `STOP:`), exits 3 and
+changes nothing:
+
+```powershell
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\s9-r14.ps1 -Block reset -Attempt 4 -Skip rel3,pop1,r3
+"exit $LASTEXITCODE"
+```
+
+It prints `RESUME attempt 4: rel3, pop1 recorded in attempt 2; r3 recorded NOT MEASURED in attempt 3; not re-run` and
+`RESUME attempt 4: blocks preflight, servers, window, setup, safe0, found, type, ctl, 5c, restore, logs, teardown;
+daemon.log mark 2026-10-24T21:14:17.041Z (attempt 2's wave mark carried in the current globals (S14LogMark))`. Then, one
+call each, exactly as in §0, in this order:
+
+`-Block preflight -Prep 5f17d54` · `-Block servers` · `-Block window` · `-Block setup` · `-Block safe0` (framing) ·
+`-Block found` (framing) · `-Block type` (its one pre-registered re-run as in the table) · `-Block ctl` · `-Block 5c` ·
+`-Block restore` · `-Block logs` · `-Block teardown`.
+
+- `-Block rel3`, `-Block pop1` and `-Block r3` answer `NOT RUN: block … is skipped in this resume (RESUME attempt 4: …)`
+  (exit 3); every other block keeps the order check against the order above (type needs found).
+- Block type prints the RESUME line again (it follows a skipped block).
+- Block logs counts `daemon.log` from attempt 2's mark and prints `R14-LOGS daemon.log counted from
+  2026-10-24T21:14:17.041Z (attempt 2's wave mark: …) - attempts 2, 3 and 4` and `R14-LOGS attempts 2 and 3's worker
+  consoles were not captured (each window D closed with its attempt's stop procedure) - a recorded deviation; the
+  console counted here is attempt 4's only`.
+- The record: attempt 4's lines go into `S1-run-record.md` under `## Attempt 4 (runner 4) — resume after Return 3`,
+  from its SAFE-0 line on.
+
+**The cursor parking rule (fixed now, before any measurement; ruling (c) on Return 3).** The driver parks the mouse
+cursor at ONE point: 4 px right of and 4 px below the top-left corner of W's page area (UIA `RootWebArea` of W;
+`recipes/s9-rules.ts` `parkPoint`, `PARK_INSET_PX = 4`), in the page's own margin, off the toolbar and its tooltips. It
+prints `PARK cursor at (x,y) in W's page area (<why>)`; with no W, no page area, or a page not larger than 8 × 8 px it
+prints `PARK skipped (…)` and moves nothing (the guard then runs as before). No guard is loosened, and a guard that
+still fails is still a STOP. The park runs:
+
+| Guard a transient Chrome window (tooltip, hover card, bubble) could trip | Where (blocks attempt 4 runs) | Park |
+|---|---|---|
+| `Click-S9Element`: W in the foreground, and UIA's element at the button's centre (`FromPoint`) IS the button | type (the disarm press and the re-arm press of R14-4b) | before the foreground/FromPoint checks, and again after the click; block type parks once at its start (computes the point before the timed part) |
+| `Set-S9Omnibox`: the window in the foreground and its address bar focused before Enter | setup (E), found (O, and the stored read: about:blank, then the options page), restore (the stored reads), the stop procedure | before the check |
+| `Wait-S9NewWindow` via `Open-S9ChromePage` / `Open-S9WorkerConsole`: exactly one new titled Chrome window | setup (E, D), found (O), restore (O reopened if gone) | before the window snapshot (W exists from block window on; W's own opening in block window has nothing to park in) |
+| `Restore-S9Layout`: W in the foreground before a layout tap (only if the layout changed) | teardown, the stop procedure | before each tap |
+| `Restore-S9Desk`: the Chrome window count back to the one found (titled windows only) | teardown, the stop procedure | before the count (W is closed by then, so it prints `PARK skipped`) |
+
+Not position-dependent, so not parked: the UIA name/pattern reads (`Get-S9PinState`, `Set-S9Pin -UiaOnly`,
+`Wait-S9ActionTitle`, `Test-S9Banner`, `Set-S9Switch`, `Set-S9BlockList`, `Read-S9OptionsLines`) and every `s9.ts`
+guard (`wait-safety --guard`, `redirect-probe`, `scan-*`). The R14-3 placement guards are not in attempt 4 (r3 is
+skipped); their lines now also print, when there is an occluder, one `OCCLUDER <i> … rect […] owner=… rootOwner=…
+topmost=… popup=… toolwindow=… noactivate=…` line per occluder and `CURSOR at (x,y)` (diagnostics only; never a
+title).
+
 ## PIDs and handles to track (the ledger's "Live PIDs")
 
 daemon (block 4, `-Block status` `S14Pids daemon=`), http8080 / http8081 / redirect8083 (block 2), driver windows W, E,

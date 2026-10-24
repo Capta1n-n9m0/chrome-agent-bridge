@@ -27,8 +27,14 @@ import {
   concurrentVerdict,
   followUpVerdict,
   logHits,
+  cursorLine,
   firstFreePlacement,
+  occluderDetailLine,
   occluderText,
+  PARK_INSET_PX,
+  parkPoint,
+  placementDiagnostics,
+  styleFlags,
   overlapArea,
   placementAttemptLine,
   placementLine,
@@ -707,6 +713,64 @@ describe("R14-3 wave fixer (Return 2, ruling (a)): occluder identity and the pla
     expect(placementAttemptLine(2, { left: 0, top: 0, right: 1920, bottom: 1080 }, { pass: true, why: "ok" })).toBe(
       "PLACEMENT attempt 2 on work area [0,0,1920,1080]: free — ok",
     );
+  });
+});
+
+describe("Round 3 (after Return 3): occluder diagnostics and the cursor parking rule", () => {
+  it("(b) the window styles are read as flags: WS_EX_TOPMOST, WS_POPUP, WS_EX_TOOLWINDOW, WS_EX_NOACTIVATE", () => {
+    expect(styleFlags(0x80000000, 0x08000088)).toEqual({ topmost: true, popup: true, toolwindow: true, noactivate: true });
+    expect(styleFlags(0x16cf0000, 0x00000100)).toEqual({ topmost: false, popup: false, toolwindow: false, noactivate: false });
+    // the values arrive as signed 32-bit ints from GetWindowLong
+    expect(styleFlags(-2147483648, 8)).toEqual({ topmost: true, popup: true, toolwindow: false, noactivate: false });
+  });
+
+  it("(b) one OCCLUDER line per occluder: id, rect, owner and root owner (driver or not), styles — never a title", () => {
+    const o = {
+      cls: "Chrome_WidgetWin_1",
+      process: "chrome",
+      rect: { left: 3100, top: 40, right: 3400, bottom: 80 },
+      owner: "W" as const,
+      rootOwner: "W" as const,
+      styles: { topmost: true, popup: true, toolwindow: true, noactivate: true },
+    };
+    expect(occluderDetailLine(1, o)).toBe(
+      "OCCLUDER 1 class=Chrome_WidgetWin_1 process=chrome rect [3100,40,3400,80] owner=driver:W rootOwner=driver:W topmost=true popup=true toolwindow=true noactivate=true",
+    );
+    expect(occluderDetailLine(2, { cls: "X", process: "y", owner: "other", rootOwner: "none" })).toBe(
+      "OCCLUDER 2 class=X process=y rect not read owner=other rootOwner=none topmost=? popup=? toolwindow=? noactivate=?",
+    );
+    expect(occluderDetailLine(3, { driver: "E", owner: "bogus" as unknown as "none" })).toBe(
+      "OCCLUDER 3 driver:E rect not read owner=? rootOwner=? topmost=? popup=? toolwindow=? noactivate=?",
+    );
+    expect(cursorLine({ x: 3050, y: 12 })).toBe("CURSOR at (3050,12)");
+    expect(cursorLine(null)).toBe("CURSOR not read");
+  });
+
+  it("(b) rect-check's diagnostic lines: one per occluder and the cursor, only when there is an occluder", () => {
+    const base = {
+      w: { rect: { left: 0, top: 0, right: 1152, bottom: 1032 }, minimized: false, visible: true },
+      o: { rect: { left: 1152, top: 0, right: 1920, bottom: 1032 }, minimized: false, visible: true },
+      work: [{ left: 0, top: 0, right: 1920, bottom: 1032 }],
+    };
+    expect(placementDiagnostics({ ...base, occluders: 0, occluderIds: [], cursor: { x: 1, y: 2 } })).toEqual([]);
+    expect(placementDiagnostics({ ...base, occluders: 1, occluderIds: [{ cls: "A", process: "b" }], cursor: { x: 1, y: 2 } })).toEqual([
+      "OCCLUDER 1 class=A process=b rect not read owner=? rootOwner=? topmost=? popup=? toolwindow=? noactivate=?",
+      "CURSOR at (1,2)",
+    ]);
+  });
+
+  it("(c) the park point: 4 px right of and below the top-left corner of W's page area; none for a page under 9x9", () => {
+    expect(parkPoint({ left: 1920, top: 120, right: 3072, bottom: 1078 })).toEqual({ x: 1924, y: 124 });
+    expect(parkPoint({ left: -1280, top: 90, right: 0, bottom: 1024 })).toEqual({ x: -1276, y: 94 });
+    expect(parkPoint({ left: 0, top: 0, right: 8, bottom: 500 })).toBeNull();
+    expect(parkPoint({ left: 0, top: 0, right: 500, bottom: 8 })).toBeNull();
+    expect(PARK_INSET_PX).toBe(4);
+  });
+
+  it("(c) the park point lies inside the page area (never on the toolbar above it)", () => {
+    const page = { left: 100, top: 200, right: 900, bottom: 700 };
+    const p = parkPoint(page)!;
+    expect(p.x > page.left && p.x < page.right && p.y > page.top && p.y < page.bottom).toBe(true);
   });
 });
 
