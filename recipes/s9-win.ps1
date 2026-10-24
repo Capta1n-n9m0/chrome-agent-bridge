@@ -35,6 +35,11 @@
 #   Restore-S9All [-Why <s>]                 THE restore entry point, idempotent, callable from any block: Restore-S9Safety
 #                                            (armed, JS on, empty list; stored read-back + daemon.status + title), then
 #                                            Restore-S9Desk (pin state, keyboard layout, the driver windows). $false = STOP.
+#   Run 14 (Step 10 S1, 2026-10-25; driven by recipes/s9-r14.ps1): Stop9 / Write-S9Raw (STOP lines and the raw output
+#   file $env:S9_RAW), Set-S9Pin -UiaOnly (or $global:S9PinUiaOnly: never the mouse), Get-S9WinPlace /
+#   Set-S9SideBySide / Test-S9Placement (R14-3), Wait-S9OptionsStatus (R14-3), Invoke-S9PressWhenReady -BannerOut
+#   -BannerForMs -BannerPollMs (R14-4b); Read-S9StoredState proves the old page gone; STATE prints a non-empty
+#   list's sha256 as withheld(non-empty).
 #   Invoke-S9OptionsButton <hwnd> -Id <html id>
 #   Invoke-S9PressWhenReady <hwnd> -Row <r> -DelayMs <ms> [-Via Button|Shortcut] [-WatchBanner] [-RearmAfterMs <ms>]
 #   Invoke-S9WhenReady -Row <r> -DelayMs <ms> -Action { ... }
@@ -73,6 +78,66 @@ public static class S9Win {
 }
 '@
 }
+# Run 14 (R14-3, 2026-10-25): window rectangles, monitor work areas, moving the driver's own windows, and a count of
+# visible windows above a window that overlap it (R14-3 guard: none allowed). One process, one DPI context: GetWindowRect,
+# GetMonitorInfo and MoveWindow all use the same (possibly virtualised) coordinates.
+if (-not ('S9Geo' -as [type])) {
+  Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+public static class S9Geo {
+  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+  [StructLayout(LayoutKind.Sequential)] public struct MONITORINFO { public int cbSize; public RECT rcMonitor; public RECT rcWork; public uint dwFlags; }
+  public delegate bool MonitorEnumProc(IntPtr hMon, IntPtr hdc, ref RECT r, IntPtr data);
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr h, int x, int y, int w, int hgt, bool repaint);
+  [DllImport("user32.dll")] public static extern IntPtr MonitorFromWindow(IntPtr h, uint flags);
+  [DllImport("user32.dll")] public static extern bool GetMonitorInfo(IntPtr hMon, ref MONITORINFO mi);
+  [DllImport("user32.dll")] public static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clip, MonitorEnumProc f, IntPtr data);
+  [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr h, uint cmd);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
+  [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr h, int attr, out int v, int size);
+  public static RECT Rect(IntPtr h) { RECT r; GetWindowRect(h, out r); return r; }
+  public static RECT[] WorkAreas() {
+    var list = new List<RECT>();
+    MonitorEnumProc f = (IntPtr m, IntPtr d, ref RECT r, IntPtr p) => { var mi = new MONITORINFO(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO)); if (GetMonitorInfo(m, ref mi)) list.Add(mi.rcWork); return true; };
+    EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, f, IntPtr.Zero);
+    GC.KeepAlive(f);
+    return list.ToArray();
+  }
+  public static RECT WorkOf(IntPtr h) { var mi = new MONITORINFO(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO)); GetMonitorInfo(MonitorFromWindow(h, 2), ref mi); return mi.rcWork; }
+  [DllImport("user32.dll", EntryPoint = "GetWindowLong")] public static extern int GetWindowLong32(IntPtr h, int idx);
+  [DllImport("user32.dll")] public static extern bool GetLayeredWindowAttributes(IntPtr h, out uint key, out byte alpha, out uint flags);
+  static bool Cloaked(IntPtr h) { int v; return DwmGetWindowAttribute(h, 14, out v, 4) == 0 && v != 0; }
+  // A layered window that cannot cover anything: click-through (WS_EX_LAYERED 0x80000 + WS_EX_TRANSPARENT 0x20), or
+  // fully transparent (GetLayeredWindowAttributes gives LWA_ALPHA 0x2 with alpha 0).
+  static bool SeeThrough(IntPtr h) {
+    int ex = GetWindowLong32(h, -20);
+    if ((ex & 0x80000) == 0) return false;
+    if ((ex & 0x20) != 0) return true;
+    uint key; byte alpha; uint flags;
+    return GetLayeredWindowAttributes(h, out key, out alpha, out flags) && (flags & 0x2) != 0 && alpha == 0;
+  }
+  // R14-3's occluder rule (prep fixer r1, S1-prep-verifier F5): top-level windows ABOVE target in the z-order
+  // (GetWindow GW_HWNDPREV, walked to the top) that are visible, not minimized, not DWM-cloaked, not see-through
+  // (above), with a non-empty rect intersecting target's with a positive area (touching edges do not count).
+  public static int Occluders(IntPtr target) {
+    RECT t = Rect(target); int n = 0; IntPtr h = GetWindow(target, 3);
+    while (h != IntPtr.Zero) {
+      if (IsWindowVisible(h) && !IsIconic(h) && !Cloaked(h) && !SeeThrough(h)) {
+        RECT r = Rect(h);
+        bool empty = !(r.Right > r.Left && r.Bottom > r.Top);
+        if (!empty && Math.Min(r.Right, t.Right) > Math.Max(r.Left, t.Left) && Math.Min(r.Bottom, t.Bottom) > Math.Max(r.Top, t.Top)) n++;
+      }
+      h = GetWindow(h, 3);
+    }
+    return n;
+  }
+}
+'@
+}
 
 $S9UIA = [Windows.Automation.AutomationElement]
 $S9Name = 'Chrome Agent Bridge'
@@ -88,8 +153,17 @@ $S9EmptySha = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
 # The wave's state for Restore-S9All lives in GLOBAL variables the wave sheet sets: $W $O $E $D (HWNDs), $WinStart,
 # $PinnedBefore, $L0 (W's keyboard layout at block 4), $S9ChromeStart (block 1), $S9Found (Test-S9FoundState).
 
-function Say9([string]$m) { Write-Host ('{0:yyyy-MM-ddTHH:mm:ss.fffZ} s9-win: {1}' -f [DateTime]::UtcNow, $m) }
+# Run 14 (Step 10 S1, 2026-10-25): every printed line is also appended, UTF-8, to $env:S9_RAW when it is set (the
+# wave's raw output, which the live verifier greps for STOP lines - phase doc S1.5 with Stage 0 F20).
+function Write-S9Raw([string[]]$Lines) {
+  if (-not $env:S9_RAW) { return }
+  try { [IO.File]::AppendAllText($env:S9_RAW, (($Lines | ForEach-Object { "$_" }) -join "`n") + "`n", (New-Object Text.UTF8Encoding $false)) } catch { }
+}
+function Say9([string]$m) { $l = ('{0:yyyy-MM-ddTHH:mm:ss.fffZ} s9-win: {1}' -f [DateTime]::UtcNow, $m); Write-Host $l; Write-S9Raw $l }
 function Now9 { [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ') }
+# A STOP line (#193): it begins with `STOP:` (no timestamp before it, so `^STOP:` finds it). The caller then throws or
+# returns $false; the Run 14 block runner (recipes/s9-r14.ps1) turns either into the stop procedure.
+function Stop9([string]$m) { $l = "STOP: $m (at $(Now9))"; Write-Host $l; Write-S9Raw $l }
 
 # A title as this file may print it: the wave's own windows only.
 function Format-S9Title([string]$t) {
@@ -187,9 +261,12 @@ function Set-S9Omnibox([long]$Hwnd, [string]$Url, [int]$TimeoutSec = 15) {
   $focused = $S9UIA::FocusedElement
   if (([long][S9Win]::GetForegroundWindow()) -ne $Hwnd -or -not $focused -or -not [Windows.Automation.Automation]::Compare($focused, $omni)) { throw "window $Hwnd or its address bar lost the focus - no key sent" }
   [S9Win]::keybd_event(0x0D, 0, 0, [UIntPtr]::Zero); [S9Win]::keybd_event(0x0D, 0, 2, [UIntPtr]::Zero)
+  # Run 14 (S4-live-verifier finding 7): about:blank exposes no document URL to UIA (Run 13 printed "did NOT reach
+  # about:blank" every time), so for about:blank "reached" = the document URL is empty or about:blank.
+  $reached = { param([string]$x) if ($Url -eq 'about:blank') { $x -eq '' -or $x.StartsWith('about:blank') } else { $x.StartsWith($Url.TrimEnd('/')) } }
   $t0 = Get-Date; $u = ''
-  do { Start-Sleep -Milliseconds 300; $u = Get-S9DocUrl $Hwnd } until ($u.StartsWith($Url.TrimEnd('/')) -or ((Get-Date) - $t0).TotalSeconds -gt $TimeoutSec)
-  if ($u.StartsWith($Url.TrimEnd('/'))) { Say9 "window $Hwnd now shows $Url" } else { Say9 "window $Hwnd did NOT reach $Url within $TimeoutSec s" }
+  do { Start-Sleep -Milliseconds 300; $u = Get-S9DocUrl $Hwnd } until ((& $reached $u) -or ((Get-Date) - $t0).TotalSeconds -gt $TimeoutSec)
+  if (& $reached $u) { Say9 "window $Hwnd now shows $Url" } else { Say9 "window $Hwnd did NOT reach $Url within $TimeoutSec s" }
 }
 
 function Open-S9ChromePage([string]$Url) {
@@ -287,20 +364,29 @@ function Click-S9Element([long]$Hwnd, $El) {
 }
 
 # Pins (-Pin) or unpins (-Unpin) the button through W's Extensions menu. Prints only our row's element names.
-function Set-S9Pin([long]$Hwnd, [switch]$Pin, [switch]$Unpin) {
+# Run 14 (2026-10-25; #192/#202 do not pre-approve pinning by mouse click): with -UiaOnly, or when the wave sets
+# $global:S9PinUiaOnly, the Extensions button is opened by UIA patterns only (Invoke, else ExpandCollapse.Expand);
+# when neither works nothing is clicked and the result is $false - a human gate the caller turns into a STOP.
+function Set-S9Pin([long]$Hwnd, [switch]$Pin, [switch]$Unpin, [switch]$UiaOnly) {
   if ($Pin -eq $Unpin) { throw 'Set-S9Pin: pass exactly one of -Pin, -Unpin' }
   $root = $S9UIA::FromHandle([IntPtr]$Hwnd)
   $c = New-Object Windows.Automation.PropertyCondition($S9UIA::ControlTypeProperty, [Windows.Automation.ControlType]::Button)
   $ext = @($root.FindAll([Windows.Automation.TreeScope]::Descendants, $c) | Where-Object { $_.Current.Name -eq 'Extensions' })
-  if ($ext.Count -ne 1) { throw "Extensions buttons in window ${Hwnd}: $($ext.Count) (need 1) - nothing pressed (G9-2: ask the user)" }
+  if ($ext.Count -ne 1) { if ($UiaOnly -or $global:S9PinUiaOnly) { Say9 "Extensions buttons in window ${Hwnd}: $($ext.Count) (need 1) - nothing pressed"; return $false }; throw "Extensions buttons in window ${Hwnd}: $($ext.Count) (need 1) - nothing pressed (G9-2: ask the user)" }
   $before = Get-S9ChromeWindows -AnyTitle
   # S4 runner set-up fix (2026-10-24, block 9): Chrome 156's Extensions button (class ExtensionsToolbarButton) has no
   # Invoke pattern, only ExpandCollapse (and ScrollItem); expand it when Invoke is absent.
   # ExpandCollapse.Expand() answered E_FAIL live and UIA SetFocus moved the focus to the app menu button instead, so
   # the button is clicked with the mouse at its centre - only after UIA's element at that point IS this button and W
   # is in the foreground (Click-S9Element).
-  $ip = $null
+  $ip = $null; $ep = $null
   if ($ext[0].TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern, [ref]$ip)) { $ip.Invoke() }
+  elseif ($UiaOnly -or $global:S9PinUiaOnly) {
+    # Run 14: UIA patterns only - never the mouse (pinning by mouse click waits for the user's grant).
+    if (-not $ext[0].TryGetCurrentPattern([Windows.Automation.ExpandCollapsePattern]::Pattern, [ref]$ep)) { Say9 'Extensions button: neither Invoke nor ExpandCollapse - nothing clicked (UIA only; a mouse click needs the user''s grant)'; return $false }
+    try { $ep.Expand() } catch { Say9 "Extensions button: no Invoke pattern, and ExpandCollapse.Expand failed ($($_.Exception.Message)) - nothing clicked (UIA only; a mouse click needs the user's grant)"; return $false }
+    Say9 'Extensions button expanded by its UIA pattern (no mouse)'
+  }
   else { Click-S9Element $Hwnd $ext[0] }
   Start-Sleep -Milliseconds 800
   $menus = @(Get-S9ChromeWindows -AnyTitle | Where-Object { $before -notcontains $_ })
@@ -524,15 +610,24 @@ function Read-S9SafetyState([long]$Hwnd, [switch]$PassThru) {
   $summary = Get-S9Summary $doc
   $count =if ($summary -match '^(\d+) blocked site') { $Matches[1] } else { '?' }
   $sha = Get-S9Sha256 $text
-  Write-Host ('{0} s9-win: STATE armed={1} evaluate={2} count={3} lines={4} sha256={5} status "{6}" summary "{7}"' -f (Now9), "$armed".ToLower(), "$eval".ToLower(), $count, $lines, $sha, $status, $summary)
+  # Run 14: the hash is printed only when it is the empty text's - the hash of a short non-empty list (the user's
+  # own patterns) could be guessed back, so it is compared in memory (-PassThru) and printed as withheld.
+  $shaShown = if ($sha -eq $S9EmptySha) { $sha } else { 'withheld(non-empty)' }
+  $l = ('{0} s9-win: STATE armed={1} evaluate={2} count={3} lines={4} sha256={5} status "{6}" summary "{7}"' -f (Now9), "$armed".ToLower(), "$eval".ToLower(), $count, $lines, $shaShown, $status, $summary)
+  Write-Host $l; Write-S9Raw $l
   if ($PassThru) { [pscustomobject]@{ armed = $armed; evaluate = $eval; count = $count; lines = $lines; sha256 = $sha; status = $status } }
 }
 
 # The STORED state: O is sent to about:blank and then to a fresh options page, so nothing the wave typed into the old
 # page can be read back; the new page fills its checkboxes and textarea from storage.local (options.ts render with
 # loadedList null), and Read-S9SafetyState waits until that read has landed.
+# Run 14 (S4-live-verifier finding 7): the old page's departure is now proven - the document must stop being the
+# options page after the about:blank navigation (else a throw: no fresh page, no stored read).
 function Read-S9StoredState([long]$Hwnd, [switch]$PassThru) {
   Set-S9Omnibox $Hwnd 'about:blank'
+  $t0 = Get-Date
+  while ((Get-S9DocUrl $Hwnd).StartsWith($S9OptionsUrl)) { if (((Get-Date) - $t0).TotalSeconds -gt 10) { throw "window $Hwnd still shows the options page after the about:blank navigation - no fresh page, no stored read" }; Start-Sleep -Milliseconds 200 }
+  Say9 "STORED read: the old options page in window $Hwnd is gone after $([int]((Get-Date) - $t0).TotalMilliseconds) ms"
   Set-S9Omnibox $Hwnd $S9OptionsUrl
   $t0 = Get-Date
   while (-not (Get-S9DocUrl $Hwnd).StartsWith($S9OptionsUrl)) { if (((Get-Date) - $t0).TotalSeconds -gt 10) { throw "window $Hwnd did not reach the options page" }; Start-Sleep -Milliseconds 200 }
@@ -545,21 +640,24 @@ function Test-S9DaemonSafety([bool]$Armed, [bool]$Evaluate, [int]$Count, [string
   Push-Location $S9Repo
   try {
     $a = "$Armed".ToLower(); $e = "$Evaluate".ToLower()
-    node --import tsx recipes/s9.ts wait-safety --armed $a --evaluate $e --count $Count --timeout $TimeoutMs --row $Row | Write-Host
-    $LASTEXITCODE -eq 0
+    $out = @(node --import tsx recipes/s9.ts wait-safety --armed $a --evaluate $e --count $Count --timeout $TimeoutMs --row $Row)
+    $code = $LASTEXITCODE
+    foreach ($l in $out) { Write-Host $l }; Write-S9Raw $out
+    $code -eq 0
   } finally { Pop-Location }
 }
 
 # Block 8's pre-registered guard (prep fixer r1): every toggle in the wave sheet is a blind press and the restore
 # targets armed + JS on + an empty list, so the wave may toggle only when that is what it found - on O (a stored read)
 # AND in daemon.status. Sets $global:S9Found. $false = STOP before block 14 (nothing changed yet; nothing is saved).
-function Test-S9FoundState([long]$Hwnd) {
+function Test-S9FoundState([long]$Hwnd, [string]$Row = 'SAFE-11-start-guard') {
   $s = Read-S9StoredState $Hwnd -PassThru
-  $d = Test-S9DaemonSafety $true $true 0 'SAFE-11-start-guard' 3000
+  $d = Test-S9DaemonSafety $true $true 0 $Row 3000
   $def = ($s.armed -eq $true) -and ($s.evaluate -eq $true) -and ($s.count -eq '0') -and ($s.lines -eq 0) -and ($s.sha256 -eq $S9EmptySha)
   $global:S9Found = [pscustomobject]@{ Default = ($def -and $d); State = $s }
   if ($def -and $d) { Say9 'FOUND STATE = the expected default (armed, JavaScript on, empty list; O and daemon.status agree): the toggles may run'; return $true }
   Say9 "FOUND STATE differs from the expected default (O default: $("$def".ToLower()), daemon.status agrees: $("$d".ToLower())) - STOP before any toggle; the step agent asks the user. Nothing was changed."
+  Stop9 "found-state guard: the safety state found is not armed + JavaScript on + an empty list (or daemon.status disagrees); nothing was changed"
   $false
 }
 
@@ -601,7 +699,11 @@ function Set-S9BlockList([long]$Hwnd, [string[]]$Lines = @(), [string]$FromFile 
   $save.GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke(); $at = Now9
   Start-Sleep -Milliseconds 500
   $what = if ($FromFile) { 'the saved found text (not printed)' } else { "$($Lines.Count) line(s) of the wave's own" }
-  Say9 "BLOCKLIST set to $what, sha256 $(Get-S9Sha256 $text), saved at $at"
+  # Prep fixer r1 (N2): a list read from a file may be the human's own - its sha256 is printed only when it is the
+  # empty text's. The wave's own -Lines (the test pattern) are printed as before (§4.21 R14-5c's expected text).
+  $sha = Get-S9Sha256 $text
+  $shaShown = if ((-not $FromFile) -or ($sha -eq $S9EmptySha)) { $sha } else { 'withheld(non-empty)' }
+  Say9 "BLOCKLIST set to $what, sha256 $shaShown, saved at $at"
   $at
 }
 
@@ -631,19 +733,38 @@ function Write-S9Pressed([string]$Row, [string]$At) {
   [IO.File]::WriteAllText((Join-Path $env:S9_OUT "$Row.pressed"), $At, (New-Object Text.UTF8Encoding $false))
 }
 
-function Invoke-S9PressWhenReady([long]$Hwnd, [string]$Row, [int]$DelayMs = 0, [ValidateSet('Button', 'Shortcut')][string]$Via = 'Button', [switch]$WatchBanner, [int]$RearmAfterMs = 0, [int]$TimeoutSec = 120) {
+# Run 14 (R14-4b, 2026-10-25): with -BannerOut <file> the banner is polled every -BannerPollMs (a poll starts every
+# BannerPollMs, or at once when the previous one took longer) for at least -BannerForMs after the press, never stopping
+# early, and every sample {ms after the press, shown} goes to the file as JSON for s9.ts (bannerLifetime: a RECORD).
+# Without -BannerOut it behaves exactly as in Run 13 (100 ms polls, stop at gone, 3000 ms).
+function Invoke-S9PressWhenReady([long]$Hwnd, [string]$Row, [int]$DelayMs = 0, [ValidateSet('Button', 'Shortcut')][string]$Via = 'Button', [switch]$WatchBanner, [int]$RearmAfterMs = 0, [int]$TimeoutSec = 120, [int]$BannerForMs = 3000, [int]$BannerPollMs = 100, [string]$BannerOut = '') {
   Wait-S9Ready $Row $TimeoutSec
   if ($DelayMs -gt 0) { Start-Sleep -Milliseconds $DelayMs }
-  if ($WatchBanner) { Say9 "BANNER at press $(if ((Test-S9Banner $Hwnd) -gt 0) { 'yes' } else { 'no' })" }
+  $atPress = $null
+  if ($WatchBanner) { $atPress = (Test-S9Banner $Hwnd) -gt 0; Say9 "BANNER at press $(if ($atPress) { 'yes' } else { 'no' })" }
   $at = if ($Via -eq 'Button') { Invoke-S9ActionButton $Hwnd | Select-Object -Last 1 } else { Send-S9Shortcut $Hwnd | Select-Object -Last 1 }
   $at = ($at -split ' ')[-1]
   Write-S9Pressed $Row $at
   Say9 "PRESSED $Row (off) at $at"
   $t0 = [DateTime]::UtcNow
-  if ($WatchBanner) {
+  if ($WatchBanner -and $BannerOut) {
+    $samples = New-Object System.Collections.ArrayList
+    do {
+      $s0 = [DateTime]::UtcNow
+      $shown = (Test-S9Banner $Hwnd) -gt 0
+      [void]$samples.Add([pscustomobject]@{ ms = [int]($s0 - $t0).TotalMilliseconds; shown = $shown })
+      $left = $BannerPollMs - [int](([DateTime]::UtcNow) - $s0).TotalMilliseconds
+      if ($left -gt 0) { Start-Sleep -Milliseconds $left }
+    } while ((([DateTime]::UtcNow) - $t0).TotalMilliseconds -lt ($BannerForMs + $BannerPollMs))
+    $json = [pscustomobject]@{ atPress = $atPress; pollMs = $BannerPollMs; forMs = $BannerForMs; samples = @($samples) } | ConvertTo-Json -Depth 4 -Compress
+    [IO.File]::WriteAllText($BannerOut, $json, (New-Object Text.UTF8Encoding $false))
+    $nShown = @($samples | Where-Object { $_.shown }).Count
+    $span = if ($samples.Count) { $samples[$samples.Count - 1].ms } else { 0 }
+    Say9 "BANNER polled $($samples.Count) times over $span ms after the press ($nShown showed it); samples written to $BannerOut (s9.ts prints the lifetime, a record)"
+  } elseif ($WatchBanner) {
     $gone = $null
-    while ((([DateTime]::UtcNow) - $t0).TotalMilliseconds -lt 3000) { if ((Test-S9Banner $Hwnd) -eq 0) { $gone = [int](([DateTime]::UtcNow) - $t0).TotalMilliseconds; break }; Start-Sleep -Milliseconds 100 }
-    if ($null -ne $gone) { Say9 "BANNER gone after $gone ms" } else { Say9 'BANNER still shown 3000 ms after the press' }
+    while ((([DateTime]::UtcNow) - $t0).TotalMilliseconds -lt $BannerForMs) { if ((Test-S9Banner $Hwnd) -eq 0) { $gone = [int](([DateTime]::UtcNow) - $t0).TotalMilliseconds; break }; Start-Sleep -Milliseconds $BannerPollMs }
+    if ($null -ne $gone) { Say9 "BANNER gone after $gone ms" } else { Say9 "BANNER still shown $BannerForMs ms after the press" }
   }
   if ($RearmAfterMs -gt 0) {
     $left = $RearmAfterMs - [int](([DateTime]::UtcNow) - $t0).TotalMilliseconds
@@ -679,6 +800,22 @@ function Select-S9Tab([long]$Hwnd, [string]$TitlePrefix) {
   Say9 "selected the tab '$TitlePrefix…' in window $Hwnd at $(Now9)"
 }
 
+# Run 14 teardown (prep fixer r1, N1): close the ONE tab in window $Hwnd's strip whose name does not start with
+# $KeepPrefix (R14-REL-3's r3, which may show an own page or a view-source: title carrying a URL): no title is printed.
+# More or fewer than one such tab is a throw (the caller's STOP). Untested live (Run 13 never closed r3 this way).
+function Close-S9OtherTab([long]$Hwnd, [string]$KeepPrefix) {
+  if (-not (Test-S9Live $Hwnd)) { throw "window $Hwnd is not taken as the driver's - no tab closed" }
+  $root = $S9UIA::FromHandle([IntPtr]$Hwnd)
+  $c = New-Object Windows.Automation.PropertyCondition($S9UIA::ClassNameProperty, 'Tab')
+  $t = @($root.FindAll([Windows.Automation.TreeScope]::Descendants, $c) | Where-Object { -not $_.Current.Name.StartsWith($KeepPrefix) })
+  if ($t.Count -ne 1) { throw "tabs in window $Hwnd not named '$KeepPrefix…': $($t.Count) (need 1)" }
+  $b = New-Object Windows.Automation.PropertyCondition($S9UIA::ControlTypeProperty, [Windows.Automation.ControlType]::Button)
+  $x = @($t[0].FindAll([Windows.Automation.TreeScope]::Descendants, $b) | Where-Object { $_.Current.Name -eq 'Close' })
+  if ($x.Count -ne 1) { throw "close buttons on that tab: $($x.Count) (need 1)" }
+  $x[0].GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
+  Say9 "closed the one tab in window $Hwnd not named '$KeepPrefix…' (title not printed)"
+}
+
 function Close-S9Tab([long]$Hwnd, [string]$TitlePrefix) {
   $t = Get-S9Tab $Hwnd $TitlePrefix
   $c = New-Object Windows.Automation.PropertyCondition($S9UIA::ControlTypeProperty, [Windows.Automation.ControlType]::Button)
@@ -686,6 +823,61 @@ function Close-S9Tab([long]$Hwnd, [string]$TitlePrefix) {
   if ($x.Count -ne 1) { throw "close buttons on that tab: $($x.Count) (need 1)" }
   $x[0].GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
   Say9 "closed the tab '$TitlePrefix…' in window $Hwnd"
+}
+
+# ------------------------------------------------------------------------------- Run 14: R14-3 placement
+
+# A window's rect (GetWindowRect), minimized and visible flags, as the JSON recipes/s9-rules.ts placementVerdict reads.
+function Get-S9WinPlace([long]$Hwnd) {
+  $r = [S9Geo]::Rect([IntPtr]$Hwnd)
+  [pscustomobject]@{ rect = [pscustomobject]@{ left = $r.Left; top = $r.Top; right = $r.Right; bottom = $r.Bottom }; minimized = [bool][S9Win]::IsIconic([IntPtr]$Hwnd); visible = [bool][S9Win]::IsWindowVisible([IntPtr]$Hwnd) }
+}
+
+# R14-3: W the left 60 % and O the right 40 % of W's monitor work area (recipes/s9-rules.ts sideBySide, the same
+# split), both restored first (not maximized or minimized), then O and W brought to the front in that order, so O is
+# second in the z-order, above every other window it might overlap. Moves the driver's own windows only.
+function Set-S9SideBySide([long]$W, [long]$O) {
+  foreach ($h in @($W, $O)) { if (-not (Test-S9Live $h)) { throw "window $h is not taken as the driver's - nothing moved" } }
+  $a = [S9Geo]::WorkOf([IntPtr]$W)
+  $split = $a.Left + [Math]::Floor((($a.Right - $a.Left) * 3) / 5)
+  foreach ($h in @($W, $O)) { [void][S9Win]::ShowWindow([IntPtr]$h, 9) }
+  Start-Sleep -Milliseconds 300
+  [void][S9Geo]::MoveWindow([IntPtr]$W, $a.Left, $a.Top, $split - $a.Left, $a.Bottom - $a.Top, $true)
+  [void][S9Geo]::MoveWindow([IntPtr]$O, $split, $a.Top, $a.Right - $split, $a.Bottom - $a.Top, $true)
+  Start-Sleep -Milliseconds 500
+  [void](Set-S9Foreground $O); [void](Set-S9Foreground $W)
+  Say9 "PLACED W left and O right on W's monitor work area [$($a.Left),$($a.Top),$($a.Right),$($a.Bottom)] (split at x=$split); O then W brought to the front"
+}
+
+# R14-3's guard: both rects, the minimized/visible flags, every monitor's work area and a count of windows above O
+# that overlap it (S9Geo.Occluders; 0 needed since prep fixer r1, F5) go to $env:S9_OUT\r14-placement.json; `s9.ts rect-check` judges them (placementVerdict).
+# Returns $true on PASS. A FAIL is the caller's STOP (the row would not measure what it names).
+function Test-S9Placement([long]$W, [long]$O, [string]$Step = 'placement') {
+  $work = @([S9Geo]::WorkAreas() | ForEach-Object { [pscustomobject]@{ left = $_.Left; top = $_.Top; right = $_.Right; bottom = $_.Bottom } })
+  $p = [pscustomobject]@{ w = (Get-S9WinPlace $W); o = (Get-S9WinPlace $O); work = $work; occluders = [S9Geo]::Occluders([IntPtr]$O) }
+  $f = Join-Path $env:S9_OUT 'r14-placement.json'
+  [IO.File]::WriteAllText($f, ($p | ConvertTo-Json -Depth 5 -Compress), (New-Object Text.UTF8Encoding $false))
+  Push-Location $S9Repo
+  try {
+    $out = @(node --import tsx recipes/s9.ts rect-check --file $f --row R14-3 --step $Step)
+    $code = $LASTEXITCODE
+    foreach ($l in $out) { Write-Host $l }; Write-S9Raw $out
+    $code -eq 0
+  } finally { Pop-Location }
+}
+
+# R14-3: poll the options page AS SHOWN (never reloaded) until #safety-status reads $Expect, at most $TimeoutMs.
+function Wait-S9OptionsStatus([long]$Hwnd, [string]$Expect, [int]$TimeoutMs = 2000) {
+  $t0 = Get-Date; $s = ''
+  do {
+    $s = Get-S9Text (Get-S9ById (Get-S9Options $Hwnd) 'safety-status')
+    if ($s -eq $Expect) { break }
+    Start-Sleep -Milliseconds 100
+  } until (((Get-Date) - $t0).TotalMilliseconds -gt $TimeoutMs)
+  $ms = [int]((Get-Date) - $t0).TotalMilliseconds
+  if ($s -eq $Expect) { Say9 "OPTIONS-WAIT reached '$Expect' after $ms ms (the page as shown, not reloaded)"; return $true }
+  Say9 "OPTIONS-WAIT NOT reached '$Expect' within $TimeoutMs ms (the page as shown); last '$s'"
+  $false
 }
 
 # ------------------------------------------------------------------------------------ the restore (G9-1)
@@ -722,7 +914,7 @@ function Test-S9Live($h) {
 
 # Armed, JavaScript on, empty list - the found state block 8's guard verified ($global:S9Found.Default); read back
 # from a fresh options page (stored), from daemon.status, and from the toolbar title.
-function Restore-S9Safety {
+function Restore-S9Safety([string]$Row = 'SAFE-11-end') {
   $f = $global:S9Found
   if (-not $f) { Say9 'RESTORE safety: nothing to restore (no found state was read, so no toggle ran)'; return $true }
   if (-not $f.Default) { Say9 'RESTORE safety: not touched (the found state was not the default, so the wave stopped before any toggle)'; return $true }
@@ -742,13 +934,16 @@ function Restore-S9Safety {
   $ok = $false
   try {
     $r = Read-S9StoredState $o -PassThru
-    $d = Test-S9DaemonSafety $true $true 0 'SAFE-11-end' 5000
+    $d = Test-S9DaemonSafety $true $true 0 $Row 5000
     $page = ($r.armed -eq $true) -and ($r.evaluate -eq $true) -and ($r.count -eq '0') -and ($r.lines -eq 0) -and ($r.sha256 -eq $S9EmptySha) -and ($r.status -eq $f.State.status)
     $title = $true
     if (Test-S9Live $global:W) { $n = Get-S9ActionTitle $global:W; $title = ($n -eq $S9TitleArmed) -or ("$n".StartsWith($S9TitleArmed)) }
     else { Say9 'RESTORE safety: W is gone - the title is not read (record)' }
-    $ok = $page -and $d -and $title
-    Say9 "RESTORE safety read-back: stored page equal $("$page".ToLower()), daemon.status equal $("$d".ToLower()), title armed $("$title".ToLower())"
+    # Prep fixer r1 (F7/F8, S1.4): the block-list hashes are compared here and only the result is printed - the
+    # sha256 of a non-empty list never is (the empty text's may be, on the STATE lines).
+    $shaEq = if ($r.sha256 -eq $f.State.sha256) { 'equal' } else { 'DIFFERENT' }
+    $ok = $page -and $d -and $title -and ($shaEq -eq 'equal')
+    Say9 "RESTORE safety read-back: stored page equal $("$page".ToLower()), daemon.status equal $("$d".ToLower()), title armed $("$title".ToLower()), block-list sha256 vs found $shaEq"
   } catch { Say9 "RESTORE safety: the read-back threw: $($_.Exception.Message)" }
   $ok
 }
@@ -780,12 +975,15 @@ function Restore-S9Desk {
   $ok
 }
 
-function Restore-S9All([string]$Why = 'stop') {
+function Restore-S9All([string]$Why = 'stop', [string]$Row = 'SAFE-11-end') {
   Say9 "RESTORE begins ($Why)"
-  $s = Restore-S9Safety
+  $s = Restore-S9Safety $Row
   $k = Restore-S9Desk
   if ($s -and $k) { Say9 'RESTORE ok: safety state, pin, layout and windows as found' }
-  else { Say9 "RESTORE FAILED (safety $("$s".ToLower()), desk $("$k".ToLower())) - STOP: record the last STATE line; the step agent asks the user (G9-1)" }
+  else {
+    Say9 "RESTORE FAILED (safety $("$s".ToLower()), desk $("$k".ToLower())) - STOP: record the last STATE line; the step agent asks the user (G9-1)"
+    Stop9 "RESTORE FAILED (safety $("$s".ToLower()), desk $("$k".ToLower())): nothing more is pressed in Chrome; the step agent asks the user"
+  }
   $s -and $k
 }
 

@@ -530,6 +530,27 @@ export function consoleVerdict(c: ScanCounts, h: { bridgeHitLines: string[]; pre
   return { pass: true, why: `no token, no non-fixture ://, no bridge line with a URL or pattern; positive control: ${control} "${EXPECT.logDisarmed}" line(s)` };
 }
 
+/**
+ * Run 14's console verdict (R14-LOGS; Step 10 phase doc S1.6 as written; prep fixer r1, S1-prep-verifier F2, ruled
+ * by the step agent before any measurement): every count 0 — the token, a non-fixture `://`, `localhost:8081`,
+ * `:8083`, `bank.example` — WHOEVER wrote the line (a Chrome-owned entry naming the test pattern FAILS too; Run 13's
+ * `consoleVerdict` above tolerated Chrome's own lines and stays as Run 13's rule). The positive control is as there:
+ * no `safety: disarmed by the user` line → NOT MEASURED, never a pass; a failure wins over it.
+ */
+export function consoleVerdictS16(c: ScanCounts, h: { pressLines: string[] }): Judged & { notMeasured?: boolean } {
+  const bad = [
+    c.token ? `token ${c.token}` : "",
+    c.schemeOther ? `non-fixture :// ${c.schemeOther}` : "",
+    c.pattern8081 ? `localhost:8081 ${c.pattern8081}` : "",
+    c.colon8083 ? `:8083 ${c.colon8083}` : "",
+    c.bank ? `bank.example ${c.bank}` : "",
+  ].filter(Boolean);
+  if (bad.length) return { pass: false, why: `${bad.join(", ")} (S1.6: 0 whoever wrote the line)` };
+  const control = h.pressLines.filter((l) => l.includes(EXPECT.logDisarmed)).length;
+  if (control === 0) return { pass: false, notMeasured: true, why: `no "${EXPECT.logDisarmed}" line in the capture (the positive control), so the bridge's lines were not seen` };
+  return { pass: true, why: `all S1.6 counts 0 (token, non-fixture ://, localhost:8081, :8083, bank.example); positive control: ${control} "${EXPECT.logDisarmed}" line(s)` };
+}
+
 /** daemon.log lines (`<YYYY-MM-DDTHH:MM:SSZ> <msg>`) stamped at or after `sinceIso` (whole seconds, floor). */
 export function logLinesSince(lines: string[], sinceIso: string): string[] {
   const since = Math.floor(Date.parse(sinceIso) / 1000) * 1000;
@@ -585,4 +606,334 @@ export function safetyDelivery(content: unknown, expected: string): { where: "it
   if (i >= 0) return { where: "item", index: i };
   for (let k = 0; k < texts.length; k++) if (texts[k].split("\n").includes(expected)) return { where: "line", index: k };
   return { where: "absent", index: -1 };
+}
+
+// ── Run 14 (Step 10 S1; docs/e2e-test-plan.md §4.21) ──────────────────────────────────────────────────────
+// Added 2026-10-25 by the Step 10 S1 prep builder, before any R14 row ran (decisions.md #194, #196, #197; phase doc
+// 0.10). Every rule below is pure and dry-run by recipes/test/s9-rules.test.ts; s9.ts prints what they decide.
+
+export const R14 = Object.freeze({
+  /** The fixture's `Open popup` link (`e2e-playground.html?popup=1`, target=_blank), opened from tab a on 8080. */
+  popupUrl: `${FIXTURE_8080}/${PAGE}?popup=1`,
+  /** SAFE-POP-1's bound, kept (R9-LEASE-3). */
+  popupMaxMs: 2500,
+  /** R14-4b: the characters typed, the follow-up text, the banner poll. */
+  typeN: 1000,
+  followUpText: "R14ok",
+  bannerPollMs: 250,
+  bannerForMs: 20_000,
+  /** extension/src/debugger-errors.ts: Chrome's "Another debugger is already attached…" maps to this code. */
+  anotherDebuggerCode: "DEBUGGER_DEVTOOLS",
+  /** R14-5c's positive control: two concurrent requests to 8083, each answered within 1 s. */
+  concurrentN: 2,
+  concurrentMaxMs: 1000,
+});
+
+/** The wave's own query marker, `?s14=<marker>` (fresh: no Run 13 log line or cache entry carries it). */
+export function r14Url(origin: string, marker: string, path = PAGE): string {
+  return `${origin}/${path}?s14=${encodeURIComponent(marker)}`;
+}
+
+/** STOP lines (#193): every guard and every helper throw prints one, beginning `STOP:`; URLs withheld. */
+export function stopLine(msg: string): string {
+  return `STOP: ${scrubAll(msg)}`;
+}
+
+// R14-REL-3 — the URL class (decisions.md #196): wrapper scheme, inner scheme, own page yes/no; never the URL.
+
+/** extension/src/safety-match.ts WRAPPER_SCHEMES (the drift test reads the source). */
+export const R14_WRAPPER_SCHEMES: readonly string[] = Object.freeze(["blob", "filesystem", "view-source"]);
+
+export interface UrlClass {
+  wrapper: string;
+  inner: string;
+  own: boolean;
+}
+
+const SCHEME_RE = /^([a-z][a-z0-9+.-]*):/i;
+
+export function urlClass(url: string, ownId: string): UrlClass {
+  let wrapper = "none";
+  let rest = url;
+  const m = SCHEME_RE.exec(url);
+  if (m && R14_WRAPPER_SCHEMES.includes(m[1].toLowerCase())) {
+    wrapper = m[1].toLowerCase();
+    rest = url.slice(m[0].length);
+  }
+  const n = SCHEME_RE.exec(rest);
+  const inner = n ? n[1].toLowerCase() : "none";
+  const own = ownId !== "" && rest.toLowerCase().startsWith(`chrome-extension://${ownId.toLowerCase()}/`);
+  return { wrapper, inner, own };
+}
+
+export function urlClassLine(c: UrlClass): string {
+  return `wrapper=${c.wrapper} inner=${c.inner} own=${c.own ? "yes" : "no"}`;
+}
+
+export const CLASS_LINE_RE = /^wrapper=(none|[a-z][a-z0-9+.-]*) inner=(none|[a-z][a-z0-9+.-]*) own=(yes|no)$/;
+
+/** Any URL form: `scheme://…`, or a scheme Chrome navigates without `//` (wrappers, about:, data:, javascript:, …). */
+const ANY_URL_SOURCE =
+  "[a-z][a-z0-9+.-]*:\\/\\/[^\\s\"'`)<>]*|\\b(?:view-source|blob|filesystem|data|about|javascript|file|chrome|chrome-extension|chrome-untrusted|devtools|https?):[^\\s\"'`)<>]+";
+
+/** A message with every URL form withheld — own pages and fixture URLs too (R14-REL-3 prints no URL at all). */
+export function scrubAll(msg: string): string {
+  return msg.replace(new RegExp(ANY_URL_SOURCE, "gi"), "<url withheld>");
+}
+
+/**
+ * R14-REL-3's pass rule over the lines its `rel` step printed: exactly one `rel-class` line, in the agreed form —
+ * `rel-class <T#> wrapper=<s|none> inner=<s|none> own=<yes|no>`, or `rel-class <T#> hidden=<h> (no url to class)`
+ * when the row is hidden (the extension withholds its URL), or `rel-class <T#> not listed` — and no URL in any line.
+ * Prep fixer r1 (S1-prep-verifier F4, ruled before any measurement): only a printed class or `hidden=blocked` (an
+ * own page whose URL the extension withholds — the class is then "own page", by the extension's own detector) can
+ * pass; `not listed` and `hidden=disarmed` print no class at all, so they are NOT MEASURED, never a pass. A URL in any
+ * line, or a line in no agreed form, is a FAIL first.
+ */
+export function classStepVerdict(lines: string[]): Judged & { notMeasured?: boolean } {
+  const anyUrl = new RegExp(ANY_URL_SOURCE, "i");
+  const urls = lines.filter((l) => anyUrl.test(l));
+  if (urls.length) return { pass: false, why: `${urls.length} printed line(s) carry a URL` };
+  const cls = lines.filter((l) => / rel-class /.test(l));
+  if (cls.length !== 1) return { pass: false, why: `${cls.length} rel-class lines (need exactly 1)` };
+  const m = / rel-class (T\d+) (.*)$/.exec(cls[0]);
+  const tail = m ? m[2] : "";
+  if (m && CLASS_LINE_RE.test(tail)) return { pass: true, why: "the class line is printed in the agreed form and no URL is printed" };
+  if (tail === "hidden=blocked (no url to class)") {
+    return { pass: true, why: "hidden=blocked: an own page whose URL the extension withholds; no URL is printed" };
+  }
+  if (tail === "hidden=disarmed (no url to class)" || tail === "not listed") {
+    return { pass: false, notMeasured: true, why: `${tail}: no class was printed (the tab is ${tail === "not listed" ? "not listed" : "hidden while disarmed"})` };
+  }
+  return { pass: false, why: "the rel-class line is not in the agreed form" };
+}
+
+// R14-3 — the options window visible beside the driver window, judged by window rectangles before the toolbar click.
+
+export interface Rect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+export interface WinPlace {
+  rect: Rect;
+  minimized: boolean;
+  visible: boolean;
+}
+
+export interface Placement {
+  w: WinPlace;
+  o: WinPlace;
+  /** Every monitor's work area (the screen minus the taskbar), in the same coordinates as the rects. */
+  work: Rect[];
+  /**
+   * Windows above O in the z-order that cover part of it (s9-win.ps1 `S9Geo.Occluders`): visible, not minimized, not
+   * DWM-cloaked top-level windows with a non-empty rect intersecting O's, excluding layered windows that are
+   * click-through (WS_EX_LAYERED + WS_EX_TRANSPARENT) or fully transparent (LWA_ALPHA with alpha 0). -1 = not measured.
+   */
+  occluders: number;
+}
+
+function rectEmpty(r: Rect): boolean {
+  return !(r.right > r.left && r.bottom > r.top);
+}
+
+/** The overlap of two rects in px² (touching edges overlap 0). */
+export function overlapArea(a: Rect, b: Rect): number {
+  const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+  const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+  return w > 0 && h > 0 ? w * h : 0;
+}
+
+function insideRect(r: Rect, area: Rect): boolean {
+  return r.left >= area.left && r.top >= area.top && r.right <= area.right && r.bottom <= area.bottom;
+}
+
+export function rectText(r: Rect): string {
+  return `[${r.left},${r.top},${r.right},${r.bottom}]`;
+}
+
+/**
+ * R14-3's placement rule: neither minimized nor hidden, non-empty, no overlap, each inside one monitor's work area,
+ * and (prep fixer r1, S1-prep-verifier F5) no window above O that overlaps it — 0.10's "visible (not covered)".
+ */
+export function placementVerdict(p: Placement): Judged {
+  const why: string[] = [];
+  for (const [name, x] of [
+    ["W", p.w],
+    ["O", p.o],
+  ] as const) {
+    if (x.minimized) why.push(`${name} is minimized`);
+    if (!x.visible) why.push(`${name} is not visible`);
+    if (rectEmpty(x.rect)) why.push(`${name}'s rect is empty`);
+    else if (!p.work.some((a) => insideRect(x.rect, a))) why.push(`${name} is not inside any monitor's work area`);
+  }
+  if (overlapArea(p.w.rect, p.o.rect) > 0) {
+    const ow = Math.min(p.w.rect.right, p.o.rect.right) - Math.max(p.w.rect.left, p.o.rect.left);
+    const oh = Math.min(p.w.rect.bottom, p.o.rect.bottom) - Math.max(p.w.rect.top, p.o.rect.top);
+    why.push(`W and O overlap ${ow}x${oh}`);
+  }
+  const occ = (p as { occluders?: unknown }).occluders;
+  if (typeof occ !== "number" || !Number.isInteger(occ) || occ < 0) why.push("occluders not measured");
+  else if (occ > 0) why.push(`${occ} window(s) above O overlap it (O is covered)`);
+  return why.length
+    ? { pass: false, why: why.join("; ") }
+    : { pass: true, why: "W and O do not overlap, both lie on a monitor's work area, neither is minimized, no window above O overlaps it" };
+}
+
+export function placementLine(p: Placement): string {
+  const one = (x: WinPlace): string => `${rectText(x.rect)} minimized=${x.minimized} visible=${x.visible}`;
+  const occ = typeof p.occluders === "number" ? String(p.occluders) : "not measured";
+  return `W ${one(p.w)} · O ${one(p.o)} · work areas ${p.work.map(rectText).join(" ")} · occluders above O ${occ}`;
+}
+
+/** Where s9-win.ps1 puts W and O: W the left 60 % of W's monitor work area, O the right 40 %, touching, no overlap. */
+export function sideBySide(area: Rect): { w: Rect; o: Rect } {
+  const split = area.left + Math.floor(((area.right - area.left) * 3) / 5);
+  return { w: { ...area, right: split }, o: { ...area, left: split } };
+}
+
+// R14-4b — the type verdict, the follow-up trusted call, the banner record, the one pre-registered re-run.
+
+/**
+ * R14-4b's own type verdict (prep fixer r1, S1-prep-verifier F6, ruled before any measurement). §4.20's
+ * `typeVerdict` read an `ok` reply or k = n as "the press missed the typing" (NOT DISCRIMINATING); here the press
+ * time decides:
+ * - the press AFTER the reply → NOT DISCRIMINATING (the one pre-registered re-run), whatever the reply;
+ * - the press at or before the reply AND (reply `ok` OR k = n) → FAIL: the disarm landed during the call and the call
+ *   still finished — the product defect the row exists to catch;
+ * - the press at or before the reply, `DISARMED {scope:"all"}`, k = 0 → NOT DISCRIMINATING (the press came before the
+ *   first character: correct refusal, but not "mid-way"; §4.21's k = 0 re-run);
+ * - 0 < k < n → `DISARMED {scope:"all"}` passes, any other reply FAILS;
+ * - no press time, or k not read → FAIL (the row cannot pass; never a pass by default).
+ */
+export function r14TypeVerdict(o: Outcome, typed: number | null, n: number, pressedIso: string | null, repliedIso: string): Verdict {
+  const k = typed === null ? "not read" : `${typed} of ${n}`;
+  const reply = o.ok ? "ok" : String(o.code);
+  if (pressedIso === null) return { pass: false, notDiscriminating: false, why: [`no press time recorded (reply ${reply}, typed ${k})`] };
+  const d = deltaMs(pressedIso, repliedIso);
+  if (Number.isNaN(d)) return { pass: false, notDiscriminating: false, why: ["the press or reply time does not parse"] };
+  if (d < 0) return { pass: false, notDiscriminating: true, why: [`the press came ${-d} ms after the reply (reply ${reply}, typed ${k}): it missed the typing`] };
+  if (o.ok || (typed !== null && typed >= n)) {
+    return { pass: false, notDiscriminating: false, why: [`the press came ${d} ms before the reply and the call still finished: reply ${reply}, typed ${k}`] };
+  }
+  if (typed === null) return { pass: false, notDiscriminating: false, why: [`typed length not read (reply ${reply})`] };
+  const j = judge(o, "DISARMED:all");
+  if (typed === 0) {
+    return j.pass
+      ? { pass: false, notDiscriminating: true, why: [`DISARMED before the first character (press ${d} ms before the reply, typed 0 of ${n}): not mid-way`] }
+      : { pass: false, notDiscriminating: false, why: [j.why, `typed 0 of ${n}`] };
+  }
+  return j.pass
+    ? { pass: true, notDiscriminating: false, why: [`DISARMED mid-way: typed ${typed} of ${n}`] }
+    : { pass: false, notDiscriminating: false, why: [j.why, `typed ${typed} of ${n}`] };
+}
+
+/** After the re-arm, a trusted `type` of R14.followUpText on the same tab: `ok`, and the page's input reads it. */
+export function followUpVerdict(o: Outcome, value: string | null, expected: string): Judged {
+  if (!o.ok) {
+    if (o.code === R14.anotherDebuggerCode) return { pass: false, why: `another debugger error (${o.code}): the disarm left a debugger session attached` };
+    return { pass: false, why: `expected ok, got ${o.code}` };
+  }
+  if (value === null) return { pass: false, why: "the page's input was not read" };
+  if (value !== expected) return { pass: false, why: `the page's input reads ${value.length} characters, not "${expected}"` };
+  return { pass: true, why: `ok, the page's input reads "${expected}" (no another-debugger error)` };
+}
+
+export interface BannerSample {
+  /** ms after the press. */
+  ms: number;
+  shown: boolean;
+}
+
+export type BannerLifetime =
+  | { kind: "not-polled" }
+  | { kind: "never-shown"; n: number; spanMs: number; maxGapMs: number }
+  | { kind: "still-shown"; lastMs: number; returned: number; n: number; spanMs: number; maxGapMs: number }
+  | { kind: "gone"; lastShownMs: number; firstGoneMs: number; returned: number; n: number; spanMs: number; maxGapMs: number };
+
+/**
+ * The banner's lifetime from the polls (a RECORD, never a pass rule — phase doc 0.10): gone between the last poll
+ * that showed it and the next poll; `returned` counts gone→shown transitions (a banner that came back).
+ */
+export function bannerLifetime(samples: BannerSample[]): BannerLifetime {
+  if (samples.length === 0) return { kind: "not-polled" };
+  const s = [...samples].sort((a, b) => a.ms - b.ms);
+  const n = s.length;
+  const spanMs = s[n - 1].ms - s[0].ms;
+  let maxGapMs = 0;
+  let returned = 0;
+  for (let i = 1; i < n; i++) {
+    maxGapMs = Math.max(maxGapMs, s[i].ms - s[i - 1].ms);
+    if (s[i].shown && !s[i - 1].shown) returned++;
+  }
+  let last = -1;
+  for (let i = 0; i < n; i++) if (s[i].shown) last = i;
+  if (last < 0) return { kind: "never-shown", n, spanMs, maxGapMs };
+  if (last === n - 1) return { kind: "still-shown", lastMs: s[last].ms, returned, n, spanMs, maxGapMs };
+  return { kind: "gone", lastShownMs: s[last].ms, firstGoneMs: s[last + 1].ms, returned, n, spanMs, maxGapMs };
+}
+
+export function bannerLine(lt: BannerLifetime, atPress: boolean | null, forMs: number): string {
+  const press = `banner at press ${atPress === null ? "not read" : atPress ? "yes" : "no"}`;
+  if (lt.kind === "not-polled") return `${press} · not polled (record)`;
+  const polls = `polls ${lt.n} over ${lt.spanMs} ms (≥ ${forMs}: ${lt.spanMs >= forMs ? "yes" : "no"}), max gap ${lt.maxGapMs} ms (record)`;
+  if (lt.kind === "never-shown") return `${press} · never shown after the press · ${polls}`;
+  if (lt.kind === "still-shown") {
+    return `${press} · still shown at +${lt.lastMs} ms (lifetime ≥ ${lt.lastMs} ms) · returned after gone ${lt.returned} · ${polls}`;
+  }
+  return `${press} · gone between +${lt.lastShownMs} ms and +${lt.firstGoneMs} ms after the press (last shown, first absent) · returned after gone ${lt.returned} · ${polls}`;
+}
+
+/**
+ * The one pre-registered re-run of R14-4b when k is not discriminating: k = n (the press came after the typing) →
+ * half the measured typing time (≥ 100 ms); k = 0 (before the first character landed) → the delay + 400 ms; else none.
+ */
+export function rerunDelayMs(typed: number, n: number, startedIso: string, repliedIso: string, delayMs: number): number | null {
+  if (typed >= n) {
+    const d = deltaMs(startedIso, repliedIso);
+    if (!(d >= 0)) return null;
+    return Math.max(100, Math.floor(d / 2));
+  }
+  if (typed === 0) return delayMs + 400;
+  return null;
+}
+
+// R14-5c — the threaded redirect server's positive control and the server-log counts (#140, #197).
+
+export function concurrentVerdict(rs: Array<{ status: number | null; ms: number }>, n: number, maxMs: number): Judged {
+  const good = rs.filter((r) => r.status === 302 && r.ms <= maxMs).length;
+  if (rs.length !== n || good !== n) return { pass: false, why: `${good} of ${n} answered 302 within ${maxMs} ms (${rs.length} sent)` };
+  return { pass: true, why: `${n} of ${n} answered 302 within ${maxMs} ms` };
+}
+
+/** Lines of a server log that name `key` (`name=value`) as a whole query parameter. */
+export function logHits(text: string, key: string): number {
+  const esc = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`[?&]${esc}(?![A-Za-z0-9_])`);
+  return text.split(/\r?\n/).filter((l) => re.test(l)).length;
+}
+
+export interface R14LogCounts {
+  hop5c1: number;
+  target5c1: number;
+  hop5c2: number;
+  target5c2: number;
+}
+
+export function serverLogLine(c: R14LogCounts): string {
+  return `server-log s14=5c1 8083=${c.hop5c1} 8081=${c.target5c1} · s14=5c2 8083=${c.hop5c2} 8081=${c.target5c2}`;
+}
+
+/** 0.10: 5c1 (refused before any fetch) is never requested; 5c2's 8083 hop and its 8081 target once each (#140). */
+export function serverLogVerdict(c: R14LogCounts): Judged {
+  const why: string[] = [];
+  if (c.hop5c1 !== 0 || c.target5c1 !== 0) why.push(`5c1 requested (8083 ${c.hop5c1}, 8081 ${c.target5c1}; expected 0, 0)`);
+  if (c.hop5c2 !== 1) why.push(`5c2's 8083 hop logged ${c.hop5c2} times (expected 1)`);
+  if (c.target5c2 !== 1) why.push(`5c2's 8081 target logged ${c.target5c2} times (expected 1)`);
+  return why.length
+    ? { pass: false, why: why.join("; ") }
+    : { pass: true, why: "5c1 0/0, 5c2 hop 1 and target 1 (the hop is still requested, #140)" };
 }
