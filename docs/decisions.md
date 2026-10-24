@@ -107,6 +107,19 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-24 · S5: the roadmap's Step 9 block lists the 32 open decisions by number and short title (#199)
+**Decided:** number + short title, in the order that decisions.md → Open decisions → Step 9 uses, with #192
+first and in bold. **Why:** the decisions.md Open list itself names them by quoted title + number, and a full
+date + title for each of 32 entries would swamp the roadmap. The full titles stay one click away. **Instead
+of:** date + exact title per entry (verifier F7, NIT). **Revisit if:** the docs-writing guide gains a rule for
+lists of open decisions. **By:** Claude (S5 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S5.md` §5)
+
+### 2026-10-24 · S5: setup.md's Safety section quotes the refusal text from the code, and the MCP line as Claude sees it (#198)
+**Decided:** quote every refusal, title and status line byte for byte from the code (`safety.ts`,
+`badge.ts`, `sdk/src/error.ts` `safetyRefusalLine`, `mcp/src/tools/registry.ts`). The verifier checked each one.
+**Why:** a user matches what they see against the doc. **Instead of:** paraphrased wording. **Revisit if:**
+#158 or #164 changes the wording. **By:** Claude (S5 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S5.md` §5)
+
 ### 2026-10-24 · S4: The redirect server uses port 8083 (#197)
 **Decided:** 8083. **Why:** 8082 is `Bound` on 0.0.0.0 by `SystemSettings.exe` on this machine. **Instead of:** 8082
 (stage0-audit §7).

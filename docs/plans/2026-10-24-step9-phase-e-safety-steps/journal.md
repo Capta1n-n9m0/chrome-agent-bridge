@@ -84,3 +84,11 @@
   to Step 10.
 - Processes: daemon, fixture servers, actors stopped; PID 22152 is an unrelated Codex host, never touched.
 - Next: S5 (docs) alone.
+
+## 2026-10-24 — S5 closed (2631c91); CLAUDE.md, phase doc Outcome; propagator next
+
+- S5: DONE, PASS-with-notes after one fix round. 2720 / 116 re-derived at ba6029e.
+- Session agent applied S5.md §7's CLAUDE.md blocks (counts, key files, "Step 9 — safety" gotchas, Current
+  state with the gate open on #192), wrote the phase doc's Outcome and Status, ticked the checkboxes, added
+  the as-built S5 section and S5's note on the daemon's disconnect reset; recorded #198, #199.
+- Next: propagator (no code), then session-closeout and the Step 10 kickoff (conditional on #192).

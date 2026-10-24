@@ -1,6 +1,6 @@
 # Step 9 — Phase E: safety (the human's kill switch, a JavaScript switch, blocked sites)
 
-**Date:** 2026-10-24 · **Status:** Planned (kickoff `docs/plans/next-session-prompt.md`)
+**Date:** 2026-10-24 · **Status:** Built and E2E-run (Run 13), 2026-10-24; gate open — the user rules on Run 13 (#192) and the Step 9 open decisions. *Superseded 2026-10-24: was "Planned (kickoff …)".*
 **Design of record:** this doc's "Decisions" (the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change: §5 layer contract, §6 the human, §10 protocol and codes) ·
 **Roadmap:** `docs/progress-and-roadmap.md` §5 Phase E · **As-built:**
@@ -18,8 +18,26 @@ daemon, a client or a leaked token does.
 
 ## Outcome
 
-*(Written at close as results: test counts per stage with the command, the new codes, the E2E rows
-with their observed text.)*
+Results (2026-10-24; as-built `docs/plans/2026-10-24-step9-phase-e-safety-asbuilt.md`):
+
+- **Codes:** 25 (24 on the wire): `DISARMED` (with `data.scope` `"all"` or `"evaluate"`, #133) and
+  `DOMAIN_BLOCKED` added in S0.
+- **Tests** (`npm test`, each stage's verifier on a clean tree): baseline 1714 / 85 → S0 1783 / 86 → S1 ∥ S3
+  2329 / 96 → S2a 2561 / 106 → S2b 2660 / 113 → S2c 2685 / 115 → S4 2720 / 116 (re-derived by S5 at
+  `ba6029e`). `npm run typecheck` and `npm run build` exit 0 at every close.
+- **The gate:** one gate (`extension/src/safety.ts`, served by `GatedRouter`) over all 23 router methods, at
+  receipt, before each first side effect and as the post-check; the state in `storage.local`, read per call,
+  failing closed; nothing on the wire changes it.
+- **Run 13** (live, `docs/e2e-test-plan.md` §5; record `…-steps/S4-run-record.md`): rows committed before
+  the build; reload exit 0 and SAFE-0 first; **24 PASS, 7 FAIL, 3 RECORD, 5 NOT MEASURED** (live verifier's
+  count). Among the PASS rows, verbatim: SAFE-1 (toolbar disarm → SDK and MCP `DISARMED`, re-arm works),
+  SAFE-2 (`Alt+Shift+K`), SAFE-6 (JavaScript off → `evaluate` `DISARMED` scope evaluate, `click` lands), SAFE-7 /
+  REL-1 (`DOMAIN_BLOCKED: The bridge never opens extension pages.`), SAFE-5 (8081 blocked, hidden rows, no
+  8081 network entry), SAFE-8 (nothing logged while disarmed), SAFE-10 (log scan 0). The FAILs (SAFE-11
+  start, SAFE-POP-1, SAFE-5c's redirect half, SAFE-4 (b) banner, SAFE-3, SAFE-9 and SAFE-10's set-up) are none
+  shown to be a product defect; four are re-measured in Step 10 (#194). Safety state read back equal to the
+  found state by hash (armed, JavaScript on, empty list). The live verifier failed the run **on process**
+  (the runner resolved four stops itself, no state changed at any) — ratification is the user's (#192).
 
 ## Decisions
 
@@ -304,7 +322,7 @@ One stage per part. **Lane** is the explicit grant a step agent needs under the 
 ESCALATION list.
 
 ### Stage S0 — Types and codes
-- [ ] Spec §10 amended first (dated note), then `DISARMED` and `DOMAIN_BLOCKED` in
+- [x] Spec §10 amended first (dated note), then `DISARMED` and `DOMAIN_BLOCKED` in
       `shared/src/codes.ts` (25 codes: 24 on the wire, `NO_CURSOR` from the SDK); the safety-state
       type and its guard; the wire shape ruled at Stage 0 (0.6).
 **Lane:** `shared/src/`, `shared/test/`, `docs/specs/…-design.md` (§10 note). **Parallel with:** first, alone.
@@ -317,7 +335,7 @@ the kill switch, the JavaScript switch and the block list) beside §10's. The wi
 F32). The types every later stage needs land here, since S3's lane has no `shared/` (Stage 0 F18).*
 
 ### Stage S1 — The gate and the host matcher (pure, TDD)
-- [ ] `extension/src/safety.ts`: the method table (every router method classified), `safetyDecision`,
+- [x] `extension/src/safety.ts`: the method table (every router method classified), `safetyDecision`,
       the host-pattern parser and matcher, the `listTabs`/event redaction, the network-log filter
       predicate. Failing tests first.
 **Lane:** `extension/src/safety.ts`, `extension/test/`. **Parallel with:** S3 (file-disjoint).
@@ -326,7 +344,7 @@ and the post-check predicate (0.1's notes), and its matcher cases are stage0-aud
 below).*
 
 ### Stage S2 — Extension wiring and UI
-- [ ] The router calls the gate before every handler; `storage.local` state with defaults;
+- [x] The router calls the gate before every handler; `storage.local` state with defaults;
       `storage.onChanged`; disarm → detach debuggers, stop waits, drop pending downloads, stop network
       recording; manifest `action` + `commands`; top-level `action.onClicked` / `commands.onCommand`;
       badge and title; the options page (switches, block list, a link that opens
@@ -359,7 +377,7 @@ Step 9's own; Step 8's S2b (the daemon half of Step 8's S2) is unrelated.*
 (#145).*
 
 #### Stage S2a — Extension enforcement (3 h, after S1)
-- [ ] (From S2's checkbox, by content:) the router calls the gate before every handler — at receipt, before each
+- [x] (From S2's checkbox, by content:) the router calls the gate before every handler — at receipt, before each
       first side effect and as the post-check (0.1's F1 note); `storage.local` state with defaults, read per
       call after `ready`, failing closed (0.2's F10 note), `setAccessLevel` to trusted contexts and the
       router's sender check (#139); `storage.onChanged`; the state module's toggle (the in-memory copy updated
@@ -371,7 +389,7 @@ Step 9's own; Step 8's S2b (the daemon half of Step 8's S2) is unrelated.*
 `content/**`, `safety.ts` (S1's) and `options.ts`; plus `extension/test/`. **Parallel with:** after S1.
 
 #### Stage S2b — Extension UI and the 0.7 log scan (1.5 h, after S2a)
-- [ ] (From S2's checkbox, by content:) manifest `action` + `commands` (`_execute_action`, F20 note above);
+- [x] (From S2's checkbox, by content:) manifest `action` + `commands` (`_execute_action`, F20 note above);
       the top-level `action.onClicked` listener calling S2a's toggle; badge and title (#143), re-derived from
       `storage.local` at every worker start (Stage 0 F42, #144); the options page (switches, block list with
       invalid lines marked and counted — 0.6's F23 note — and a link that opens
@@ -387,7 +405,7 @@ checks and S2b's lane gaining the badge's start-up and the `action.onClicked` re
 proposed (S0.md Proposed decisions); #145 split the stage.*
 
 ### Stage S3 — Daemon relay, SDK and MCP
-- [ ] The daemon relays the safety state; `daemon.status` carries it; the SDK exposes it read-only;
+- [x] The daemon relays the safety state; `daemon.status` carries it; the SDK exposes it read-only;
       `browser_status`'s `Safety:` line; the MCP's one-line rendering of the two codes; both codes stay
       out of the attach set (a test).
 **Lane:** `daemon/src/`, `daemon/test/`, `sdk/src/`, `sdk/test/`, `mcp/src/`, `mcp/test/`.
@@ -396,7 +414,7 @@ proposed (S0.md Proposed decisions); #145 split the stage.*
 redaction and hidden-row rendering #134 (0.3's F2/F40 notes, 0.4's F41 note).*
 
 ### Stage S4 — E2E (live, the driver's; rows `SAFE-*` in `docs/e2e-test-plan.md` §4.20)
-- [ ] Rows written and committed before the build is loaded (proposed list, Stage 0 completes it):
+- [x] Rows written and committed before the build is loaded (proposed list, Stage 0 completes it):
       SAFE-0 stale check (a call refused `DISARMED` only the new build can give); SAFE-1 toolbar click
       disarms → badge `OFF` → an SDK call and an MCP call get `DISARMED` → click re-arms → both work;
       SAFE-2 the shortcut does the same; SAFE-3 the options switch; SAFE-4 disarm during a running
@@ -407,7 +425,7 @@ redaction and hidden-row rendering #134 (0.3's F2/F40 notes, 0.4's F41 note).*
       options page refused; SAFE-8 nothing recorded in the network log while disarmed; SAFE-9 every
       toggle survives an extension reload (by script); SAFE-10 the log scan: no pattern, URL or token
       in `daemon.log` or the worker's console lines captured during the wave.
-- [ ] **The wave ends with the safety state restored** — armed, JavaScript on, the block list exactly
+- [x] **The wave ends with the safety state restored** — armed, JavaScript on, the block list exactly
       as it was before the wave (read and recorded at the start) — and the record shows the read-back.
 **Lane:** `recipes/`, `docs/e2e-test-plan.md`, the steps dir.
 *Amended 2026-10-24 (#145): S4's budget is 1.5 h prep + 2.5 h live, alone, after S2b and S3. Stage 0 completed
@@ -415,7 +433,7 @@ the proposed row list in `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage
 with SAFE-1b, 4b, 5b–5d, 6b, 6c, 7b–7d), which S4 writes into §4.20 before the build is loaded.*
 
 ### Stage S5 — Docs
-- [ ] `docs/setup.md` "Safety" section (the three controls, the shortcut, what agents see, the
+- [x] `docs/setup.md` "Safety" section (the three controls, the shortcut, what agents see, the
       JavaScript switch and the Blackboard recipes, the own-page block); `CLAUDE.md` (key files,
       gotchas measured in S4); `README.md` security paragraph; the roadmap's Phase E block.
 **Lane:** docs only.

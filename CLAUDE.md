@@ -9,11 +9,19 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-24)
+## Current state (2026-10-24, Step 9 built)
 
 - **Shipped:** Steps 1–8 (Step 7 — multi-actor tabs — closed 2026-10-23; Step 8 — the SDK surface —
   closed 2026-10-24, as-built `docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-asbuilt.md`).
-  Public on GitHub (MIT). **23 tools, 1714 tests in 85 files** (`npm test` 2026-10-24 at `a1932a8`).
+  Public on GitHub (MIT). **23 tools, 25 codes, 2720 tests in 116 files** (`npm test` 2026-10-24 at
+  `ba6029e`). *Superseded 2026-10-24: was "23 tools, 1714 tests in 85 files (… at `a1932a8`)", because
+  Step 9 added two codes and 1006 tests in 31 files (Step 9 as-built, per stage).*
+- **Step 9 — Phase E safety — built and E2E-run (Run 13) 2026-10-24**, as-built
+  `docs/plans/2026-10-24-step9-phase-e-safety-asbuilt.md`: the kill switch (toolbar button,
+  `Alt+Shift+K`, options page), the JavaScript switch, a block list, the own-page block; Run 13 24 PASS /
+  7 FAIL / 3 RECORD / 5 NOT MEASURED (live verifier), none shown a product defect. **Not closed:** the
+  user rules on Run 13 (#192, the runner's four self-resolved stops) and 31 other open decisions
+  (decisions.md → Open decisions → Step 9).
 - **Step 8 closed 2026-10-24 (wave W2):** the user ruled its 25 open decisions (decisions.md
   #106–#127): 19 ratified as built, six with a work item for Step 10; the `blackboard-ultra` skill
   now boots by `npm --prefix ~/Projects/chrome-remote-extention run recipe --
@@ -21,17 +29,20 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
   one-release fallback; the course repos PP1-2026 and NLP-Bachelor allow the command).
 - **Reloads need no human:** `recipes/reload-extension.ps1` reloads the extension by UI automation
   and proves it (#65); an exit-2 reload may be re-run during waves (#99).
-- **Resume:** Step 9 — Phase E safety: kickoff `docs/plans/next-session-prompt.md`, phase doc
-  `docs/plans/2026-10-24-step9-phase-e-safety.md`; design decided with the user (#128: kill switch by
-  toolbar button, options page and shortcut; disarmed refuses page calls with `DISARMED`; a block list,
-  empty by default, `DOMAIN_BLOCKED`; a separate JavaScript switch). Start it in a fresh session that
-  is not a bridge client.
+- **Resume:** the Step 9 gate — the user's ruling on Run 13 (decisions.md · 2026-10-24 · S4: Run 13
+  stands as recorded, with the runner's four self-resolved stops listed (#192)) and the Step 9 open
+  decisions. If the user ratifies #192, Step 9 closes and the next step is Step 10; if the user asks
+  for a re-run of the affected rows (blocks 4–30: SAFE-0…SAFE-4b), that wave comes first, under #193's
+  stop rule. Interactive sessions using the bridge need `/mcp` or a fresh session (the daemon build
+  changed in Step 9).
 - **Next after Step 9** (decisions.md · 2026-10-24 · The roadmap after Step 8 (#129), order open for
   veto): **Step 10** — the Step 8 follow-ups: the MCP's trusted tools focus first (#106), a warning when
   a locator resolves past the snapshot's 800 cap (#117), a squashed `step8` release tag (#125), a live
   N ≥ 1 retire row on a killed Chrome (#126), `browser_evaluate {saveTo}` with S6.3 redone through it
   (#127), plus the carried inputs (failure reports switch the human's view ~1.5 s; `bb-login.ps1`'s
-  condition-based post-submit wait, #102); **Step 11** — D3 file upload; **Step 12** — Phase F (`args`
+  condition-based post-submit wait, #102; and Run 13's four re-measurements — SAFE-5c's redirect half (the
+  post-redirect `downloadStart` check, unmeasured live), SAFE-POP-1, SAFE-3, SAFE-4 (b) (#194)); **Step 11** —
+  D3 file upload; **Step 12** — Phase F (`args`
   for `browser_evaluate`, console capture, keep-attached debugger). Live waves run autonomously (#33).
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
@@ -78,16 +89,25 @@ S2b removed `selectTab` and the legacy path, and S3/S5 added the `Tab`, locators
 `browser_use_active_tab` (Step 8 as-built § S2b, § S3, § S5).* Network capture is separate and always on: six top-level
 `chrome.webRequest` observers feed a bounded per-tab `NetworkLog` (no banner, no debugger), which
 `browser_network_requests` / `browser_network_clear` query.
+Since Step 9 every router method runs through one safety gate (`extension/src/safety.ts`, served by
+`GatedRouter`): the human's kill switch, JavaScript switch and block list are enforced in the extension,
+read from `storage.local` per call, and no wire, daemon or SDK method can change them; the network log
+records nothing while disarmed and drops blocked hosts. The daemon only relays the state
+(`safetyState` → `safetyStatus`, `daemon.status.safety`) and withholds URLs/titles while disarmed.
 
 ### Key files
 - `shared/src/`: `protocol.ts` (wire message types + guards: v1/v2 hello, welcome, events; Step 7's
   `SnapshotResult`/`SnapshotElement`, `ScreenshotMode`, the tab and lease event params; Step 8's
   `Locator`/`LocatorName`/`LocateResult`, `WaitForParams`, `ActionTarget`, `TrustedInputOptions`,
-  `EvalEnvelope.ref`, the hello's `session`, `isLocator`),
-  `codes.ts` (the 23 error codes of spec §10: 22 on the wire, plus `NO_CURSOR`, raised by the SDK
+  `EvalEnvelope.ref`, the hello's `session`, `isLocator`; Step 9's `SafetyState`/`isSafetyState`,
+  `DaemonStatusSafety`, `SafetyScope`/`DisarmedData`, `HiddenReason`, the `hidden?` row fields, the
+  `safetyState`/`safetyStatus` events),
+  `codes.ts` (the 25 error codes of spec §10: 24 on the wire, Step 9's `DISARMED` and `DOMAIN_BLOCKED` among them, plus `NO_CURSOR`, raised by the SDK
   alone), `error.ts` (`BridgeError`, `toWire`/`fromWire`; `WireError.code` required since S2b).
   *Superseded 2026-10-24: was "the 22 error codes", because Step 8 S0 added `NO_CURSOR`
   (decisions.md · 2026-10-23 · `NO_CURSOR` enters `shared/src/codes.ts` as the 23rd code (#76)).*
+  *Superseded 2026-10-24: was "the 23 error codes … 22 on the wire", because Step 9 S0 added
+  `DISARMED` and `DOMAIN_BLOCKED` (#133).*
 - `daemon/src/`: `index.ts` (entry → `daemon/dist/index.js`), `main.ts` (`runDaemon`: env, token,
   bind-is-the-lock, idle, signals, exit codes), `wsHost.ts` (binds 127.0.0.1, token gate, roles,
   welcome, heartbeat, `shutdown(code)`), `handshake.ts`, `registry.ts` (clients), `route.ts`
@@ -99,7 +119,10 @@ S2b removed `selectTab` and the legacy path, and S3/S5 added the `Tab`, locators
   {holder}`, released on completion, deadline or disconnect), `methods.ts` (the one method-class
   table — a new extension method must enter it; `REMOVED_METHODS`: `selectTab` → `UNKNOWN_METHOD`),
   `intercept.ts` (`TabLayer`: resolve, lease check, lock, forward with `tabId`; events → handles; the
-  opener rule and `leaseGranted`; `tab is required`; `retireAll` on a changed session marker),
+  opener rule and `leaseGranted`; `tab is required`; `retireAll` on a changed session marker; Step 9: keeps the extension's last
+  `safetyState` (null until reported and after the socket closes), logs one line per change (booleans and the
+  count), serves `daemon.status.safety`, broadcasts `safetyStatus`, withholds URLs/titles while the last state
+  says disarmed, one `listTabs` per change),
   `handle-mark.ts` (Step 8 S2b: handle numbers continue across daemons from
   `~/.chrome-agent-bridge/handle-mark`, reserved in blocks of 64, a time base when the file fails).
   *Superseded 2026-10-24: was "…; the legacy path", because Step 8 S2b removed it (decisions.md ·
@@ -108,10 +131,12 @@ S2b removed `selectTab` and the legacy path, and S3/S5 added the `Tab`, locators
   `BridgeError`, `ErrorCodes`, `downloadToFile`, `formatSnapshot`, `formatNetwork`; the rest are
   types), `connect.ts` (`connect({name, failureReports?, …})`), `knock.ts` (knock/spawn/handover state
   machine), `client.ts` (`BridgeClient`: calls, events, 4002 reconnect; Step 8's `newTab`, `claim`,
-  `tab()` — the cursor, `NO_CURSOR` without one — `tabs()`, and the cursor's `Tab` methods mirrored but
+  `tab()` — the cursor, `NO_CURSOR` without one — `tabs()` (rows carry `hidden?`, Step 9), Step 9's `safety()`
+  and `on("safetyStatus")`, and the cursor's `Tab` methods mirrored but
   `close`), `tab.ts` (Step 8 `Tab {handle}`: navigate…release, stale after a 4002 reconnect →
   `TAB_UNKNOWN` with no call), `locator.ts` (`Target = ref | Locator`, `normalizeTarget`), `error.ts`
-  (failure reports: the attach set, the 5 s budget, `report()`), `report.ts` (the `@bridge/sdk/report`
+  (failure reports: the attach set, the 5 s budget, `report()`; Step 9's `safetyRefusalLine` — one plain line
+  for `DISARMED`/`DOMAIN_BLOCKED`, no report — re-exported by `report.ts`), `report.ts` (the `@bridge/sdk/report`
   subpath: `attachContext` for the MCP), `policy.ts` (`TRUSTED_INPUT_POLICY = "focusFirst"`),
   `transport.ts` (the `ws` socket), `spawn.ts`,
   `paths.ts` (daemon path, `BRIDGE_DAEMON`), `token.ts` (`resolveToken`, also used by the daemon),
@@ -129,7 +154,9 @@ S2b removed `selectTab` and the legacy path, and S3/S5 added the `Tab`, locators
   4002 reconnect or a new client), `tools/registry.ts` (the 23 MCP tools — `browser_focus_tab` is
   Step 7's, `browser_use_active_tab` Step 8's; the `locator` object on the actions and
   `browser_wait_for`; `failureReport`/`failedLine`: an attach-set failure on a handle is rendered as the
-  SDK's report plus a PNG). *Superseded 2026-10-24: was "moved only by
+  SDK's report plus a PNG; Step 9's `withSafetyRefusals` (a `DISARMED`/`DOMAIN_BLOCKED` from any tool → one
+  error line), `safetyStatusLine` (`browser_status`'s second text item `Safety: …`), hidden rows
+  `(hidden: the bridge is off)` / `(hidden: blocked site)`). *Superseded 2026-10-24: was "moved only by
   `browser_select_tab`/`browser_new_tab` … the 22 MCP tools", because Step 8 S5 added
   `browser_use_active_tab` (Step 8 as-built § S5).*
 - `recipes/` (run with `npm run recipe -- <file>`, i.e. `tsx`; index in `recipes/README.md`):
@@ -142,11 +169,16 @@ S2b removed `selectTab` and the legacy path, and S3/S5 added the `Tab`, locators
   gitignored `exports/`; `assemble-mcp.ts`, `held.ts` and their helpers `export-file.ts`,
   `guard.ts`, `readonly.ts`, `session.ts`, `transcript.ts`, `stub-bb.js`; read-only by construction,
   `failureReports: false`), `bb-login.ps1` (that login step), `fixtures/` (its Blackboard and SSO
-  stand-in pages), `bgf-*.ps1` (Chrome quit/relaunch/count: BG-FLAGS, then SM-1), `test/` (part of `npm test`), `tsconfig{,.fe,.s6}.json` (recipes are not in `npm run
+  stand-in pages), `bgf-*.ps1` (Chrome quit/relaunch/count: BG-FLAGS, then SM-1), `s9.ts`/`s9-rules.ts`/`s9-actor.ts`/`s9-win.ps1`/`s9-redirect.py` (Step 9 S4, Run 13: SDK rows, their
+  rules, headless MCP actors, UI Automation of the button/shortcut/options page/worker console, the port-8083
+  redirect server), `test/` (part of `npm test`), `tsconfig{,.fe,.s6,.s9}.json` (recipes are not in `npm run
   typecheck`: `npx tsc --noEmit -p recipes/tsconfig.s6.json`). *Superseded 2026-10-24: was `hello.ts`,
   `reload-extension.ps1`, `t5*`, `bgf-*.ps1` "BG-FLAGS only", because Step 8 FE and S6 added the rest.*
 - `extension/src/`: `sw.ts` (router + offscreen orchestration; the top-level `chrome.tabs.on*`
-  listeners), `router.ts` (thrown error → `{code, message, data?}`), `offscreen.ts` (the socket),
+  listeners), `router.ts` (thrown error →
+  `{code, message, data?}`; Step 9's `GatedRouter`, the only router `sw.ts` builds: `on` throws for a method
+  with no safety class, unknown → `UNKNOWN_METHOD` in every state), `offscreen.ts` (the socket; accepts only
+  this extension's non-tab senders, `relay-sender.ts`),
   `client.ts` (the hello), `session-marker.ts` (pure: the session marker's choice over event orders),
   `trusted-input.ts` (pure: the CDP steps of trusted input, with or without focus emulation),
   `tabs.ts` (`targetTab` — `tabId` required since S2b — `humansTab`, `activateForCapture` + restore,
@@ -166,19 +198,37 @@ S2b removed `selectTab` and the legacy path, and S3/S5 added the `Tab`, locators
   `storage.session` rehydrate/flush, the own-port variable), `handlers/network.ts`,
   `download.ts` (pure: `DownloadStore`, base64, filename from `content-disposition`) +
   `handlers/download.ts` (the service-worker fetch); the other half is `sdk/src/download.ts`.
+  Step 9 (Phase E safety): pure, unit-tested, with no log call — `safety.ts` (the gate
+  `safetyDecision`, the method table `METHOD_CLASSES` over all 23 router methods — `methodClass` throws
+  on an unknown name — the refusal messages, `listTabs`/event redaction, the network predicate),
+  `safety-match.ts` (the block-list grammar and matcher, dot boundary only; #135, #156), `safety-state.ts`
+  (`SAFETY_KEYS` in `storage.local`, the per-call read that fails closed, `SafetyStore.toggle()` →
+  `"disarmed" | "armed" | "ignored" | "write-failed"`, the 1 s re-arm guard, `readStoredArmed`, the
+  `safetyState` reporter), `safety-call.ts` (one call's gate at receipt, before each first side effect,
+  and the post-check), `safety-debugger.ts` (the session registry `detachAll` at disarm),
+  `safety-network.ts` (the ingest filter), `options-model.ts` (the options page's analysis and texts),
+  `relay-sender.ts` (the offscreen sender check); `badge.ts` (badge/title by state, `BadgeController.press`;
+  `chrome.action` injected, unit-tested) logs one fixed line per press (`toggleLogLine`); `options.ts` +
+  `extension/options.html` are page glue (DOM + `chrome.storage.local`, the Safety and Blocked sites
+  boxes), not unit-tested, read statically by `safety-writers.test.ts`. Tests that guard them:
+  `extension/test/log-scan.test.ts` (+ `log-allowlist.ts`, 60 log sites) and `log-sentinel.test.ts` (no
+  pattern/URL/token in any log), `safety-writers.test.ts` (only the toggle and the options page write the
+  safety keys), `manifest.test.ts`.
 
 ## Commands
 
 ```bash
 npm install
 npm run build        # daemon/dist/index.js + mcp/dist/index.js + extension/dist/{sw,options,offscreen,content}.js
-npm test             # vitest — 1714 passed, 85 files (`npm test` 2026-10-24 at eb6b991; recipes/test included)
+npm test             # vitest — 2720 passed, 116 files (`npm test` 2026-10-24 at ba6029e; recipes/test included)
 npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension (chained with &&: the first failure hides the rest)
 npm run recipe -- recipes/<file>.ts [args]   # a script against the SDK, run with tsx (= npx tsx recipes/<file>.ts)
-npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, tsconfig.fe.json cover the older ones)
+npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9 cover the others)
 ```
 *Superseded 2026-10-24: was "950 passed, 59 files (`npm test` 2026-10-23 at 9cfc7db …)", because
 Step 8 added 764 tests and 26 files (Step 8 as-built, per stage; 1714 / 85 also at 75f0bd6).*
+*Superseded 2026-10-24: was "1714 passed, 85 files (… at eb6b991)", because Step 9 added 1006 tests and 31
+files (Step 9 as-built, per stage).*
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
 token + port `9234` in its Options. The MCP config points at `<repo>/mcp/dist/index.js`; nobody starts
 the daemon by hand (the first client spawns it). The token comes from `BRIDGE_TOKEN`, else `bridge.token`
@@ -618,6 +668,76 @@ and follow `docs/e2e-test-plan.md`.
 - **A leaked lease on a retired handle is invisible through the API** — leases are keyed by handle and
   the handle is dead, so only a test that claims through the lease table or after the retire catches it
   (S2b verifier mutation M6, which survived until fixer round 1 added that test; S2b.md).
+
+**Step 9 — safety (2026-10-24; reports in `docs/plans/2026-10-24-step9-phase-e-safety-steps/`)**
+
+- **Every router method passes the safety gate, and a new one cannot skip it.** `sw.ts` serves through
+  `GatedRouter` only (`extension/src/router.ts`); `GatedRouter.on` throws for a name missing from
+  `METHOD_CLASSES` (`extension/src/safety.ts`, no default class), and `safety-gate.test.ts` scans every
+  `router.on("…")` in `sw.ts` against the table (S1.1, three mutants red; the scan is lexical — `router["on"]`
+  escapes it, the throw does not; S1.md §6). A new extension method must enter both `METHOD_CLASSES` and
+  `daemon/src/methods.ts`. Exempting or reclassifying a method to pass a row is a forbidden fix.
+  (By construction + unit tests.)
+- **The state lives in `storage.local`, is read per call, and fails closed.** Keys `safety.armed`,
+  `safety.evaluate`, `safety.blockList` (`safety-state.ts` `SAFETY_KEYS`); missing keys = armed, JavaScript
+  on, empty list; a failed read or a wrong-typed value refuses every call `DISARMED` (#139, #171). Never move
+  it to `storage.session` (a reload would re-arm). A disarm held in memory wins over a read that still says
+  armed (#176); a disarm whose write fails twice stays disarmed in memory, returns `"write-failed"` and
+  lasts until the worker restarts, which reads storage again — armed (#174; S2b report §6 item 6); a
+  rejected re-arm write returns memory to disarmed (S2c, #190). Measured cost of the per-call read:
+  snapshot round trip median 3.6 → 5.3 ms (Run 13 SAFE-PERF; #139's Revisit-if not met).
+- **Nothing on the wire changes the state.** Only `action.onClicked` (`sw.ts`, the button and the
+  `_execute_action` shortcut — there is deliberately no `commands.onCommand`, #142) and the options page
+  write it (`safety-writers.test.ts`; `storage.local.remove`/`clear` refused everywhere, #188). The
+  `action.onClicked` and both `storage.onChanged` listeners are registered at the top level of `sw.ts`
+  with no top-level `await`; `storage.local.setAccessLevel({TRUSTED_CONTEXTS})` runs at module scope after
+  every listener, guarded, not awaited (#139). The offscreen document acts only on this extension's
+  non-tab senders (`relay-sender.ts`, #173). Adding a wire, daemon or SDK method that arms, disarms, edits
+  the list or enables JavaScript is a forbidden fix. (By construction + unit tests; ACL-1 not measured.)
+- **The matcher matches only at a dot boundary** — `host === p || host.endsWith("." + p)`
+  (`safety-match.ts` `patternMatches`); never substring or dot-less `endsWith` (a forbidden fix). The
+  50-case table of stage0-audit.md §5 is `extension/test/safety-match.test.ts`. (Unit tests.)
+- **Never log a pattern, URL or title from the safety code.** The gate, matcher and state modules have no
+  log call; a press logs one fixed line (`badge.ts` `toggleLogLine`); the daemon logs booleans and the
+  count (`intercept.ts` `safetyLogLine`). `log-scan.test.ts` allowlists every log site (60 at S2b: extension
+  15, daemon 33, sdk 0, mcp 6) and `log-sentinel.test.ts` runs the real daemon on port 0 (#187). Run 13:
+  `daemon.log` 210 lines and the worker console 0 for the token, non-fixture `://` and the test patterns
+  (SAFE-10).
+- **`navigate`/`newTab` are gated on the URL Chrome will open**, so a relative URL that resolves to this
+  extension's `options.html` is refused, not just `chrome-extension://…` written out (S2a round-1
+  CRITICAL, #175; measured in Run 13 SAFE-REL-1, PASS). `view-source:` of a relative own-page path
+  answered `ok` (SAFE-REL-3 `rel`, recorded; what it opened is not shown, #196); every later call on such
+  a tab is refused.
+- **The disarm reaches running work fast, Chrome's banner does not.** A running trusted `type` ended
+  `DISARMED` 14 ms after the press (578 of 1000 characters typed), but the "is debugging this browser"
+  banner was still shown 3 s later and gone by +14 s (Run 13 SAFE-4 (b), FAIL, Chrome-owned; re-measured in
+  Step 10, #194); a running `waitFor` was refused 54–92 ms after the press (SAFE-4 (a), 4c).
+- **`Alt+Shift+K` is assigned as `_execute_action` on Chrome 156** and pressing it left the Windows input
+  layout unchanged (`0x04090409` before and after, three layouts installed; Run 13 SAFE-2). The toolbar
+  extension button and the Extensions (puzzle) button expose **no UIA Invoke pattern**: pinning and
+  pressing need a mouse click at a `FromPoint`-verified point in the driver's own window (Run 13 record
+  block 9; S4.md §10 finding 1).
+- **Chrome refuses a `javascript:` navigation through the bridge itself**: `NAV_FAILED JavaScript URLs are
+  not allowed in API based extension navigations. …`, page unchanged (Run 13 SAFE-6c, JavaScript on,
+  record). With JavaScript off the gate refuses first (`DISARMED`, scope `evaluate`, SAFE-6).
+- **On a reload the daemon logs `safety state:` before `extension resync`** (by design:
+  `daemon/src/intercept.ts` `onSafetyState` vs the resync; Run 13 SAFE-9, a wrong expected text, #195). A
+  reload also closes an open options page (SAFE-9 record), and right after it `daemon.status` shows URLs one
+  round trip later than the state (S3.md §6, by reading the code).
+- **Chrome 156 titles the service worker's DevTools window `DevTools`**, with no extension URL (Run 13
+  SAFE-10 set-up, #195).
+- **An options page in a background window did not show a `storage.onChanged` re-arm until brought to
+  the front** (Run 13 SAFE-3, FAIL; cause undetermined — UIA staleness or deferred rendering; re-measured in
+  Step 10, #194). After a `write-failed` disarm the options page shows the stored state ("Bridge armed.")
+  while the badge says OFF and every call is refused — the memory disarm is not visible to the page (S2b
+  verifier F4, by construction, not producible live). The badge is the indicator.
+- **The block list is not a network firewall.** A redirect hop of a bridge `navigate` or `downloadStart`
+  onto a blocked host is still requested; the post-check refuses the reply and a download drops its bytes
+  (`downloadStart` checks its own URL, then `res.url`, #140, #154). The post-redirect download check is
+  unit-tested only: Run 13 SAFE-5c's redirect half timed out on the single-threaded test server (#194).
+  A cross-origin frame of a blocked host shows in screenshots (stage0-audit F16, by reading).
+- **Build fact: esbuild keeps comments placed inside array literals** in the bundle (S0 bundle diff, S0.md
+  §6 item 3) — keep comments out of literals where a bounded bundle diff is checked.
 
 **Driving Chrome from the outside (live waves, Windows)**
 

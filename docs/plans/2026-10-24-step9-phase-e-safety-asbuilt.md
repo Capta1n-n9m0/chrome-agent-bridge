@@ -60,7 +60,8 @@ session agent; one section per stage, written at each stage close.
 ### Contracts (binding forward)
 - The extension sends `{"event":"safetyState","params":{armed, evaluate, blockedCount}}` each time its
   connection comes up and on every change, never in the hello (S3 §7 → S2a). The daemon keeps the latest
-  (null until reported; a new extension hello resets it to null), logs one line per change with booleans
+  (null until reported; a new extension hello, and an extension disconnect, reset it to null —
+  `daemon/src/intercept.ts:251-255`, noted by S5), logs one line per change with booleans
   and the count, serves `daemon.status.safety`, and broadcasts `safetyStatus` (never with null).
 - While the last state says disarmed, the daemon omits URLs and titles from status rows, `tabGone`,
   `TAB_GONE` and `leaseGranted` (`url: ""`), also across an extension disconnect until a new report; a
@@ -181,6 +182,25 @@ session agent; one section per stage, written at each stage close.
 ### Needs the user's keyboard
 - The ruling on Run 13 (#192); `/mcp` or a fresh session in any interactive Claude session using the bridge
   (daemon build changed); optionally pin the toolbar button (left unpinned, as found).
+
+## Stage S5 — Docs · 2026-10-24 · verifier: PASS-with-notes · commit 2631c91
+
+### As built
+- `docs/setup.md` "Safety" (the three controls, `Alt+Shift+K`, badge states, what agents see, the JavaScript
+  switch and the Blackboard recipes, the grammar with reserved names, the own-page block, the failure states,
+  what the block list does not do); README security paragraph; the roadmap's Step 9 block; e2e-test-plan §1
+  names the S4 helpers. Refusal texts quoted byte for byte from the code (#198). `CLAUDE.md` changes proposed
+  in S5.md §7 and applied by the session agent (counts, key files, the "Step 9 — safety" gotcha block).
+- Counts re-derived at `ba6029e`: 2720 tests / 116 files, 25 codes, 23 tools, 23 router methods.
+
+### Deviations
+- The docs follow the code where the brief differed: no `commands.onCommand` (#142).
+
+### Decisions taken
+- #198, #199.
+
+### Estimates vs actuals
+- 1 h estimated; about 21 min (one fix round: setup.md had promised `error.report()` on safety refusals).
 
 ## Open decisions for the user (running list; also in `docs/decisions.md` → Open decisions)
 - #131–#141, #144 (Stage 0), #148 (S0), #153–#156 (S1), #159–#163, #168 (S3), #174–#180 (S2a), #188 (S2b), #192 (S4 — the gate item waits for it).
