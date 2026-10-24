@@ -106,6 +106,23 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-24 · S2c: the badge's stored read is `readStoredArmed` in `safety-state.ts` (#191)
+**Decided:** `readStoredArmed(get)` asks exactly `SAFETY_KEY_NAMES`; `sw.ts` forwards the keys to
+`chrome.storage.local.get`. *Supersedes #183's `get(null)`.* **Why:** #189; the writers test pins the key names to
+`safety-state.ts`/`options.ts`. **Instead of:** a `badge.ts` helper (fails the unchanged writers test); widening the
+writers test's allowlist (edits an existing test). **Revisit if:** the writers test's allowlist is reopened. **By:** Claude (S2c report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2c.md`)
+
+### 2026-10-24 · S2c: a rejected re-arm write returns memory to disarmed without counting as a disarm (#190)
+**Decided:** on a rejected arm write, memory's `armed` returns to false (other fields as they now are), `onDisarm`
+fires, `lastDisarmAt` is not moved, the rejection is rethrown; skipped only when a `storage.onChanged` touching `armed`
+landed after the toggle's apply; an unreadable copy stays unreadable. **Why:** #174/#189 — memory is never re-armed by
+a failed write and nothing is recorded while storage says OFF; the human did not disarm, so the 1 s guard keeps
+measuring from the real disarm and the next press retries. Object identity was not enough (verifier F1: a block-list
+or JavaScript change merges over memory and carries the unsaved `armed: true`). **Instead of:** an identity check;
+reverting unconditionally (overwrites a newer stored `armed`); reverting as a `"toggle"` (moves the guard, so a quick
+retry is "ignored"); applying memory only after the write (changes the success path's order). **Revisit if:** the gate
+ever arms from memory rather than storage. **By:** Claude (S2c report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2c.md`)
+
 ### 2026-10-24 · A fix stage S2c before S4: a failed re-arm write leaves memory disarmed; the badge reads only the safety keys (#189)
 **Decided:** S2b's step agent escalated a defect in S2a's `extension/src/safety-state.ts`: when the write that
 re-arms fails, `toggleOnce` leaves its in-memory copy armed while storage stays disarmed, so the network log

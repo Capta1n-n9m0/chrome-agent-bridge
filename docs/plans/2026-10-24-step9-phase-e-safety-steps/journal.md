@@ -65,3 +65,9 @@
   (supersedes #183's `get(null)`).
 - Recorded #181–#189; #188 contract-level under Open decisions.
 - Next: S2c alone, then S4.
+
+## 2026-10-24 — S2c closed (6fef83c); S4 next
+
+- S2c: DONE, PASS-with-notes after one fix round (F1: the revert's identity check fooled by another key's
+  change). Tests 2660/113 → 2685/115; typecheck, build 0. Recorded #190, #191.
+- Code is complete for S4: main tree clean at the S2c docs commit. Next: S4 (live wave), alone.

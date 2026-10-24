@@ -279,4 +279,4 @@ plan-side with a dated note.
 
 ## Running state (session agent updates this section at each dispatch)
 
-- S2b closed 59388ed (2660 tests / 113 files). Fix stage S2c dispatched alone (#189). Nothing running; port 9234 free.
+- S2c closed 6fef83c (2685 tests / 115 files). S4 (live) dispatched alone. Nothing running; port 9234 free at dispatch.

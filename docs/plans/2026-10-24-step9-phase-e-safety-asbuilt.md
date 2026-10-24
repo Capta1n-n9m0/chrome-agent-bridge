@@ -130,5 +130,19 @@ session agent; one section per stage, written at each stage close.
 ### Estimates vs actuals
 - 1.5 h estimated; about 56 min (one fix round). Tests 2561 / 106 → 2660 / 113.
 
+## Stage S2c — Fix: failed re-arm write; narrow badge read · 2026-10-24 · verifier: PASS-with-notes · commit 6fef83c
+
+### Contracts (binding forward)
+- A rejected re-arm write returns memory to disarmed (fires `onDisarm`, does not move the 1 s re-arm
+  guard), unless a newer `armed` change landed meanwhile; the next press retries the re-arm (#190, #174).
+- The badge's stored read is `readStoredArmed` in `safety-state.ts`, asking exactly the safety keys; `sw.ts`
+  no longer calls `storage.local.get(null)` (#191, supersedes #183's read).
+
+### Decisions taken
+- #189 (the stage), #190, #191.
+
+### Estimates vs actuals
+- Unbudgeted fix stage; about 25 min (one fix round). Tests 2660 / 113 → 2685 / 115.
+
 ## Open decisions for the user (running list; also in `docs/decisions.md` → Open decisions)
 - #131–#141, #144 (Stage 0), #148 (S0), #153–#156 (S1), #159–#163, #168 (S3), #174–#180 (S2a), #188 (S2b).
