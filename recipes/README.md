@@ -32,6 +32,10 @@ The SDK finds, starts or hands over the daemon itself; the token comes from `BRI
 | `reload-extension.ps1` | Reloads the unpacked extension by UI Automation and proves it (exit 0; exit 2 = pressed nothing). |
 | `bgf-*.ps1` | Chrome quit/relaunch/count (BG-FLAGS, then SM-1 under #96; every Chrome restart needs a fresh grant from the user). |
 | `bb-login.ps1` | SDK-6/SDK-7's login step: its own window on ada, Chrome's autofill, at most one invoke in a run — Blackboard's own sign-in button, or (since 2026-10-23, #99) the one allowlisted submit button of ADA's SSO page, only on a host on its SSO host allowlist (`ada.edu.az` and hosts under it, or exactly `login.microsoftonline.com`); counts, yes/no and an allowlisted host only, never reads or types a field (exit 0 logged in, 4 waits for the user, 2 nothing touched). `-DryRunBase http://127.0.0.1:<port>/` runs it against the loopback stand-ins in `fixtures/` (`bb-standin*.html`, `sso-standin*.html`). |
+| `s9.ts`, `s9-rules.ts` | Step 9's live wave (Run 13, `docs/e2e-test-plan.md` §4.20; order in `docs/plans/2026-10-24-step9-phase-e-safety-steps/S4-wave-sheet.md`): one bridge call per `call <ROW> <step> <op>`, printed `ROW …` and judged `CHECK …`; the timed rows (`safe4a`, `safe4c`, `safe4-type`, `safe4b`, `cap1`) signal `$S9_OUT\<row>.ready` for the driver's press; `scan-log` / `scan-file` print counts only. listTabs, `daemon.status` and the network log as counts, never a non-fixture URL or title. |
+| `s9-actor.ts` | Step 9's MCP actors: a persistent `claude -p --model sonnet` with an MCP config naming only `chrome-agent-bridge` (`--strict-mcp-config`), tool results printed item by item (#162's `Safety:` item). |
+| `s9-win.ps1` | Step 9's UI Automation (dot-source it): the toolbar button (pin, press, title), Alt+Shift+K and the keyboard layout, the options page (switches, block list — read as line count and sha256 only), `chrome://extensions/shortcuts`, the worker's console; only in the driver's own windows. A UTF-8 BOM file (the em dash in the titles). |
+| `s9-redirect.py` | Port 8083: every GET → 302 to the same path on `http://localhost:8081` (SAFE-5b/5c); 127.0.0.1 only. |
 
 ## The Blackboard recipes' rules
 
@@ -53,5 +57,6 @@ The SDK finds, starts or hands over the daemon itself; the token comes from `BRI
 
 ```bash
 npx tsc --noEmit -p recipes/tsconfig.s6.json   # the S6 files (tsconfig.json and tsconfig.fe.json cover the older ones)
+npx tsc --noEmit -p recipes/tsconfig.s9.json   # the Step 9 S4 files
 npx vitest run recipes/                        # recipes/test/*.test.ts (part of `npm test`)
 ```

@@ -1,0 +1,580 @@
+﻿# recipes/s9-win.ps1: Windows UI Automation helpers for Step 9's live wave (Run 13; docs/e2e-test-plan.md section 4.20,
+# wave sheet docs/plans/2026-10-24-step9-phase-e-safety-steps/S4-wave-sheet.md). Windows PowerShell 5.1.
+# Written 2026-10-24 by the S4 prep builder, before the Step 9 build was loaded; NOT run against Chrome by its author
+# (the prep stage may not touch Chrome), so a helper bug found live is fixed and recorded as a set-up fix - a helper
+# never changes a row's expected text or pass rule.
+#
+#   . .\recipes\s9-win.ps1          # dot-source: loads the functions (and sets UTF-8 output, LESSONS)
+#
+# Every function acts on a window handle the driver obtained from Open-S9Window / Open-S9ChromePage (a HWND diff:
+# the one new Chrome window), never on the user's windows or tabs. It prints no title, URL or name of anything that
+# is not the wave's own (fixture pages, this extension's pages and button, chrome://extensions), never the token
+# (the options page's Token field is never read), and never the block-list text: Read-S9SafetyState prints only
+# its line count and sha256 (UTF-8 of the textarea value as UIA ValuePattern reads it).
+#
+# Functions (each prints one or more stamped lines; "returns" = the pipeline value):
+#   Open-S9Window <url>                      chrome.exe --new-window <http url>; returns the new HWND
+#   Open-S9ChromePage <url>                  a new about:blank window navigated by its own omnibox to a chrome:// or
+#                                            chrome-extension:// URL (Chrome opens those as a New Tab page on the
+#                                            command line); returns the HWND
+#   Set-S9Omnibox <hwnd> <url>               navigate that window's active tab by its omnibox (UIA SetValue + Enter)
+#   Set-S9Foreground <hwnd> / Close-S9Window <hwnd>
+#   Get-S9PinState <hwnd> / Set-S9Pin <hwnd> -Pin|-Unpin          the toolbar button (G9-2)
+#   Get-S9ActionTitle <hwnd> / Wait-S9ActionTitle <hwnd> -Expect <t> [-TimeoutMs]
+#   Invoke-S9ActionButton <hwnd> [-Times n] [-GapMs ms]           returns the last press time (ISO)
+#   Get-S9BadgePixels <hwnd>                 record only: red/amber pixel counts on the button
+#   Get-S9KeyboardLayouts / Send-S9Shortcut <hwnd> / Restore-S9Layout <hwnd> <hkl>   Alt+Shift+K; put a switched layout back
+#   Read-S9Shortcuts <hwnd>                  window on chrome://extensions/shortcuts: is our command Alt+Shift+K?
+#   Open-S9WorkerConsole <hwnd> / Read-S9WorkerConsole <hwnd> -Out <file>
+#   Read-S9SafetyState <hwnd> [-SaveTo <dir>] / Read-S9OptionsLines <hwnd> [-ShowInvalid]
+#   Set-S9Switch <hwnd> -Which armed|evaluate -On $true|$false / Set-S9BlockList <hwnd> -Lines <s[]> | -FromFile <f>
+#   Invoke-S9OptionsButton <hwnd> -Id <html id>
+#   Invoke-S9PressWhenReady <hwnd> -Row <r> -DelayMs <ms> [-Via Button|Shortcut] [-WatchBanner] [-RearmAfterMs <ms>]
+#   Invoke-S9WhenReady -Row <r> -DelayMs <ms> -Action { ... }
+#   Test-S9Banner <hwnd> / Select-S9Tab <hwnd> -TitlePrefix <p> / Close-S9Tab <hwnd> -TitlePrefix <p>
+#   Get-BridgeDaemon / Get-BridgeLog / Get-DriverChain / Get-ProcTree / Test-SafeToKill   (section 1 item 8, copied)
+#
+# Signals: s9.ts writes $env:S9_OUT\<row>.ready; Invoke-S9PressWhenReady writes $env:S9_OUT\<row>.pressed (ISO time
+# of the press) - the default $env:S9_OUT is %TEMP%\bridge-e2e\s9, the same as s9.ts's.
+
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing, System.Windows.Forms
+if (-not ('S9Win' -as [type])) {
+  Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class S9Win {
+  public delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr l);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
+  [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+  [DllImport("user32.dll")] public static extern IntPtr GetKeyboardLayout(uint thread);
+  [DllImport("user32.dll")] public static extern int GetKeyboardLayoutList(int n, IntPtr[] list);
+  public static string Text(IntPtr h) { var s = new StringBuilder(512); GetWindowText(h, s, 512); return s.ToString(); }
+  public static string Cls(IntPtr h) { var s = new StringBuilder(256); GetClassName(h, s, 256); return s.ToString(); }
+  public static uint Thread(IntPtr h) { uint pid; return GetWindowThreadProcessId(h, out pid); }
+}
+'@
+}
+
+$S9UIA = [Windows.Automation.AutomationElement]
+$S9Name = 'Chrome Agent Bridge'
+$S9Id = 'cpnemjbgecfbeicldpaaegbhjgjgjfep'   # section 1 item 9; recomputed by `s9.ts id`
+# extension/src/badge.ts BADGE_TITLES (#143), copied; recipes/test/s9-rules.test.ts checks EXPECT against the source.
+$S9TitleOff = 'Chrome Agent Bridge — OFF: agents are refused (click to turn on)'
+$S9TitleArmed = 'Chrome Agent Bridge — armed (click to turn off)'
+$S9TitleJsOff = 'Chrome Agent Bridge — armed, JavaScript off (click to turn off)'
+if (-not $env:S9_OUT) { $env:S9_OUT = Join-Path $env:TEMP 'bridge-e2e\s9' }
+
+function Say9([string]$m) { Write-Host ('{0:yyyy-MM-ddTHH:mm:ss.fffZ} s9-win: {1}' -f [DateTime]::UtcNow, $m) }
+function Now9 { [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ') }
+
+# A title as this file may print it: the wave's own windows only.
+function Format-S9Title([string]$t) {
+  if ($t -match '^(Agent Bridge E2E Playground|S9 W human tab|Extensions|Extensions - Keyboard shortcuts|Chrome Agent Bridge — Options|about:blank|New Tab)( - Google Chrome)?$') { return $t }
+  if ($t -match "^DevTools - chrome-extension://$S9Id/") { return $t }
+  if ($t -match '^DevTools') { return '<DevTools window>' }
+  '<other window>'
+}
+
+function Get-S9Chrome {
+  $p = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe' -ErrorAction SilentlyContinue).'(default)'
+  if (-not $p) { $p = (Get-ItemProperty 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe' -ErrorAction SilentlyContinue).'(default)' }
+  foreach ($c in @($p, "$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe")) { if ($c -and (Test-Path $c)) { return $c } }
+  throw 'chrome.exe not found'
+}
+
+# Visible top-level Chrome windows (class Chrome_WidgetWin_1, a chrome.exe process); -AnyTitle includes untitled ones (bubbles).
+function Get-S9ChromeWindows([switch]$AnyTitle) {
+  $pids = @(Get-Process chrome -ErrorAction SilentlyContinue | ForEach-Object { [uint32]$_.Id })
+  $found = New-Object System.Collections.ArrayList
+  $cb = [S9Win+EnumProc]{ param($h, $l)
+    if ([S9Win]::IsWindowVisible($h) -and [S9Win]::Cls($h) -eq 'Chrome_WidgetWin_1') {
+      $wpid = [uint32]0; [void][S9Win]::GetWindowThreadProcessId($h, [ref]$wpid)
+      if ($pids -contains $wpid -and ($AnyTitle -or [S9Win]::Text($h))) { [void]$found.Add([long]$h) }
+    }
+    $true }
+  [void][S9Win]::EnumWindows($cb, [IntPtr]::Zero)
+  , @($found)
+}
+
+function Wait-S9NewWindow($before, [int]$TimeoutSec = 15, [string]$TitleLike = '') {
+  $t0 = Get-Date; $new = @()
+  do {
+    Start-Sleep -Milliseconds 300
+    $new = @(Get-S9ChromeWindows | Where-Object { $before -notcontains $_ } | Where-Object { -not $TitleLike -or ([S9Win]::Text([IntPtr]$_) -like $TitleLike) })
+  } until ($new.Count -ge 1 -or ((Get-Date) - $t0).TotalSeconds -gt $TimeoutSec)
+  if ($new.Count -ne 1) { throw "expected exactly 1 new Chrome window, found $($new.Count) - not knowing which is mine, none is touched" }
+  [long]$new[0]
+}
+
+function Open-S9Window([string]$Url) {
+  if ($Url -notmatch '^http://localhost:808[013]/') { throw "Open-S9Window opens fixture URLs only" }
+  $before = Get-S9ChromeWindows
+  Start-Process -FilePath (Get-S9Chrome) -ArgumentList '--new-window', $Url
+  $h = Wait-S9NewWindow $before
+  Say9 "opened window $h on $Url ('$(Format-S9Title ([S9Win]::Text([IntPtr]$h)))')"
+  $h
+}
+
+function Get-S9Omnibox([long]$Hwnd) {
+  $root = $S9UIA::FromHandle([IntPtr]$Hwnd)
+  $c = New-Object Windows.Automation.PropertyCondition($S9UIA::ClassNameProperty, 'OmniboxViewViews')
+  $t0 = Get-Date; $o = $null
+  while (-not $o -and ((Get-Date) - $t0).TotalSeconds -lt 15) { $o = $root.FindFirst([Windows.Automation.TreeScope]::Descendants, $c); if (-not $o) { Start-Sleep -Milliseconds 300 } }
+  if (-not $o) { throw "no address bar in window $Hwnd" }
+  $o
+}
+
+function Set-S9Foreground([long]$Hwnd) {
+  if ([S9Win]::IsIconic([IntPtr]$Hwnd)) { [void][S9Win]::ShowWindow([IntPtr]$Hwnd, 9) }
+  if (([long][S9Win]::GetForegroundWindow()) -ne $Hwnd) {
+    # An ALT tap lets this process set the foreground (as recipes/reload-extension.ps1 does).
+    [S9Win]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero); [S9Win]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)
+    [void][S9Win]::SetForegroundWindow([IntPtr]$Hwnd); Start-Sleep -Milliseconds 300
+  }
+  ([long][S9Win]::GetForegroundWindow()) -eq $Hwnd
+}
+
+function Get-S9Doc([long]$Hwnd) {
+  $root = $S9UIA::FromHandle([IntPtr]$Hwnd)
+  $c = New-Object Windows.Automation.PropertyCondition($S9UIA::AutomationIdProperty, 'RootWebArea')
+  $root.FindFirst([Windows.Automation.TreeScope]::Descendants, $c)
+}
+
+function Get-S9DocUrl([long]$Hwnd) {
+  $d = Get-S9Doc $Hwnd; $vp = $null
+  if ($d -and $d.TryGetCurrentPattern([Windows.Automation.ValuePattern]::Pattern, [ref]$vp)) { return $vp.Current.Value }
+  ''
+}
+
+function Set-S9Omnibox([long]$Hwnd, [string]$Url, [int]$TimeoutSec = 15) {
+  $omni = Get-S9Omnibox $Hwnd
+  if (-not (Set-S9Foreground $Hwnd)) { throw "window $Hwnd is not in the foreground - no key sent" }
+  $omni.SetFocus()
+  $omni.GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).SetValue($Url)
+  Start-Sleep -Milliseconds 300
+  $focused = $S9UIA::FocusedElement
+  if (([long][S9Win]::GetForegroundWindow()) -ne $Hwnd -or -not $focused -or -not [Windows.Automation.Automation]::Compare($focused, $omni)) { throw "window $Hwnd or its address bar lost the focus - no key sent" }
+  [S9Win]::keybd_event(0x0D, 0, 0, [UIntPtr]::Zero); [S9Win]::keybd_event(0x0D, 0, 2, [UIntPtr]::Zero)
+  $t0 = Get-Date; $u = ''
+  do { Start-Sleep -Milliseconds 300; $u = Get-S9DocUrl $Hwnd } until ($u.StartsWith($Url.TrimEnd('/')) -or ((Get-Date) - $t0).TotalSeconds -gt $TimeoutSec)
+  if ($u.StartsWith($Url.TrimEnd('/'))) { Say9 "window $Hwnd now shows $Url" } else { Say9 "window $Hwnd did NOT reach $Url within $TimeoutSec s" }
+}
+
+function Open-S9ChromePage([string]$Url) {
+  if ($Url -notmatch "^(chrome://extensions|chrome-extension://$S9Id/)") { throw "Open-S9ChromePage opens chrome://extensions… or this extension's pages only" }
+  $before = Get-S9ChromeWindows
+  Start-Process -FilePath (Get-S9Chrome) -ArgumentList '--new-window', 'about:blank'
+  $h = Wait-S9NewWindow $before
+  $omni = Get-S9Omnibox $h
+  $u0 = ''; $t0 = Get-Date
+  do { $u0 = $omni.GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).Current.Value; if ($u0 -ne 'about:blank') { Start-Sleep -Milliseconds 200 } } until ($u0 -eq 'about:blank' -or ((Get-Date) - $t0).TotalSeconds -gt 5)
+  if ($u0 -ne 'about:blank') { throw "the new window $h is not on about:blank - not surely mine, nothing typed" }
+  Set-S9Omnibox $h $Url
+  $h
+}
+
+function Close-S9Window([long]$Hwnd) {
+  [void][S9Win]::PostMessage([IntPtr]$Hwnd, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
+  $t0 = Get-Date
+  while ([S9Win]::IsWindow([IntPtr]$Hwnd) -and ((Get-Date) - $t0).TotalSeconds -lt 5) { Start-Sleep -Milliseconds 200 }
+  if ([S9Win]::IsWindow([IntPtr]$Hwnd)) { Say9 "window $Hwnd did NOT close" } else { Say9 "window $Hwnd closed" }
+}
+
+# ---------------------------------------------------------------------------------------------- toolbar button
+
+# Buttons in the window's own UI (outside the page) whose name starts with the extension's name.
+function Find-S9ActionButtons([long]$Hwnd) {
+  $root = $S9UIA::FromHandle([IntPtr]$Hwnd)
+  $c = New-Object Windows.Automation.PropertyCondition($S9UIA::ControlTypeProperty, [Windows.Automation.ControlType]::Button)
+  @($root.FindAll([Windows.Automation.TreeScope]::Descendants, $c) | Where-Object { $_.Current.Name -and $_.Current.Name.StartsWith($S9Name) })
+}
+
+function Get-S9PinState([long]$Hwnd) {
+  $b = Find-S9ActionButtons $Hwnd
+  Say9 "toolbar buttons named '$S9Name…': $($b.Count) -> pinned=$(if ($b.Count -ge 1) { 'true' } else { 'false' })"
+  $b.Count -ge 1
+}
+
+function Get-S9ActionTitle([long]$Hwnd) {
+  $b = Find-S9ActionButtons $Hwnd
+  if ($b.Count -ne 1) { Say9 "ACTION buttons found: $($b.Count) (need exactly 1)"; return $null }
+  $n = $b[0].Current.Name; $help = $b[0].Current.HelpText
+  Say9 ("ACTION name ""$n""" + $(if ($help) { " help ""$help""" } else { '' }) + " class '$($b[0].Current.ClassName)'")
+  $n
+}
+
+function Wait-S9ActionTitle([long]$Hwnd, [string]$Expect, [int]$TimeoutMs = 2000) {
+  $t0 = Get-Date; $n = ''
+  do {
+    $b = Find-S9ActionButtons $Hwnd
+    if ($b.Count -eq 1) { $n = $b[0].Current.Name; if ($n -eq $Expect -or $n.StartsWith($Expect)) { break } }
+    Start-Sleep -Milliseconds 50
+  } until (((Get-Date) - $t0).TotalMilliseconds -gt $TimeoutMs)
+  $ms = [int]((Get-Date) - $t0).TotalMilliseconds
+  if ($n -eq $Expect -or $n.StartsWith($Expect)) { Say9 "TITLE ok after $ms ms: ""$n""" } else { Say9 "TITLE TIMEOUT after $ms ms: last name ""$n"" (expected ""$Expect"")" }
+}
+
+function Invoke-S9ActionButton([long]$Hwnd, [int]$Times = 1, [int]$GapMs = 200) {
+  $b = Find-S9ActionButtons $Hwnd
+  if ($b.Count -ne 1) { throw "toolbar buttons named '$S9Name…': $($b.Count) (need exactly 1) - nothing pressed (is it pinned? G9-2)" }
+  $pat = $null
+  if (-not $b[0].TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern, [ref]$pat)) { throw 'the toolbar button has no Invoke pattern - nothing pressed' }
+  $last = ''
+  for ($i = 1; $i -le $Times; $i++) {
+    $pat.Invoke(); $last = Now9
+    Say9 "PRESS button $i/$Times at $last"
+    if ($i -lt $Times) { Start-Sleep -Milliseconds $GapMs }
+  }
+  $last
+}
+
+# Pins (-Pin) or unpins (-Unpin) the button through W's Extensions menu. Prints only our row's element names.
+function Set-S9Pin([long]$Hwnd, [switch]$Pin, [switch]$Unpin) {
+  if ($Pin -eq $Unpin) { throw 'Set-S9Pin: pass exactly one of -Pin, -Unpin' }
+  $root = $S9UIA::FromHandle([IntPtr]$Hwnd)
+  $c = New-Object Windows.Automation.PropertyCondition($S9UIA::ControlTypeProperty, [Windows.Automation.ControlType]::Button)
+  $ext = @($root.FindAll([Windows.Automation.TreeScope]::Descendants, $c) | Where-Object { $_.Current.Name -eq 'Extensions' })
+  if ($ext.Count -ne 1) { throw "Extensions buttons in window ${Hwnd}: $($ext.Count) (need 1) - nothing pressed (G9-2: ask the user)" }
+  $before = Get-S9ChromeWindows -AnyTitle
+  $ext[0].GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
+  Start-Sleep -Milliseconds 800
+  $menus = @(Get-S9ChromeWindows -AnyTitle | Where-Object { $before -notcontains $_ })
+  $scopes = @($menus | ForEach-Object { $S9UIA::FromHandle([IntPtr]$_) }) + @($root)
+  $row = $null
+  foreach ($s in $scopes) {
+    $hit = @($s.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition) | Where-Object { $_.Current.Name -and $_.Current.Name.StartsWith($S9Name) -and -not ($_.Current.ControlType -eq [Windows.Automation.ControlType]::Button -and $s -eq $root) })
+    if ($hit.Count) { $row = [Windows.Automation.TreeWalker]::ControlViewWalker.GetParent($hit[0]); break }
+  }
+  if (-not $row) { Say9 'Extensions menu: no row named for this extension - nothing pinned (G9-2: ask the user)'; return $false }
+  $items = @($row.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition))
+  Say9 ("menu row elements: " + (($items | ForEach-Object { "$($_.Current.ControlType.ProgrammaticName -replace 'ControlType\.','') '$($_.Current.Name)'" }) -join '; '))
+  $want = if ($Pin) { '(?i)^(?!.*\bunpin\b).*\bpin\b' } else { '(?i)\bunpin\b' }
+  $btn = @($items | Where-Object { $_.Current.ControlType -eq [Windows.Automation.ControlType]::Button -and (($_.Current.Name -match $want) -or ($_.Current.HelpText -match $want)) })
+  if ($btn.Count -ne 1) {
+    Say9 "pin buttons matching ${want}: $($btn.Count) (need 1) - nothing pressed"
+    [S9Win]::keybd_event(0x1B, 0, 0, [UIntPtr]::Zero); [S9Win]::keybd_event(0x1B, 0, 2, [UIntPtr]::Zero)
+    return $false
+  }
+  $btn[0].GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
+  Say9 "invoked '$($btn[0].Current.Name)'"
+  Start-Sleep -Milliseconds 500
+  if (@(Get-S9ChromeWindows -AnyTitle | Where-Object { $before -notcontains $_ }).Count) { [S9Win]::keybd_event(0x1B, 0, 0, [UIntPtr]::Zero); [S9Win]::keybd_event(0x1B, 0, 2, [UIntPtr]::Zero) }
+  Start-Sleep -Milliseconds 300
+  $now = Get-S9PinState $Hwnd
+  if ($Pin) { $now } else { -not $now }
+}
+
+# Record only: red (#d93025-ish) and amber (#e37400-ish) pixels on the button, screen capture (W must be uncovered).
+function Get-S9BadgePixels([long]$Hwnd) {
+  $b = Find-S9ActionButtons $Hwnd
+  if ($b.Count -ne 1) { Say9 "BADGE pixels: no single button"; return }
+  $r = $b[0].Current.BoundingRectangle
+  $w = [int]$r.Width; $h = [int]$r.Height
+  if ($w -le 0 -or $h -le 0) { Say9 'BADGE pixels: the button has no area'; return }
+  $bmp = New-Object System.Drawing.Bitmap $w, $h
+  $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen([int]$r.X, [int]$r.Y, 0, 0, $bmp.Size); $g.Dispose()
+  $red = 0; $amber = 0
+  for ($y = 0; $y -lt $h; $y++) { for ($x = 0; $x -lt $w; $x++) { $p = $bmp.GetPixel($x, $y)
+      if ($p.R -gt 150 -and $p.G -lt 90 -and $p.B -lt 90) { $red++ } elseif ($p.R -gt 170 -and $p.G -ge 90 -and $p.G -le 170 -and $p.B -lt 70) { $amber++ } } }
+  $bmp.Dispose()
+  Say9 "BADGE pixels red=$red amber=$amber on ${w}x$h (record, not a check)"
+}
+
+# ----------------------------------------------------------------------------------------------- the shortcut
+
+function Get-S9KeyboardLayouts {
+  $n = [S9Win]::GetKeyboardLayoutList(0, $null); $a = New-Object IntPtr[] $n; [void][S9Win]::GetKeyboardLayoutList($n, $a)
+  Say9 ("keyboard layouts installed: $n (" + (($a | ForEach-Object { '0x{0:x8}' -f $_.ToInt64() }) -join ', ') + ')')
+}
+
+function Get-S9Layout([long]$Hwnd) { '0x{0:x8}' -f ([S9Win]::GetKeyboardLayout([S9Win]::Thread([IntPtr]$Hwnd))).ToInt64() }
+
+function Send-S9Shortcut([long]$Hwnd) {
+  if (-not (Set-S9Foreground $Hwnd)) { throw "window $Hwnd is not in the foreground - no key sent" }
+  $before = Get-S9Layout $Hwnd
+  [S9Win]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)      # Alt down
+  [S9Win]::keybd_event(0x10, 0, 0, [UIntPtr]::Zero)      # Shift down
+  [S9Win]::keybd_event(0x4B, 0, 0, [UIntPtr]::Zero)      # K down
+  [S9Win]::keybd_event(0x4B, 0, 2, [UIntPtr]::Zero)      # K up
+  $at = Now9
+  [S9Win]::keybd_event(0x10, 0, 2, [UIntPtr]::Zero)      # Shift up
+  [S9Win]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)      # Alt up
+  Start-Sleep -Milliseconds 400
+  $after = Get-S9Layout $Hwnd
+  Say9 "SHORTCUT pressed Alt+Shift+K at $at into window $Hwnd; layout before $before after $after"
+  $at
+}
+
+# If Alt+Shift switched the input language (SAFE-2), tap Windows' own Alt+Shift until window $Hwnd reads $Want again
+# (at most 4 taps); prints each reading. Only the layout the wave changed is put back.
+function Restore-S9Layout([long]$Hwnd, [string]$Want) {
+  for ($i = 0; $i -lt 4 -and (Get-S9Layout $Hwnd) -ne $Want; $i++) {
+    if (-not (Set-S9Foreground $Hwnd)) { throw "window $Hwnd is not in the foreground - no key sent" }
+    [S9Win]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero); [S9Win]::keybd_event(0x10, 0, 0, [UIntPtr]::Zero)
+    [S9Win]::keybd_event(0x10, 0, 2, [UIntPtr]::Zero); [S9Win]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 400
+    Say9 "LAYOUT tap $($i + 1): now $(Get-S9Layout $Hwnd)"
+  }
+  $now = Get-S9Layout $Hwnd
+  Say9 "LAYOUT $(if ($now -eq $Want) { 'restored' } else { 'NOT restored' }): $now (wanted $Want)"
+}
+
+# A window on chrome://extensions/shortcuts: our card's command and key (prints our card's matching texts only).
+function Read-S9Shortcuts([long]$Hwnd) {
+  $u = Get-S9DocUrl $Hwnd
+  if (-not $u.StartsWith('chrome://extensions/shortcuts')) { throw "window $Hwnd is not on chrome://extensions/shortcuts" }
+  $all = @((Get-S9Doc $Hwnd).FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition))
+  $start = -1; for ($i = 0; $i -lt $all.Count; $i++) { if ($all[$i].Current.Name -eq $S9Name) { $start = $i; break } }
+  if ($start -lt 0) { Say9 "SHORTCUT card '$S9Name' not found"; return 'not-found' }
+  $assigned = $false; $shown = @()
+  for ($i = $start + 1; $i -lt [Math]::Min($all.Count, $start + 40); $i++) {
+    $e = $all[$i]
+    if ($e.Current.AutomationId -eq 'name' -and $e.Current.Name -ne $S9Name) { break }   # the next card
+    $v = ''; $vp = $null; if ($e.TryGetCurrentPattern([Windows.Automation.ValuePattern]::Pattern, [ref]$vp)) { $v = $vp.Current.Value }
+    foreach ($t in @($e.Current.Name, $v)) {
+      if ($t -match '(?i)Activate the extension|Alt|Shift|Ctrl|Not set|shortcut') { $shown += $t }
+      if ($t -match '(?i)Alt\s*\+\s*Shift\s*\+\s*K') { $assigned = $true }
+    }
+  }
+  Say9 ("SHORTCUT card texts: " + (($shown | Select-Object -Unique | ForEach-Object { "'$_'" }) -join '; '))
+  $res = if ($assigned) { 'assigned' } else { 'unassigned' }
+  Say9 "SHORTCUT $res"
+  $res
+}
+
+# --------------------------------------------------------------------------------------------- worker console
+
+function Find-S9Card([long]$Hwnd) {
+  $all = @((Get-S9Doc $Hwnd).FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition))
+  $starts = @(); for ($i = 0; $i -lt $all.Count; $i++) { if ($all[$i].Current.AutomationId -eq 'name') { $starts += $i } }
+  for ($k = 0; $k -lt $starts.Count; $k++) {
+    $s = $starts[$k]; $e = if ($k + 1 -lt $starts.Count) { $starts[$k + 1] } else { $all.Count }
+    if ($all[$s].Current.Name -ne $S9Name) { continue }
+    $span = @($all[$s..($e - 1)])
+    if (@($span | Where-Object { $_.Current.Name -match "(^|\s)$S9Id$" }).Count -eq 1) { return , $span }
+  }
+  $null
+}
+
+function Open-S9WorkerConsole([long]$Hwnd) {
+  if (-not (Get-S9DocUrl $Hwnd).StartsWith('chrome://extensions')) { throw "window $Hwnd is not on chrome://extensions" }
+  $span = Find-S9Card $Hwnd
+  if (-not $span) { throw "no card for $S9Name ($S9Id) in window $Hwnd" }
+  $link = @($span | Where-Object { $_.Current.ControlType -eq [Windows.Automation.ControlType]::Hyperlink -and $_.Current.Name -like 'service worker*' })
+  if ($link.Count -ne 1) { throw "service worker links on our card: $($link.Count) (need 1)" }
+  $before = Get-S9ChromeWindows
+  $link[0].GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
+  $d = Wait-S9NewWindow $before 15 'DevTools*'
+  Say9 "worker console window $d '$(Format-S9Title ([S9Win]::Text([IntPtr]$d)))'"
+  $d
+}
+
+# Writes every text UIA exposes in the DevTools window (the Console panel selected first) to -Out, UTF-8, one per
+# line, in tree order. Prints the line count only; s9.ts scan-file … --mode console judges it.
+function Read-S9WorkerConsole([long]$Hwnd, [string]$Out) {
+  if (-not [S9Win]::IsWindow([IntPtr]$Hwnd)) { Say9 'worker console window is gone - SAFE-10 console half NOT MEASURED'; return }
+  $root = $S9UIA::FromHandle([IntPtr]$Hwnd)
+  $tab = @($root.FindAll([Windows.Automation.TreeScope]::Descendants, (New-Object Windows.Automation.PropertyCondition($S9UIA::ControlTypeProperty, [Windows.Automation.ControlType]::TabItem))) | Where-Object { $_.Current.Name -eq 'Console' })
+  if ($tab.Count -ge 1) { $sp = $null; if ($tab[0].TryGetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern, [ref]$sp)) { $sp.Select(); Start-Sleep -Milliseconds 500 } }
+  $lines = New-Object System.Collections.ArrayList
+  foreach ($e in @($root.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition))) {
+    $n = $e.Current.Name; if ($n) { [void]$lines.Add(($n -replace "`r?`n", ' ')) }
+  }
+  [IO.File]::WriteAllText($Out, (($lines -join "`n") + "`n"), (New-Object Text.UTF8Encoding $false))
+  Say9 "worker console: $($lines.Count) texts written to $Out (not printed; Console tab found: $($tab.Count -ge 1))"
+}
+
+# ----------------------------------------------------------------------------------------------- options page
+
+function Get-S9Options([long]$Hwnd) {
+  $u = Get-S9DocUrl $Hwnd
+  if (-not $u.StartsWith("chrome-extension://$S9Id/options.html")) { throw "window $Hwnd is not on this extension's options page" }
+  Get-S9Doc $Hwnd
+}
+
+function Get-S9ById($doc, [string]$Id) {
+  $doc.FindFirst([Windows.Automation.TreeScope]::Descendants, (New-Object Windows.Automation.PropertyCondition($S9UIA::AutomationIdProperty, $Id)))
+}
+
+# An element's text: its Name, else the names of its descendants joined by a space.
+function Get-S9Text($e) {
+  if (-not $e) { return '' }
+  if ($e.Current.Name) { return $e.Current.Name }
+  (@($e.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition) | ForEach-Object { $_.Current.Name } | Where-Object { $_ }) -join ' ')
+}
+
+function Get-S9Toggle($doc, [string]$Id) {
+  $e = Get-S9ById $doc $Id; $tp = $null
+  if (-not $e -or -not $e.TryGetCurrentPattern([Windows.Automation.TogglePattern]::Pattern, [ref]$tp)) { return $null }
+  $tp.Current.ToggleState -eq [Windows.Automation.ToggleState]::On
+}
+
+function Get-S9Sha256([string]$s) {
+  $h = [Security.Cryptography.SHA256]::Create().ComputeHash((New-Object Text.UTF8Encoding $false).GetBytes($s))
+  -join ($h | ForEach-Object { $_.ToString('x2') })
+}
+
+function Read-S9SafetyState([long]$Hwnd, [string]$SaveTo = '') {
+  $doc = Get-S9Options $Hwnd
+  $armed = Get-S9Toggle $doc 'armed'; $eval = Get-S9Toggle $doc 'evaluate'
+  $ta = Get-S9ById $doc 'blocklist'; $vp = $null
+  if (-not $ta -or -not $ta.TryGetCurrentPattern([Windows.Automation.ValuePattern]::Pattern, [ref]$vp)) { throw 'no block-list textarea with a ValuePattern' }
+  $text = $vp.Current.Value
+  $lines = @($text -split "`r?`n" | Where-Object { $_.Trim() -ne '' }).Count
+  $summary = Get-S9Text (Get-S9ById $doc 'blocklist-summary')
+  $count = if ($summary -match '^(\d+) blocked site') { $Matches[1] } else { '?' }
+  $status = Get-S9Text (Get-S9ById $doc 'safety-status')
+  $sha = Get-S9Sha256 $text
+  Write-Host ('{0} s9-win: STATE armed={1} evaluate={2} count={3} lines={4} sha256={5} status "{6}" summary "{7}"' -f (Now9), "$armed".ToLower(), "$eval".ToLower(), $count, $lines, $sha, $status, $summary)
+  if ($SaveTo -and $text -ne '') {
+    New-Item -ItemType Directory -Force $SaveTo | Out-Null
+    $f = Join-Path $SaveTo 'blocklist.txt'
+    [IO.File]::WriteAllText($f, $text, (New-Object Text.UTF8Encoding $false))
+    Say9 "the found block list is not empty: saved (not printed) to $f for SAFE-11's restore"
+  }
+}
+
+function Read-S9OptionsLines([long]$Hwnd, [switch]$ShowInvalid) {
+  $doc = Get-S9Options $Hwnd
+  Say9 ("OPTIONS armed=" + "$(Get-S9Toggle $doc 'armed')".ToLower() + " evaluate=" + "$(Get-S9Toggle $doc 'evaluate')".ToLower())
+  foreach ($id in @('safety-status', 'safety-error', 'blocklist-summary', 'blocklist-saved', 'blocklist-conflict', 'blocklist-error')) {
+    Say9 "OPTIONS $id ""$(Get-S9Text (Get-S9ById $doc $id))"""
+  }
+  $ul = Get-S9ById $doc 'invalid-lines'
+  $items = if ($ul) { @($ul.FindAll([Windows.Automation.TreeScope]::Children, [Windows.Automation.Condition]::TrueCondition)) } else { @() }
+  if ($ShowInvalid) { $i = 0; foreach ($li in $items) { $i++; Say9 "OPTIONS invalid-lines[$i] ""$(Get-S9Text $li)""" } }
+  Say9 "OPTIONS invalid-lines count $($items.Count)$(if (-not $ShowInvalid) { ' (texts not printed: -ShowInvalid only when the list is the wave''s own)' })"
+}
+
+function Set-S9Switch([long]$Hwnd, [ValidateSet('armed', 'evaluate')][string]$Which, [bool]$On) {
+  $doc = Get-S9Options $Hwnd
+  $e = Get-S9ById $doc $Which
+  $label = if ($Which -eq 'armed') { 'Bridge on*' } else { 'Allow JavaScript*' }
+  if (-not $e -or $e.Current.Name -notlike $label) { throw "no checkbox '$Which' named like '$label'" }
+  $tp = $e.GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern)
+  $is = $tp.Current.ToggleState -eq [Windows.Automation.ToggleState]::On
+  if ($is -eq $On) { Say9 "SWITCH $Which already $("$On".ToLower()) - nothing pressed"; return (Now9) }
+  $tp.Toggle(); $at = Now9
+  Start-Sleep -Milliseconds 300
+  Say9 "SWITCH $Which -> $("$On".ToLower()) at $at (now $("$(Get-S9Toggle $doc $Which)".ToLower()))"
+  $at
+}
+
+function Set-S9BlockList([long]$Hwnd, [string[]]$Lines = @(), [string]$FromFile = '') {
+  $doc = Get-S9Options $Hwnd
+  $text = if ($FromFile) { [IO.File]::ReadAllText($FromFile, (New-Object Text.UTF8Encoding $false)) } else { $Lines -join "`n" }
+  $ta = Get-S9ById $doc 'blocklist'
+  $ta.GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).SetValue($text)
+  Start-Sleep -Milliseconds 200
+  $save = Get-S9ById $doc 'save-blocklist'
+  if (-not $save -or $save.Current.Name -ne 'Save blocked sites') { throw "no button 'Save blocked sites'" }
+  $save.GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke(); $at = Now9
+  Start-Sleep -Milliseconds 500
+  $what = if ($FromFile) { 'the saved found text (not printed)' } else { "$($Lines.Count) line(s) of the wave's own" }
+  Say9 "BLOCKLIST set to $what, sha256 $(Get-S9Sha256 $text), saved at $at"
+  $at
+}
+
+function Invoke-S9OptionsButton([long]$Hwnd, [string]$Id) {
+  $doc = Get-S9Options $Hwnd
+  $b = Get-S9ById $doc $Id
+  if (-not $b) { throw "no element with id '$Id'" }
+  $b.GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
+  Say9 "invoked options button '$($b.Current.Name)' at $(Now9)"
+}
+
+# ------------------------------------------------------------------------------------- presses on a signal
+
+function Test-S9Banner([long]$Hwnd) {
+  $root = $S9UIA::FromHandle([IntPtr]$Hwnd)
+  @($root.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition) | Where-Object { $_.Current.Name -and $_.Current.Name.Contains('started debugging this browser') }).Count
+}
+
+function Wait-S9Ready([string]$Row, [int]$TimeoutSec = 120) {
+  $f = Join-Path $env:S9_OUT "$Row.ready"
+  $t0 = Get-Date
+  while (-not (Test-Path $f)) { if (((Get-Date) - $t0).TotalSeconds -gt $TimeoutSec) { throw "no $f within $TimeoutSec s" }; Start-Sleep -Milliseconds 20 }
+  Say9 "READY seen for $Row"
+}
+
+function Write-S9Pressed([string]$Row, [string]$At) {
+  [IO.File]::WriteAllText((Join-Path $env:S9_OUT "$Row.pressed"), $At, (New-Object Text.UTF8Encoding $false))
+}
+
+function Invoke-S9PressWhenReady([long]$Hwnd, [string]$Row, [int]$DelayMs = 0, [ValidateSet('Button', 'Shortcut')][string]$Via = 'Button', [switch]$WatchBanner, [int]$RearmAfterMs = 0, [int]$TimeoutSec = 120) {
+  Wait-S9Ready $Row $TimeoutSec
+  if ($DelayMs -gt 0) { Start-Sleep -Milliseconds $DelayMs }
+  if ($WatchBanner) { Say9 "BANNER at press $(if ((Test-S9Banner $Hwnd) -gt 0) { 'yes' } else { 'no' })" }
+  $at = if ($Via -eq 'Button') { Invoke-S9ActionButton $Hwnd | Select-Object -Last 1 } else { Send-S9Shortcut $Hwnd | Select-Object -Last 1 }
+  $at = ($at -split ' ')[-1]
+  Write-S9Pressed $Row $at
+  Say9 "PRESSED $Row (off) at $at"
+  $t0 = [DateTime]::UtcNow
+  if ($WatchBanner) {
+    $gone = $null
+    while ((([DateTime]::UtcNow) - $t0).TotalMilliseconds -lt 3000) { if ((Test-S9Banner $Hwnd) -eq 0) { $gone = [int](([DateTime]::UtcNow) - $t0).TotalMilliseconds; break }; Start-Sleep -Milliseconds 100 }
+    if ($null -ne $gone) { Say9 "BANNER gone after $gone ms" } else { Say9 'BANNER still shown 3000 ms after the press' }
+  }
+  if ($RearmAfterMs -gt 0) {
+    $left = $RearmAfterMs - [int](([DateTime]::UtcNow) - $t0).TotalMilliseconds
+    if ($left -gt 0) { Start-Sleep -Milliseconds $left }
+    $re = Invoke-S9ActionButton $Hwnd | Select-Object -Last 1
+    Say9 "RE-ARM pressed $Row at $(($re -split ' ')[-1])"
+    Wait-S9ActionTitle $Hwnd ($S9TitleArmed.Substring(0, 27)) 2000   # 'Chrome Agent Bridge — armed' (also the JS-off title)
+  }
+}
+
+function Invoke-S9WhenReady([string]$Row, [int]$DelayMs = 0, [scriptblock]$Action, [int]$TimeoutSec = 120) {
+  Wait-S9Ready $Row $TimeoutSec
+  if ($DelayMs -gt 0) { Start-Sleep -Milliseconds $DelayMs }
+  & $Action
+  $at = Now9
+  Write-S9Pressed $Row $at
+  Say9 "ACTION done for $Row at $at"
+}
+
+# The tab strip's tab (ClassName 'Tab') in window $Hwnd whose name starts with $TitlePrefix.
+function Get-S9Tab([long]$Hwnd, [string]$TitlePrefix) {
+  $root = $S9UIA::FromHandle([IntPtr]$Hwnd)
+  $c = New-Object Windows.Automation.PropertyCondition($S9UIA::ClassNameProperty, 'Tab')
+  $t = @($root.FindAll([Windows.Automation.TreeScope]::Descendants, $c) | Where-Object { $_.Current.Name.StartsWith($TitlePrefix) })
+  if ($t.Count -ne 1) { throw "tabs in window $Hwnd named '$TitlePrefix…': $($t.Count) (need 1)" }
+  $t[0]
+}
+
+function Select-S9Tab([long]$Hwnd, [string]$TitlePrefix) {
+  $t = Get-S9Tab $Hwnd $TitlePrefix; $sp = $null
+  if ($t.TryGetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern, [ref]$sp)) { $sp.Select() }
+  else { $t.GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke() }
+  Say9 "selected the tab '$TitlePrefix…' in window $Hwnd at $(Now9)"
+}
+
+function Close-S9Tab([long]$Hwnd, [string]$TitlePrefix) {
+  $t = Get-S9Tab $Hwnd $TitlePrefix
+  $c = New-Object Windows.Automation.PropertyCondition($S9UIA::ControlTypeProperty, [Windows.Automation.ControlType]::Button)
+  $x = @($t.FindAll([Windows.Automation.TreeScope]::Descendants, $c) | Where-Object { $_.Current.Name -eq 'Close' })
+  if ($x.Count -ne 1) { throw "close buttons on that tab: $($x.Count) (need 1)" }
+  $x[0].GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
+  Say9 "closed the tab '$TitlePrefix…' in window $Hwnd"
+}
+
+# ------------------------------------------------------------------- section 1 item 8 helpers (copied verbatim)
+
+$log = "$HOME\.chrome-agent-bridge\daemon.log"
+function Get-BridgeLog([int]$n = 10) { Get-Content $log -Tail $n -Encoding UTF8 }
+function Get-BridgeDaemon { Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match 'daemon[\\/]dist[\\/]index\.js' } | Select-Object ProcessId, ParentProcessId, CreationDate, CommandLine }
+function Get-DriverChain { $ids = @(); $p = $PID; for ($i = 0; $p -and $i -lt 32; $i++) { $ids += $p; $p = (Get-CimInstance Win32_Process -Filter "ProcessId=$p").ParentProcessId }; $ids }
+function Get-ProcTree([int]$Root) { $all = @(Get-CimInstance Win32_Process); $ids = @($Root); $i = 0; while ($i -lt $ids.Count) { $c = $ids[$i]; $ids += @($all | Where-Object { $_.ParentProcessId -eq $c -and $ids -notcontains $_.ProcessId } | ForEach-Object { $_.ProcessId }); $i++ }; $ids }
+function Test-SafeToKill([int]$Root) { $chain = Get-DriverChain; $hit = @(Get-ProcTree $Root | Where-Object { $chain -contains $_ }); if ($hit.Count) { "UNSAFE: the tree of $Root contains driver PID(s) $($hit -join ', ')" } else { "safe: the tree of $Root does not contain the driver" } }
