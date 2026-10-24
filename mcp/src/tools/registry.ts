@@ -2,10 +2,10 @@ import { readFile } from "node:fs/promises";
 import os from "node:os";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { isLocator, type EvalEnvelope, type Locator, type SnapshotResult } from "@bridge/shared";
+import { isHiddenReason, isLocator, isSafetyState, type EvalEnvelope, type Locator, type SnapshotResult } from "@bridge/shared";
 import { BridgeError, ErrorCodes, downloadToFile, type BridgeClient } from "@bridge/sdk";
 import { formatEntry, formatNetwork, formatSnapshot, type FormattableResult } from "@bridge/sdk/format";
-import { attachContext, isAttachCode, type FailureReportConfig } from "@bridge/sdk/report";
+import { attachContext, isAttachCode, safetyRefusalLine, type FailureReportConfig } from "@bridge/sdk/report";
 import { CONNECTING_REASON } from "../link.js";
 import { TabCursor } from "../cursor.js";
 import { actorName } from "../config.js";
@@ -88,6 +88,8 @@ interface DaemonStatus {
   extensionConnected: boolean;
   clients: Array<{ id: string; name: string; since: number }>;
   port: number;
+  /** Step 9 (#132): `{armed, evaluate, blockedCount}` or null; absent from a daemon older than Step 9. */
+  safety?: unknown;
 }
 
 /** One row of a Step 7 `listTabs` result: the extension's fields plus the daemon's handle and owner. */
@@ -95,8 +97,11 @@ interface ListedTab {
   id: number;
   /** The daemon's handle ("T3"). */
   tab?: string;
-  title: string;
-  url: string;
+  /** Absent on a hidden row (Step 9, #134). */
+  title?: string;
+  url?: string;
+  /** Step 9 (#134): why the extension withheld `title` and `url`. */
+  hidden?: unknown;
   /** Active in its own window. */
   active: boolean;
   /** The human's tab: the active tab of the last-focused normal window (#43, #55). */
@@ -115,6 +120,54 @@ const TAB_DESCRIPTION =
 /** On the network tools `tab` keeps its scope meanings (#40, Stage 0 F3). */
 const NETWORK_TAB_DESCRIPTION =
   'Which tab: a handle from browser_list_tabs, "all" for every tab, or "active"/omitted for this session\'s tab (the active tab, claimed on first use).';
+
+// ── Step 9: the safety state and hidden rows (decisions.md · 2026-10-24 #132, #133, #134) ─────────────
+
+/** `browser_status`'s Safety line (#132): booleans and the count only — the patterns never leave Chrome. */
+export function safetyStatusLine(safety: unknown): string {
+  if (!isSafetyState(safety)) return "Safety: not reported (reload the extension)";
+  const n = safety.blockedCount;
+  return `Safety: ${safety.armed ? "armed" : "DISARMED by the user"} · JavaScript ${safety.evaluate ? "on" : "off"} · ${n} blocked site${n === 1 ? "" : "s"}`;
+}
+
+/** A hidden row's stand-in for its title and url (#134, Stage 0 F13), or null for a row that is not hidden. */
+function hiddenLabel(row: ListedTab): string | null {
+  if (!isHiddenReason(row.hidden)) return null;
+  return row.hidden === "disarmed" ? "(hidden: the bridge is off)" : "(hidden: blocked site)";
+}
+
+/** `title — url`, or the hidden label; a missing field prints as "" (never `undefined`). */
+function pageOf(row: ListedTab): string {
+  return hiddenLabel(row) ?? `${row.title ?? ""} — ${row.url ?? ""}`;
+}
+
+/** `"title" — url`, or the hidden label (the Cursor line's form). */
+function quotedPageOf(row: ListedTab): string {
+  return hiddenLabel(row) ?? `"${row.title ?? ""}" — ${row.url ?? ""}`;
+}
+
+/**
+ * `server` whose `tool` registers each handler wrapped (#133): a `DISARMED` or `DOMAIN_BLOCKED` from any
+ * tool becomes the one plain line as an error result — never a failure report, never a screenshot (neither
+ * code is in the attach set, #120). Every other outcome is the handler's own, unchanged.
+ */
+function withSafetyRefusals(server: McpServer): Pick<McpServer, "tool"> {
+  const tool = (...args: unknown[]): unknown => {
+    const last = args.length - 1;
+    const handler = args[last] as (...a: unknown[]) => Promise<unknown>;
+    args[last] = async (...a: unknown[]) => {
+      try {
+        return await handler(...a);
+      } catch (err) {
+        const line = err instanceof BridgeError ? safetyRefusalLine(err.code, err.data) : null;
+        if (line !== null) return toolError(line);
+        throw err;
+      }
+    };
+    return (server.tool as (...a: unknown[]) => unknown).apply(server, args);
+  };
+  return { tool: tool as McpServer["tool"] };
+}
 
 function notConnected(problem: string) {
   return text(`Daemon: not connected\nProblem: ${problem}`);
@@ -233,6 +286,7 @@ export function registerTools(
   options: RegisterToolsOptions = {},
 ): void {
   const me = options.actorName ?? actorName();
+  const reg = withSafetyRefusals(server);
   const reports = options.failureReports ?? realFailureReports();
   const attach = options.attach ?? attachContext;
 
@@ -315,7 +369,7 @@ export function registerTools(
     return row.owner === me ? "held by me" : `held by ${row.owner}`;
   }
 
-  server.tool(
+  reg.tool(
     "browser_status",
     "Diagnose the bridge: is the daemon connected, is the extension connected, and which tab is the human's active one (by handle). Call this first when other browser tools fail.",
     {},
@@ -337,32 +391,41 @@ export function registerTools(
         return text(lines.join("\n"));
       }
       lines.push("Extension: connected");
+      // Step 9 (#132): the Safety line, as a second text item, so every line of the first keeps its text
+      // and its place.
+      const done = (): ToolResult => ({
+        content: [
+          { type: "text", text: lines.join("\n") },
+          { type: "text", text: safetyStatusLine(status.safety) },
+        ],
+      });
       const { tabs } = (await bridge.call("listTabs")) as { tabs: ListedTab[] };
       // `current` is the human's tab (#43, #55); `active` is per window.
       const human = tabs.find((t) => t.current === true);
-      lines.push(human ? `Active tab: [${human.tab ?? human.id}] ${human.title} — ${human.url}` : "Active tab: none");
+      lines.push(human ? `Active tab: [${human.tab ?? human.id}] ${pageOf(human)}` : "Active tab: none");
       // Step 8 S5 (0.6): this session's tab, and the human's when it is another one. Status never
       // claims: with no cursor it says so.
       const mine = cursor.tab;
       if (mine === null) {
         lines.push("Cursor: none yet — the first tab tool claims the human's active tab");
-        return text(lines.join("\n"));
+        return done();
       }
       const row = tabs.find((t) => t.tab === mine);
-      lines.push(row ? `Cursor: ${mine} "${row.title}" — ${row.url} (${holder(row)})` : `Cursor: ${mine} (not open any more)`);
+      lines.push(row ? `Cursor: ${mine} ${quotedPageOf(row)} (${holder(row)})` : `Cursor: ${mine} (not open any more)`);
       if (human?.tab !== undefined && human.tab !== mine) {
         const other = human.owner !== undefined && human.owner !== me;
+        const shown = hiddenLabel(human) ?? `"${human.title ?? ""}"`;
         lines.push(
           other
-            ? `Human's active tab: ${human.tab} "${human.title}" — held by ${human.owner}, not mine`
-            : `Human's active tab: ${human.tab} "${human.title}" — not mine; call browser_use_active_tab to work there`,
+            ? `Human's active tab: ${human.tab} ${shown} — held by ${human.owner}, not mine`
+            : `Human's active tab: ${human.tab} ${shown} — not mine; call browser_use_active_tab to work there`,
         );
       }
-      return text(lines.join("\n"));
+      return done();
     },
   );
 
-  server.tool(
+  reg.tool(
     "browser_use_active_tab",
     "Make the human's active tab (the tab they are looking at) this session's tab. Call it only when the user says \"this tab\", \"the tab I opened\", \"the tab I'm on\" or otherwise asks you to work where they are looking — never on your own initiative: this session's tab deliberately does not follow the human when they switch tabs. Fails if another actor holds that tab. The previous tab is not released.",
     {},
@@ -375,7 +438,7 @@ export function registerTools(
     },
   );
 
-  server.tool(
+  reg.tool(
     "browser_navigate",
     "Navigate this session's tab (the active tab is claimed on first use) or `tab` to a URL.",
     { url: z.string().url().describe("Absolute URL to navigate to"), tab: z.string().optional().describe(TAB_DESCRIPTION) },
@@ -386,7 +449,7 @@ export function registerTools(
       }),
   );
 
-  server.tool(
+  reg.tool(
     "browser_snapshot",
     "Capture an accessibility snapshot of this session's tab (the active tab is claimed on first use) or `tab`, with element refs.",
     { tab: z.string().optional().describe(TAB_DESCRIPTION) },
@@ -394,7 +457,7 @@ export function registerTools(
       onTab(tab, async (t) => text(formatSnapshot((await bridge.call("snapshot", { tab: t })) as SnapshotResult))),
   );
 
-  server.tool(
+  reg.tool(
     "browser_screenshot",
     "Capture a screenshot of the viewport of this session's tab (the active tab is claimed on first use) or `tab`.",
     {
@@ -409,7 +472,7 @@ export function registerTools(
       }),
   );
 
-  server.tool(
+  reg.tool(
     "browser_click",
     "Click the element with the given ref (or found by `locator`) in this session's tab (the active tab is claimed on first use) or `tab`. Set trusted=true to force real CDP input (shows the debugging banner).",
     {
@@ -429,7 +492,7 @@ export function registerTools(
     },
   );
 
-  server.tool(
+  reg.tool(
     "browser_type",
     "Type text into the element with the given ref (or found by `locator`) in this session's tab (the active tab is claimed on first use) or `tab`. Optionally submit. Set trusted=true to send real CDP keystrokes (shows the debugging banner) for sites that ignore synthetic input; the trusted path selects the field's existing text and replaces it.",
     {
@@ -451,7 +514,7 @@ export function registerTools(
     },
   );
 
-  server.tool(
+  reg.tool(
     "browser_press_key",
     "Press a key (e.g. Enter, Escape, Tab) on the focused element of this session's tab (the active tab is claimed on first use) or `tab`. Set trusted=true to send a real CDP keystroke (shows the debugging banner) for sites that ignore synthetic input.",
     { key: z.string(), trusted: z.boolean().optional(), tab: z.string().optional().describe(TAB_DESCRIPTION) },
@@ -462,7 +525,7 @@ export function registerTools(
       }),
   );
 
-  server.tool(
+  reg.tool(
     "browser_scroll",
     "Scroll to a ref (or the element found by `locator`), or scroll the page up/down, in this session's tab (the active tab is claimed on first use) or `tab`.",
     {
@@ -486,7 +549,7 @@ export function registerTools(
     },
   );
 
-  server.tool(
+  reg.tool(
     "browser_hover",
     "Hover the element with the given ref (or found by `locator`) in this session's tab (the active tab is claimed on first use) or `tab`.",
     { ref: z.string().optional().describe(REF_DESCRIPTION), locator: LOCATOR_SCHEMA, tab: z.string().optional().describe(TAB_DESCRIPTION) },
@@ -501,7 +564,7 @@ export function registerTools(
     },
   );
 
-  server.tool(
+  reg.tool(
     "browser_select_option",
     "Select option(s) in a <select> (by ref or `locator`) by value or visible label, in this session's tab (the active tab is claimed on first use) or `tab`.",
     {
@@ -521,7 +584,7 @@ export function registerTools(
     },
   );
 
-  server.tool(
+  reg.tool(
     "browser_back",
     "Navigate this session's tab (the active tab is claimed on first use) or `tab` back in history.",
     { tab: z.string().optional().describe(TAB_DESCRIPTION) },
@@ -532,7 +595,7 @@ export function registerTools(
       }),
   );
 
-  server.tool(
+  reg.tool(
     "browser_forward",
     "Navigate this session's tab (the active tab is claimed on first use) or `tab` forward in history.",
     { tab: z.string().optional().describe(TAB_DESCRIPTION) },
@@ -543,20 +606,20 @@ export function registerTools(
       }),
   );
 
-  server.tool(
+  reg.tool(
     "browser_list_tabs",
     "List all open tabs, one per line: the handle (pass it as `tab`), `*` on the human's active tab, the holding actor in [brackets] when a tab is held, then title — URL.",
     {},
     async () => {
       const { tabs } = (await bridge.call("listTabs")) as { tabs: ListedTab[] };
       const lines = tabs.map(
-        (t) => `${t.tab ?? t.id}${t.current ? "*" : " "} ${t.owner ? `[${t.owner}] ` : ""}${t.title} — ${t.url}`,
+        (t) => `${t.tab ?? t.id}${t.current ? "*" : " "} ${t.owner ? `[${t.owner}] ` : ""}${pageOf(t)}`,
       );
       return text(lines.join("\n"));
     },
   );
 
-  server.tool(
+  reg.tool(
     "browser_select_tab",
     "Make `tab` this session's tab: claims it for this session and moves the cursor there, without bringing it on screen (browser_focus_tab does that). Fails if another actor holds it.",
     { tab: z.string().optional().describe("Tab handle from browser_list_tabs (required).") },
@@ -569,7 +632,7 @@ export function registerTools(
     },
   );
 
-  server.tool(
+  reg.tool(
     "browser_focus_tab",
     "Bring this session's tab (the active tab is claimed on first use) or `tab` on screen and focus its window. The only tool that changes what the human sees; it does not change this session's tab.",
     { tab: z.string().optional().describe(TAB_DESCRIPTION) },
@@ -580,7 +643,7 @@ export function registerTools(
       }),
   );
 
-  server.tool(
+  reg.tool(
     "browser_new_tab",
     "Open a new tab and make it this session's tab. It comes to the front only when the human is looking at this session's tab right now (they were watching you); otherwise it opens in the background — including the session's first tab — and browser_focus_tab shows it.",
     { url: z.string().url().optional() },
@@ -606,7 +669,7 @@ export function registerTools(
     },
   );
 
-  server.tool(
+  reg.tool(
     "browser_close_tab",
     "Close `tab` (a handle from browser_list_tabs). Fails if another actor holds it.",
     { tab: z.string().optional().describe("Tab handle from browser_list_tabs (required).") },
@@ -617,7 +680,7 @@ export function registerTools(
     },
   );
 
-  server.tool(
+  reg.tool(
     "browser_wait_for",
     "Wait until text appears on this session's tab (the active tab is claimed on first use) or `tab`, wait a number of seconds, `networkIdle:true` to wait until the tab has made no network request for `idleMs` (default 500), or `locator` to wait (up to 10s) until an element matching it is visible (or, with state:\"hidden\", gone). Network idle is activity-based, so a long-poll or EventSource left hanging will not block it; a tab that has recorded no requests at all (nothing since capture started, e.g. right after the extension reloaded) counts as idle and returns immediately.",
     {
@@ -672,7 +735,7 @@ export function registerTools(
     },
   );
 
-  server.tool(
+  reg.tool(
     "browser_evaluate",
     "Run JavaScript in the page context of this session's tab (the active tab is claimed on first use) or `tab` and return the result, like the DevTools console: the last expression's value is returned, top-level `await` works, and `return` is allowed. Results are JSON where possible; DOM nodes, functions and errors come back as short descriptions — use browser_snapshot refs to act on elements. Output is capped (~20k chars, 100 items per array, depth 6) — select what you need. Runs with the page's full logged-in authority and shows Chrome's 'is debugging this browser' banner while it runs.",
     {
@@ -711,7 +774,7 @@ export function registerTools(
       }),
   );
 
-  server.tool(
+  reg.tool(
     "browser_download",
     "Download a URL to a file on disk with the browser profile's cookies — for files behind a login (course files, reports, exports). The extension fetches it from its service worker, so there is no CORS limit and cross-origin redirects (e.g. to a signed S3 URL) are followed; no tab is touched and no debugger banner shows. `path` is absolute: a file path, or a directory (existing, or ending in a separator) to save under the server-suggested filename. Returns the saved path, size, content type and sha256. A `text/html` result for a binary file usually means a login page or an error page came back.",
     {
@@ -734,7 +797,7 @@ export function registerTools(
     },
   );
 
-  server.tool(
+  reg.tool(
     "browser_network_requests",
     "List recent network requests made by this session's tab (the active tab is claimed on first use), `tab`, or every tab — method, status, type, duration, size, URL — captured continuously with no debugger banner, like the DevTools Network panel with 'Preserve log'. Newest 50 by default, printed oldest first. `filter` matches the URL (substring or /regex/), `types` narrows by resource type (xhr, script, image, document, …), `failedOnly` keeps network errors and 4xx/5xx. Pass `id` for one request's headers and request-body summary. Response bodies are not available (use browser_evaluate to re-fetch if you need one). Call browser_network_clear before an action to see only what it caused.",
     {
@@ -760,7 +823,7 @@ export function registerTools(
     },
   );
 
-  server.tool(
+  reg.tool(
     "browser_network_clear",
     'Forget the recorded network requests for this session\'s tab (the active tab is claimed on first use), `tab`, or `tab:"all"`. Use it right before an action so the next browser_network_requests shows only what that action caused.',
     { tab: z.string().optional().describe(NETWORK_TAB_DESCRIPTION) },

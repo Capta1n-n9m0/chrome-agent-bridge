@@ -148,6 +148,7 @@ export class WsHost implements RouteHost {
       now: this.now,
       sleep: options.sleep,
       handleNumbers: options.handleNumbers,
+      broadcast: (frame) => this.broadcast(frame), // Step 9: `safetyStatus` (#132)
     });
   }
 
@@ -265,6 +266,7 @@ export class WsHost implements RouteHost {
         // connected changes nothing (B7).
         if (this.bridge.currentConnection() === connection) {
           this.bridge.setConnection(null);
+          this.tabs.extensionDisconnected(); // Step 9: the safety state is null again (#132)
           this.broadcastExtensionStatus(false);
         }
       }

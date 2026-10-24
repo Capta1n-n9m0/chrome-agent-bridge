@@ -7,12 +7,18 @@ import {
   fromWire,
   isErrorResponse,
   isEvent,
+  isHiddenReason,
   isLeaseGrantedEvent,
   isResponse,
+  isSafetyState,
+  isSafetyStatusEvent,
   isTabGoneEvent,
   type EventMessage,
   type ExtensionStatusParams,
+  type HiddenReason,
   type LeaseGrantedParams,
+  type SafetyState,
+  type SafetyStatusParams,
   type RequestMessage,
   type TabGoneParams,
   type WelcomeMessage,
@@ -118,6 +124,8 @@ interface TypedEvents {
   tabGone: TabGoneParams;
   leaseGranted: LeaseGrantedParams;
   extensionStatus: ExtensionStatusParams;
+  /** Step 9 (#132): the extension's safety state, on every change. */
+  safetyStatus: SafetyStatusParams;
 }
 type TypedEventName = keyof TypedEvents;
 type TypedListener = (params: never) => void;
@@ -137,11 +145,13 @@ function typedParams(name: TypedEventName, message: EventMessage): object | null
       return message.event === "extensionStatus" && typeof message.params.connected === "boolean"
         ? message.params
         : null;
+    case "safetyStatus":
+      return isSafetyStatusEvent(message) ? message.params : null;
   }
 }
 
 function isTypedEventName(name: string): name is TypedEventName {
-  return name === "tabGone" || name === "leaseGranted" || name === "extensionStatus";
+  return name === "tabGone" || name === "leaseGranted" || name === "extensionStatus" || name === "safetyStatus";
 }
 
 interface Pending {
@@ -162,6 +172,12 @@ export interface TabInfo {
   owner?: string;
   /** The human's tab: the active tab of the last-focused normal window (decision #43). */
   current: boolean;
+  /**
+   * Step 9: set when the extension withheld this tab's title and url — `"disarmed"` (the user turned the
+   * bridge off) or `"blocked"` (a blocked site); `title` and `url` are then `""` (decisions.md ·
+   * 2026-10-24 · The SDK's `TabInfo` keeps `title` and `url` as strings and gains an optional `hidden` (#148)).
+   */
+  hidden?: HiddenReason;
 }
 
 const NO_CURSOR_MESSAGE = "No tab cursor: call newTab() or claim() first";
@@ -259,14 +275,27 @@ export class BridgeClient {
   }
 
   /**
+   * The extension's safety state as the daemon last heard it (Step 9, decisions.md · 2026-10-24 · The safety
+   * state travels as two events and a `daemon.status` field (#132)): `{armed, evaluate, blockedCount}`, or
+   * null when the extension has not reported one (not connected, or a build older than Step 9; a daemon
+   * older than Step 9 reports none either). Read-only: only the human changes the state, in Chrome.
+   */
+  async safety(): Promise<SafetyState | null> {
+    const result = (await this.call("daemon.status")) as { safety?: unknown } | null;
+    const s = result?.safety;
+    return isSafetyState(s) ? { armed: s.armed, evaluate: s.evaluate, blockedCount: s.blockedCount } : null;
+  }
+
+  /**
    * `"event"`: every daemon → client event frame (e.g. `extensionStatus`).
    *
    * `"reconnected"`: fires after a 4002 reconnect has been welcomed, with the new welcome. This is
    * the hook where Step 7/8 clear the client's tab cursor (decision #11): a replaced daemon knows
    * nothing of the tabs the old one handed out. Not fired for the first connect.
    *
-   * `"tabGone"` / `"leaseGranted"` / `"extensionStatus"`: that event's params, only when the frame is
-   * well-formed (`isTabGoneEvent` / `isLeaseGrantedEvent` / a boolean `connected`); a malformed frame
+   * `"tabGone"` / `"leaseGranted"` / `"extensionStatus"` / `"safetyStatus"` (Step 9, #132): that event's
+   * params, only when the frame is well-formed (`isTabGoneEvent` / `isLeaseGrantedEvent` / a boolean
+   * `connected` / `isSafetyStatusEvent`); a malformed frame
    * still reaches `"event"` listeners. Delivered synchronously from the socket's message callback, so
    * several frames from one read arrive in order, each after the previous listener returned.
    *
@@ -277,6 +306,7 @@ export class BridgeClient {
   on(type: "tabGone", listener: (params: TabGoneParams) => void): () => void;
   on(type: "leaseGranted", listener: (params: LeaseGrantedParams) => void): () => void;
   on(type: "extensionStatus", listener: (params: ExtensionStatusParams) => void): () => void;
+  on(type: "safetyStatus", listener: (params: SafetyStatusParams) => void): () => void;
   on(
     type: "event" | "reconnected" | TypedEventName,
     listener: EventListener | ReconnectListener | TypedListener,
@@ -350,6 +380,7 @@ export class BridgeClient {
         current: e.current === true,
       };
       if (typeof e.owner === "string") info.owner = e.owner;
+      if (isHiddenReason(e.hidden)) info.hidden = e.hidden;
       out.push(info);
     }
     return out;

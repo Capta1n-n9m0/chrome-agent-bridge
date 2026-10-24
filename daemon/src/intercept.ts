@@ -12,11 +12,16 @@
 import {
   BridgeError,
   ErrorCodes,
+  isEvent,
+  isSafetyStateEvent,
   isTabCreatedEvent,
   isTabRemovedEvent,
   isTabReplacedEvent,
+  type DaemonStatusSafety,
   type EventMessage,
   type LeaseGrantedParams,
+  type SafetyState,
+  type SafetyStatusParams,
   type TabCreatedParams,
   type TabGoneParams,
 } from "@bridge/shared";
@@ -51,6 +56,20 @@ export interface TabLayerDeps {
   sleep?: (ms: number) => Promise<void>;
   /** Where handle numbers come from (S2b.9, #79). Default: T1, T2, … per instance. */
   handleNumbers?: HandleNumbers;
+  /**
+   * Send an event frame to every connected client (Step 9: `safetyStatus`, #132). Default: none (a
+   * `TabLayer` built without a host relays nothing).
+   */
+  broadcast?: (frame: EventMessage<object>) => void;
+}
+
+/** The daemon log's line for a safety state: booleans and the count only (phase doc 0.7; #132). */
+export function safetyLogLine(s: SafetyState): string {
+  return `safety state: armed=${s.armed} evaluate=${s.evaluate} blocked=${s.blockedCount}`;
+}
+
+function sameSafety(a: SafetyState | null, b: SafetyState): boolean {
+  return a !== null && a.armed === b.armed && a.evaluate === b.evaluate && a.blockedCount === b.blockedCount;
 }
 
 export interface StatusTab {
@@ -126,6 +145,24 @@ export class TabLayer {
   private readonly sleep: (ms: number) => Promise<void>;
   /** tabId → client closing it (no `tabGone` to the closer). */
   private readonly closing = new Map<number, string>();
+  /**
+   * Step 9 (#132): the safety state the current extension socket last reported — `null` until it reports,
+   * and again from the moment that socket closes or another extension says hello. `daemon.status.safety`.
+   */
+  private safety: SafetyState | null = null;
+  /**
+   * The last safety state received in this daemon's life, kept across extension sockets: the redaction of
+   * #134 applies while it says disarmed (null: never reported, nothing redacted). An extension that comes
+   * back reports again at once, and its report replaces this.
+   */
+  private lastReceived: SafetyState | null = null;
+  /**
+   * S3 fixer r1 (verifier finding 5): bumped on every safety-state change. A `listTabs` reply is recorded
+   * against the value taken when its request was sent; a reply requested before the latest change (it may
+   * arrive after the change's own refresh) still mints handles and clears "blocked" rows, but notes no
+   * url/title, so it cannot put back a url the refresh just cleared.
+   */
+  private safetyGen = 0;
 
   constructor(private readonly deps: TabLayerDeps) {
     this.now = deps.now ?? Date.now;
@@ -153,6 +190,8 @@ export class TabLayer {
     const current = session ?? null;
     const previous = this.lastSession;
     this.lastSession = current;
+    this.safety = null; // this socket has not reported yet (#132); `lastReceived` keeps redacting
+
     // The first hello of the daemon's life retires nothing (today's resync). After that any change of
     // value retires: A→B (Chrome restarted), A→none, and none→A.
     if (previous !== undefined && previous !== current) this.retireAll();
@@ -183,13 +222,14 @@ export class TabLayer {
   private async resync(conn: ExtensionConnection): Promise<void> {
     const before = this.handles.live().map((h) => h.handle);
     let result: unknown;
+    const gen = this.safetyGen;
     try {
       result = await conn.call("listTabs", undefined, { timeoutMs: DEFAULT_TIMEOUT_MS + DAEMON_SLACK_MS });
     } catch {
       return; // the socket went away; the next hello resyncs
     }
     if (this.deps.bridge.currentConnection() !== conn) return;
-    const tabs = this.record(result);
+    const tabs = this.record(result, gen);
     const present = new Set(tabs.map((t) => t.id));
     let gone = 0;
     for (const handle of before) {
@@ -203,10 +243,66 @@ export class TabLayer {
     this.deps.log?.(`extension resync: ${tabs.length} tabs, ${gone} gone`);
   }
 
+  /**
+   * The current extension socket closed (#132): the state goes back to null — visible through
+   * `daemon.status` and the existing `extensionStatus {connected:false}`; no `safetyStatus` is sent, since its
+   * params are a `SafetyState`, never null.
+   */
+  extensionDisconnected(): void {
+    if (this.safety === null) return;
+    this.safety = null;
+    this.deps.log?.("safety state: not reported (extension disconnected)");
+  }
+
+  /** `daemon.status.safety` (#132). */
+  safetyStatus(): DaemonStatusSafety {
+    return this.safety === null ? null : { ...this.safety };
+  }
+
+  /** The last state received says disarmed: withhold urls and titles from daemon output (#134, Stage 0 F2). */
+  private redacting(): boolean {
+    return this.lastReceived !== null && !this.lastReceived.armed;
+  }
+
+  /**
+   * A well-formed `safetyState` (#132). An identical repeat changes nothing. A change is logged (booleans
+   * and the count only), relayed to every client as `safetyStatus`, and followed by one `listTabs` so a tab
+   * that became blocked loses its cached url/title within one round trip (#134, Stage 0 F41).
+   */
+  private onSafetyState(conn: ExtensionConnection, reported: SafetyState): void {
+    const state: SafetyState = { armed: reported.armed, evaluate: reported.evaluate, blockedCount: reported.blockedCount };
+    this.lastReceived = state;
+    if (sameSafety(this.safety, state)) return;
+    this.safety = state;
+    this.safetyGen++;
+    this.deps.log?.(safetyLogLine(state));
+    const frame: EventMessage<SafetyStatusParams> = { event: "safetyStatus", params: { ...state } };
+    this.deps.broadcast?.(frame);
+    if (this.isProto()) void this.refreshAfterSafety(conn);
+  }
+
+  /** One `listTabs` after a safety change; its rows update the cache through `record`. Never retried. */
+  private async refreshAfterSafety(conn: ExtensionConnection): Promise<void> {
+    let result: unknown;
+    const gen = this.safetyGen;
+    try {
+      result = await conn.call("listTabs", undefined, { timeoutMs: DEFAULT_TIMEOUT_MS + DAEMON_SLACK_MS });
+    } catch {
+      if (this.deps.bridge.currentConnection() === conn) this.deps.log?.("safety state: listTabs after the change failed");
+      return;
+    }
+    if (this.deps.bridge.currentConnection() !== conn) return;
+    this.record(result, gen);
+  }
+
   /** A `{event, params}` frame from the extension (already counted by the host). */
   extensionEvent(conn: ExtensionConnection, frame: unknown): void {
     if (this.deps.bridge.currentConnection() !== conn) return; // a replaced socket's late event
-    if (isTabCreatedEvent(frame)) {
+    if (isSafetyStateEvent(frame)) {
+      this.onSafetyState(conn, frame.params);
+    } else if (isEvent(frame) && frame.event === "safetyState") {
+      this.deps.log?.("safety state: malformed event dropped");
+    } else if (isTabCreatedEvent(frame)) {
       const p = frame.params;
       this.handles.mint(p.tabId);
       this.handles.note(p.tabId, { url: p.url });
@@ -217,6 +313,9 @@ export class TabLayer {
       else void this.fillUrl(conn, p.tabId, grant).then(() => this.deliverGrant(grant));
     } else if (isTabRemovedEvent(frame)) {
       const p = frame.params;
+      // #134 / F41: a blocked tab leaves no url/title behind; a "disarmed" one keeps the cache (re-arming
+      // restores today's output; the redaction meanwhile is `redacting()`'s).
+      if (p.hidden === "blocked") this.handles.forgetPage(p.tabId);
       const last: { lastUrl?: string; lastTitle?: string } = {};
       if (p.lastUrl !== undefined) last.lastUrl = p.lastUrl;
       if (p.lastTitle !== undefined) last.lastTitle = p.lastTitle;
@@ -258,6 +357,7 @@ export class TabLayer {
       if (this.deps.bridge.currentConnection() !== conn || !this.grantStands(g)) return;
       let result: unknown;
       let ok = true;
+      const gen = this.safetyGen;
       try {
         result = await conn.call("listTabs", undefined, { timeoutMs: URL_FILL_CALL_MS });
       } catch {
@@ -265,8 +365,10 @@ export class TabLayer {
       }
       if (this.deps.bridge.currentConnection() !== conn) return;
       if (ok) {
-        const tab = this.record(result).find((t) => t.id === tabId);
+        const tab = this.record(result, gen).find((t) => t.id === tabId);
         if (!tab) return; // gone (its tabRemoved drops the lease)
+        // F40 (#134): a hidden row will never carry a url — the grant goes out now, as it is.
+        if (tab.hidden !== undefined) return;
         if (typeof tab.url === "string" && tab.url !== "") g.url = tab.url;
         if (urlKnown(g.url)) return;
       }
@@ -293,7 +395,9 @@ export class TabLayer {
   }
 
   private sendLeaseGranted(g: Grant): void {
-    const frame: EventMessage<LeaseGrantedParams> = { event: "leaseGranted", params: { tab: g.handle, reason: "opener", url: g.url } };
+    // While disarmed the url is withheld like every other daemon output (#134).
+    const url = this.redacting() ? "" : g.url;
+    const frame: EventMessage<LeaseGrantedParams> = { event: "leaseGranted", params: { tab: g.handle, reason: "opener", url } };
     this.deps.sendTo(g.clientId, frame);
   }
 
@@ -316,7 +420,7 @@ export class TabLayer {
   private sendGone(clientId: string, handle: string): void {
     const params: TabGoneParams = { tab: handle };
     const r = this.handles.resolve(handle);
-    if (r.kind === "gone") {
+    if (r.kind === "gone" && !this.redacting()) {
       if (r.lastUrl !== undefined) params.lastUrl = r.lastUrl;
       if (r.lastTitle !== undefined) params.lastTitle = r.lastTitle;
     }
@@ -331,16 +435,18 @@ export class TabLayer {
     this.lock.releaseAllOf(clientId);
   }
 
-  status(): { tabs: StatusTab[]; lock: { holder?: string } } {
+  /** `daemon.status`'s tab-layer fields; `safety` is Step 9's (#132), and rows lose `url` while disarmed (#134). */
+  status(): { tabs: StatusTab[]; lock: { holder?: string }; safety: DaemonStatusSafety } {
+    const redact = this.redacting();
     const tabs = this.handles.live().map((h) => {
       const row: StatusTab = { tab: h.handle, tabId: h.tabId };
       const owner = this.leases.ownerOf(h.handle);
       if (owner) row.owner = this.name(owner.clientId);
-      if (h.url !== undefined) row.url = h.url;
+      if (h.url !== undefined && !redact) row.url = h.url;
       return row;
     });
     const holder = this.lock.holder();
-    return { tabs, lock: holder ? { holder: this.name(holder) } : {} };
+    return { tabs, lock: holder ? { holder: this.name(holder) } : {}, safety: this.safetyStatus() };
   }
 
   /**
@@ -429,8 +535,9 @@ export class TabLayer {
     if (r.kind === "live") return r.tabId;
     if (r.kind === "gone") {
       const data: TabGoneParams = { tab: handle };
-      if (r.lastUrl !== undefined) data.lastUrl = r.lastUrl;
-      if (r.lastTitle !== undefined) data.lastTitle = r.lastTitle;
+      const redact = this.redacting(); // #134: no url/title while disarmed
+      if (r.lastUrl !== undefined && !redact) data.lastUrl = r.lastUrl;
+      if (r.lastTitle !== undefined && !redact) data.lastTitle = r.lastTitle;
       throw new BridgeError(ErrorCodes.TAB_GONE, `tab ${handle} was closed — call listTabs to pick another tab`, data);
     }
     throw new BridgeError(ErrorCodes.TAB_UNKNOWN, `unknown tab handle ${handle} — call listTabs`);
@@ -468,19 +575,30 @@ export class TabLayer {
 
   /** The human's tab (#43): the `current: true` tab of a fresh `listTabs`. */
   private async humanTab(deadline: number): Promise<{ handle: string; tabId: number }> {
-    const tabs = this.record(await this.forward("listTabs", undefined, deadline));
+    const gen = this.safetyGen;
+    const tabs = this.record(await this.forward("listTabs", undefined, deadline), gen);
     const human = tabs.find((t) => t.current === true);
     if (!human) throw new BridgeError(ErrorCodes.INTERNAL, NO_HUMAN_TAB);
     return { handle: this.handles.mint(human.id), tabId: human.id };
   }
 
-  /** Mint and cache every tab of a `listTabs` result; never marks anything gone. */
-  private record(result: unknown): ListedTab[] {
+  /**
+   * Mint and cache every tab of a `listTabs` result; never marks anything gone. `gen` is `safetyGen` when
+   * the request was sent: an older one (a safety change came in between) skips only the url/title noting.
+   */
+  private record(result: unknown, gen: number): ListedTab[] {
+    const fresh = gen === this.safetyGen;
     const raw = (result as { tabs?: unknown } | null)?.tabs;
     if (!Array.isArray(raw)) return [];
     const tabs = raw.filter((t): t is ListedTab => typeof t === "object" && t !== null && Number.isInteger((t as ListedTab).id));
     for (const t of tabs) {
       this.handles.mint(t.id);
+      // #134 / F41: a "blocked" row clears the cache; any other hidden row leaves it as it is.
+      if (t.hidden === "blocked") {
+        this.handles.forgetPage(t.id);
+        continue;
+      }
+      if (t.hidden !== undefined || !fresh) continue;
       this.handles.note(t.id, {
         url: typeof t.url === "string" ? t.url : undefined,
         title: typeof t.title === "string" ? t.title : undefined,
@@ -492,9 +610,10 @@ export class TabLayer {
   // ------------------------------------------------------------------ intercepts
 
   private async listTabs(params: Params, deadline: number): Promise<unknown> {
+    const gen = this.safetyGen;
     const result = await this.forward("listTabs", params, deadline);
     if (!Array.isArray((result as { tabs?: unknown } | null)?.tabs)) return result;
-    const tabs = this.record(result);
+    const tabs = this.record(result, gen);
     return {
       ...(result as object),
       tabs: tabs.map((t) => {

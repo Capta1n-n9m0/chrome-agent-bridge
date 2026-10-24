@@ -110,6 +110,20 @@ export class HandleTable {
     if (info.title !== undefined) e.title = info.title;
   }
 
+  /**
+   * Step 9 (decisions.md · 2026-10-24 · What `listTabs`, tab events and the daemon reveal while disarmed or
+   * for a blocked tab (#134); Stage 0 F41): forget a live tab's cached url/title, because its page is now
+   * blocked — so `daemon.status`, `tabGone` and `TAB_GONE` stop serving a url learned while it was allowed.
+   * Unknown tabs are ignored.
+   */
+  forgetPage(tabId: number): void {
+    const h = this.byTab.get(tabId);
+    if (!h) return;
+    const e = this.byHandle.get(h)!;
+    delete e.url;
+    delete e.title;
+  }
+
   /** The cached url/title of a handle (live or gone). */
   cached(handle: string): { url?: string; title?: string } {
     const e = this.byHandle.get(handle);

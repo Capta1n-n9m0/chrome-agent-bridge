@@ -106,6 +106,31 @@ export function isAttachCode(code: unknown): boolean {
   return typeof code === "string" && ATTACH_CODES.includes(code);
 }
 
+// ── Step 9: the safety refusals (decisions.md · 2026-10-24 · The JavaScript switch reuses `DISARMED` with
+// a scope (#133); phase doc 0.3, 0.5, 0.6). `DISARMED` and `DOMAIN_BLOCKED` are not in `ATTACH_CODES`
+// (#120; a report would only be refused too): a `Tab` call rethrows them untouched, with no `report`
+// property (the Step 8 attach-set contract, pinned by failure-report.test.ts). Their wording lives here, as
+// one plain line, used by `renderReport` and by the MCP (through `@bridge/sdk/report`).
+
+const DISARMED_ALL_LINE =
+  "DISARMED: the user has turned the bridge off in Chrome. Stop and ask the user to turn it back on; do not retry.";
+const DISARMED_EVALUATE_LINE =
+  "DISARMED: the user has turned JavaScript off for the bridge in Chrome, so evaluate (browser_evaluate) is refused; every other call still works. Ask the user before relying on it; do not retry it.";
+const DOMAIN_BLOCKED_LINE =
+  "DOMAIN_BLOCKED: the user has blocked this site for the bridge in Chrome. Stop and ask the user; do not retry, and do not try to reach the site another way.";
+
+/**
+ * The one plain line for a safety refusal, or null for any other code. `DISARMED` reads by `data.scope`:
+ * `"evaluate"` — the JavaScript switch, every other call still works; anything else (`"all"`, absent or
+ * invalid) — the kill switch, the stricter reading. Never names a URL, a title or a pattern.
+ */
+export function safetyRefusalLine(code: unknown, data: unknown): string | null {
+  if (code === "DOMAIN_BLOCKED") return DOMAIN_BLOCKED_LINE;
+  if (code !== "DISARMED") return null;
+  const scope = typeof data === "object" && data !== null ? (data as { scope?: unknown }).scope : undefined;
+  return scope === "evaluate" ? DISARMED_EVALUATE_LINE : DISARMED_ALL_LINE;
+}
+
 function firstLine(text: string): string {
   const nl = text.indexOf("\n");
   return (nl >= 0 ? text.slice(0, nl) : text).trim();
@@ -347,6 +372,9 @@ function windowOf(n: number, anchor: number, avail: number): [number, number] {
 
 /** The text of `error.report()`: never more than `REPORT_MAX_LINES` lines, whatever the input. */
 export function renderReport(input: ReportInput): string {
+  // Step 9: a safety refusal is one plain line, whatever else the input carries (#133).
+  const safety = safetyRefusalLine(input.code, input.data);
+  if (safety !== null) return safety;
   const head: string[] = [`${input.code}: ${oneLine(input.message, MAX_MESSAGE_CHARS)}`];
   const data = (typeof input.data === "object" && input.data !== null ? input.data : {}) as Record<string, unknown>;
   const candidates = asNamedList(data.candidates);
