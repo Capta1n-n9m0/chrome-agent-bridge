@@ -279,4 +279,4 @@ plan-side with a dated note.
 
 ## Running state (session agent updates this section at each dispatch)
 
-- 2026-10-24 08:50Z: Stage 0 (spec audit) dispatched alone. Nothing running; port 9234 free.
+- Stage 0 closed 0e72503. S0 dispatched alone (rulings #132–#145). Nothing running; port 9234 free.

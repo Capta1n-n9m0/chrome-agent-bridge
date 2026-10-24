@@ -68,12 +68,211 @@ Step 9 (2026-10-24 on), for the user at the gate:
    the gate's scope (0.1), `listTabs`/event redaction while disarmed and for blocked tabs, the network
    log while disarmed and for blocked hosts, the own-page block, the safety state's wire shape (0.6) and
    the JavaScript switch's code (0.5) — as amended by Stage 0.
+2. "The safety state travels as two events and a `daemon.status` field" (#132).
+3. "The JavaScript switch reuses `DISARMED` with a scope" (#133).
+4. "What `listTabs`, tab events and the daemon reveal while disarmed or for a blocked tab" (#134).
+5. "The block-list grammar" (#135).
+6. "`tabs.claim` on a blocked tab is granted, every call on it refused" (#136).
+7. "In-flight work at disarm and on a newly blocked tab" (#137).
+8. "Script URLs and the JavaScript switch; own pages of every extension" (#138) — the wider
+   every-extension rule is offered as the alternative.
+9. "The state is read per call, fails closed, and is locked to trusted contexts" (#139).
+10. "`downloadStart` and redirects onto a blocked host" (#140) — declarativeNetRequest not built.
+11. "Stricter exit checks for Step 9" (#141).
+12. "A re-arm right after a disarm is ignored" (#144).
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-24 · Step 9's stage split after Stage 0: S2 becomes S2a (enforcement) and S2b (UI) (#145)
+**Decided:** the stages run S0 (0.75 h, alone; its first deliverable also pastes Stage 0's plan-side
+amendment texts into the phase doc) → S1 (2.5 h) ∥ S3 (2.5 h) → S2a extension enforcement (3 h) → S2b
+extension UI and the 0.7 log scan (1.5 h) → S4 (1.5 h prep + 2.5 h live, alone) → S5 (1 h). About 15 h
+against the kickoff's 12.5 h. S2a's lane is S2's minus the manifest and options page; S2b's is the
+manifest, `options.html`/`options.ts`, the badge and the log-scan test.
+**Why:** D6 (#137) and D8 (#139) roughly double the enforcement work; one verifier per half keeps each
+review bounded (Stage 0 §9). The name S2b is Step 9's own; Step 8's S2b is unrelated. Stage 0's decisions D1–D13 are recorded as #132–#144 (Dn = #(131+n)); their texts cite Stage 0's
+findings F1–F43 and verifier items V1–V17 in `stage0-audit.md`.
+**Instead of:** one S2 of 4.5 h.
+**Revisit if:** S2a's verifier finds the split left a gap between enforcement and UI.
+**By:** Claude
+
+### 2026-10-24 · A re-arm right after a disarm is ignored (#144)
+**Decided:** a toolbar click or shortcut press that would re-arm within 1 000 ms of the last disarm is ignored
+(badge stays `OFF`); a disarm always takes effect at once and is never debounced; the options page's switch is
+not debounced. The badge and title are re-derived from `storage.local` at every worker start (F42).
+**Why:** F43 (V12b) — the control is a toggle, so a panic double-click or a repeated shortcut would otherwise
+re-arm; ignoring only the re-arm direction errs safe.
+**Instead of:** no debounce; a symmetric debounce (could delay a disarm); a separate "off only" shortcut.
+**Revisit if:** SAFE-1b shows the debounce confusing the human, or the user wants a different window.
+**By:** Claude (contract-level — how the safety state is changed — listed under Open decisions for the user; Stage 0 audit D13, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
+
+### 2026-10-24 · Badge and title (#143)
+**Decided:** disarmed → badge `OFF` red, title "Chrome Agent Bridge — OFF: agents are refused (click to turn
+on)"; armed with JavaScript off → badge `JS` amber, title "… armed, JavaScript off (click to turn off)"; armed →
+no badge, title "… armed (click to turn off)". The options page states the block count and invalid lines.
+**Why:** 0.2/0.5 ask for it; one badge at a time, `OFF` wins (F37).
+**Instead of:** a badge per control.
+**Revisit if:** the user prefers other words or colours.
+**By:** Claude (Stage 0 audit D12)
+
+### 2026-10-24 · The shortcut is `_execute_action` (#142)
+**Decided:** manifest `commands: {"_execute_action": {"suggested_key": {"default": "Alt+Shift+K"}}}`; the button
+and the shortcut share one top-level `action.onClicked` listener; no `commands.onCommand` listener.
+**Why:** Chrome dispatches `action.onClicked` for `_execute_action` (commands docs); one code path for both.
+**Instead of:** a named command plus `onCommand`.
+**Revisit if:** S4 finds the reserved command does not fire with no popup.
+**By:** Claude (Stage 0 audit D11)
+
+### 2026-10-24 · Stricter exit checks for Step 9 (#141)
+**Decided:** S0.1, S0.2, S1.1–S1.3, S2.1–S2.4, S3.2, S3.3, S4.3, S4.4 read as in stage0-audit.md §6.
+**Why:** F15 — four checks could not fail as written; Stage 0 may only make checks stricter (kickoff §7).
+**Instead of:** the original wording.
+**Revisit if:** a stricter check proves unexecutable (then escalate, never loosen silently).
+**By:** Claude (pre-registered rules — listed under Open decisions for the user; Stage 0 audit D10, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
+
+### 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140)
+**Decided:** check the URL before the fetch and `res.url` when `fetch` resolves, aborting the body; document that a
+hop onto a blocked host is still requested. A `declarativeNetRequest` session rule that blocks requests to
+blocked hosts itself (new manifest permission `declarativeNetRequestWithHostAccess`) is **not** built in Step 9.
+That one open decision covers both places it would help (V13): a download's redirect hop, and a bridge `navigate`
+that an allowed open redirector bounces onto a blocked host (a main-frame GET with the profile's cookies, a side
+effect the post-check refuses to report but cannot undo).
+**Why:** F8, F16; the manifest lane allows only `action` and `commands`.
+**Instead of:** `redirect: "error"` (breaks Blackboard → S3 downloads); DNR now (outside the lane); two separate
+DNR decisions.
+**Revisit if:** the user wants either hop blocked (then DNR in a later step, for both).
+**By:** Claude (contract-level — listed under Open decisions for the user; Stage 0 audit D9, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
+
+### 2026-10-24 · The state is read per call, fails closed, and is locked to trusted contexts (#139)
+**Decided:** F10's read rule (per-call `storage.local.get` after `ready`, in-memory copy for webRequest only,
+defaults when absent, fail closed with `DISARMED` on a read error — of the *state*, not of a tab, see D6) and
+F4's `storage.local.setAccessLevel({accessLevel: "TRUSTED_CONTEXTS"})`, called at module scope after every
+listener registration, guarded so it cannot throw synchronously, not awaited (V7); the router accepts
+`ws-message` only when `sender.url` is this extension's `offscreen.html` and `sender.tab` is undefined (F19, V6).
+**Why:** a call never acts on a stale state; no page-adjacent context can write it.
+**Instead of:** an `onChanged` cache (0.2's allowance).
+**Revisit if:** the per-call read is measured to cost more than a few ms.
+**By:** Claude (contract-level — listed under Open decisions for the user; Stage 0 audit D8, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
+
+### 2026-10-24 · Script URLs and the JavaScript switch; own pages of every extension (#138)
+**Decided:** while JavaScript is off, `navigate`/`newTab` to a `javascript:`, `data:` or `blob:` URL →
+`DISARMED` `scope:"evaluate"`; while it is on, those behave as today. `navigate`/`newTab` to any
+`chrome-extension://` URL → `DOMAIN_BLOCKED`; acting on a tab, and its `listTabs` row/events, are blocked/hidden
+only for **this** extension's own pages (by `url` or `pendingUrl`). `chrome://` navigation is unchanged
+(interaction is already refused, F34).
+**Why:** F3, F14, and the conservative rule's second property (V8): with JavaScript on, a `javascript:` URL grants
+nothing `evaluate` does not, so refusing it then would only change today's answer; acting on another extension's
+page is already refused by Chrome for scripting and the debugger, so blocking every id would change
+`navigate`-away, `closeTab`, `focusTab` and `listTabs` titles there for little gain. Navigation *to* any extension
+page is refused because nothing uses it today and it is the only way the bridge itself could put one in front.
+**Instead of:** `javascript:` → `BAD_PARAMS` always (the audit's first draft); every extension id blocked for every
+method and hidden in `listTabs` (wider; its cost is the changed answers above — **offered to the user as the
+alternative**); own id only for navigation too; leaving script URLs to Chrome while JavaScript is off.
+**Revisit if:** a recipe needs a `data:` page with JavaScript off; SAFE-6c shows Chrome running a `javascript:`
+navigation in a way `evaluate` could not; a screenshot of another extension's page is judged sensitive (then the
+wider rule).
+**By:** Claude (contract-level — listed under Open decisions for the user; Stage 0 audit D7, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
+
+### 2026-10-24 · In-flight work at disarm and on a newly blocked tab (#137)
+**Decided:** (1) gate at receipt, again right before each first side effect (`showTab`, `captureVisibleTab`,
+`tabs.update`/`create`/`remove`, each action's `callInPage` and trusted input — V17), and a post-check before the
+reply (all methods but `listTabs`, which is redacted, and `newTab`/`closeTab`, whose post-check is the state only).
+Every run checks the state first (disarmed → `DISARMED`; JavaScript off + `evaluate` → `DISARMED scope:"evaluate"`),
+then the tab: a live tab by its current `url`/`pendingUrl`; a tab replaced during the call under its new id; a
+tab gone during the call (or unreadable) by the last URL the worker knew for it — **none known, or not blocked →
+the reply stands as today**. At receipt an unreadable tab is left to the handler (today's `TAB_UNKNOWN`). So with
+the state armed, JavaScript on and an empty list, `evaluate("window.close()")`, a click that closes its popup and
+a call across a Memory-Saver replacement answer exactly as today (V3; S1.2's required rows); (2) `withDebugger`
+re-checks before attaching;
+a pure session registry detaches every session at disarm; errors from those sessions become `DISARMED`; (3)
+worker-side poll loops re-check per tick; (4) at disarm the download store is cleared and a late fetch's entry
+is released when its reply is refused; (5) a capture verifies the captured tab (F11); (6) the network log drops
+events while disarmed and filters blocked hosts at ingest and at query (F9), with a pre-ready buffer; entries
+recorded while armed stay.
+**Why:** F1, F5, F6, F9, F11, F24; nothing changes while armed with JavaScript on and an empty list, because
+every refusal needs a disarmed state, JavaScript off on an `evaluate`, or a URL that matches a pattern (own pages
+excepted), and a tab that vanished mid-call keeps today's answer.
+**Instead of:** one check at receipt (0.1 as written); refusing whenever the tab cannot be re-read at the
+post-check (fail closed by analogy with D8 — rejected: it turns today's `ok` for a self-closing tab into an error
+while armed, V3).
+**Revisit if:** the post-check is shown to refuse a reply the human wanted after re-arming quickly (it only ever
+refuses); or a blocked page is shown to close itself to slip a reply past the post-check (then the last known URL
+must be kept for every tab the call touched).
+**By:** Claude (contract-level — listed under Open decisions for the user; Stage 0 audit D6, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
+
+### 2026-10-24 · `tabs.claim` on a blocked tab is granted, every call on it refused (#136)
+**Decided:** the daemon's claim stays bookkeeping only (F21); the extension refuses every page call on the tab.
+The opener rule likewise: a popup of a held blocked tab is leased to the holder at once
+(`daemon/src/intercept.ts:213-217`, with `leaseGranted`), and every page call on it is refused while it is blocked.
+**Why:** a lease grants no page capability; any client can claim an unheld tab by handle, so refusing
+`{active:true}` alone protects nothing, and it would put block-list knowledge in the daemon (0.1); the opener
+grant is equivalent to claiming the popup by handle (V16); with an empty list nothing changes.
+**Instead of:** refusing the claim; withholding opener grants for blocked tabs.
+**Revisit if:** a lease on a blocked tab is ever shown to grant a capability, or an opener grant is shown to reveal
+something a claim by handle does not (e.g. a popup URL in `leaseGranted` — redacted by D3/F40).
+**By:** Claude (contract-level — listed under Open decisions for the user; Stage 0 audit D5, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
+
+### 2026-10-24 · The block-list grammar (#135)
+**Decided:** the grammar and matching rules of stage0-audit.md §5 (host and subdomains; `*.` subdomains only;
+optional port = effective port; IDN to punycode; canonical IP literals, bracketed IPv6; `#` comments; a pasted URL
+reduced to its host; invalid lines kept, shown, not counted; `blob:`/`filesystem:`/`view-source:` by the inner
+URL; `file:` by its host if any; this extension's own pages blocked always and navigation to any
+`chrome-extension://` URL refused), with the 50-case table as S1.3's test list.
+**Why:** settles F22 with the strictest readings that never match by substring.
+**Instead of:** exact-host only (misses subdomains the human means); allowing `*` (duplicates disarm).
+**Revisit if:** the user wants path-level blocking or an allow-list mode.
+**By:** Claude (contract-level — listed under Open decisions for the user; Stage 0 audit D4, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
+
+### 2026-10-24 · What `listTabs`, tab events and the daemon reveal while disarmed or for a blocked tab (#134)
+**Decided:** a hidden `listTabs` row keeps `id`, `windowId`, `active`, `openerTabId`, `current` (and the daemon's
+`tab`, `owner`), drops `title` and `url`, and adds `hidden: "disarmed" | "blocked"`. While disarmed every row is
+`"disarmed"`; while armed, a row whose `url` or `pendingUrl` is blocked (or one of this extension's own pages) is
+`"blocked"`. `tabCreated.url` is `""` and `tabRemoved` has no `lastUrl`/`lastTitle` but the same `hidden` marker,
+under the same rule. The daemon, while the last state says disarmed, omits `url` from `daemon.status` rows and
+`lastUrl`/`lastTitle` from `tabGone`/`TAB_GONE` (cache kept); a `listTabs` row or `tabRemoved` with
+`hidden: "blocked"` clears that handle's cached url/title, and the daemon runs one `listTabs` on every safety-state
+change so a newly blocked tab's cache is cleared within one round trip (F41); the opener rule's `leaseGranted.url`
+is then `""` and `fillUrl` stops at a hidden row instead of polling 2 s (F40). The MCP and the SDK render a hidden
+row as `(hidden: the bridge is off)` / `(hidden: blocked site)`.
+**Why:** F2, F40, F41 — redaction at one channel leaks through the others, including a cache filled before the
+pattern existed; the marker keeps agents able to say why (0.3's intent) and fixes F13; everything is unchanged
+while armed with an empty list (no row or event is ever hidden then; own pages excepted, which nothing opens today).
+**Instead of:** redacting `listTabs` only (#131 as recorded); no marker (MCP prints `undefined — undefined`).
+**Revisit if:** the user wants URLs visible while disarmed.
+**By:** Claude (contract-level — listed under Open decisions for the user; Stage 0 audit D3, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
+
+### 2026-10-24 · The JavaScript switch reuses `DISARMED` with a scope (#133)
+**Decided:** `evaluate` (with or without `asRef`) while JavaScript is off is refused `DISARMED` with `data:
+{scope: "evaluate"}`; kill-switch refusals carry `data: {scope: "all"}`. 25 codes stand. The extension's
+message, the MCP's line and the SDK's `report()` differ by scope: `"all"` — the user turned the bridge off, stop
+and ask them; `"evaluate"` — the user turned JavaScript off, every other tool still works (V9; S3.2 tests both).
+**Why:** an agent's correct reaction is close (ask the user before relying on the refused capability); the scope
+tells them apart without a third code or message parsing; S0.2's count is pre-registered.
+**Instead of:** a third code `JS_DISABLED` (clearer name, but changes a pre-registered check and the spec twice).
+**Revisit if:** a client must branch on it often enough that `data.scope` proves awkward.
+**By:** Claude (contract-level — listed under Open decisions for the user; Stage 0 audit D2, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
+
+### 2026-10-24 · The safety state travels as two events and a `daemon.status` field (#132)
+**Decided:** the service worker sends an extension→daemon event `safetyState {armed, evaluate, blockedCount}` after
+each connection comes up (`ws-status` true) and on every change; never in the hello. The daemon keeps the latest
+(null until reported, null again when the extension socket closes), logs one line per change with booleans and
+the count only, adds `safety: {armed, evaluate, blockedCount} | null` to `daemon.status`, and broadcasts a
+daemon→client event `safetyStatus` with the same params on every change. The SDK exposes it read-only:
+`client.safety()` (reads `daemon.status`) and `on("safetyStatus")`. `browser_status` prints `Safety: armed |
+DISARMED by the user · JavaScript on|off · N blocked site(s)`, or `Safety: not reported (reload the extension)`
+when null. Types and guards in `shared/src/protocol.ts` at S0.
+**Why:** the hello is sent once per connection and the offscreen document keys its client on
+`port:token:session`, so a state carried there would force a reconnect on every change (F12, as corrected by
+V14); a field on `extensionStatus` would break its documented meaning (true only on a hello, spec §10);
+unknown event names are ignored by old SDK clients and old daemons (probe P3), so it is backward compatible.
+**Instead of:** a hello field; a field on `extensionStatus`; a field on `welcome` (a client connecting later reads
+`daemon.status` instead).
+**Revisit if:** a client needs the state before its first call without a round trip.
+**By:** Claude (contract-level — listed under Open decisions for the user; Stage 0 audit D1, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
 
 ### 2026-10-24 · The Step 9 phase doc's proposals, recorded before Stage 0 so the audit can attack them (#131)
 **Decided:** the proposals of the Step 9 phase doc's "Decisions" not marked **(user)** are recorded as
@@ -101,6 +300,10 @@ enforcing in the daemon (the token reaches the daemon; the human's controls must
 **Revisit if:** Stage 0 finds a premise wrong (amend this entry with a dated note), or the user rules
 otherwise at the gate.
 **By:** Claude (proposed; contract-level parts listed under Open decisions for the user)
+*Amended 2026-10-24 (Stage 0): three premises refuted — redacting `listTabs` alone leaks through tab
+events and the daemon's cache (F2; now #134); one gate at receipt does not cover multi-step handlers
+(F1; now #137); the network filter misses four paths (F9; now #137 item 6). The wire shape, the
+JavaScript code and the grammar are ruled in #132, #133, #135.*
 
 ### 2026-10-24 · Step 9 agents run Opus 5.5 (#130)
 **Decided:** every agent of Step 9 at every level runs Claude Opus 5.5 (`claude-opus-5-5`), with
