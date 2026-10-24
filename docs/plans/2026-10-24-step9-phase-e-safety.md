@@ -381,6 +381,10 @@ of its own under `extension/src/` plus its start-up and the `action.onClicked` r
 log-scan test, `extension/test/`. **Parallel with:** after S2a.
 *(Split of S2's exit checks, IDs kept: S2.1 and S2.2 are S2a's; S2.3 is S2b's; S2.4 is checked at both closes,
 since both stages edit `sw.ts`.)*
+*Corrected 2026-10-24 (S0 fixer r1): was stated under the stage split as if #145 made it — this split of S2's exit
+checks and S2b's lane gaining the badge's start-up and the `action.onClicked` registration in `sw.ts` — because
+#145 does not assign exit checks (it names the budgets, the order and the lanes only). Both are the S0 step agent's,
+proposed (S0.md Proposed decisions); #145 split the stage.*
 
 ### Stage S3 — Daemon relay, SDK and MCP
 - [ ] The daemon relays the safety state; `daemon.status` carries it; the SDK exposes it read-only;
@@ -462,6 +466,8 @@ does not do (0.4's F16 note).*
   `await` in `sw.ts`.
   - *Amended 2026-10-24 (#145): S2.1 and S2.2 are S2a's checks, S2.3 is S2b's, S2.4 is checked at both S2a's
     and S2b's close (both edit `sw.ts`); the IDs stay S2.1–S2.4.*
+    *Corrected 2026-10-24 (S0 fixer r1): was "Amended 2026-10-24 (#145)", because #145 does not assign exit
+    checks: this assignment is the S0 step agent's, proposed (S0.md Proposed decisions); #145 split the stage.*
   - *Amended 2026-10-24 (Stage 0 §6; decisions.md · 2026-10-24 · Stricter exit checks for Step 9 (#141)):
     S2.1 reads as written, and adds "and for an unknown method, bad JSON and a handler that throws before its
     first await — the gate's position is before any handler code".*
@@ -509,6 +515,9 @@ does not do (0.4's F16 note).*
     empty and exit 1", because a method named otherwise passes the grep (Stage 0 F15; #141). The `storage.local.set`
     half reads `extension/src`, which S3's lane does not hold: whichever stage writes the toggle module (S2a)
     or the options page (S2b) carries that test, and S3 carries the method-table diff.*
+    *Corrected 2026-10-24 (S0 fixer r1): was stated here as settled, beside #141 and the stage split, because
+    #145 does not assign exit checks: moving the `storage.local.set` half to S2a/S2b is the S0 step agent's,
+    proposed (S0.md Proposed decisions); #145 split the stage.*
 - **S4.1** rows committed before the build is loaded. **S4.2** the reload script's exit 0 and SAFE-0 are
   the first recorded lines. **S4.3** every SAFE row's observed text in the record. **S4.4** the final
   safety-state read-back equals the start's.
