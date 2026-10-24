@@ -120,10 +120,13 @@ describe("action tools", () => {
     expect(f.work()).toEqual([["type", { ref: "e5", text: "hi", submit: false, trusted: false, tab: "T1" }]]);
   });
 
-  it("browser_type forwards trusted:true when asked", async () => {
+  it("browser_type forwards trusted:true when asked (after focusTab on the same tab, #106)", async () => {
     const f = fakeBridge();
     await tools(f.bridge).run("browser_type", { ref: "e5", text: "hi", submit: true, trusted: true });
-    expect(f.work()).toEqual([["type", { ref: "e5", text: "hi", submit: true, trusted: true, tab: "T1" }]]);
+    expect(f.work()).toEqual([
+      ["focusTab", { tab: "T1" }],
+      ["type", { ref: "e5", text: "hi", submit: true, trusted: true, tab: "T1" }],
+    ]);
   });
 
   it("browser_press_key forwards trusted:false when the flag is omitted", async () => {
@@ -132,10 +135,13 @@ describe("action tools", () => {
     expect(f.work()).toEqual([["pressKey", { key: "Enter", trusted: false, tab: "T1" }]]);
   });
 
-  it("browser_press_key forwards trusted:true when asked", async () => {
+  it("browser_press_key forwards trusted:true when asked (after focusTab on the same tab, #106)", async () => {
     const f = fakeBridge();
     await tools(f.bridge).run("browser_press_key", { key: "Enter", trusted: true });
-    expect(f.work()).toEqual([["pressKey", { key: "Enter", trusted: true, tab: "T1" }]]);
+    expect(f.work()).toEqual([
+      ["focusTab", { tab: "T1" }],
+      ["pressKey", { key: "Enter", trusted: true, tab: "T1" }],
+    ]);
   });
 
   it("the other tab-touching tools send their params plus the tab, with today's result texts", async () => {

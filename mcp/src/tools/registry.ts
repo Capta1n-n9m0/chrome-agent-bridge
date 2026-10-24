@@ -474,7 +474,7 @@ export function registerTools(
 
   reg.tool(
     "browser_click",
-    "Click the element with the given ref (or found by `locator`) in this session's tab (the active tab is claimed on first use) or `tab`. Set trusted=true to force real CDP input (shows the debugging banner).",
+    "Click the element with the given ref (or found by `locator`) in this session's tab (the active tab is claimed on first use) or `tab`. Set trusted=true to force real CDP input (shows the debugging banner). With trusted=true the tab is first brought to the front of its window (as browser_focus_tab does) and is left there.",
     {
       ref: z.string().optional().describe(REF_DESCRIPTION),
       locator: LOCATOR_SCHEMA,
@@ -486,6 +486,8 @@ export function registerTools(
       if ("error" in checked) return checked.error;
       const target = checked.target!;
       return onTab(tab, async (t) => {
+        // #106: trusted input focuses the same handle first (a focusTab failure is the answer).
+        if (trusted === true) await bridge.call("focusTab", { tab: t });
         await bridge.call("click", { ...target, trusted: trusted ?? false, tab: t });
         return text(`Clicked ${describeTarget(target)}`);
       });
@@ -494,7 +496,7 @@ export function registerTools(
 
   reg.tool(
     "browser_type",
-    "Type text into the element with the given ref (or found by `locator`) in this session's tab (the active tab is claimed on first use) or `tab`. Optionally submit. Set trusted=true to send real CDP keystrokes (shows the debugging banner) for sites that ignore synthetic input; the trusted path selects the field's existing text and replaces it.",
+    "Type text into the element with the given ref (or found by `locator`) in this session's tab (the active tab is claimed on first use) or `tab`. Optionally submit. Set trusted=true to send real CDP keystrokes (shows the debugging banner) for sites that ignore synthetic input; the trusted path selects the field's existing text and replaces it. With trusted=true the tab is first brought to the front of its window (as browser_focus_tab does) and is left there.",
     {
       ref: z.string().optional().describe(REF_DESCRIPTION),
       locator: LOCATOR_SCHEMA,
@@ -508,6 +510,8 @@ export function registerTools(
       if ("error" in checked) return checked.error;
       const target = checked.target!;
       return onTab(tab, async (t) => {
+        // #106: trusted input focuses the same handle first (a focusTab failure is the answer).
+        if (trusted === true) await bridge.call("focusTab", { tab: t });
         await bridge.call("type", { ...target, text: value, submit: submit ?? false, trusted: trusted ?? false, tab: t });
         return text(`Typed into ${describeTarget(target)}`);
       });
@@ -516,10 +520,12 @@ export function registerTools(
 
   reg.tool(
     "browser_press_key",
-    "Press a key (e.g. Enter, Escape, Tab) on the focused element of this session's tab (the active tab is claimed on first use) or `tab`. Set trusted=true to send a real CDP keystroke (shows the debugging banner) for sites that ignore synthetic input.",
+    "Press a key (e.g. Enter, Escape, Tab) on the focused element of this session's tab (the active tab is claimed on first use) or `tab`. Set trusted=true to send a real CDP keystroke (shows the debugging banner) for sites that ignore synthetic input. With trusted=true the tab is first brought to the front of its window (as browser_focus_tab does) and is left there.",
     { key: z.string(), trusted: z.boolean().optional(), tab: z.string().optional().describe(TAB_DESCRIPTION) },
     async ({ key, trusted, tab }) =>
       onTab(tab, async (t) => {
+        // #106: trusted input focuses the same handle first (a focusTab failure is the answer).
+        if (trusted === true) await bridge.call("focusTab", { tab: t });
         await bridge.call("pressKey", { key, trusted: trusted ?? false, tab: t });
         return text(`Pressed ${key}`);
       }),
@@ -634,7 +640,7 @@ export function registerTools(
 
   reg.tool(
     "browser_focus_tab",
-    "Bring this session's tab (the active tab is claimed on first use) or `tab` on screen and focus its window. The only tool that changes what the human sees; it does not change this session's tab.",
+    "Bring this session's tab (the active tab is claimed on first use) or `tab` on screen and focus its window. Trusted browser_click/browser_type/browser_press_key focus the same way first; it does not change this session's tab.",
     { tab: z.string().optional().describe(TAB_DESCRIPTION) },
     async ({ tab }) =>
       onTab(tab, async (t) => {

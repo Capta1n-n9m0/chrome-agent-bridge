@@ -1,0 +1,629 @@
+[
+  {
+    "name": "browser_back",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (e.g. \"T3\"). Omitted: this session's tab — the active tab, claimed on first use and then kept.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_click",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "additionalProperties": false,
+          "description": "Find the element without a ref: {role, name?} (e.g. {role:\"button\", name:\"Sign in\"}), {text} (visible text), or {css} (a selector). Each may add nth (0-based) to pick one of several matches; exact:true with name or text means case-sensitive equality instead of a substring match. What a browser_snapshot shows (role and name) is what a locator matches.",
+          "properties": {
+            "css": {
+              "type": "string"
+            },
+            "exact": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "nth": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "role": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "ref": {
+          "description": "Element ref from browser_snapshot (e.g. \"e12\"). Pass ref or locator, not both.",
+          "type": "string"
+        },
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (e.g. \"T3\"). Omitted: this session's tab — the active tab, claimed on first use and then kept.",
+          "type": "string"
+        },
+        "trusted": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_close_tab",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (required).",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_download",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "overwrite": {
+          "description": "Replace an existing file. Default false.",
+          "type": "boolean"
+        },
+        "path": {
+          "description": "Absolute destination: a file path, or a directory to save under the suggested filename.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "timeoutMs": {
+          "description": "Fetch timeout. Default 120000.",
+          "maximum": 600000,
+          "minimum": 1000,
+          "type": "integer"
+        },
+        "url": {
+          "description": "Absolute http(s) URL; same-site paths of the logged-in site work, redirects are followed.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "path"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_evaluate",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "asRef": {
+          "description": "Return a [ref=eN] for a DOM element result, to act on it with the other tools.",
+          "type": "boolean"
+        },
+        "expression": {
+          "description": "JavaScript to evaluate in the page. The last expression's value is returned; top-level await and a bare `return` both work.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (e.g. \"T3\"). Omitted: this session's tab — the active tab, claimed on first use and then kept.",
+          "type": "string"
+        },
+        "timeoutMs": {
+          "description": "Default 10000. Also bounds the server-side wait.",
+          "maximum": 60000,
+          "minimum": 100,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "expression"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_focus_tab",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (e.g. \"T3\"). Omitted: this session's tab — the active tab, claimed on first use and then kept.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_forward",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (e.g. \"T3\"). Omitted: this session's tab — the active tab, claimed on first use and then kept.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_hover",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "additionalProperties": false,
+          "description": "Find the element without a ref: {role, name?} (e.g. {role:\"button\", name:\"Sign in\"}), {text} (visible text), or {css} (a selector). Each may add nth (0-based) to pick one of several matches; exact:true with name or text means case-sensitive equality instead of a substring match. What a browser_snapshot shows (role and name) is what a locator matches.",
+          "properties": {
+            "css": {
+              "type": "string"
+            },
+            "exact": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "nth": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "role": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "ref": {
+          "description": "Element ref from browser_snapshot (e.g. \"e12\"). Pass ref or locator, not both.",
+          "type": "string"
+        },
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (e.g. \"T3\"). Omitted: this session's tab — the active tab, claimed on first use and then kept.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_list_tabs",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {},
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_navigate",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (e.g. \"T3\"). Omitted: this session's tab — the active tab, claimed on first use and then kept.",
+          "type": "string"
+        },
+        "url": {
+          "description": "Absolute URL to navigate to",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_network_clear",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "tab": {
+          "description": "Which tab: a handle from browser_list_tabs, \"all\" for every tab, or \"active\"/omitted for this session's tab (the active tab, claimed on first use).",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_network_requests",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "failedOnly": {
+          "description": "Keep only network errors and responses with status >= 400.",
+          "type": "boolean"
+        },
+        "filter": {
+          "description": "Match the URL: a case-insensitive substring, or /regex/flags when wrapped in slashes.",
+          "type": "string"
+        },
+        "id": {
+          "description": "Show one request in full — headers and request-body summary — by its id from a previous listing.",
+          "type": "string"
+        },
+        "includeHeaders": {
+          "description": "Keep the (redacted) headers on the returned entries. The printed table never shows headers — use `id` to read one request's headers.",
+          "type": "boolean"
+        },
+        "limit": {
+          "description": "How many of the newest matching requests to print. Default 50.",
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "tab": {
+          "description": "Which tab: a handle from browser_list_tabs, \"all\" for every tab, or \"active\"/omitted for this session's tab (the active tab, claimed on first use).",
+          "type": "string"
+        },
+        "types": {
+          "description": "Resource types to keep: xhr, fetch, document, frame, script, stylesheet, image, font, media, websocket, ping, other.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_new_tab",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_press_key",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (e.g. \"T3\"). Omitted: this session's tab — the active tab, claimed on first use and then kept.",
+          "type": "string"
+        },
+        "trusted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "key"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_screenshot",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "fullPage": {
+          "description": "Capture the full scrollable page (Milestone 4)",
+          "type": "boolean"
+        },
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (e.g. \"T3\"). Omitted: this session's tab — the active tab, claimed on first use and then kept.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_scroll",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "enum": [
+            "up",
+            "down"
+          ],
+          "type": "string"
+        },
+        "locator": {
+          "additionalProperties": false,
+          "description": "Find the element without a ref: {role, name?} (e.g. {role:\"button\", name:\"Sign in\"}), {text} (visible text), or {css} (a selector). Each may add nth (0-based) to pick one of several matches; exact:true with name or text means case-sensitive equality instead of a substring match. What a browser_snapshot shows (role and name) is what a locator matches.",
+          "properties": {
+            "css": {
+              "type": "string"
+            },
+            "exact": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "nth": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "role": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "ref": {
+          "description": "Element ref from browser_snapshot (e.g. \"e12\"). Pass ref or locator, not both.",
+          "type": "string"
+        },
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (e.g. \"T3\"). Omitted: this session's tab — the active tab, claimed on first use and then kept.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_select_option",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "additionalProperties": false,
+          "description": "Find the element without a ref: {role, name?} (e.g. {role:\"button\", name:\"Sign in\"}), {text} (visible text), or {css} (a selector). Each may add nth (0-based) to pick one of several matches; exact:true with name or text means case-sensitive equality instead of a substring match. What a browser_snapshot shows (role and name) is what a locator matches.",
+          "properties": {
+            "css": {
+              "type": "string"
+            },
+            "exact": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "nth": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "role": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "ref": {
+          "description": "Element ref from browser_snapshot (e.g. \"e12\"). Pass ref or locator, not both.",
+          "type": "string"
+        },
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (e.g. \"T3\"). Omitted: this session's tab — the active tab, claimed on first use and then kept.",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "values"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_select_tab",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (required).",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_snapshot",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (e.g. \"T3\"). Omitted: this session's tab — the active tab, claimed on first use and then kept.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_status",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {},
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_type",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "additionalProperties": false,
+          "description": "Find the element without a ref: {role, name?} (e.g. {role:\"button\", name:\"Sign in\"}), {text} (visible text), or {css} (a selector). Each may add nth (0-based) to pick one of several matches; exact:true with name or text means case-sensitive equality instead of a substring match. What a browser_snapshot shows (role and name) is what a locator matches.",
+          "properties": {
+            "css": {
+              "type": "string"
+            },
+            "exact": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "nth": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "role": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "ref": {
+          "description": "Element ref from browser_snapshot (e.g. \"e12\"). Pass ref or locator, not both.",
+          "type": "string"
+        },
+        "submit": {
+          "type": "boolean"
+        },
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (e.g. \"T3\"). Omitted: this session's tab — the active tab, claimed on first use and then kept.",
+          "type": "string"
+        },
+        "text": {
+          "description": "What to type (not a locator: use locator.text to find an element by its text).",
+          "type": "string"
+        },
+        "trusted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_use_active_tab",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {},
+      "type": "object"
+    }
+  },
+  {
+    "name": "browser_wait_for",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "idleMs": {
+          "description": "Quiet period that counts as idle, in ms. Default 500. Only used with networkIdle.",
+          "maximum": 10000,
+          "minimum": 100,
+          "type": "integer"
+        },
+        "locator": {
+          "additionalProperties": false,
+          "description": "Find the element without a ref: {role, name?} (e.g. {role:\"button\", name:\"Sign in\"}), {text} (visible text), or {css} (a selector). Each may add nth (0-based) to pick one of several matches; exact:true with name or text means case-sensitive equality instead of a substring match. What a browser_snapshot shows (role and name) is what a locator matches.",
+          "properties": {
+            "css": {
+              "type": "string"
+            },
+            "exact": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "nth": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "role": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "networkIdle": {
+          "description": "Wait until the tab has made no network request for `idleMs` (up to 10s).",
+          "type": "boolean"
+        },
+        "seconds": {
+          "description": "Fixed wait, in seconds (max 60).",
+          "type": "number"
+        },
+        "state": {
+          "description": "With locator only: \"visible\" (default) waits until it matches, \"hidden\" until it no longer does.",
+          "enum": [
+            "visible",
+            "hidden"
+          ],
+          "type": "string"
+        },
+        "tab": {
+          "description": "Tab handle from browser_list_tabs (e.g. \"T3\"). Omitted: this session's tab — the active tab, claimed on first use and then kept.",
+          "type": "string"
+        },
+        "text": {
+          "description": "Text to wait for in the page's visible text (up to 10s).",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  }
+]
