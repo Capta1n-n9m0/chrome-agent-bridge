@@ -1,6 +1,6 @@
 # S1 live runner brief (Step 10, stage S1 — Run 14, the live wave)
 
-Written 2026-10-25 by the S1 prep builder (model: Step 9's `briefs/S4-runner.md`); the step agent fills `<PREP>` (the
+Written 2026-10-25 by the S1 prep builder (model: Step 9's `briefs/S4-runner.md`); the step agent fills `5f17d54` (the
 S1 prep commit) before it spawns the runner.
 
 Repo C:\Users\aliev\Projects\chrome-remote-extention (chrome-agent-bridge), branch `main`. Shell: the PowerShell tool
@@ -32,7 +32,7 @@ patterns, SDK scripts. Binding:
 - Never use the user's own tabs or windows; every UIA action targets the driver's own HWNDs (the helpers check
   identity). Never restart or kill Chrome (G10-2 is not this wave's grant) → that is a STOP.
 - **Pre-flight before any state change** (blocks 1–3, read-only but for opening W): git clean (tracked) and HEAD
-  includes the S1 prep commit `<PREP>`; no `mcp/dist/index.js` process (none descending from your session, none from
+  includes the S1 prep commit `5f17d54`; no `mcp/dist/index.js` process (none descending from your session, none from
   another); port 9234 free or held only by the daemon; the toolbar button's pin state read by UIA. **PINNING RULE:** if
   the button is already pinned, proceed. If not pinned and UI Automation cannot pin it, that is a human gate: the script
   prints `STOP: … HUMAN GATE (pinning) …` — return (no mouse-click pinning; #202 does not pre-approve it).

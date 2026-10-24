@@ -323,3 +323,4 @@ decisions on wording and layout; an audit finding resolved plan-side with a date
 ## Running state (session agent updates this section at each dispatch)
 
 - 2026-10-24: Stage 0 dispatched alone. Nothing running; port 9234 free.
+- 2026-10-25: Stage 0 closed (9f91e5f; rulings b016712, #205–#209). S1 (Run 14, live) dispatched alone at b016712.

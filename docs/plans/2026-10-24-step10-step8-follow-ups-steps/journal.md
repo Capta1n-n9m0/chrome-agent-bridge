@@ -32,3 +32,7 @@
   (0.5 h) → S3 cap warning (2 h) ∥ S5 bb-login (1 h) → S4 saveTo (B) (3.5 h) → S4b JS_DISABLED (1.5 h) → S7 Run 15
   (live, alone, 1.5 h + 2 h) → S8 retirement + docs (1 h). S3/S4 proceed on the conservative choices (#205, #206)
   while the user has not ruled.
+
+## 2026-10-25 — S1 dispatched
+
+- Stage 0 rulings committed (`b016712`). S1 (Run 14, live, alone) dispatched; pinning rule: already pinned → proceed, else the runner returns and the user is asked once.
