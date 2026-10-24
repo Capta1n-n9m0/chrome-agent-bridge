@@ -84,7 +84,12 @@ machine that used the bridge before:
    it is unchanged in Step 6. *Corrected 2026-10-23 (Step 7 propagator): that holds only for Step 6.
    Step 7 changed the extension, so after upgrading past Step 7, reload it (§4). An unreloaded
    extension gets every tab call refused with `VERSION` and a reload hint (decisions.md · 2026-10-22 ·
-   A stale extension is refused for tab calls, detected by its hello).*
+   A stale extension is refused for tab calls, detected by its hello).* *Updated 2026-10-24: Step 8
+   changed the extension again — reload it after upgrading past Step 8; a pre-Step-8 extension answers
+   a script's `tab.locate()` with `unknown method: locate`. Step 8 also removed the Step 6 compatibility path: a script
+   that calls a tab method without `tab` now gets `BAD_PARAMS "tab is required"`, and `selectTab` gets
+   `UNKNOWN_METHOD` (use `focusTab`), so port old scripts to the `Tab` of
+   [Writing a script](#writing-a-script).*
 
 Every client on a machine must use the same `BRIDGE_PORT`; see [The daemon](#the-daemon).
 
@@ -117,29 +122,30 @@ automation in a window of its own and verifies it; see `docs/e2e-test-plan.md` �
 
 ## 5. Use it
 
-With the daemon running and the extension connected, call the 22 tools from your client. Every tool
+With the daemon running and the extension connected, call the 23 tools from your client. Every tool
 marked *tab* also takes an optional `tab` argument — see [Tabs](#tabs) below; without it the tool
 acts on **this session's tab**.
 
 | Tool | What it does |
 |---|---|
-| `browser_status()` | Diagnose the bridge: daemon connected (build, clients by name)? extension connected? the human's active tab, by handle. Call it first when other tools fail |
+| `browser_status()` | Diagnose the bridge: daemon connected (build, clients by name)? extension connected? the human's active tab, by handle; this session's tab (`Cursor:`), and the human's tab again when it is a different one. Call it first when other tools fail |
+| `browser_use_active_tab()` | Make the tab you (the human) are looking at this session's tab. Claude calls it when you say "this tab" or "the tab I'm on" — the only way this session's tab follows you |
 | `browser_navigate(url)` *tab* | Navigate the tab |
 | `browser_snapshot()` *tab* | Accessibility outline of the tab with element refs |
 | `browser_screenshot(fullPage?)` *tab* | Screenshot (viewport; full-page via CDP when `fullPage:true`). A viewport shot of a background tab shows that tab for about 1.5 s, then puts your tab back — see [Screenshots](#screenshots) |
-| `browser_click(ref, trusted?)` *tab* | Click a ref; `trusted:true` forces real CDP input (shows the debugging banner) |
-| `browser_type(ref, text, submit?, trusted?)` *tab* | Type into a ref, optionally submit; `trusted:true` sends real CDP keystrokes (shows the debugging banner) |
+| `browser_click(ref \| locator, trusted?)` *tab* | Click a ref or a [locator](#locators); `trusted:true` forces real CDP input (shows the debugging banner) |
+| `browser_type(ref \| locator, text, submit?, trusted?)` *tab* | Type `text` into a ref or locator, optionally submit; `trusted:true` sends real CDP keystrokes (shows the debugging banner) |
 | `browser_press_key(key, trusted?)` *tab* | Press a key on the focused element; `trusted:true` sends a real CDP keystroke (shows the debugging banner) |
-| `browser_scroll(ref?, direction?)` *tab* | Scroll to a ref or up/down |
-| `browser_hover(ref)` *tab* | Hover a ref |
-| `browser_select_option(ref, values)` *tab* | Select option(s) in a `<select>` |
+| `browser_scroll(ref? \| locator?, direction?)` *tab* | Scroll to a ref or locator, or the page up/down |
+| `browser_hover(ref \| locator)` *tab* | Hover a ref or locator |
+| `browser_select_option(ref \| locator, values)` *tab* | Select option(s) in a `<select>` |
 | `browser_back()` / `browser_forward()` *tab* | History navigation |
-| `browser_wait_for(text?, seconds?, networkIdle?, idleMs?)` *tab* | Wait until text appears on the tab, for N seconds, or — with `networkIdle:true` — until the tab has made no network request for `idleMs` (default 500, max 10 s wait) |
+| `browser_wait_for(text?, seconds?, networkIdle?, idleMs?, locator?, state?)` *tab* | Wait until text appears on the tab, for N seconds, — with `networkIdle:true` — until the tab has made no network request for `idleMs` (default 500, max 10 s wait), or — with `locator` — until an element matching it is visible (`state:"hidden"`: until none is; max 10 s) |
 | `browser_list_tabs()` | List open tabs: handle, `*` on the human's active tab, the holding actor, title — URL |
 | `browser_select_tab(tab)` | Make `tab` this session's tab: claims it, **without** bringing it on screen |
 | `browser_focus_tab()` *tab* | Bring the tab on screen and focus its window — the only tool that changes what you see |
-| `browser_new_tab(url?)` / `browser_close_tab(tab)` | Open a tab (it becomes active and this session's tab) / close a tab by handle |
-| `browser_evaluate(expression, timeoutMs?)` *tab* | Run JavaScript in the tab's page context and return the result (shows the debugging banner) |
+| `browser_new_tab(url?)` / `browser_close_tab(tab)` | Open a tab (it becomes this session's tab; it comes to the front only if you were looking at this session's tab, else it opens in the background) / close a tab by handle |
+| `browser_evaluate(expression, timeoutMs?, asRef?)` *tab* | Run JavaScript in the tab's page context and return the result (shows the debugging banner); `asRef:true` also returns a `[ref=eN]` for an element result, to act on with the other tools |
 | `browser_network_requests(tab?, filter?, types?, failedOnly?, limit?, includeHeaders?, id?)` | List the network requests the tab has made — method, status, type, duration, size, URL — captured continuously with no banner; `id` shows one request's headers and body summary |
 | `browser_network_clear(tab?)` | Forget the recorded network requests, so the next `browser_network_requests` shows only what your next action caused |
 | `browser_download(url, path, overwrite?, timeoutMs?)` | Save a URL to disk with the profile's cookies (fetched by the extension's service worker: no CORS, cross-origin redirects followed). `path` is absolute — a file, or a directory to use the response's filename. Reports size, type and sha256 |
@@ -148,9 +154,56 @@ acts on **this session's tab**.
 making a tab active and `browser_new_tab`/`browser_close_tab` reporting Chrome tab ids, because Step 7
 T4 gave every tab-touching tool a `tab` argument, ids became handles, `browser_select_tab` claims
 without showing and `browser_focus_tab` is new.*
+*Superseded 2026-10-23: was 22 tools, actions by `ref` only and `browser_new_tab` always in front,
+because Step 8 S5 added `browser_use_active_tab`, the `locator` on actions and `browser_wait_for`,
+`asRef`, and the background rule of `browser_new_tab`.*
 
 Typical loop: `browser_snapshot()` to see refs → act by ref (`browser_click`, `browser_type`)
-→ snapshot again to see the result.
+→ snapshot again to see the result. When the name is already known, act by locator and skip the
+snapshot.
+
+### Locators
+
+The actions (`browser_click`, `browser_type`, `browser_hover`, `browser_select_option`,
+`browser_scroll`) and `browser_wait_for` take a nested `locator` instead of a `ref`:
+
+- `{role, name?}` — e.g. `{role: "button", name: "Sign in"}`: the role and accessible name a
+  `browser_snapshot` shows (`- button "Sign in" [ref=e4]`). What a snapshot shows is what a locator
+  matches.
+- `{text}` — visible text, e.g. `{text: "Forgot password?"}`.
+- `{css}` — a CSS selector, e.g. `{css: "#size"}`.
+
+Each may add `nth` (0-based) to pick one of several matches; `exact: true` with `name` or `text`
+makes the match case-sensitive and whole instead of a substring. Pass `ref` or `locator`, not both
+(a tool error, nothing is sent); `browser_scroll` takes neither to scroll the page.
+`browser_type`'s `text` stays what to type, and `browser_wait_for`'s `text` stays the page text to
+wait for — a text locator is `locator: {text: …}`. `browser_wait_for({locator, state?})` waits alone
+(no `text`, `seconds` or `networkIdle` with it), up to 10 s. `browser_press_key` has no target: it
+presses on the focused element.
+
+### Failure reports
+
+When an action fails because the page was not as expected — `LOCATOR_NOT_FOUND`,
+`LOCATOR_AMBIGUOUS`, `REF_STALE`, `OFFSCREEN`, `PAGE_ERROR`, `NAV_FAILED` or `TIMEOUT` — the tool
+reads the tab once more and returns a report instead of the bare error: the message, the nearest
+candidates, a window of a fresh snapshot (its refs replace the old ones), the failed network requests,
+and a screenshot of the tab, as text plus an **image** Claude can see. A report that carries the
+image comes back as a result **not flagged as an error**: its first line is still `<CODE>: …`, and
+its last line says `The call failed (<CODE>). This result is not flagged as an error only so that the
+screenshot reaches you …`, because Claude Code (2.1.309, measured) drops images from error results
+(decisions.md · 2026-10-23 · An MCP failure report with a screenshot is returned as a non-error
+result). A report without a screenshot stays an error. The PNG is saved under
+`~/.chrome-agent-bridge/failures/<time>-<handle>.png` (or `BRIDGE_FAILURES_DIR`); clear that folder
+now and then. Other errors (`TAB_HELD`, `TAB_GONE`, `NOT_CONNECTED`, …) read as before. A page
+exception in `browser_evaluate` (`PAGE_ERROR`) is reported this way too: the snapshot renumbers the
+tab's refs and the screenshot may flash a background tab for about 1.5 s; a message of several lines
+(a stack) follows the report under `Full message:`, as it was.
+
+The screenshot is a default-mode capture, so **the failed tab flashes for about 1.5 s** if it is in
+the background, like any viewport screenshot. Reading the tab is bounded by 5 s: past that a part is
+listed as not attached. On a window entirely covered by other windows the screenshot cannot be taken
+— the report says so after 5 s — but the bridge has already switched that window to the failed tab,
+and may leave it in front for up to about 30 s before switching back.
 
 ### Tabs
 
@@ -169,7 +222,12 @@ window. `[name]` is the actor that holds the tab; a Claude session is `claude-co
 
 - **This session's tab.** A tool called without `tab` acts on this session's tab. The first such call
   claims the tab you are looking at and keeps it: switching tabs in Chrome afterwards does not move it.
-  `browser_select_tab({tab})` and `browser_new_tab()` move it; passing `tab` to one call does not.
+  `browser_select_tab({tab})`, `browser_new_tab()` and `browser_use_active_tab()` move it; passing
+  `tab` to one call does not. It follows you only through `browser_use_active_tab` (and the first
+  claim), which Claude calls when you ask it to work on "this tab". `browser_status` shows it as
+  `Cursor: T3 "Title" — url (held by me)` (or `none yet`, or `(not open any more)`) and, when you
+  look at another tab, adds `Human's active tab: T7 "Gmail" — not mine; call browser_use_active_tab
+  to work there` (`— held by <actor>, not mine` when another actor holds that tab).
 - **`tab`** takes a handle from `browser_list_tabs`. A tab held by another actor is refused, with the
   holder's name: `tab T3 is held by "export-grades.ts" since 12:01:33 — use browser_new_tab, or
   browser_list_tabs to pick a free tab`. A closed tab gives `tab T3 was closed — call listTabs to pick
@@ -197,7 +255,7 @@ link or a popup — "click Export, a new tab appears" lands with the clicker; a 
   tab, while `browser_network_clear` on another actor's tab — or `{tab:"all"}` while anyone else owns a
   tab — is refused.
 - An owner keeps its tabs until its connection ends: ending a Claude session or a script frees them.
-  A script can also give one up (`tabs.release`).
+  A script can also give one up (`tab.release()`, the `tabs.release` method).
 - A closed tab's handle answers `tab T3 was closed …` for an hour; a Chrome Memory-Saver discard does
   not lose the handle (Chrome gives the tab a new id, the daemon follows it), but calls into the
   discarded page fail until `browser_focus_tab` or `browser_navigate` reloads it.
@@ -205,7 +263,11 @@ link or a popup — "click Export, a new tab appears" lands with the clicker; a 
 ### What you see while actors work
 
 - **Nothing moves on its own.** Actors work in background tabs. A script's `newTab` opens its tab in
-  the background; Claude's `browser_new_tab` opens it in front (the tab you then look at). No call
+  the background. Claude's `browser_new_tab` opens it in front only when you are looking at this
+  session's tab at that moment (you were watching Claude, so you keep watching); otherwise — including
+  the session's first tab, and whenever the bridge cannot tell — it opens in the background and the
+  result says `(in the background — browser_focus_tab shows it)`. *Superseded 2026-10-23: was "Claude's
+  `browser_new_tab` opens it in front", because Step 8 S5 applied phase doc 0.6's rule.* No call
   brings a Chrome window to the front except `browser_focus_tab` (a script's `focusTab`).
 - **A viewport screenshot of a background tab flashes it.** The bridge switches the tab's window to
   it, captures, and switches back: your tab is hidden for about 1.5 s (measured 1.49–1.59 s, Step 7
@@ -215,20 +277,156 @@ link or a popup — "click Export, a new tab appears" lands with the clicker; a 
   Screenshots from several actors take turns, one at a time.
 - **Trusted input needs the tab in front.** `trusted:true` on a background tab returns `Clicked …` /
   `Typed …` but the page receives nothing (measured in Step 7, also with Chrome's anti-throttling
-  flags). Call `browser_focus_tab` first, or use the default synthetic input. The same holds for
-  anything that needs window focus, such as a clipboard write in `browser_evaluate`.
+  flags, and in Step 8 with CDP focus emulation: Run 11 in `docs/e2e-test-plan.md`). Call
+  `browser_focus_tab` first, or use the default synthetic input. The same holds for anything that
+  needs window focus, such as a clipboard write in `browser_evaluate`. A script's trusted actions
+  focus the tab first by themselves — see [Writing a script](#writing-a-script).
 
 ### Screenshots
 
 - **Default (`switch`) mode**, the only one `browser_screenshot` uses for the viewport: the flash
-  above, no banner. A minimized window is refused with `WINDOW_MINIMIZED`: restore the window and retry. (The
-  message still suggests `mode:"cdp"`, which refuses a minimized window too; Step 8 rewrites it.) A window entirely covered by other windows cannot be captured: the call times
+  above, no banner. A minimized window is refused with `WINDOW_MINIMIZED` (`Chrome's window is
+  minimized, so the tab cannot be captured — restore the window, or call focusTab first`): restore the
+  window and retry. *Superseded 2026-10-24: was "The message still suggests `mode:"cdp"`, which refuses
+  a minimized window too; Step 8 rewrites it", because Step 8 S2b rewrote it.* A window entirely covered by other windows cannot be captured: the call times
   out after 35 s, and the bridge puts your tab back after about 30 s.
 - **`fullPage:true`** goes through CDP (`chrome.debugger`): the debugging banner shows while it runs.
-- **`mode:"cdp"`** (scripts only: `client.call("screenshot", {tab, mode: "cdp"})`) captures through
+- **`mode:"cdp"`** (scripts only: `tab.screenshot({mode: "cdp"})`; *superseded 2026-10-24: was
+  `client.call("screenshot", {tab, mode: "cdp"})`, because Step 8 added the typed `Tab`*) captures through
   CDP without switching tabs, with the banner. It works only on a tab that is already in front of a
   window that is not minimized: a background tab is refused with `OFFSCREEN` and a minimized window
   with `WINDOW_MINIMIZED`, at once, because Chrome never returns a CDP capture of a hidden tab.
+
+## Writing a script
+
+*Added 2026-10-24 (Step 8). The SDK's types and JSDoc in `sdk/src/` are the reference; this section is
+the tour.*
+
+A script is a TypeScript file that imports `@bridge/sdk` and runs with `tsx` from the repo root. It is
+one more client of the daemon, beside any Claude session, with its own tabs. The token comes from
+`BRIDGE_TOKEN`, else `bridge.token` at the repo root — never put it in a script.
+
+```ts
+// my-script.ts — sign in on the E2E fixture page, read its status line.
+import { BridgeError, connect } from "@bridge/sdk";
+
+const client = await connect({ name: "my-script.ts" }); // finds, starts or hands over the daemon
+try {
+  // A new tab, in the background, leased to this script; it becomes the client's cursor.
+  const tab = await client.newTab("http://localhost:8080/e2e-playground.html");
+  await tab.type({ css: "#email" }, "a@b.com"); // a locator; a ref ("e4") from tab.snapshot() works too
+  await tab.click({ role: "button", name: "Sign in" }); // the role and name a snapshot shows
+  await tab.waitFor({ text: "form submitted" });
+  console.log(await tab.evaluate<string>("document.getElementById('status').textContent"));
+  await tab.close();
+} catch (err) {
+  if (err instanceof BridgeError) {
+    console.error(`${err.code}: ${err.message}`);
+    if (err.report) console.error(err.report()); // the failure report, when one was attached
+  } else console.error(err);
+  process.exitCode = 1;
+} finally {
+  client.close();
+}
+```
+
+Save it under `recipes/` and run it with the fixture served (`python -m http.server 8080 --directory
+test-fixtures`):
+
+```bash
+npm run recipe -- recipes/my-script.ts        # the same as: npx tsx recipes/my-script.ts
+```
+
+`recipes/sdk-login.ts` is the same flow as a complete recipe (E2E row SDK-1 — the SDK flow end to
+end against the fixture, with a header saying what it needs and how it fails); `recipes/README.md` lists the others. Recipes are not part of
+`npm run typecheck`: check one with a `tsconfig` in `recipes/` (`npx tsc --noEmit -p
+recipes/tsconfig.s6.json` covers the Step 8 recipes).
+
+**Connecting.** `connect({name})` resolves once the daemon has welcomed the script and the extension
+is connected (it waits up to 15 s, `waitForExtensionMs`, then rejects with `NOT_CONNECTED`).
+`name` is what `browser_list_tabs` and `browser_status` show as the holder. `client.close()` ends the
+connection, and with it the script's leases. `connect({failureReports: false})` turns failure
+reports off (below).
+
+**Tabs and the cursor.**
+- `client.newTab(url?, {active?})` opens a tab in the background (unless `active: true`), leased to
+  the script, and returns a `Tab`. `client.claim("T3")` takes a free tab by handle;
+  `client.claim({active: true})` takes the tab the human is looking at. `client.tabs()` lists every
+  tab as `{handle, title, url, owner?, current}`, where `current` marks the human's tab.
+- The client's **cursor** is the `Tab` of the last `newTab()` or `claim()`: `client.tab()` returns it,
+  and `client.click(…)`, `client.type(…)` and the other `Tab` methods but `close` act on it. With no
+  cursor they throw `NO_CURSOR` ("No tab cursor: call newTab() or claim() first"). Only `newTab`,
+  `claim` and a daemon restart change it; `release()`, `close()` and a closed tab do not. After a
+  close the next call answers `TAB_GONE`; after `release()` the cursor still names the tab, which is
+  now nobody's (calls on it pass the lease check until another actor claims it, then `TAB_HELD`).
+  `client.close()` closes the client; close the cursor's tab with `client.tab().close()`.
+- A daemon restart (a new build) renumbers the handles: a `Tab` from before it throws `TAB_UNKNOWN`
+  without calling anything, and the cursor is cleared. Open or claim the tab again.
+- The `Tab` methods: `navigate`, `back`, `forward`, `snapshot`, `screenshot({fullPage?, mode?,
+  path?})`, `click`, `type(target, text, {submit?, trusted?})`, `pressKey(key, {trusted?})`, `hover`,
+  `scroll({target?, direction?})`, `selectOption(target, values)`, `locate`, `waitFor`, `evaluate`,
+  `evaluateRef`, `network`, `networkClear`, `download(url, path)`, `focus`, `close`, `release`.
+
+**Locators.** Every action takes a target: a ref from `tab.snapshot()` (`"e4"`), or a locator object
+(`Locator` in `shared/src/protocol.ts`), resolved in the page by the same walk and the same role and
+accessible-name rules that build the snapshot:
+- `{role, name?, exact?, nth?}` — what a snapshot lists, e.g. `{role: "button", name: "Sign in"}`.
+  `name` is a string (a case-insensitive substring of the name the snapshot shows; `exact: true`
+  means case-sensitive equality) or `{regex, flags?}`.
+- `{text, exact?, nth?}` — the innermost visible element whose text contains it (case-insensitive;
+  `exact: true` means equality), interactive or not.
+- `{css, nth?}` — a CSS selector; hidden elements never match.
+
+`nth` (0-based) picks one of several matches in page order; without it two matches fail with
+`LOCATOR_AMBIGUOUS` and none with `LOCATOR_NOT_FOUND`, whose `error.data.candidates` names the nearest
+elements. `tab.locate(locator)` resolves one to `{ref, role, name}` without acting. A `{name}` with
+no `role` is refused at once (`BAD_PARAMS`, use `{text}` or add `role`).
+
+**Waiting and evaluating.** `tab.waitFor(…)` takes exactly one of `{text}` (page text, up to 10 s),
+`{locator, state?, timeoutMs?}` (`state: "visible"` by default, `"hidden"` to wait for it to go;
+default 10 s, at most 60 s), `{networkIdle: true, idleMs?}` and `{seconds}`. `tab.evaluate<T>(js)`
+resolves with the value when it is plain JSON; a page exception rejects with `PAGE_ERROR`.
+`tab.evaluateRef(js)` returns a ref to the `Element` the expression evaluates to — "find it with JS,
+act on it with `click`" — and `BAD_PARAMS` for anything else.
+
+**Failure reports.** When a `Tab` call fails because the page was not as expected —
+`LOCATOR_NOT_FOUND`, `LOCATOR_AMBIGUOUS`, `REF_STALE`, `OFFSCREEN`, `PAGE_ERROR`, `NAV_FAILED` or
+`TIMEOUT` — the SDK reads the tab once more and sets on the thrown `BridgeError`: `snapshot` (the tab's
+snapshot just after the failure), `screenshotPath` (a PNG under `BRIDGE_FAILURES_DIR`, else
+`~/.chrome-agent-bridge/failures/<time>-<handle>.png`), `network` (the tab's last 20 requests), and
+`attachErrors` for any part it could not get within 5 s. `error.report()` renders them in at most 60
+lines: message, candidates, a window of the snapshot, the screenshot path, the failed requests. Other
+codes (`TAB_HELD`, `NOT_CONNECTED`, …) carry none of this. Three things to know:
+- The screenshot is a default-mode capture: it takes the visibility lock like any screenshot, and
+  **the failed tab comes to the front of its window for about 1.3–1.6 s** if it was in the background
+  (your tab hidden 1331 ms in Step 8's Run 12, row REP-0 — the failure-report screenshot probe;
+  1.49–1.59 s for plain screenshots in Runs 8–9) — the human sees it. On a window covered by other windows the report gives up after 5 s, but the
+  failed tab can stay in front for up to about 30 s.
+- The report's snapshot renumbers the tab's refs, like any `snapshot()`: refs from before the failure
+  are void, use the report's.
+- A script that works on a private site (mail, a course, a bank) should pass `failureReports: false`,
+  so no screenshot or snapshot of it is written to disk; the Blackboard recipes do.
+
+**Trusted input in a script.** `tab.click(target, {trusted: true})`, `type` and `pressKey` with
+`trusted: true` send real CDP input (the debugging banner shows). Trusted input into a background
+tab answers `ok` and does nothing — measured in Step 7, and again in Step 8 with Chrome's focus
+emulation (Run 11) — so the SDK **focuses the tab first**: the tab comes to the front of its window,
+the window is focused, and **it stays there** (decisions.md · 2026-10-23 · The background-input policy).
+Without `trusted`, actions are synthetic, show no banner and work on a background tab. One case
+escapes the SDK: an untrusted click or type whose synthetic path fails is retried by the extension as
+trusted input, which on a background tab does nothing; pass `trusted: true` or call `tab.focus()`
+when the input must land.
+
+**Experimental surface.** `client.welcome`, `client.extensionConnected`, `client.on("reconnected", …)`,
+`connect({requireExtension: false})` and the MCP's `connectOptions()` (`mcp/src/config.ts`) work and are
+tested, but are **experimental** until a later release: their names or shapes may still change
+(decisions.md · 2026-10-24 · The Step 6 surface names stay, marked experimental).
+
+**What Claude sees through the MCP** is the same machinery: the [locators](#locators) on the action
+tools and `browser_wait_for`, `browser_evaluate {asRef}`, the [failure reports](#failure-reports) with
+their image, and this session's tab ([Tabs](#tabs)) — which never follows you except through
+`browser_use_active_tab`. The MCP's trusted tools do not focus first; `browser_focus_tab` is an
+explicit call.
 
 ## The daemon
 
@@ -314,6 +512,13 @@ serialised object, and 20 000 characters of output in total. When anything is cu
 with `(output truncated — …)`. Note that `maxString` (5 000) applies only to strings inside an
 object: a **top-level** string is a primitive that never reaches the in-page serialiser, so it is
 capped by the 20 000-character total instead.
+
+**Not for bulk data.** Everything `browser_evaluate` returns enters the model's context (and the
+session's transcript on disk). Don't page a large result through it in slices — Step 8's SDK-7 did,
+once, as a transport test (53 calls of 8 000 characters), and that is a test device, not a pattern.
+Read bulk data with a script ([Writing a script](#writing-a-script): `tab.evaluate` returns to your
+code, not to a model) or save a file with `browser_download` (decisions.md · 2026-10-24 · Bulk data
+through `browser_evaluate` was a test device only; the MCP gets a `saveTo` path).
 
 **`return` and `await`.** Top-level `await` works, and so does a multi-statement script whose last
 expression is the value (`const a = 1; a + 1` → `2`). A bare `return` is also accepted: the bridge

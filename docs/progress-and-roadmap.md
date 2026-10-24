@@ -1,8 +1,8 @@
 # Progress & Roadmap
 
-- **Date:** 2026-10-23
+- **Date:** 2026-10-24
 - **Branch:** `main` (merged from `feat/agent-bridge`; public on GitHub, MIT, since 2026-09-03)
-- **Status:** **Step 7 (multi-actor tabs) built, E2E-run (Runs 8–10) and closed 2026-10-23** ([Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23)); next: Step 8; **22 tools, 950 unit tests green** (`npm test` → 950 passed, 59 files, on the T6 tree, 2026-10-23). *Superseded 2026-10-23: was "Step 6 … closed 2026-10-22 — next: Step 7; 21 tools, 542 unit tests green", because Step 7's stages T0–T5b, RELOAD-AUTO and the BG-FLAGS run landed.* **Step 6 (daemon + SDK + MCP as an SDK client) built, E2E-tested live (wave W1) and closed 2026-10-22** ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
+- **Status:** **Step 8 (the SDK surface: locators, typed `Tab`, failure reports, the MCP cursor, first recipes) built and E2E-run (Runs 11–12), 2026-10-23/24; its gate waits on the docs stage S7 and the user's open decisions** *(corrected 2026-10-24, Step 8 propagator: S7 closed at `01fc58e` (#104), so the gate waits only on the user: the open decisions and G8-3)* ([Step 8 block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026-10-2324)); **23 tools, 1714 unit tests green** (`npm test` → 1714 passed, 85 files, at `eb6b991`, 2026-10-24). *Superseded 2026-10-24: was "next: Step 8; 22 tools, 950 unit tests green (… 59 files, on the T6 tree)", because Step 8's stages Stage 0–S6b landed.* **Step 7 (multi-actor tabs) built, E2E-run (Runs 8–10) and closed 2026-10-23** ([Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23)). *Superseded 2026-10-23: was "Step 6 … closed 2026-10-22 — next: Step 7; 21 tools, 542 unit tests green", because Step 7's stages T0–T5b, RELOAD-AUTO and the BG-FLAGS run landed.* **Step 6 (daemon + SDK + MCP as an SDK client) built, E2E-tested live (wave W1) and closed 2026-10-22** ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
 
 ---
 
@@ -165,6 +165,7 @@ out of.
 | Step 5 | Network inspection: always-on `chrome.webRequest` capture into a bounded per-tab `NetworkLog` with `storage.session` write-through; `browser_network_requests` + `browser_network_clear` | ✅ Done (E2E-verified 2026-09-07), including Part N6 `browser_wait_for { networkIdle: true }` (NET-16) |
 | Step 6 | Daemon + protocol v2: `daemon/ sdk/ mcp/` split, a shared detached daemon (roles, welcome, error codes, build-hash handover, idle exit, log), the SDK's `connect()`, the MCP as an SDK client | ✅ Done 2026-10-22 (E2E-verified in wave W1; MUX-5 accepted on re-measurement) |
 | Step 7 | Multi-actor tabs: `tabId` on every method, handles, leases, the visibility lock, tab events, error codes, data results with the formatters in the SDK, `browser_focus_tab`, the MCP cursor | Closed 2026-10-23 (built; E2E Runs 8–10) |
+| Step 8 | SDK surface: locators by the snapshot's rules, `waitFor {locator}`, `evaluate {asRef}`, the typed `Tab` and cursor, failure reports, the `focusFirst` input policy, the Step 6 compatibility path removed, the session marker, `browser_use_active_tab`, the first recipes | Built and E2E-run 2026-10-23/24 (Runs 11–12); gate pending |
 
 **Quality state:** 542 unit tests pass in 42 files (`npm test` at D5b commit `033b1bc`,
 2026-10-22); `tsc` typecheck clean across all five packages (`shared daemon sdk mcp extension`);
@@ -176,19 +177,88 @@ milestone passed a two-stage review (spec compliance + code quality); the final 
 verified the end-to-end protocol contract and that esbuild does not break page-injected functions.
 
 *Updated 2026-10-23: Step 7 — 950 tests in 59 files (`npm test` on the T6 tree; [Step 7
-block](#step-7--multi-actor-tabs-2026-10-2223-built-and-e2e-run-gate-open)).*
+block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23)).* *Corrected 2026-10-24 (Step 8 propagator): the link pointed at `#…-built-and-e2e-run-gate-open`, a heading renamed when Step 7 closed; here and in §5.*
+*Updated 2026-10-24 (Step 8 propagator): Step 8 — 1714 tests in 85 files (`npm test` at `eb6b991` and
+again at `e963bff`, `recipes/test/` included); typecheck across the five packages, with recipes
+checked by their own `tsconfig*.json` ([Step 8
+block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026-10-2324)).*
 
-**22 tools** (*superseded 2026-10-23: was 21, because Step 7 T4 added `browser_focus_tab`*):
-`browser_status`, `browser_navigate`, `browser_snapshot`, `browser_screenshot`,
+**23 tools** (*superseded 2026-10-24: was 22, because Step 8 S5 added `browser_use_active_tab`*;
+*superseded 2026-10-23: was 21, because Step 7 T4 added `browser_focus_tab`*):
+`browser_status`, `browser_use_active_tab`, `browser_navigate`, `browser_snapshot`, `browser_screenshot`,
 `browser_click`, `browser_type`, `browser_press_key`, `browser_scroll`, `browser_hover`,
 `browser_select_option`, `browser_back`, `browser_forward`, `browser_list_tabs`, `browser_select_tab`,
 `browser_focus_tab`, `browser_new_tab`, `browser_close_tab`, `browser_wait_for`, `browser_evaluate`, `browser_network_requests`, `browser_network_clear`, `browser_download` (2026-10-06, live-verified: two Blackboard files, 0.4 MB and 7.2 MB, through the bbcswebdav → S3 redirect, sha256-identical to copies fetched another way).
+
+### Step 8 — the SDK surface: locators, `Tab`, failure reports, the MCP cursor (2026-10-23/24)
+
+Phase doc `docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor.md`; contracts and deviations in
+`…-asbuilt.md`; reports, run records and logs in `…-steps/`; decisions in `docs/decisions.md`
+2026-10-23 #70–#103. **Not closed:** after this docs stage (S7) the gate waits for the user's
+rulings on the open decisions listed there, and on the `blackboard-ultra` skill edit (G8-3, the
+user's grant). *Corrected 2026-10-24 (Step 8 propagator): was "#70–#103" and "after this docs stage"; S7 closed at `01fc58e` and added #104 (2026-10-24) — see Step 8 as-built § S7.*
+
+- **What exists:** scripts and Claude name elements by **locator** (`{role, name}`, `{text}`,
+  `{css}`) as well as by ref, resolved in the content script by the snapshot's own walk
+  (`extension/src/content/a11y.ts`), so what a snapshot shows is what a locator matches;
+  `waitFor {locator, state}`; `evaluate {asRef}` turns an element result into a ref. The SDK has a
+  typed `Tab` (`client.newTab()`, `claim()`, the client's cursor `client.tab()`, `NO_CURSOR` as the
+  23rd code) and **failure reports** (snapshot, screenshot, last 20 requests, `error.report()`). The
+  MCP's cursor follows the human only through the new `browser_use_active_tab` — **23 tools** — and its
+  actions take a `locator`. The Step 6 compatibility path is gone (every tab call names its tab; `code`
+  required on error frames); a **session marker** retires every handle when Chrome restarts, and a new
+  daemon never reuses a handle number. First recipes: `recipes/sdk-login.ts`,
+  `recipes/blackboard/boot-bb.ts` (loads `bb.js` in one command) and `export-grades.ts` (read-only).
+  How to write a script: `docs/setup.md` → "Writing a script".
+- **Tests per stage** (`npm test` at each stage's verifier, as the as-built register records):
+
+| Stage | Commit | Tests | Files |
+|---|---|---|---|
+| Baseline (Step 7 close) | `70aa754` | 950 | 59 |
+| Stage 0 — spec audit | `7fe62f4` | 950 | 59 |
+| S0 — types | `dcb72db` | 1008 | 60 |
+| S1 — content-script `locate` | `e9e5e8c` | 1080 | 64 |
+| FE — focus emulation, measured | `6742c1f`, `829368e` | 1135 | 66 |
+| S3 — SDK `Tab`, cursor, locators, policy | `db242b6` | 1229 (S3 alone) | 70 |
+| S2 — handlers: `ref` \| `locator`, `waitFor`, node → ref | `357f776` | 1276 (S2 alone); 1370 / 75 with S3 | 71 |
+| S4 — failure reports | `26df11b` | 1435 | 76 |
+| S2b — compatibility path removed, `code` required, session marker | `efb8557` | 1493 | 78 |
+| S5 — MCP cursor and tools | `aa113df` | 1534 | 79 |
+| S6 — recipes and the E2E wave (pre-run part) | `23b878f` | 1654 | 83 |
+| S6b — the failure report's image | `03254d9` | 1683 | 84 |
+| S6 — Run 12 closed | `75f0bd6` | 1714 | 85 |
+
+  S2b's net +58 includes 11 removed legacy-path tests, listed one by one in `…-steps/S2b.md`.
+  `npm test` at `eb6b991` (2026-10-24): 1714 passed, 85 files.
+- **Live E2E** (`docs/e2e-test-plan.md` §5 Runs 11–12; Chrome 156, Windows 11; run by Claude end to
+  end, headless Claude sessions as the actors, reloads by `recipes/reload-extension.ps1`):
+  - **Run 11 (FE)** (2026-10-23, `FE-run-record.md`): CDP focus emulation does **not** deliver trusted
+    input to a background tab — click 0/3, typing 2/3, key press 0/3, control 0/12 — and changes
+    nothing the human sees (FE-4 9/9). Read off the pre-written table: outcome (B), policy
+    `"focusFirst"`: the SDK's trusted actions focus the tab first, and it stays in front
+    (decisions.md · 2026-10-23 · The background-input policy).
+  - **Run 12 (S6)** (2026-10-23/24, `S6-run-record.md`, three parts plus addenda): by each row's latest
+    result 35 PASS, 1 FAIL (ASREF-1's optional clause, superseded by #99 item 6). REP-0 showed that a
+    failure report's screenshot switches to the failed tab (human's tab hidden 1331 ms). REP-1's image
+    did not reach the model while the result was an error; S6b measured that Claude Code drops images
+    from error results and returns such a report as a non-error result (#100). SM-0 (an extension reload
+    keeps held handles) and SM-1 (a Chrome restart retires them) passed; SDK-6 and SDK-7 passed on the
+    user's course (read-only; one held export read by both paths, equal hashes). Earlier FAILs (LOC-1,
+    REP-1, SM-1, S6.3) stay recorded beside their re-registered re-runs.
+- **Open for the user** (`docs/decisions.md` → Open decisions): #71–#76, #78–#84, #87, #90, #91,
+  #93–#95, #99 (item 6 and S6b's error-result change), #100, #104 (item 3); G8-3 (the skill edit).
+  *Corrected 2026-10-24 (Step 8 propagator): was the list without #104, because S7's ruling #104
+  item 3 (S7.3 met by the commit map) is listed under Open decisions as item 22.*
 
 ### Step 7 — multi-actor tabs (2026-10-22/23; closed 2026-10-23)
 
 Phase doc `docs/plans/2026-10-21-step7-multi-actor-tabs.md`; contracts and deviations in
 `…-asbuilt.md`; reports, run records and logs in `…-steps/`; decisions in `docs/decisions.md`
 2026-10-22/23 #37–#66. **Not closed:** the gate waits for the user's rulings (below).
+*Corrected 2026-10-24 (Step 8 propagator): was "Not closed", but the user ruled the rest on
+2026-10-23 and Step 7 is closed, as the heading says (decisions.md · 2026-10-23 · The user rules on the
+Step 7 close-out questions (#68); · The user rules on R9-SCREEN-2 and the last five Step 7 open
+decisions (#69)). So the "Open for the user" list at the end of this block is ruled.*
 
 - **What exists:** several actors work in parallel on different tabs. The daemon names tabs by
   handles (`T1, T2, …`), gives each tab one owner (a lease: opened, claimed, or a popup of a held tab;
@@ -198,7 +268,9 @@ Phase doc `docs/plans/2026-10-21-step7-multi-actor-tabs.md`; contracts and devia
   The formatters moved to `sdk/src/format` (byte-identical, pinned against the baseline at `51de800`).
   The MCP keeps a cursor (claimed on first touch, not following the human) and gained
   `browser_focus_tab` — **22 tools**. A Step 6 client still works against the Step 7 daemon through a
-  lease-checked legacy path until Step 8.
+  lease-checked legacy path until Step 8. *(Corrected 2026-10-24, Step 8 propagator: Step 8 S2b removed
+  the legacy path. A tab call without `tab` is now `BAD_PARAMS "tab is required"`, and `selectTab` is
+  `UNKNOWN_METHOD` — see Step 8 as-built § S2b.)*
 - **Tests per stage** (`npm test` at each stage's verifier, as the as-built register records):
 
 | Stage | Commit | Tests | Files |
@@ -238,6 +310,9 @@ Phase doc `docs/plans/2026-10-21-step7-multi-actor-tabs.md`; contracts and devia
   measured — no bridge method sends it (T5.2's retry clause is reported unmet). `waitFor {text}`
   and `networkIdle` work on a background tab (BG-4); a clipboard write needs
   `focusTab` (BG-3). Step 8 adds focus emulation, measures it, then sets the policy.
+  *Corrected 2026-10-24 (Step 8 propagator): done. Run 11 (FE) measured focus emulation, which does not
+  deliver the input. The policy is `focusFirst` (decisions.md · 2026-10-23 · The background-input
+  policy (#89)) — see the Step 8 block.*
 - **Open for the user** (`docs/decisions.md` → Open decisions): #37 (Opus 5.5 for every agent), #40
   and #54 (the network `tab` scope, a bare number as a legacy id), #41 (the Step 6 legacy path), #42
   (a stale extension refused by its hello), #46 (the `@bridge/sdk/format` subpath), #51 (`code`
@@ -297,7 +372,9 @@ in the same folder). *Superseded 2026-10-22: was "waits for the D6 wave … Noth
   row is corrected and `test-fixtures/*.html` pinned to LF.
 - **Found (no code changed):** `browser_status` and the action tools can disagree on the active tab
   when a DevTools window is focused (→ Step 7); a daemon spawned through `Start-Process -NoNewWindow`
-  kept the caller's output pipe open (→ Step 8).
+  kept the caller's output pipe open (→ Step 8). *(Corrected 2026-10-24, Step 8 propagator: Step 8
+  S3.5 measured that `spawnDaemon` inherits no pipe. The MUX-6 cause remains unmeasured (decisions.md ·
+  2026-10-23 · S3.5's outcome and the Step 6 revisit items (#91)).)*
 
 ## 2. Architecture at a glance
 
@@ -402,8 +479,11 @@ measured, though DPR 1.25 and 1.5 both needed no correction.
   *Updated 2026-10-23: W1 verified it live (Run 7 in `docs/e2e-test-plan.md`, MUX rows).*
   *Superseded 2026-10-23: was "… but they all act on the same active tab", because Step 7 added handles and leases.*
 - **Background tabs** — trusted CDP input into a background tab silently does nothing, and a
-  default-mode screenshot of a background tab flashes it for ~1.5 s (Step 7 block). Step 8 sets the
-  policy.
+  default-mode screenshot of a background tab flashes it for ~1.5 s (Step 7 block). CDP focus
+  emulation does not fix the input (Run 11), so the SDK's trusted actions bring the tab to the front
+  first and leave it there (`focusFirst`); the MCP's trusted tools need an explicit
+  `browser_focus_tab`. A failure report's screenshot flashes the failed tab the same way (Run 12
+  REP-0). *Superseded 2026-10-24: was "Step 8 sets the policy", because Step 8 set it (Step 8 block).*
 - **Tab safety** — a Claude session claims the tab the human is looking at on its first call, and any
   actor can claim an unowned tab by handle, sensitive ones included. Mitigations today are
   localhost-only + token + the debugger banner. *Superseded 2026-10-23: was "the agent acts on
@@ -444,8 +524,11 @@ Step 6's code is built (stages D0–D5b, 542 tests; [§1 Step 6
 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)); its live E2E ran on
 2026-10-22 (wave W1) and Step 6 closed the same day. Next: Step 7 (its
 kickoff is `docs/plans/next-session-prompt.md`), then Step 8. *Updated 2026-10-23: Step 7 is built and
-E2E-run, its gate open for the user ([§1 Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-built-and-e2e-run-gate-open));
-next is Step 8, which starts from the BG findings.* *Superseded 2026-10-22 (W1): was "its
+E2E-run, its gate open for the user ([§1 Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23));
+next is Step 8, which starts from the BG findings.* *Updated 2026-10-24: Step 8 is built and
+E2E-run (Runs 11–12; [§1 Step 8 block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026-10-2324));
+after its gate: Phase E safety, D3 file upload, and the open Phase F items (`args` for
+`browser_evaluate`, console capture).* *Superseded 2026-10-22 (W1): was "its
 live E2E waits for the D6 wave with the user. Next after that: Step 7, then Step 8".* *Superseded 2026-10-22: was "Step 6 starts
 by pasting it into a fresh session that does not use the bridge MCP. Nothing is built.", because
 Step 6's code stages D0–D5b landed.*
@@ -485,7 +568,8 @@ switch the user can reach in one click is worth more than it was when the tool s
 (Nothing is logged today beyond the expression's length.)
 
 **Phase F — Ergonomics.** `wait_for` variants (element-visible; network-idle shipped in Step 5's
-Part N6); a console/error
+Part N6) — ✅ **element-visible done in Step 8** (2026-10-23: `browser_wait_for({locator, state})`
+and the SDK's `tab.waitFor({locator, state?, timeoutMs?})`, `state: "hidden"` too; Step 8 block); a console/error
 capture tool; cookie/storage read tools; download handling; multi-window awareness. Plus the Step 4
 follow-ups (see that plan's "Follow-ups"):
 
@@ -494,7 +578,11 @@ follow-ups (see that plan's "Follow-ups"):
 - **`args` for `browser_evaluate`**, so agents pass data without escaping it into the string.
 - **Frame targeting** (`Runtime.evaluate`'s `contextId`) — needs `Runtime.enable` + teardown.
 - **Return a `[ref=eN]` for a `kind:"node"` result**, round-tripping through the content script's
-  RefMap: "find it with JS, act on it with the fixed tools".
+  RefMap: "find it with JS, act on it with the fixed tools". ✅ **Done in Step 8** (2026-10-23:
+  `browser_evaluate {asRef:true}` prints `[ref=eN]`, the SDK's `tab.evaluateRef(js)` returns it;
+  a non-element value is refused, Run 12 ASREF-1). *Updated 2026-10-24: after Step 8 the Phase F
+  items still open include `args` for `browser_evaluate`, console capture, and D3 file upload
+  (Phase D) (decisions.md · 2026-10-21 · Step 8 S7 names only the Phase F items Step 8 closes).*
 - **Keep-attached debugger session** per tab, to amortise the ~100 ms attach and the banner flicker;
   needs a lifecycle design, and pairs with Step 5's network work.
 - **Console capture** (`Runtime.enable` + `consoleAPICalled`) appended to the evaluate result — this

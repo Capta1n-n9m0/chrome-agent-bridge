@@ -8,7 +8,10 @@
   2026-10-23 (Step 7 propagator): Step 6 closed on 2026-10-22, after wave W1. Step 7 (§5's extension row,
   §6, §7, §10's tab parts) is built and E2E-run (Runs 8–10). It has 22 tools and 950 tests in 59 files
   (`npm test` at `9cfc7db`); its gate waits on the user's remaining items. Step 8 (§8) is planned.
-  Contracts and deviations: `docs/plans/2026-10-21-step7-multi-actor-tabs-asbuilt.md`.* Plans: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`, `…step7-multi-actor-tabs.md`, `…step8-sdk-surface-and-mcp-cursor.md`.
+  Contracts and deviations: `docs/plans/2026-10-21-step7-multi-actor-tabs-asbuilt.md`.* *Corrected
+  2026-10-24 (Step 8 S7): Step 8 (§8, with §5, §10 and §13 where noted below) is built and E2E-run
+  (Runs 11–12): 23 tools, 1714 tests in 85 files (`npm test` at `eb6b991`); its gate waits on the
+  user's open decisions. Contracts and deviations: `docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-asbuilt.md`.* Plans: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`, `…step7-multi-actor-tabs.md`, `…step8-sdk-surface-and-mcp-cursor.md`.
 - **Owner:** Abbas Aliyev (@Capta1n-n9m0)
 - **Supersedes in part:** `2026-06-04-chrome-real-profile-agent-bridge-design.md` §3 "Controller: MCP server", §4 topology, and the "Tab targeting: active tab" decision. Everything about the extension's perception/action model stands.
 
@@ -130,7 +133,11 @@ Consequence: `mcp/` shrinks to "SDK call → render", and one client path is tes
 *Corrected 2026-10-23 (Step 7 propagator), on the as-built state of the four rows:*
 - *Extension: "every method takes an explicit `tabId`" holds on the wire from the Step 7 daemon. The
   extension still falls back to the human's tab, with a warning, when `tabId` is absent, for one
-  release; Step 8 S2 removes the fallback.*
+  release; Step 8 S2 removes the fallback.* *Corrected 2026-10-24 (Step 8 S7): as built the fallback
+  was removed by stage S2b, not S2; an absent `tabId` is now `BAD_PARAMS` (Step 8 as-built § S2b).
+  The SDK row's typed `Tab`, locators and failure enrichment are built (§ S3, § S4), and the formatters
+  are also exported from the main entry (decisions.md · 2026-10-23 · S3.4 applies as written: the main
+  entry also re-exports the formatters (#75)).*
 - *SDK: the formatters `formatSnapshot` and `formatNetwork` exist in `sdk/src/format/`. They are exported
   through the `@bridge/sdk/format` subpath, not the main entry (decisions.md · 2026-10-22 · The
   formatters reach the MCP through a `@bridge/sdk/format` subpath (#46), open for the user).*
@@ -296,6 +303,10 @@ proposed decision for Step 8 (decisions.md · 2026-10-22 · BG-1/BG-2's focus-em
 in this wave (#61)). The three launch flags above did not fix trusted input either: a trusted click and
 trusted typing into a background tab still answered `ok` and did nothing (Run 10 BGF-1/2; decisions.md ·
 2026-10-23 · Chrome's anti-throttling flags do not fix background input (#66)).*
+*Corrected 2026-10-24 (Step 8 S7): Step 8 stage FE added the lever (`focusEmulation: true` on trusted
+`click`/`type`/`pressKey`) and measured it (Run 11): it does not deliver trusted input to a background
+tab either — click 0/3, typing 2/3, key press 0/3 — while the target page reads `visible` during the
+call. The SDK therefore focuses first (decisions.md · 2026-10-23 · The background-input policy (#89)).*
 
 ## 8. SDK and the MCP as its client
 
@@ -322,6 +333,20 @@ await b.close();
   turned into a ref (`tab.refOf(result)`) — "find it with JS, act on it with trusted input".
 - `b.tab()` is the actor's **cursor** (last created / selected), so `b.click(...)` without a tab works.
 
+*Corrected 2026-10-24 (Step 8 S7), on what Step 8 built (as-built § S1, § S2, § S3; the sketch above
+stays as written):*
+- *`waitFor` takes a locator in its own arm, `tab.waitFor({locator, state?, timeoutMs?})`, beside
+  `{text}`, `{networkIdle}` and `{seconds}`; `state: "hidden"` waits for it to go.*
+- *The node → ref step is `tab.evaluateRef(expression)` (wire: `evaluate {asRef: true}` →
+  `EvalEnvelope.ref`), not `tab.refOf(result)`; it marks the element with a `data-__bridge-mark`
+  attribute that the content script resolves and removes (decisions.md · 2026-10-23 · S2's handler
+  details … (#92)).*
+- *`download(url, path)` takes a file or directory path; `{text}` matches visible text of any element
+  past the snapshot's pruning gates, and `nth` is 0-based (decisions.md · 2026-10-23 · Locator rules,
+  the MCP locator schema and the exported `BridgeError` (#83); · S1's locator details (#87)).*
+- *The cursor changes only on `newTab`/`claim` and a 4002 reconnect; with none a call throws
+  `NO_CURSOR`. Trusted `click`/`type`/`pressKey` focus the tab first (`focusFirst`, #89).*
+
 ### 8.2 Why "Claude writes the scripts" shifts polish toward errors
 
 A human learns an API once and benefits from sugar daily. Claude writes each script fresh from the
@@ -341,6 +366,16 @@ network:  NetworkEntry[]           (last 20 for the tab)
 
 `error.message` plus `formatSnapshot(error.snapshot)` is what a script prints by default. The MCP
 renders the same fields as text. Nothing here needs a model in the loop.
+
+*Corrected 2026-10-24 (Step 8 S7), as built in S4–S6b:* *the fields are optional properties on the
+shared `BridgeError` (no subclass): `snapshot`, `screenshotPath`, `network` (last 20), `attachErrors`
+and `report()` (≤ 60 lines), attached only for `LOCATOR_NOT_FOUND LOCATOR_AMBIGUOUS REF_STALE OFFSCREEN
+PAGE_ERROR NAV_FAILED TIMEOUT` within one 5 s budget; PNGs go to `BRIDGE_FAILURES_DIR`, else
+`~/.chrome-agent-bridge/failures/`. The attached snapshot renumbers the tab's refs, so candidate refs
+are rewritten or dropped (#93). The screenshot switches the window to the failed tab (Run 12 REP-0).
+The MCP renders `report()` plus a PNG image block; a report with an image is a non-error result,
+because Claude Code drops images from error results (decisions.md · 2026-10-23 · An MCP failure report
+with a screenshot is returned as a non-error result (#100)).*
 
 ### 8.3 MCP cursor semantics
 
@@ -365,6 +400,12 @@ renders the same fields as text. Nothing here needs a model in the loop.
 
 *`browser_status` reports only the human's tab (`Active tab: [T<n>] …`). `browser_use_active_tab` and
 the cursor/divergence lines are Step 8's. The tool count is 22 — see Step 7 as-built § Stage T4.*
+*Corrected 2026-10-24 (Step 8 S7): Step 8 S5 built the rest — `browser_use_active_tab` (23 tools);
+`browser_status` adds `Cursor:` and, only when it differs, `Human's active tab:` after the Step 7
+lines, and never claims; the actions and `browser_wait_for` take a nested `locator`; `browser_new_tab`
+comes to the front only when the cursor is the human's tab, else opens in the background and says so
+(decisions.md · 2026-10-23 · S5's MCP details: `browser_new_tab` activation, the status lines, the
+tool schemas, reports (#95)) — see Step 8 as-built § S5.*
 
 ## 9. Daemon lifecycle
 
@@ -445,6 +486,11 @@ event    D→C  {event, params}   tabGone | leaseGranted | extensionStatus
   PAGE_ERROR NAV_FAILED DOWNLOAD_HTTP WINDOW_MINIMIZED INTERNAL`. The extension's `Router` serialises a
   thrown `BridgeError {code, data}`; a plain `Error` becomes `INTERNAL` with its message, so nothing
   is lost during the migration.
+  *Added 2026-10-23 (Step 8 S0; decisions.md · 2026-10-23 · `NO_CURSOR` enters `shared/src/codes.ts`
+  as the 23rd code (#76)): SDK — `NO_CURSOR`, a `Tab`-less SDK call with no cursor ("call newTab() or
+  claim() first"; §8). The SDK alone raises it, never the daemon or the extension, so it never
+  travels on the wire from them; `shared/src/codes.ts` lists it in its own `SDK_ERROR_CODES`, beside
+  the daemon and extension lists.*
 - **Compatibility.** A v1 hello is accepted as an extension. A v1 error `{message}` from an old
   extension is wrapped as `INTERNAL`. Beyond that, extension and daemon of this generation ship
   together — nothing else speaks the protocol yet.
@@ -471,8 +517,21 @@ event    D→C  {event, params}   tabGone | leaseGranted | extensionStatus
   - *Content-script errors travel as a returned `{__bridgeError:"CODE:message"}`, never a throw (#38).*
   - *The code count is unchanged at 22; `code` stays optional on the wire (decisions.md · 2026-10-22 ·
     v2 peers do not yet require `code` (#51)).*
+    *Corrected 2026-10-23 (Step 8 S0): the count is 23 from Step 8 S0 on — `NO_CURSOR` joins as an
+    SDK-only code (decisions.md · 2026-10-23 · `NO_CURSOR` enters `shared/src/codes.ts` as the 23rd
+    code (#76)); the 22 daemon and extension codes are unchanged.*
   - *Compatibility: a Step 6 client keeps a legacy path for one release (#41, #54), which Step 8 S2
     removes.*
+- *Corrected 2026-10-24 (Step 8 S7): as built in Step 8 S2b, on the wire (Step 8 as-built § S2b):*
+  - *`tab` is required on every tab call and every unlisted method (`BAD_PARAMS "tab is required"`);
+    network calls without `tab` or with "active" mean the human's tab; `selectTab` is answered
+    `UNKNOWN_METHOD` by the daemon; any `id` on `closeTab`/`focusTab` is `BAD_PARAMS`. The legacy path
+    is gone (it was removed by S2b, not S2).*
+  - *`WireError.code` is required; a proto:2 error without one is delivered as `INTERNAL` and logged
+    once per connection (decisions.md · 2026-10-23 · S2b makes `code` required on error frames (#73)).*
+  - *The extension's hello carries `session` (§13), and the new method `locate {locator}` →
+    `{ref, role, name}` is a tab method; actions take `ref` or `locator`.*
+  - *The code count is 23: the 22 above plus the SDK-only `NO_CURSOR` (`shared/src/codes.ts`).*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
@@ -506,6 +565,11 @@ as-built § Stage D1, § Stage D3, § Stage D5.*
 
 *The locator types in `shared/` are still Step 8's — see Step 7 as-built § Stage T1–T4,
 § "RELOAD-AUTO, Run 9, BG-FLAGS".*
+*Corrected 2026-10-24 (Step 8 S7): Step 8 added the locator types (`shared/src/protocol.ts`);
+`sdk/src/{tab,locator,error,report,policy}.ts`; `daemon/src/handle-mark.ts`; in the extension
+`content/{a11y,locate,nearest,marked}.ts`, `handlers/{target,locate,locator-wait}.ts`,
+`evaluate/mark.ts`, `trusted-input.ts`, `session-marker.ts`; and `recipes/{sdk-login,s6,fe}.ts` with
+`recipes/blackboard/` — see Step 8 as-built.*
 
 ## 12. Risks and what E2E must settle
 
@@ -531,6 +595,9 @@ as-built § Stage D1, § Stage D3, § Stage D5.*
 - *A new risk, found by reading (T2 verifier V4): handles are keyed by Chrome tab id, and ids restart
   with each Chrome session. A daemon that outlives a Chrome restart can keep a leased handle live on a
   reused id, which may be the human's tab.*
+*Corrected 2026-10-24 (Step 8 S7): row 1 — focus emulation was measured and does not fix it (Run 11),
+so the SDK's `focus()` before trusted input is the policy (#89); the new risk is closed by the session
+marker (§13).*
 
 *See Step 7 as-built § T5, § Stage T2.*
 
@@ -549,3 +616,11 @@ as-built § Stage D1, § Stage D3, § Stage D5.*
   new marker the daemon would retire every handle with `tabGone`, so that a handle never lands on a tab
   id that Chrome reused after a restart. This is T2 verifier V4, a proposal that is not yet decided and
   is contract-level (`docs/plans/2026-10-21-step7-multi-actor-tabs-steps/T2-verifier.md` V4).
+  *Answered 2026-10-24 (Step 8 S7): yes. Step 8 S2b built it — the marker is kept across worker
+  restarts and extension reloads and changes when Chrome starts; any change after the daemon's first
+  extension hello retires every handle (`tabGone` to each holder, leases dropped, the lock untouched),
+  and a new daemon never reuses a handle number (decisions.md · 2026-10-23 · The extension hello
+  carries an optional session marker (#74); · The session marker's mechanism, amended (#80); · S2b's
+  details: the `selectTab` refusal grep, the marker's edge cases, the handle mark (#94)). Measured in
+  Run 12: an extension reload kept a held handle (SM-0); a Chrome restart left no handle minted before
+  it listed, and the old handle answered `TAB_GONE` (SM-1, where `chrome://quit` had already closed the tab, so the restart retired 0).*
