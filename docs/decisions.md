@@ -35,37 +35,228 @@ Step 7 (2026-10-22 on):
 None open now. *Updated 2026-10-23: all seven Step 7 open decisions are ruled (#68, #69).*
 
 Step 8 (2026-10-23 on), for the user at the gate:
-1. "Stage FE measures focus emulation before `policy.ts` is set" (#71)
-2. "S2's daemon half becomes stage S2b" (#72)
-3. "S2b makes `code` required on error frames" (#73)
-4. "The extension hello carries an optional session marker" (#74)
-5. "S3.4 applies as written: the main entry also re-exports the formatters" (#75)
-6. "`NO_CURSOR` enters `shared/src/codes.ts` as the 23rd code" (#76)
-7. "FE's rows and outcome table, amended before anything is measured" (#78, amends #71)
-8. "A new daemon never reuses a handle number; the SDK guards stale `Tab`s" (#79)
-9. "The session marker's mechanism, amended" (#80, amends #74)
-10. "The Chrome `id` stays beside `tab` this step; network calls without `tab` stay "active"" (#81)
-11. "Page-function failures may carry `data` beside the marker" (#82)
-12. "Locator rules, the MCP locator schema and the exported `BridgeError`" (#83)
-13. "Pre-registered checks reworded where they could not hold or could not fail" (#84)
-14. "S1's locator details" (#87), items 2–4
-15. "The SDK `Tab` surface details and the cursor rule as built" (#90), items 1, 2, 7
-16. "S3.5's outcome and the Step 6 revisit items" (#91), #24 and #27/#28 as final surface
-17. "S4's failure-report details, and how the MCP reaches them" (#93)
-18. "S2b's details: the `selectTab` refusal grep, the marker's edge cases, the handle mark" (#94)
-19. "S5's MCP details: `browser_new_tab` activation, the status lines, the tool schemas, reports" (#95)
-20. "S6's findings ruled: the user's answers, stage S6b for REP-1, re-registered rows" (#99), items 6 and S6b's error-result change
-21. "An MCP failure report with a screenshot is returned as a non-error result" (#100)
-22. "S7's doc rulings: the setup snippet, grouped wave gotchas, S7.3 by the commit map" (#104), item 3
-23. "S6's findings ruled: …" (#99), item 5 (SM-1 and LOC-1 re-registered before their re-run)
-24. "SDK-7's MCP leg is re-registered with a cap that fits pp1's export" (#102)
-25. "S6.3 compares one in-page export read through both paths" (#103)
+1. ~~"Stage FE measures focus emulation before `policy.ts` is set" (#71)~~ — *ruled by the user 2026-10-24 (#106).*
+2. ~~"S2's daemon half becomes stage S2b" (#72)~~ — *ruled by the user 2026-10-24 (#107).*
+3. ~~"S2b makes `code` required on error frames" (#73)~~ — *ruled by the user 2026-10-24 (#108).*
+4. ~~"The extension hello carries an optional session marker" (#74)~~ — *ruled by the user 2026-10-24 (#109).*
+5. ~~"S3.4 applies as written: the main entry also re-exports the formatters" (#75)~~ — *ruled by the user 2026-10-24 (#110).*
+6. ~~"`NO_CURSOR` enters `shared/src/codes.ts` as the 23rd code" (#76)~~ — *ruled by the user 2026-10-24 (#111).*
+7. ~~"FE's rows and outcome table, amended before anything is measured" (#78, amends #71)~~ — *ruled by the user 2026-10-24 (#106).*
+8. ~~"A new daemon never reuses a handle number; the SDK guards stale `Tab`s" (#79)~~ — *ruled by the user 2026-10-24 (#112).*
+9. ~~"The session marker's mechanism, amended" (#80, amends #74)~~ — *ruled by the user 2026-10-24 (#109).*
+10. ~~"The Chrome `id` stays beside `tab` this step; network calls without `tab` stay "active"" (#81)~~ — *ruled by the user 2026-10-24 (#113).*
+11. ~~"Page-function failures may carry `data` beside the marker" (#82)~~ — *ruled by the user 2026-10-24 (#114).*
+12. ~~"Locator rules, the MCP locator schema and the exported `BridgeError`" (#83)~~ — *ruled by the user 2026-10-24 (#115).*
+13. ~~"Pre-registered checks reworded where they could not hold or could not fail" (#84)~~ — *ruled by the user 2026-10-24 (#116).*
+14. ~~"S1's locator details" (#87), items 2–4~~ — *ruled by the user 2026-10-24 (#117).*
+15. ~~"The SDK `Tab` surface details and the cursor rule as built" (#90), items 1, 2, 7~~ — *ruled by the user 2026-10-24 (#118).*
+16. ~~"S3.5's outcome and the Step 6 revisit items" (#91), #24 and #27/#28 as final surface~~ — *ruled by the user 2026-10-24 (#119).*
+17. ~~"S4's failure-report details, and how the MCP reaches them" (#93)~~ — *ruled by the user 2026-10-24 (#120).*
+18. ~~"S2b's details: the `selectTab` refusal grep, the marker's edge cases, the handle mark" (#94)~~ — *ruled by the user 2026-10-24 (#121).*
+19. ~~"S5's MCP details: `browser_new_tab` activation, the status lines, the tool schemas, reports" (#95)~~ — *ruled by the user 2026-10-24 (#122).*
+20. ~~"S6's findings ruled: the user's answers, stage S6b for REP-1, re-registered rows" (#99), items 6 and S6b's error-result change~~ — *ruled by the user 2026-10-24 (#123, #124).*
+21. ~~"An MCP failure report with a screenshot is returned as a non-error result" (#100)~~ — *ruled by the user 2026-10-24 (#124).*
+22. ~~"S7's doc rulings: the setup snippet, grouped wave gotchas, S7.3 by the commit map" (#104), item 3~~ — *ruled by the user 2026-10-24 (#125).*
+23. ~~"S6's findings ruled: …" (#99), item 5 (SM-1 and LOC-1 re-registered before their re-run)~~ — *ruled by the user 2026-10-24 (#126).*
+24. ~~"SDK-7's MCP leg is re-registered with a cap that fits pp1's export" (#102)~~ — *ruled by the user 2026-10-24 (#127).*
+25. ~~"S6.3 compares one in-page export read through both paths" (#103)~~ — *ruled by the user 2026-10-24 (#127).*
+
+None open now. *Updated 2026-10-24: all 25 Step 8 open decisions are ruled (#106–#127, wave W2).*
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-24 · Bulk data through `browser_evaluate` was a test device only; the MCP gets a `saveTo` path (#127)
+**Decided:** rules Step 8 open items 24 and 25. #102 (SDK-7's MCP-leg cap raised to 600 000 characters)
+and #103 (S6.3 on one held export) stay as the record of what was measured — both registered before the
+legs they govern, and Run 12's earlier results stay recorded. Paging bulk data through
+`browser_evaluate` in chunks (SDK-7's MCP leg: 53 calls of 8 000 characters, ≈ 418 000 characters
+through a test actor's context) is a **test device only**, never a supported pattern: `docs/setup.md`
+says so now, and the tool description says so in the next phase. **Work item (next phase):** the MCP
+gains a way to move bulk data without the model's context — e.g. `browser_evaluate {saveTo: <path>}`
+writing the value to a file and returning only path, size and sha256, as `browser_download` does; S6.3 is
+then redone through it and the 53-chunk recipe (`assemble-mcp.ts`, `transcript.ts`) is retired.
+**Why:** the user (2026-10-24), on item 24: "I am confused why MCP even would need to ge so many characters
+in response. This should be used carefully or it will blow up agent's context. Let's dicuss before
+rarifying. Please explain what is going on here"; on item 25: "I feel that this also needs discussion as
+it is connected to the previous item"; after the explanation, chose "Record + test-only + saveTo". The
+chunked leg proved the transport whole (53/53 chunks, hash = page's) but every slice entered a model's
+context and a transcript on disk (the reason #105 deleted four actor transcripts).
+**Instead of:** a plain ratification (leaves the pattern looking supported); no new tool (bulk data
+SDK-only); withdrawing the MCP leg as a wrong check design.
+**Revisit if:** `saveTo` lands — then S6.3's record moves to it.
+**By:** user
+
+### 2026-10-24 · SM-1's and LOC-1's re-registered text is ratified; a live row exercises N ≥ 1 retires (#126)
+**Decided:** rules Step 8 open item 23 (#99 item 5): SM-1's and LOC-1's text, re-registered before their
+Part 3 re-run, stands; their Part 2 FAILs stay recorded and their Part 3 PASSes count for the gate.
+**Work item (next phase):** a new pre-registered live row that ends Chrome without an orderly quit (a
+kill, tabs restored by session restore), so the session-change path retires N ≥ 1 held handles live —
+Run 12 saw only `0 handles retired`, because `chrome://quit` closes every tab first.
+**Why:** the user (2026-10-24) chose "Ratify + live N>0 row". The safety property was measured (SM-1
+Part 3: `T268` gone by `tabGone` +1539 ms, snapshot → `TAB_GONE`, no earlier handle resolved); the N ≥ 1
+branch is unit-tested only (S2b.5).
+**Instead of:** leaving both rows FAIL; ratifying with no live N ≥ 1 row.
+**By:** user
+
+### 2026-10-24 · S7.3 is met by the commit map; a squashed `step8` release tag carries the Part messages (#125)
+**Decided:** rules Step 8 open item 22 (#104 item 3): S7.3 is met by `…-steps/S7.md` §4's map. **Work item
+(next phase):** a squashed release branch or tag `step8` whose commits carry the phase doc's listed Part
+messages; `main` is not rewritten.
+**Why:** the user (2026-10-24) chose "Ratify + release tag". The repo is public; rewriting `main` is on the
+integrity floor.
+**Instead of:** amending or squashing `main`; recording S7.3 as not met.
+**By:** user
+
+### 2026-10-24 · An MCP failure report with a screenshot stays a non-error result, re-probed on each Claude Code upgrade (#124)
+**Decided:** rules Step 8 open items 20 (S6b's error-result change) and 21: #100 stands as built — a
+report carrying a screenshot is returned `[text, image]` without `isError`, code on line 1 and an
+explicit `The call failed (<CODE>) …` last line; without a screenshot it stays `isError`. After a Claude
+Code upgrade, `…-steps/S6b-probe-rows.md` is re-run and the flag restored if images pass.
+**Why:** the user (2026-10-24) chose "Ratify + re-probe on upgrade". S6b probe: every `isError` variant
+delivered 0 images on Claude Code 2.1.309; REP-1 PASS after the change (Run 12 Part 3).
+**Instead of:** restoring `isError` and losing the image.
+**By:** user
+
+### 2026-10-24 · `evaluate {asRef}` on a non-element stays an error (#123)
+**Decided:** rules Step 8 open item 20 (#99 item 6): `asRef` on a value that is not an Element keeps
+failing `BAD_PARAMS "asRef needs an Element; the value is not one"` (`extension/src/handlers/evaluate.ts`);
+ASREF-1's optional clause keeps its *Superseded* note; Run 12's FAIL stays recorded.
+**Why:** the user (2026-10-24) chose "Keep the error". A caller that asks for a ref wants one; the SDK's
+`evaluateRef` throws the same way (#90 item 4).
+**Instead of:** returning the value plus `(no ref: the result is not an element)` without an error.
+**By:** user
+
+### 2026-10-24 · S5's MCP details are ratified (#122)
+**Decided:** rules Step 8 open item 19: #95 items 1, 3, 4, 5 stand — `browser_new_tab` comes to the front
+only when the cursor's tab is the human's current tab; `browser_press_key` stays untargeted;
+`browser_wait_for` takes `locator` and `state`, not `timeoutMs`; attach-set failures render as report +
+`Full message:` + PNG.
+**Why:** the user (2026-10-24) chose "Ratify". CUR-1…3 and TAB-3 PASS (Run 12); no model lost a background
+tab.
+**Instead of:** a session's first tab, or every new tab, in front.
+**By:** user
+
+### 2026-10-24 · S2b's details are ratified (#121)
+**Decided:** rules Step 8 open item 18: #94 stands — S2b.2's daemon grep reads the one `REMOVED_METHODS`
+line plus a behavioural test; none→A retires; odd `onInstalled` reasons give a fresh marker; a reload
+waits out the 2 s bound; any `id` on `closeTab`/`focusTab` is refused.
+**Why:** the user (2026-10-24) chose "Ratify". SM-0/SM-1 measured; #94's revisit triggers not met.
+**Instead of:** recording S2b.2's grep as not met as first written.
+**By:** user
+
+### 2026-10-24 · Failure reports stay on by default (#120)
+**Decided:** rules Step 8 open item 17: #93 stands — candidate/match refs rewritten to the report
+snapshot's (unique role + name) or deleted; `failureReports` default on, with `env` and the test seams;
+the `@bridge/sdk/report` subpath. The ~1.5 s screen switch stays a carried input.
+**Why:** the user (2026-10-24) chose "Ratify, default on". REP-0/REP-1 PASS; private-page scripts already
+pass `failureReports: false`.
+**Instead of:** reports off by default; a screenshot only when the failed tab is already in front.
+**By:** user
+
+### 2026-10-24 · The Step 6 surface names stay, marked experimental (#119)
+**Decided:** rules Step 8 open item 16 (#91: #24, #27/#28): `BridgeClient.welcome`,
+`extensionConnected`, `on("reconnected")`, `connect({requireExtension})` and the MCP's
+`connectOptions()` keep their names and are marked **experimental** in `docs/setup.md` (done in this
+wave) until a later release settles them.
+**Why:** the user (2026-10-24) chose "Ratify, mark experimental".
+**Instead of:** declaring them the final surface now.
+**Revisit if:** a release fixes the public SDK surface.
+**By:** user
+
+### 2026-10-24 · The SDK `Tab` surface and the cursor rule are ratified (#118)
+**Decided:** rules Step 8 open item 15: #90 items 1, 2, 7 stand — `client.close()` closes the client
+(every `Tab` method mirrored but `close`); `tabs()` returns `{handle, title, url, owner?, current}`; the
+cursor changes only on `newTab`/`claim` and a 4002 reconnect.
+**Why:** the user (2026-10-24) chose "Ratify". Phase doc 0.4 literally; `sdk/src/client.ts` sets the
+cursor in one place and clears it only in the 4002 branch.
+**Instead of:** clearing the cursor on `release`/`close`/`tabGone`.
+**By:** user
+
+### 2026-10-24 · S1's locator details are ratified; a locator past the snapshot's cap warns (#117)
+**Decided:** rules Step 8 open item 14 (#87 items 2–4): the name rule (the shown name, 120-character cap,
+substring / case-sensitive `exact`), `locate` past the 800-element cap, `{css}` only past the pruning
+gates stand. **Work item (next phase):** a warning when a page has more than 800 elements — the
+snapshot already ends with `- ... truncated at 800 elements …` (`sdk/src/format/snapshot.ts`); add one
+where none exists, when a locator resolves to an element past the snapshot's cap (one the snapshot never
+showed), surfaced by the SDK and the MCP.
+**Why:** the user (2026-10-24): "Ratify.  But add a warning if there is more than 800 elements".
+**Instead of:** an uncapped `exact`; an 800-element search cap.
+**By:** user
+
+### 2026-10-24 · The reworded pre-registered checks are ratified (#116)
+**Decided:** rules Step 8 open item 13: #84 stands (S2b.3 with listed, mutation-checked edits; S2b.6
+scoped; S6.1's first lines; every grep = empty stdout and exit 1).
+**Why:** the user (2026-10-24) chose "Ratify". Reworded before measurement (S2b.md test-count section).
+**Instead of:** recording S2b.3 as not met as first written.
+**By:** user
+
+### 2026-10-24 · The locator rules, the MCP locator object and the shared `BridgeError` are ratified (#115)
+**Decided:** rules Step 8 open item 12: #83 stands.
+**Why:** the user (2026-10-24) chose "Ratify". SDK-4 PASS; `instanceof BridgeError` unchanged.
+**Instead of:** flat role/name fields on the MCP tools.
+**By:** user
+
+### 2026-10-24 · `__bridgeData` beside the marker is ratified (#114)
+**Decided:** rules Step 8 open item 11: #82 stands.
+**Why:** the user (2026-10-24) chose "Ratify". Additive; carries locator candidates and matches.
+**Instead of:** dropping structured data from page failures.
+**By:** user
+
+### 2026-10-24 · The Chrome `id`, untargeted network calls and the unlisted-method refusal are ratified (#113)
+**Decided:** rules Step 8 open item 10: #81 stands.
+**Why:** the user (2026-10-24) chose "Ratify". `daemon/src/intercept.ts` `resolveTarget`.
+**Instead of:** removing the `id` next phase; refusing untargeted network calls.
+**By:** user
+
+### 2026-10-24 · Handle numbers never reused across daemons is ratified (#112)
+**Decided:** rules Step 8 open item 8: #79 stands.
+**Why:** the user (2026-10-24) chose "Ratify". Closes Stage 0's CRITICAL F2 for every route.
+**Instead of:** smaller fallback numbers.
+**By:** user
+
+### 2026-10-24 · `NO_CURSOR` as the 23rd code is ratified (#111)
+**Decided:** rules Step 8 open item 6: #76 stands.
+**Why:** the user (2026-10-24) chose "Ratify".
+**Instead of:** an SDK-local code.
+**By:** user
+
+### 2026-10-24 · The formatters on the SDK's main entry are ratified (#110)
+**Decided:** rules Step 8 open item 5: #75 stands.
+**Why:** the user (2026-10-24) chose "Ratify".
+**Instead of:** the subpath only.
+**By:** user
+
+### 2026-10-24 · The session marker is ratified (#109)
+**Decided:** rules Step 8 open items 4 and 9: #74 as amended by #80 stands.
+**Why:** the user (2026-10-24) chose "Ratify". SM-0 (reload kept handles) and SM-1 (restart retired them).
+**Instead of:** measuring `onStartup` timing to shorten the 2 s wait.
+**By:** user
+
+### 2026-10-24 · `code` required on error frames is ratified (#108)
+**Decided:** rules Step 8 open item 3: #73 stands.
+**Why:** the user (2026-10-24) chose "Ratify".
+**Instead of:** refusing code-less frames.
+**By:** user
+
+### 2026-10-24 · The S2b stage split is ratified (#107)
+**Decided:** rules Step 8 open item 2: #72 stands.
+**Why:** the user (2026-10-24) chose "Ratify".
+**By:** user
+
+### 2026-10-24 · FE and `focusFirst` are ratified; the MCP's trusted tools focus first too (#106)
+**Decided:** rules Step 8 open items 1 and 7: #71 as amended by #78 and its outcome (B) `focusFirst`
+(#89) stand. **Work item (next phase):** the MCP's trusted `browser_click`/`browser_type`/
+`browser_press_key` also call `focusTab` first (the tab comes to the front and stays) — this replaces
+#78 item 4's "the MCP's trusted tools keep today's behaviour" and closes the carried input "the MCP's
+trusted tools on a background tab answer `ok` and do nothing".
+**Why:** the user (2026-10-24) chose "Ratify + MCP focuses too". Run 11: no input kind passed under focus
+emulation; trusted input lands only on a focused tab.
+**Instead of:** leaving the MCP's trusted tools unfocused.
+**By:** user
 
 ### 2026-10-24 · The user grants the skill edit, the data deletion and the push at Step 8's close (#105)
 **Decided:** (1) G8-3 is granted: this session and the next may edit the `blackboard-ultra` skill
@@ -530,6 +721,7 @@ covers every route; no wire change; reversible.
 **By:** Claude (contract-level, handle numbering — listed under Open decisions)
 
 ### 2026-10-23 · FE's rows and outcome table, amended before anything is measured (#78)
+*Ruled 2026-10-24 by the user (#106): item 4's "the MCP's trusted tools keep today's behaviour" is replaced by a next-phase work item — they focus first too.*
 **Decided:** amends #71, written before any FE row is committed. (1) FE-4 judges only what the human
 sees: the human's tab stays `current` and never `hidden`; the foreground window and every window's
 active tab are unchanged; the target is never `active` in its window; no window capture shows the

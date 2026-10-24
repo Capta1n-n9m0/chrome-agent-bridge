@@ -18,6 +18,16 @@ decisions.md · 2026-10-23/24 (the list in decisions.md → Open decisions, Step
 held export; #104 item 3 (S7.3 by the commit map). *Corrected 2026-10-24 (close-out, propagator ledger):
 the earlier line named #85 (build-level) and lacked #99 item 5, #102, #103 and #104.*
 
+*Ruled 2026-10-24 (wave W2, the user present): all 25 items, decisions.md #106–#127. Ratified as built:
+#72, #73, #74/#80, #75, #76, #79, #81, #82, #83, #84, #90, #93 (reports on by default), #94, #95, #99 (6)
+(the `asRef` error kept), #100 (re-probed on each Claude Code upgrade). Ratified with a next-phase work
+item: #71/#78 — the MCP's trusted tools focus first too (#106); #87 — a warning when a locator resolves
+past the snapshot's 800 cap (#117); #91 — the Step 6 names marked experimental, done in `docs/setup.md`
+(#119); #104 (3) — a squashed `step8` release tag with the Part messages (#125); #99 (5) — a live row
+that retires N ≥ 1 handles on a killed Chrome (#126); #102/#103 — bulk data through `browser_evaluate`
+is a test device only (noted in `docs/setup.md`), and the MCP gains a `saveTo` path, S6.3 redone through
+it (#127).*
+
 ## Stage 0 — spec audit · 2026-10-23 · verifier: PASS-with-notes · commit 7fe62f4
 
 ### Contracts (binding forward)

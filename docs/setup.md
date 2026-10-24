@@ -417,6 +417,11 @@ escapes the SDK: an untrusted click or type whose synthetic path fails is retrie
 trusted input, which on a background tab does nothing; pass `trusted: true` or call `tab.focus()`
 when the input must land.
 
+**Experimental surface.** `client.welcome`, `client.extensionConnected`, `client.on("reconnected", …)`,
+`connect({requireExtension: false})` and the MCP's `connectOptions()` (`mcp/src/config.ts`) work and are
+tested, but are **experimental** until a later release: their names or shapes may still change
+(decisions.md · 2026-10-24 · The Step 6 surface names stay, marked experimental).
+
 **What Claude sees through the MCP** is the same machinery: the [locators](#locators) on the action
 tools and `browser_wait_for`, `browser_evaluate {asRef}`, the [failure reports](#failure-reports) with
 their image, and this session's tab ([Tabs](#tabs)) — which never follows you except through
@@ -507,6 +512,13 @@ serialised object, and 20 000 characters of output in total. When anything is cu
 with `(output truncated — …)`. Note that `maxString` (5 000) applies only to strings inside an
 object: a **top-level** string is a primitive that never reaches the in-page serialiser, so it is
 capped by the 20 000-character total instead.
+
+**Not for bulk data.** Everything `browser_evaluate` returns enters the model's context (and the
+session's transcript on disk). Don't page a large result through it in slices — Step 8's SDK-7 did,
+once, as a transport test (53 calls of 8 000 characters), and that is a test device, not a pattern.
+Read bulk data with a script ([Writing a script](#writing-a-script): `tab.evaluate` returns to your
+code, not to a model) or save a file with `browser_download` (decisions.md · 2026-10-24 · Bulk data
+through `browser_evaluate` was a test device only; the MCP gets a `saveTo` path).
 
 **`return` and `await`.** Top-level `await` works, and so does a multi-statement script whose last
 expression is the value (`const a = 1; a + 1` → `2`). A bare `return` is also accepted: the bridge
