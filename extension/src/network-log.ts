@@ -66,6 +66,11 @@ export interface QueryOptions {
   limit?: number;
   includeHeaders?: boolean;
   id?: string;
+  /**
+   * Step 9: the safety filter (`keepInQuery`): an entry it rejects is not returned, counted or found by
+   * `id` (phase doc 0.4's F9 note). Absent → today's answer.
+   */
+  keep?: (entry: NetworkEntry) => boolean;
 }
 
 /** The `chrome.storage.session` payload — see `toJSON` / `merge`. */
@@ -306,6 +311,34 @@ export class NetworkLog {
     this.dirty.add(tabId);
   }
 
+  /**
+   * Step 9: remove every hop of one Chrome request (an entry the safety filter dropped at ingest after it
+   * was recorded, e.g. a redirect onto a blocked host). Returns how many entries went.
+   */
+  discard(requestId: string): number {
+    const hops = this.hops.get(requestId) ?? 1;
+    let removed = 0;
+    for (let hop = 1; hop <= hops; hop++) {
+      const id = hop === 1 ? requestId : `${requestId}:${hop}`;
+      const e = this.byId.get(id);
+      if (!e) continue;
+      const list = this.tabs.get(e.tabId);
+      const i = list ? list.indexOf(e) : -1;
+      if (list && i >= 0) {
+        list.splice(i, 1);
+        if (list.length === 0) this.tabs.delete(e.tabId);
+      }
+      this.forget(e);
+      this.byId.delete(id);
+      this.count--;
+      this.dirty.add(e.tabId);
+      removed++;
+    }
+    this.current.delete(requestId);
+    this.hops.delete(requestId);
+    return removed;
+  }
+
   /** Drop a scope's entries, returning how many went. `"all"` also restarts `recordingSince`. */
   clear(scope: Scope): number {
     let removed = 0;
@@ -323,10 +356,11 @@ export class NetworkLog {
   }
 
   /** In-flight requests started within the window — a stream stays "pending" forever otherwise. */
-  pending(scope: Scope, opts: { now: number; maxAgeMs?: number }): number {
+  pending(scope: Scope, opts: { now: number; maxAgeMs?: number; keep?: (e: NetworkEntry) => boolean }): number {
     const maxAge = opts.maxAgeMs ?? PENDING_WINDOW_MS;
     let n = 0;
     for (const e of this.collect(scope)) {
+      if (opts.keep && !opts.keep(e)) continue;
       if (e.endedAt === undefined && e.startedAt >= opts.now - maxAge) n++;
     }
     return n;
@@ -359,14 +393,16 @@ export class NetworkLog {
 
   query(o: QueryOptions): NetworkQueryResult {
     const now = this.nowFn();
-    const pending = this.pending(o.tabId, { now });
+    const keep = o.keep;
+    const pending = this.pending(o.tabId, { now, keep });
     if (o.id !== undefined) {
       const found = this.byId.get(o.id);
-      if (!found) throw new Error(`No request with id ${o.id}`);
+      if (!found || (keep && !keep(found))) throw new Error(`No request with id ${o.id}`);
       return { entries: [{ ...found }], total: 1, pending, recordingSince: this.since };
     }
 
     let list = this.collect(o.tabId);
+    if (keep) list = list.filter(keep);
     if (o.filter) {
       const match = matcher(o.filter);
       list = list.filter((e) => match(e.url));

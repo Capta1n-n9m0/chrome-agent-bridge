@@ -2,10 +2,13 @@ import type { SnapshotResult } from "@bridge/shared";
 import { activateForCapture, cdpCaptureRefusal, pageTab, targetTab } from "../tabs.js";
 import { ensureContent, callInPage } from "../inject.js";
 import { fullPageScreenshot, viewportScreenshot } from "../debugger.js";
+import type { HandlerSafety } from "../safety-call.js";
 
-export async function snapshot(p: Record<string, unknown>): Promise<SnapshotResult> {
+export async function snapshot(p: Record<string, unknown>, call?: HandlerSafety): Promise<SnapshotResult> {
   const tab = await pageTab(p, "snapshot");
+  await call?.effect(); // Step 9: before each first side effect (#137)
   await ensureContent(tab.id!);
+  await call?.effect();
   return callInPage(tab.id!, () => window.__agentBridge!.snapshot());
 }
 
@@ -15,12 +18,12 @@ export async function snapshot(p: Record<string, unknown>): Promise<SnapshotResu
  * (`cdpCaptureRefusal`). Anything else is the `switch` mode (#50): the tab is
  * shown in its window just long enough for `captureVisibleTab`, then the previous tab comes back.
  */
-export async function screenshot(params: Record<string, unknown>): Promise<{ dataUrl: string }> {
+export async function screenshot(params: Record<string, unknown>, call?: HandlerSafety): Promise<{ dataUrl: string }> {
   // Truthy, exactly the daemon's rule (`takesLock` in daemon/src/methods.ts): the extension switches
   // tabs only in the cases the daemon takes the visibility lock for (T3 verifier V1).
   if (params.fullPage) {
     const tab = await pageTab(params, "screenshot");
-    return { dataUrl: await fullPageScreenshot(tab.id!) };
+    return { dataUrl: await fullPageScreenshot(tab.id!, call) };
   }
   if (params.mode === "cdp") {
     const tab = await pageTab(params, "screenshot");
@@ -28,8 +31,8 @@ export async function screenshot(params: Record<string, unknown>): Promise<{ dat
     const win = await chrome.windows.get(tab.windowId);
     const refusal = cdpCaptureRefusal(tab, win.state);
     if (refusal) throw refusal;
-    return { dataUrl: await viewportScreenshot(tab.id!) };
+    return { dataUrl: await viewportScreenshot(tab.id!, call) };
   }
   const tab = await targetTab(params, "screenshot");
-  return { dataUrl: await activateForCapture(tab) };
+  return { dataUrl: await activateForCapture(tab, call) };
 }

@@ -134,7 +134,19 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
  * waiting for one — or, if a Chrome call hangs, `CHAIN_RELEASE_MAX_MS` after the link started. The
  * data URL is returned without waiting for the restore.
  */
-export function activateForCapture(tab: chrome.tabs.Tab): Promise<string> {
+/** Step 9: the gated call's effect check, for the capture (`HandlerSafety.effect`). */
+export interface CaptureSafety {
+  effect(): Promise<void>;
+}
+
+/**
+ * Step 9 (Stage 0 F11): the window showed another tab when the capture was taken. The image is discarded;
+ * `OFFSCREEN` (the target was not on screen). Names no tab, URL or title.
+ */
+export const CAPTURE_MOVED_MESSAGE =
+  "The window showed another tab when the screenshot was taken, so the image was discarded — retry";
+
+export function activateForCapture(tab: chrome.tabs.Tab, safety?: CaptureSafety): Promise<string> {
   const windowId = tab.windowId;
   const prior = captureChains.get(windowId) ?? Promise.resolve();
   let release!: () => void;
@@ -144,7 +156,7 @@ export function activateForCapture(tab: chrome.tabs.Tab): Promise<string> {
   void link.then(() => {
     if (captureChains.get(windowId) === link) captureChains.delete(windowId);
   });
-  return prior.then(() => captureOnce(tab, release));
+  return prior.then(() => captureOnce(tab, release, safety));
 }
 
 /**
@@ -158,7 +170,7 @@ export function activateForCapture(tab: chrome.tabs.Tab): Promise<string> {
  * once, without waiting on it. The caller's promise is the capture's own outcome either way; the data
  * URL never waits for the restore.
  */
-async function captureOnce(tab: chrome.tabs.Tab, releaseChain: () => void): Promise<string> {
+async function captureOnce(tab: chrome.tabs.Tab, releaseChain: () => void, safety?: CaptureSafety): Promise<string> {
   const windowId = tab.windowId;
   let restore: (() => Promise<void>) | undefined;
   let restoring: Promise<void> | undefined;
@@ -192,8 +204,17 @@ async function captureOnce(tab: chrome.tabs.Tab, releaseChain: () => void): Prom
       const epoch = focusEpoch.get(windowId) ?? 0;
       restore = () => restorePrevious(windowId, tab.id!, prevId, epoch);
     }
+    // Step 9 (#137, V17): re-checked after the slot wait, before the human's window is switched, and
+    // again right before the capture.
+    await safety?.effect();
     if (switching) await showTab(tab.id!);
-    return await captureWithRetry(windowId);
+    if (!safety) return await captureWithRetry(windowId);
+    await safety.effect();
+    const dataUrl = await captureWithRetry(windowId);
+    // F11: the capture is of the window's active tab; if that is no longer the target, discard it.
+    const [shown] = await chrome.tabs.query({ active: true, windowId });
+    if (shown?.id !== tab.id) throw new BridgeError(ErrorCodes.OFFSCREEN, CAPTURE_MOVED_MESSAGE);
+    return dataUrl;
   } finally {
     void startRestore().then(release);
   }

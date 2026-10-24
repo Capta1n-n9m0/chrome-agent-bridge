@@ -34,8 +34,58 @@ function known(v: unknown): v is string {
   return typeof v === "string" && v !== "";
 }
 
+/**
+ * Step 9: how long a closed tab's last URL is kept for the safety gate (Stage 0 R2-1: "for the length of a
+ * call"). Longer than the longest call: the daemon's 600 s bound plus its 5 s grace.
+ */
+export const RETIRED_KEEP_MS = 610_000;
+/** At most this many closed tabs are remembered (oldest first out). */
+export const RETIRED_MAX = 1000;
+
 export class TabInfoCache {
   private readonly byId = new Map<number, TabInfo>();
+  /** Closed tabs: last URL and when they closed (Step 9, R2-1). Never logged, never sent. */
+  private readonly retired = new Map<number, { url?: string; at: number }>();
+  /** `onReplaced`: removed id → added id (Step 9: the gate tests a replaced tab under its new id). */
+  private readonly replaced = new Map<number, number>();
+
+  constructor(private readonly now: () => number = Date.now) {}
+
+  /**
+   * `onRemoved` (Step 9): removes and returns the entry like `take`, but keeps the last URL for
+   * `RETIRED_KEEP_MS` so a call on that tab is still tested by it (#137; Stage 0 R2-1).
+   */
+  retire(tabId: number): TabInfo | undefined {
+    const e = this.take(tabId);
+    this.retired.delete(tabId);
+    this.retired.set(tabId, { url: e?.url, at: this.now() });
+    while (this.retired.size > RETIRED_MAX) this.retired.delete(this.retired.keys().next().value as number);
+    return e;
+  }
+
+  /** The last URL the worker knew for a tab: its current one, or a recently closed tab's last. */
+  lastUrl(tabId: number): string | undefined {
+    const live = this.byId.get(tabId)?.url;
+    if (live !== undefined) return live;
+    const r = this.retired.get(tabId);
+    if (!r) return undefined;
+    if (this.now() - r.at >= RETIRED_KEEP_MS) {
+      this.retired.delete(tabId);
+      return undefined;
+    }
+    return r.url;
+  }
+
+  /** `onReplaced` (Step 9): remember which id replaced which (bounded like the retired set). */
+  noteReplaced(removedTabId: number, addedTabId: number): void {
+    this.replaced.delete(removedTabId);
+    this.replaced.set(removedTabId, addedTabId);
+    while (this.replaced.size > RETIRED_MAX) this.replaced.delete(this.replaced.keys().next().value as number);
+  }
+
+  replacedBy(tabId: number): number | undefined {
+    return this.replaced.get(tabId);
+  }
 
   /** Seeds ids not already present: a live `onUpdated`/`onCreated` value wins over the refill. */
   fill(tabs: readonly TabLike[]): void {

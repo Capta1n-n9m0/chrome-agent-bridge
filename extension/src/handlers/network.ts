@@ -3,6 +3,7 @@ import { resolveNetworkScope } from "../network-scope.js";
 import { BridgeError, ErrorCodes } from "../errors.js";
 import type { NetworkRequestsResult } from "@bridge/shared";
 import type { Scope } from "../network-log.js";
+import type { HandlerSafety } from "../safety-call.js";
 
 function coerceLimit(v: unknown): number | undefined {
   if (v === undefined || v === null) return undefined;
@@ -11,7 +12,7 @@ function coerceLimit(v: unknown): number | undefined {
   return n; // NetworkLog.query clamps to [1, 500].
 }
 
-export async function networkRequests(p: Record<string, unknown>): Promise<NetworkRequestsResult> {
+export async function networkRequests(p: Record<string, unknown>, call?: HandlerSafety): Promise<NetworkRequestsResult> {
   await ready;
   const id = p.id === undefined || p.id === null ? undefined : p.id;
   if (id !== undefined && typeof id !== "string") throw new BridgeError(ErrorCodes.BAD_PARAMS, "id must be a string");
@@ -27,6 +28,8 @@ export async function networkRequests(p: Record<string, unknown>): Promise<Netwo
     }
     types = p.types as string[];
   }
+  // Step 9: every query, an id lookup included, passes the safety filter (phase doc 0.4's F9 note).
+  const keep = call ? await call.networkFilter() : undefined;
   // Data only: the text a model reads is built by the SDK formatter (T4; decisions.md #49).
   return log.query({
     tabId: scope,
@@ -36,10 +39,11 @@ export async function networkRequests(p: Record<string, unknown>): Promise<Netwo
     limit: coerceLimit(p.limit),
     includeHeaders: p.includeHeaders === true,
     id,
+    ...(keep ? { keep } : {}),
   });
 }
 
-export async function networkClear(p: Record<string, unknown>): Promise<{ cleared: number }> {
+export async function networkClear(p: Record<string, unknown>, _call?: HandlerSafety): Promise<{ cleared: number }> {
   await ready;
   const { scope } = resolveNetworkScope(p);
   const cleared = log.clear(scope);

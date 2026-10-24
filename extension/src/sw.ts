@@ -1,4 +1,4 @@
-import { Router } from "./router.js";
+import { GatedRouter } from "./router.js";
 import { navigate } from "./handlers/navigate.js";
 import { snapshot, screenshot } from "./handlers/perceive.js";
 import { click, type as typeText, scroll, hover, selectOption, pressKey } from "./handlers/actions.js";
@@ -8,15 +8,49 @@ import { waitFor } from "./handlers/wait.js";
 import { evaluate } from "./handlers/evaluate.js";
 import { locate } from "./handlers/locate.js";
 import { networkRequests, networkClear } from "./handlers/network.js";
-import { downloadStart, downloadChunk, downloadEnd } from "./handlers/download.js";
+import { downloadStart, downloadChunk, downloadEnd, clearDownloads } from "./handlers/download.js";
 import { log as networkLog, ownPort, scheduleFlush, setOwnPort } from "./network-state.js";
 import { isOwnTraffic } from "./network-log.js";
 import type { WebRequestDetails, WebRequestEvent } from "./network-log.js";
 import { TabInfoCache, eventFrame, tabCreatedParams, tabRemovedParams, tabReplacedParams } from "./tab-events.js";
 import { MARKER_KEY, SessionMarker, type MarkerStore } from "./session-marker.js";
+import { DISARMED_ALL, SafetyReporter, SafetyStore, failClosedView, reportOf, touchesSafety, type SafetyView } from "./safety-state.js";
+import { CallSafety, acceptRelaySender, type CallSafetyDeps } from "./safety-call.js";
+import { NetworkIngestGate } from "./safety-network.js";
+import { redactTabCreated, redactTabRemoved } from "./safety.js";
+import { debuggerSessions } from "./debugger.js";
 
 const DEFAULT_PORT = 9234;
-const router = new Router();
+
+// --- The safety state (Step 9, Phase E) ----------------------------------------------------------
+// The human's kill switch, JavaScript switch and block list live in `storage.local` (`safety-state.ts`).
+// Every router call reads them afresh and fails closed (#139); the memory copy serves the synchronous
+// webRequest ingest only. A transition to disarmed detaches every debugger session, refuses new ones and
+// drops every held download (#137). Only the worker's own listeners and the options page change the state:
+// nothing the router serves can reach `safety.toggle()` (S2b's `action.onClicked` will call it).
+
+const tabInfo = new TabInfoCache();
+
+const safety = new SafetyStore({
+  get: (keys) => chrome.storage.local.get([...keys]),
+  set: (items) => chrome.storage.local.set(items),
+  extensionId: chrome.runtime.id,
+  now: Date.now,
+  onDisarm: () => {
+    void debuggerSessions.detachAll(DISARMED_ALL, (tabId) => chrome.debugger.detach({ tabId }));
+    clearDownloads();
+  },
+  onArm: () => debuggerSessions.refuse(null),
+});
+
+const callDeps: CallSafetyDeps = {
+  readState: () => safety.read(),
+  getTab: (tabId) => chrome.tabs.get(tabId),
+  replacedBy: (tabId) => tabInfo.replacedBy(tabId),
+  lastUrl: (tabId) => tabInfo.lastUrl(tabId),
+};
+
+const router = new GatedRouter((method, params) => new CallSafety(method, params, callDeps));
 router.on("navigate", navigate);
 router.on("snapshot", snapshot);
 router.on("screenshot", screenshot);
@@ -47,13 +81,26 @@ router.on("downloadEnd", downloadEnd);
 // into the in-memory log from the first event. `network-state.ts` merges the stored log in
 // underneath once its rehydrate promise resolves. `extraHeaders` is deliberately absent from every
 // extraInfoSpec, so Chrome never hands us Cookie / Set-Cookie.
+// Step 9: every event passes the ingest gate (`safety-network.ts`) — dropped while disarmed and for blocked
+// hosts, held until the stored state is first known (phase doc 0.4's F9 note).
 
 const ALL_URLS = { urls: ["<all_urls>"] };
 
+const ingestGate = new NetworkIngestGate({
+  ingest: (event, d) => {
+    networkLog.ingest(event, d);
+    scheduleFlush();
+  },
+  discard: (requestId) => {
+    if (networkLog.discard(requestId) > 0) scheduleFlush();
+  },
+  tabUrl: (tabId) => tabInfo.lastUrl(tabId),
+  view: () => safety.ingestView(),
+});
+
 function ingest(event: WebRequestEvent, d: WebRequestDetails): void {
   if (isOwnTraffic(d.url, ownPort())) return;
-  networkLog.ingest(event, d);
-  scheduleFlush();
+  ingestGate.offer(event, d);
 }
 
 chrome.webRequest.onBeforeRequest.addListener(
@@ -97,28 +144,51 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // "send" relay as an id-less `{event, params}` frame. If no socket is open the frame is dropped
 // (Stage 0 F15 gives the daemon a `listTabs` resync on reconnect for that; T2's side). Nothing here is logged: the cache
 // holds URLs and titles, which go on the wire only.
-
-const tabInfo = new TabInfoCache();
+// Step 9 (#134): `tabCreated.url` is "" and `tabRemoved` carries `hidden` instead of `lastUrl`/`lastTitle`
+// while disarmed or for a blocked tab (this extension's own pages included). The state is read per event
+// (a read that fails redacts as disarmed); the frames go out in order through one chain.
 
 function sendEvent(frame: string): void {
   chrome.runtime.sendMessage({ target: "offscreen", type: "send", data: frame }).catch(() => {});
+}
+
+let eventChain: Promise<void> = Promise.resolve();
+
+/** Sends a tab event built under a fresh read of the state, after every earlier one. */
+function sendTabEvent(build: (view: SafetyView) => string): void {
+  eventChain = eventChain
+    .then(async () => {
+      let view: SafetyView;
+      try {
+        view = await safety.read();
+      } catch {
+        view = failClosedView(chrome.runtime.id);
+      }
+      sendEvent(build(view));
+    })
+    .catch(() => {});
 }
 
 chrome.tabs.onCreated.addListener((created) => {
   const params = tabCreatedParams(created);
   if (!params) return;
   tabInfo.update(params.tabId, {}, created);
-  sendEvent(eventFrame("tabCreated", params));
+  const urls = [created.url, created.pendingUrl];
+  sendTabEvent((v) => eventFrame("tabCreated", redactTabCreated(params, v.switches, v.ctx, urls)));
 });
 chrome.tabs.onUpdated.addListener((tabId, change, updated) => {
   tabInfo.update(tabId, change, updated);
 });
 chrome.tabs.onRemoved.addListener((tabId) => {
-  sendEvent(eventFrame("tabRemoved", tabRemovedParams(tabId, tabInfo.take(tabId))));
+  // `retire`, not `take`: the last URL stays known for the length of a call (Stage 0 R2-1).
+  const params = tabRemovedParams(tabId, tabInfo.retire(tabId));
+  sendTabEvent((v) => eventFrame("tabRemoved", redactTabRemoved(params, v.switches, v.ctx)));
 });
 chrome.tabs.onReplaced.addListener((addedTabId, removedTabId) => {
-  sendEvent(eventFrame("tabReplaced", tabReplacedParams(addedTabId, removedTabId)));
+  tabInfo.noteReplaced(removedTabId, addedTabId);
   tabInfo.move(removedTabId, addedTabId);
+  const frame = eventFrame("tabReplaced", tabReplacedParams(addedTabId, removedTabId));
+  sendTabEvent(() => frame);
 });
 
 // Refill the cache after a worker restart (Stage 0 F16). Not awaited: no top-level `await` here.
@@ -196,9 +266,30 @@ async function connect(): Promise<void> {
   }
 }
 
-// Messages relayed from the offscreen document.
-chrome.runtime.onMessage.addListener((msg) => {
+// --- The safetyState event (Step 9; decisions.md · 2026-10-24 · #132; S3's handoff) ----------------------
+// `{armed, evaluate, blockedCount}` — never a pattern, never in the hello — each time the connection comes
+// up and on every change. Reads are chained so an older state is never sent after a newer one. A state
+// that cannot be read is not reported (the daemon keeps "not reported").
+
+const reporter = new SafetyReporter();
+let reportChain: Promise<void> = Promise.resolve();
+
+function reportSafety(): void {
+  reportChain = reportChain
+    .then(async () => {
+      const frame = reporter.offer(reportOf(await safety.read()));
+      if (frame) sendEvent(frame);
+    })
+    .catch(() => {});
+}
+
+const OFFSCREEN_URL = chrome.runtime.getURL("offscreen.html");
+
+// Messages relayed from the offscreen document. Step 9 (#139, F19, V6): only the offscreen document itself
+// (its URL, not a tab showing it) may hand the router a request; anything else is dropped without a log line.
+chrome.runtime.onMessage.addListener((msg, sender) => {
   if (msg?.target !== "sw") return;
+  if (!acceptRelaySender(sender, OFFSCREEN_URL)) return;
   if (msg.type === "ws-message") {
     router.handle(msg.data)
       .then((reply) => {
@@ -206,8 +297,14 @@ chrome.runtime.onMessage.addListener((msg) => {
       })
       .catch(() => {});
   } else if (msg.type === "ws-status") {
-    if (msg.connected) console.log("[bridge] connection: up");
-    else console.error("[bridge] connection: down");
+    if (msg.connected) {
+      console.log("[bridge] connection: up");
+      reporter.connectionUp();
+      reportSafety();
+    } else {
+      console.error("[bridge] connection: down");
+      reporter.connectionDown();
+    }
   }
 });
 
@@ -237,6 +334,25 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && (changes.token || changes.port)) void connect();
+  // Step 9: the options page (or the toggle) changed the safety state: update the memory copy (and run the
+  // disarm actions on a disarm), decide held network events, report the new state.
+  if (area === "local" && touchesSafety(changes)) {
+    safety.applyChanges(changes);
+    ingestGate.flush();
+    reportSafety();
+  }
 });
 
+// Step 9: load the memory copy once (the `ready` every gated read awaits), then decide the network events
+// held meanwhile. Not awaited: no top-level `await` here.
+void safety.start().then(() => ingestGate.flush());
+
 void connect();
+
+// Step 9 (#139, F4, V7): content scripts must not read or write `storage.local` (the token and the safety
+// state live there). After every listener registration, guarded so it cannot throw synchronously, not awaited.
+try {
+  void chrome.storage.local.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" as chrome.storage.AccessLevel })?.catch?.(() => {});
+} catch {
+  // a missing or failing setAccessLevel leaves nothing to undo
+}

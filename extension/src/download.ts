@@ -55,6 +55,13 @@ export class DownloadStore {
     return this.held.delete(id);
   }
 
+  /** Step 9: drop every held download (a disarm, #137 item 4). Returns how many went. */
+  clear(): number {
+    const n = this.held.size;
+    this.held.clear();
+    return n;
+  }
+
   get size(): number {
     this.sweep();
     return this.held.size;

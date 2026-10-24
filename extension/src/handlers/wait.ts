@@ -5,6 +5,7 @@ import { log, ready } from "../network-state.js";
 import { isLocator } from "@bridge/shared";
 import { pollLocator, type LocatorState } from "./locator-wait.js";
 import { locateInPage } from "./target.js";
+import type { HandlerSafety } from "../safety-call.js";
 
 /** Quiet period that counts as idle when the caller does not say. */
 const DEFAULT_IDLE_MS = 500;
@@ -19,17 +20,31 @@ const LOCATOR_MAX_TIMEOUT_MS = 60_000;
 
 const present = (v: unknown): boolean => v !== undefined && v !== null;
 
-export async function waitFor(p: Record<string, unknown>): Promise<{ ok: true; idleAfterMs?: number }> {
-  if (present(p.locator)) return waitForLocator(p);
-  if (p.networkIdle === true) return waitForNetworkIdle(p);
+export async function waitFor(p: Record<string, unknown>, call?: HandlerSafety): Promise<{ ok: true; idleAfterMs?: number }> {
+  if (present(p.locator)) return waitForLocator(p, call);
+  if (p.networkIdle === true) return waitForNetworkIdle(p, call);
   if (typeof p.seconds === "number") {
     const secs = Math.min(Math.max(p.seconds, 0), 60);
-    await new Promise((r) => setTimeout(r, secs * 1000));
-    return { ok: true };
+    if (!call) {
+      await new Promise((r) => setTimeout(r, secs * 1000));
+      return { ok: true };
+    }
+    // Step 9 (phase doc 0.3's F5 note, the build choice): the sleep is cut into 100 ms ticks, each
+    // re-checking the gate, so a disarm ends the wait within one tick.
+    const deadline = Date.now() + secs * 1000;
+    for (;;) {
+      await call.effect();
+      const left = deadline - Date.now();
+      if (left <= 0) return { ok: true };
+      await new Promise((r) => setTimeout(r, Math.min(POLL_MS, left)));
+    }
   }
   const needle = String(p.text ?? "");
   if (!needle) throw new BridgeError(ErrorCodes.BAD_PARAMS, "browser_wait_for requires one of text, seconds or networkIdle");
   const tab = await pageTab(p, "waitFor");
+  // Step 9: checked before the page call; the page-side poll then ends on its own and the post-check
+  // replaces its reply (phase doc 0.3's F5 note).
+  await call?.effect();
   // Poll the page (in its own context) for the text, up to 10s. The func is async;
   // chrome.scripting.executeScript awaits its returned promise. It always resolves to a
   // defined object so callInPage's "no result" guard never trips.
@@ -75,10 +90,11 @@ export function locatorWaitParams(p: Record<string, unknown>): { state: LocatorS
  * `waitFor {locator, state}`: `locate` every 100 ms from the service worker (`pollLocator`), up to
  * `timeoutMs`. The text arm above keeps its page-side 200 ms poll (stage0-audit.md F22).
  */
-async function waitForLocator(p: Record<string, unknown>): Promise<{ ok: true }> {
+async function waitForLocator(p: Record<string, unknown>, call?: HandlerSafety): Promise<{ ok: true }> {
   const { state, timeoutMs } = locatorWaitParams(p);
   const tab = await pageTab(p, "waitFor");
   const tabId = tab.id!;
+  await call?.effect();
   await ensureContent(tabId);
   return pollLocator({
     state,
@@ -87,6 +103,8 @@ async function waitForLocator(p: Record<string, unknown>): Promise<{ ok: true }>
     reinject: () => ensureContent(tabId),
     now: Date.now,
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+    // Step 9: the gate re-checked every tick (#137 item 3).
+    ...(call ? { check: () => call.effect() } : {}),
   });
 }
 
@@ -119,7 +137,7 @@ export function frameTeardownAsStale(err: unknown): never {
  * idle at once. That is also what happens right after a service-worker restart, since
  * `lastActivity` is in-memory only and is not part of the serialised `storage.session` blob.
  */
-async function waitForNetworkIdle(p: Record<string, unknown>): Promise<{ ok: true; idleAfterMs: number }> {
+async function waitForNetworkIdle(p: Record<string, unknown>, call?: HandlerSafety): Promise<{ ok: true; idleAfterMs: number }> {
   await ready;
   const requested = Number(p.idleMs ?? DEFAULT_IDLE_MS);
   const idleMs = Number.isFinite(requested)
@@ -129,6 +147,7 @@ async function waitForNetworkIdle(p: Record<string, unknown>): Promise<{ ok: tru
   const startedAt = Date.now();
   const deadline = startedAt + WAIT_CEILING_MS;
   for (;;) {
+    await call?.effect(); // Step 9: the gate re-checked every tick (#137 item 3)
     const last = log.lastActivityAt(tab.id!);
     const quietFor = last === 0 ? Infinity : Date.now() - last;
     if (quietFor >= idleMs) return { ok: true, idleAfterMs: Date.now() - startedAt };

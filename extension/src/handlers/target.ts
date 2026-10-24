@@ -6,6 +6,7 @@
 import { isLocator, type LocateResult } from "@bridge/shared";
 import { callInPage } from "../inject.js";
 import { BridgeError, ErrorCodes } from "../errors.js";
+import type { HandlerSafety } from "../safety-call.js";
 
 const present = (v: unknown): boolean => v !== undefined && v !== null;
 
@@ -19,9 +20,12 @@ export function locateInPage(tabId: number, locator: unknown): Promise<LocateRes
  * locator → the ref `locate` minted (its `LOCATOR_*` failures propagate unchanged); otherwise `p.ref`
  * unchanged — so a call with a ref, or with neither, behaves exactly as before Step 8.
  */
-export async function resolveTarget(tabId: number, p: Record<string, unknown>): Promise<string | undefined> {
+export async function resolveTarget(tabId: number, p: Record<string, unknown>, call?: HandlerSafety): Promise<string | undefined> {
   checkTarget(p);
-  if (present(p.locator)) return (await locateInPage(tabId, p.locator)).ref;
+  if (present(p.locator)) {
+    await call?.effect(); // Step 9: the locate is a page call too (#137)
+    return (await locateInPage(tabId, p.locator)).ref;
+  }
   return p.ref as string | undefined;
 }
 

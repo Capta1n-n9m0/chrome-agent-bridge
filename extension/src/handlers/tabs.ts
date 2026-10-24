@@ -1,5 +1,7 @@
 import { asTabUnknown, humansTab, noteFocus, requireTabId, waitForLoad } from "../tabs.js";
 import { BridgeError, ErrorCodes } from "../errors.js";
+import type { ExtensionListTabsRow } from "@bridge/shared";
+import type { HandlerSafety } from "../safety-call.js";
 
 interface ListedTab {
   id: number;
@@ -18,24 +20,24 @@ interface ListedTab {
  * resolver calls the human's. If the resolver fails (no normal window), no tab gets `current` and
  * the list still succeeds.
  */
-export async function listTabs(): Promise<{ tabs: ListedTab[] }> {
+export async function listTabs(_p?: Record<string, unknown>, call?: HandlerSafety): Promise<{ tabs: ListedTab[] | ExtensionListTabsRow[] }> {
   const [tabs, human] = await Promise.all([chrome.tabs.query({}), humansTab().catch(() => undefined)]);
-  return {
-    tabs: tabs
-      .filter((t) => t.id !== undefined)
-      .map((t) => {
-        const out: ListedTab = {
-          id: t.id!,
-          title: t.title ?? "",
-          url: t.url ?? "",
-          active: t.active ?? false,
-          windowId: t.windowId,
-        };
-        if (t.openerTabId !== undefined) out.openerTabId = t.openerTabId;
-        if (human?.id !== undefined && t.id === human.id) out.current = true;
-        return out;
-      }),
-  };
+  const live = tabs.filter((t) => t.id !== undefined);
+  const rows = live.map((t) => {
+    const out: ListedTab = {
+      id: t.id!,
+      title: t.title ?? "",
+      url: t.url ?? "",
+      active: t.active ?? false,
+      windowId: t.windowId,
+    };
+    if (t.openerTabId !== undefined) out.openerTabId = t.openerTabId;
+    if (human?.id !== undefined && t.id === human.id) out.current = true;
+    return out;
+  });
+  if (!call) return { tabs: rows };
+  // Step 9 (#134): hidden rows drop title/url and carry `hidden`; `pendingUrl` is tested, never sent.
+  return { tabs: await call.redactRows(rows.map((row, i) => (live[i]!.pendingUrl ? { row, pendingUrl: live[i]!.pendingUrl } : { row }))) };
 }
 
 /**
@@ -53,10 +55,17 @@ export function explicitTabId(p: Record<string, unknown>, method: string): numbe
  * Brings the tab's window to the front and activates the tab, and does not restore anything
  * (plan 0.5's one exception). The only place in the extension that focuses a window.
  */
-export async function focusTab(p: Record<string, unknown>): Promise<{ ok: true }> {
+export async function focusTab(p: Record<string, unknown>, call?: HandlerSafety): Promise<{ ok: true }> {
   const id = explicitTabId(p, "focusTab");
+  let tab: chrome.tabs.Tab;
   try {
-    const tab = await chrome.tabs.get(id);
+    tab = await chrome.tabs.get(id);
+  } catch (err) {
+    throw asTabUnknown(err);
+  }
+  // Step 9: the effect check before the window or the tab changes (#137); its refusal passes unchanged.
+  await call?.effect();
+  try {
     // Before anything changes: a capture that switched this window must not undo the focus (T3 V4).
     noteFocus(tab.windowId);
     if (tab.windowId >= 0) await chrome.windows.update(tab.windowId, { focused: true });
@@ -68,15 +77,17 @@ export async function focusTab(p: Record<string, unknown>): Promise<{ ok: true }
 }
 
 /** Opens a tab in the background unless `active === true` is passed (plan 0.8). */
-export async function newTab(p: Record<string, unknown>): Promise<{ id: number }> {
+export async function newTab(p: Record<string, unknown>, call?: HandlerSafety): Promise<{ id: number }> {
   const url = p.url ? String(p.url) : undefined;
+  await call?.effect(); // Step 9 (#137)
   const tab = await chrome.tabs.create({ url, active: p.active === true });
   if (url) await waitForLoad(tab.id!);
   return { id: tab.id! };
 }
 
-export async function closeTab(p: Record<string, unknown>): Promise<{ ok: true }> {
+export async function closeTab(p: Record<string, unknown>, call?: HandlerSafety): Promise<{ ok: true }> {
   const id = explicitTabId(p, "closeTab");
+  await call?.effect(); // Step 9 (#137)
   try {
     await chrome.tabs.remove(id);
   } catch (err) {

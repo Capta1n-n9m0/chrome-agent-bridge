@@ -1,9 +1,13 @@
 import { ReconnectingClient } from "./client.js";
+import { acceptOffscreenSender } from "./relay-sender.js";
 
 let client: ReconnectingClient | undefined;
 let currentKey = "";
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // Step 9 (S2a fixer r1, verifier finding 3): only the service worker — this extension, no tab — may
+  // point the socket somewhere or put a frame on it. Anything else is dropped silently.
+  if (!acceptOffscreenSender(sender, chrome.runtime.id)) return false;
   if (msg?.target !== "offscreen") return false;
 
   if (msg.type === "connect") {

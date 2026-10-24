@@ -20,6 +20,11 @@ export interface PollLocatorOptions {
   reinject: () => Promise<unknown>;
   now: () => number;
   sleep: (ms: number) => Promise<void>;
+  /**
+   * Step 9: the gated call's effect check, run before every poll; its refusal ends the wait at once
+   * (decisions.md · 2026-10-24 · #137 item 3). Absent → today's loop.
+   */
+  check?: () => Promise<void>;
 }
 
 export const DEFAULT_POLL_MS = 100;
@@ -45,6 +50,7 @@ export async function pollLocator(opts: PollLocatorOptions): Promise<{ ok: true 
   const deadline = opts.now() + opts.timeoutMs;
   let lastNotFoundData: unknown;
   for (;;) {
+    if (opts.check) await opts.check(); // outside the try: a refusal is never read as a locator outcome
     try {
       await opts.attempt();
       if (opts.state === "visible") return { ok: true };

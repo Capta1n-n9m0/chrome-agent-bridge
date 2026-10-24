@@ -2,6 +2,7 @@ import type { EvalEnvelope } from "@bridge/shared";
 import { trustedInputBody, trustedInputCleanup, type TrustedInput, type TrustedStep } from "./trusted-input.js";
 import { describeDebuggerError, isExecutionTerminated, timeoutMessage } from "./debugger-errors.js";
 import { BridgeError, ErrorCodes } from "./errors.js";
+import { DebuggerSessions, runWithDebugger, type EffectGuard } from "./safety-debugger.js";
 import { SERIALIZER_SRC, type SerializeLimits } from "./evaluate/serialize.js";
 import { shapeEvaluateResult, pendingPromiseId, type CdpEvaluateResponse } from "./evaluate/result.js";
 
@@ -15,27 +16,29 @@ async function send(tabId: number, method: string, params: { [key: string]: unkn
  * Attach, run, always detach. `what` names the caller in the messages `describeDebuggerError`
  * produces ("Trusted input", "Full-page screenshot", "browser_evaluate") — it is the only part of
  * those strings that varies, so new Chrome wordings still belong in `debugger-errors.ts`.
+ *
+ * Step 9: every session is recorded in `debuggerSessions` (a disarm detaches them all and their errors
+ * become `DISARMED`), and `guard` — the gated call's effect check — runs before attaching; no session
+ * starts while the registry refuses (decisions.md · 2026-10-24 · #137 item 2; `safety-debugger.ts`).
  */
-export async function withDebugger<T>(tabId: number, fn: () => Promise<T>, what = "Trusted input"): Promise<T> {
-  try {
-    await chrome.debugger.attach({ tabId }, PROTOCOL);
-  } catch (err) {
-    // Chrome allows one debugger per tab: DevTools (or another extension) wins and attach throws.
-    throw debuggerError(err, what);
-  }
-  try {
-    return await fn();
-  } catch (err) {
-    // A cancelled session (banner ✕) surfaces here as a failed sendCommand.
-    throw debuggerError(err, what);
-  } finally {
-    try {
-      await chrome.debugger.detach({ tabId });
-    } catch {
-      /* already detached */
-    }
-  }
+export async function withDebugger<T>(tabId: number, fn: () => Promise<T>, what = "Trusted input", guard?: EffectGuard): Promise<T> {
+  return runWithDebugger(
+    {
+      attach: (id) => chrome.debugger.attach({ tabId: id }, PROTOCOL),
+      detach: (id) => chrome.debugger.detach({ tabId: id }),
+      sessions: debuggerSessions,
+      // Chrome allows one debugger per tab: DevTools (or another extension) wins and attach throws; a
+      // cancelled session (banner ✕) surfaces as a failed sendCommand.
+      mapError: (err) => debuggerError(err, what),
+    },
+    tabId,
+    fn,
+    guard,
+  );
 }
+
+/** Every debugger session this worker holds (Step 9: all detached at a disarm). */
+export const debuggerSessions = new DebuggerSessions();
 
 /** `describeDebuggerError`'s code + unchanged message (+ an own BridgeError's data) as a BridgeError. */
 function debuggerError(err: unknown, what: string): BridgeError {
@@ -70,7 +73,7 @@ export interface TrustedRunOptions {
  * today's mapping (thrown inside `withDebugger`) and a rejected character in `type`'s text is reached
  * only after the keys before it were sent, as before. Nothing here focuses a window or activates a tab.
  */
-export async function runTrustedInput(tabId: number, input: TrustedInput, opts: TrustedRunOptions): Promise<boolean> {
+export async function runTrustedInput(tabId: number, input: TrustedInput, opts: TrustedRunOptions, guard?: EffectGuard): Promise<boolean> {
   let pageFailure: { err: unknown } | undefined;
   await withDebugger(tabId, async () => {
     // The body is lazy (one character at a time, as the pre-FE trustedType sent them); the cleanup
@@ -105,30 +108,30 @@ export async function runTrustedInput(tabId: number, input: TrustedInput, opts: 
         }
       }
     }
-  });
+  }, "Trusted input", guard);
   if (pageFailure) throw pageFailure.err;
   return opts.focusEmulation;
 }
 
-export async function fullPageScreenshot(tabId: number): Promise<string> {
+export async function fullPageScreenshot(tabId: number, guard?: EffectGuard): Promise<string> {
   return withDebugger(tabId, async () => {
     const result = (await send(tabId, "Page.captureScreenshot", {
       captureBeyondViewport: true,
       format: "png",
     })) as { data: string };
     return `data:image/png;base64,${result.data}`;
-  }, "Full-page screenshot");
+  }, "Full-page screenshot", guard);
 }
 
 /**
  * The viewport of a tab through CDP (`mode:"cdp"`), shows the banner. Run 8 measured it hang on a
  * background tab and on a minimized window, so the handler refuses those first (`cdpCaptureRefusal`).
  */
-export async function viewportScreenshot(tabId: number): Promise<string> {
+export async function viewportScreenshot(tabId: number, guard?: EffectGuard): Promise<string> {
   return withDebugger(tabId, async () => {
     const result = (await send(tabId, "Page.captureScreenshot", { format: "png" })) as { data: string };
     return `data:image/png;base64,${result.data}`;
-  }, "Screenshot");
+  }, "Screenshot", guard);
 }
 
 /**
@@ -160,6 +163,7 @@ export async function evaluateInPage(
   expression: string,
   timeoutMs: number,
   limits: SerializeLimits,
+  guard?: EffectGuard,
 ): Promise<EvalEnvelope> {
   const deadline = Date.now() + timeoutMs;
   const remaining = () => Math.max(0, deadline - Date.now());
@@ -222,6 +226,7 @@ export async function evaluateInPage(
         });
       },
       "browser_evaluate",
+      guard,
     );
   } catch (err) {
     // Whichever branch it came through, a CDP-terminated script reads as a timeout to the agent.
