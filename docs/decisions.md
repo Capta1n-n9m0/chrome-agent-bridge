@@ -63,11 +63,54 @@ Step 8 (2026-10-23 on), for the user at the gate:
 
 None open now. *Updated 2026-10-24: all 25 Step 8 open decisions are ruled (#106–#127, wave W2).*
 
+Step 9 (2026-10-24 on), for the user at the gate:
+1. "The Step 9 phase doc's proposals, recorded before Stage 0 so the audit can attack them" (#131):
+   the gate's scope (0.1), `listTabs`/event redaction while disarmed and for blocked tabs, the network
+   log while disarmed and for blocked hosts, the own-page block, the safety state's wire shape (0.6) and
+   the JavaScript switch's code (0.5) — as amended by Stage 0.
+
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-24 · The Step 9 phase doc's proposals, recorded before Stage 0 so the audit can attack them (#131)
+**Decided:** the proposals of the Step 9 phase doc's "Decisions" not marked **(user)** are recorded as
+written, for Stage 0 to audit: (1) 0.1 — one pure gate `safetyDecision(method, params, tabUrl, state)` in
+`extension/src/safety.ts` before every router handler, with a table that classifies every router method
+(23 today) and a test that fails on an unclassified one; the daemon and the SDK enforce nothing new; no
+wire, daemon or SDK method changes the safety state. (2) 0.3 — while disarmed, `listTabs` returns handles
+and `current` but no titles or URLs; the network log records nothing; `DISARMED` stays out of the
+failure-report attach set. (3) 0.4 — `listTabs` and tab events carry no title or URL for a blocked tab;
+the network log records no entry whose URL host is blocked; the extension's own pages
+(`chrome-extension://<this id>/…`) are always blocked, not configurable. (4) 0.6 — the extension reports
+`{armed, evaluate, blockedCount}` (never the patterns) on hello and on every change, relayed by the daemon
+like `extensionStatus`; `browser_status` prints a `Safety:` line; the SDK exposes it read-only; the MCP
+renders the two codes as one plain line that tells the model to stop and ask the user. (5) 0.7 — a static
+test enumerates every log call site in `extension/src`, `daemon/src`, `sdk/src`, `mcp/src` against an
+allowlist; the toggles log one line each with no pattern or URL. Left for Stage 0 to rule (conservative
+rule): the wire shape of 0.6 (a new event or a field on an existing one); one code or two for the
+JavaScript switch (0.5); the exact pattern grammar (0.4).
+**Why:** the kickoff (§4 Output) asks for the proposals to be on record before the audit, so a wrong
+premise becomes a finding and an amendment here, not a silent change. Each proposal is the stricter
+option: it reveals less (redaction, no recording) and keeps every tool unchanged while armed with
+JavaScript on and an empty list.
+**Instead of:** leaving them only in the phase doc (an audit finding would then have no entry to amend);
+enforcing in the daemon (the token reaches the daemon; the human's controls must hold against it).
+**Revisit if:** Stage 0 finds a premise wrong (amend this entry with a dated note), or the user rules
+otherwise at the gate.
+**By:** Claude (proposed; contract-level parts listed under Open decisions for the user)
+
+### 2026-10-24 · Step 9 agents run Opus 5.5 (#130)
+**Decided:** every agent of Step 9 at every level runs Claude Opus 5.5 (`claude-opus-5-5`), with
+`model: "opus"` on every Agent call; only S4's headless E2E actor sessions (`claude -p`) may run Sonnet.
+**Why:** the user's standing preference for quality, "I like higher quality product" (decisions.md ·
+2026-10-23 · The user rules on R9-SCREEN-2 and the last five Step 7 open decisions (#69)), applied to
+Step 8 by #70 and restated by the Step 9 kickoff.
+**Instead of:** Sonnet for builders (cheaper, but the user ruled for quality).
+**Revisit if:** the user says otherwise.
+**By:** user
 
 ### 2026-10-24 · The roadmap after Step 8 (#129)
 **Decided:** Step 9 is Phase E safety (phase doc `docs/plans/2026-10-24-step9-phase-e-safety.md`, kickoff
