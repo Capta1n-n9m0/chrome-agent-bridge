@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- recipes/fixtures/sso-submit-delayed.html: the page the delayed SSO stand-in's "Sign in" opens (Step 10
+     S5, leg 1; written 2026-10-25 by the S5 builder). Served on localhost by
+     python -I -m http.server <port> --bind 127.0.0.1 --directory recipes/fixtures
+     Its GET in the server's log is the leg's submit counter: only sso-standin-delayed.html's button requests
+     it. It stays on the SSO host for 12 000 ms, counted from its load, then replaces itself with the
+     "blackboard" stand-in on 127.0.0.1, signed in. It has no button and no field. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SSO stand-in (signing in)</title>
+</head>
+<body>
+<h1>SSO stand-in: signing in</h1>
+<p>Going back to the blackboard stand-in in 12 seconds.</p>
+<script>
+  window.addEventListener("load", function () {
+    setTimeout(function () {
+      location.replace("http://127.0.0.1:" + location.port + "/bb-standin.html?signedin=1");
+    }, 12000);
+  });
+</script>
+</body>
+</html>

@@ -9,8 +9,12 @@
 # zero may also be Chrome building the page's accessibility tree lazily (a hypothesis: the old script
 # scanned once, at once) - the scan is now retried for up to -ScanSec.
 #
-#   powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\bb-login.ps1 [-SettleSec 20] [-ScanSec 10]
-#   powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\bb-login.ps1 -DryRunBase http://127.0.0.1:<port>/ [-DryRunPage bb-standin.html]
+# Changed 2026-10-25 (Step 10 S5): the wait after the one press (step 6) is a poll on a condition inside one
+# -WaitSec bound from the press, because a fixed 3 s sleep + settle + one look read the SSO page ~8 s after
+# the press while the login had worked (Run 12; decisions.md 2026-10-23 #102, planned by #129, bound per #209).
+#
+#   powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\bb-login.ps1 [-SettleSec 20] [-ScanSec 10] [-WaitSec 90]
+#   powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\bb-login.ps1 -DryRunBase http://127.0.0.1:<port>/ [-DryRunPage bb-standin.html] [-WaitSec 90]
 #
 #   1. Opens ONE new Chrome window of its own on https://ada.blackboard.com/ (exactly one new window,
 #      else nothing is touched: exit 2).
@@ -41,9 +45,25 @@
 #      UNPROVEN: Chrome shows no chip for localhost (the dry run never sees one), and a non-English Chrome
 #      may name the chip differently, so an http page can read "assumed". Its failure direction is "no
 #      press" only: it can veto a press the host allowlist allows, never allow one the allowlist refuses.
-#   6. After the one press: on ada.blackboard.com with no sign-in button -> exit 0, window closed.
-#      Anything else (still on the SSO page, MFA, a picker, an error, a second step) -> exit 4, window left
-#      open, nothing more pressed. AT MOST ONE PRESS in a whole run.
+#   6. After the one press it POLLS (about once a second, single scans, never pressing) until -WaitSec
+#      (default 90) after the press; the bound covers every scan and sleep. Any page is tolerated meanwhile
+#      (the SSO page, an intermediate host, MFA, a page with a sign-in control). Exit 0, window closed, as soon
+#      as the address shows ada.blackboard.com, unchanged for >= 4 s, and two consecutive scans (~1 s apart,
+#      both after the last address change) found the document with >= 1 control and no sign-in button. At
+#      the bound -> exit 4 whatever the page, window left open, nothing more pressed; the line prints the
+#      time from the press, what the last poll saw (counts, yes/no, an allowlisted host only) and the poll
+#      count. No scan starts with less than max(5 s, the slowest scan so far) left, and a scan that ends past
+#      the bound leads to exit 4, never exit 0: the exit comes at most -WaitSec plus (one scan - 5 s), so <= 95 s
+#      with the default whenever one scan takes <= 10 s (a scan is one synchronous UIA call and cannot be cut).
+#      An address read or a scan that throws counts as "not scanned"; if the own window is gone -> exit 4 at
+#      once, nothing more pressed. AT MOST ONE PRESS in a whole run.
+#      *Changed 2026-10-25 (Step 10 S5 fixer r1, verifier F1-F4): was "Worst case: -WaitSec plus one poll
+#      step", because a scan started just before the bound ran past it (23.1 s at -WaitSec 20 on an 8 000-button
+#      page), a clean scan ending past the bound still exited 0, a vanished window was waited on to the bound and then reported as left open, and the
+#      address compare ignored case.*
+#      *Changed 2026-10-25 (Step 10 S5): was "sleep 3 s, settle (<= -SettleSec), one stable scan (<= -ScanSec);
+#      on ada.blackboard.com with no sign-in button -> exit 0, anything else -> exit 4", because the SSO
+#      redirect back can take longer than that (#102) and the old wait had no single bound (stage0-audit F10).*
 #   Exit 4 = "waits for the user": the row is recorded so, the window is LEFT OPEN for the user, and
 #   nothing is retried or typed. The recipes' own course lookup (HTTP 200 vs 401) is the judge of the
 #   login; this script's exit 0 only lets the driver go on to it.
@@ -54,13 +74,17 @@
 # is the dry run's whole SSO host allowlist, tested by the same Test-SsoHost as the live list; https is
 # not required there (the stand-ins are http). Any other host is refused like an unknown live host:
 # bb-standin-otherhost.html redirects to sso.localhost (Chrome resolves *.localhost to loopback itself,
-# no DNS, so the same 127.0.0.1 server answers) and must end in exit 4 with nothing pressed. The pages
-# are served by
+# no DNS, so the same 127.0.0.1 server answers) and must end in exit 4 with nothing pressed. Step 10 S5's
+# post-press legs (2026-10-25), each submit counted by one request line in the server's log:
+# bb-standin-delayed.html (the redirect back arrives 12 s after the submit page loads: exit 0;
+# counter /sso-submit-delayed.html), bb-standin-stuck.html (stays on the SSO stand-in: exit 4 at the bound;
+# counter /submit-stuck), bb-standin-elsewhere.html (ends on sso.localhost: exit 4 at the bound; counter
+# /elsewhere-landing.html). The pages are served by
 #   python -I -m http.server <port> --bind 127.0.0.1 --directory recipes/fixtures
 #
 # Exit codes: 0 logged in (as far as it can tell without reading the page); 2 nothing touched (a
 # precondition or doubt); 4 waits for the user; 1 script error.
-param([int]$SettleSec = 20, [int]$TimeoutSec = 15, [int]$ScanSec = 10, [string]$DryRunBase = '', [string]$DryRunPage = 'bb-standin.html')
+param([int]$SettleSec = 20, [int]$TimeoutSec = 15, [int]$ScanSec = 10, [string]$DryRunBase = '', [string]$DryRunPage = 'bb-standin.html', [int]$WaitSec = 90)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 if (-not ('LoginWin' -as [type])) {
@@ -74,6 +98,7 @@ public static class LoginWin {
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr h, StringBuilder s, int n);
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
@@ -251,23 +276,93 @@ function Invoke-Once($btn, [string]$what) {
   $pat = $null
   if (-not $btn.TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern, [ref]$pat)) { Say "the $what has no Invoke pattern - nothing pressed; window $H left open"; exit 4 }
   $script:Pressed = 1
+  $script:PressSw = [Diagnostics.Stopwatch]::StartNew()   # the press instant: -WaitSec runs from here
   $pat.Invoke()
   $script:InvokeOk = $true
   Say "invoked the one $what once (the autofilled form submitted; nothing typed, nothing read)"
 }
-# After the one press: exit 0 only on the blackboard host with no sign-in button; else exit 4.
+# The address bar's host only (no "Not secure" chip lookup, which walks the whole window): the post-press
+# poll needs nothing else. Parsed in memory, never printed unless allowlisted (Show-Host).
+function Get-AddrHost([string]$a) {
+  $s = $a; if ($a -notmatch '^[a-z][a-z0-9+.-]*://') { $s = 'https://' + $a }
+  $u = $null; try { $u = [Uri]$s } catch { $u = $null }
+  if ($a -and $u -and $u.IsAbsoluteUri) { $u.Host.ToLowerInvariant() } else { '' }
+}
+# What may be printed of a host: the blackboard host, an SSO-allowlisted host, else a fixed phrase.
+function Show-Host([string]$a, [string]$hn) {
+  if (-not $a) { 'address bar unreadable' }
+  elseif ($hn -eq $BbHost) { $BbHost }
+  elseif (Test-SsoHost $hn $SsoExact $SsoSuffix) { if ($Dry) { "stand-in SSO host ($hn)" } else { $hn } }
+  else { 'other host' }
+}
+function Sec([long]$ms) { ($ms / 1000.0).ToString('0.0', [Globalization.CultureInfo]::InvariantCulture) + ' s' }
+# After the one press (changed 2026-10-25, Step 10 S5; see the header): poll, never press again, inside ONE
+# deadline of -WaitSec from the press that covers every scan and sleep. Exit 0 as soon as the address shows the
+# blackboard host, unchanged for >= 4 s, and two consecutive single scans (~1 s apart, both after the last
+# address change) found the document with >= 1 control and no sign-in control. Any page is tolerated while
+# polling (the SSO page, an intermediate host, a page with a sign-in control). At the deadline: exit 4, whatever
+# the page, window left open. PowerShell names are case-insensitive: a local $h here would hide the window
+# handle $H from Close-Own (it did, in this stage's first dry run: exit 1), hence $hn.
+# Bound by construction (fixer r1, F1/F2): no scan STARTS with less than max(5 s, the slowest scan so far) left,
+# and after every scan the deadline is checked again before exit 0 (past it -> the exit-4 path). A scan or an
+# address read that throws is "not scanned" for that poll (F3); the own window gone -> exit 4 at once.
+function Test-OwnWindow { [LoginWin]::IsWindow([IntPtr]$H) -and [LoginWin]::Cls([IntPtr]$H) -eq 'Chrome_WidgetWin_1' }
+function Exit-WindowGone($sw, [int]$polls, [int]$scans) {
+  Say ("after submit: own window {0} is gone (closed outside the script) at {1} from the press (polls: {2}; scans: {3})" -f $H, (Sec $sw.ElapsedMilliseconds), $polls, $scans)
+  Say "WAITS FOR THE USER - the own window is gone; nothing more pressed"
+  exit 4
+}
 function Finish-AfterPress([string]$kind) {
-  Start-Sleep -Seconds 3
-  Wait-Settled
-  $w = Get-Where (Get-Addr)
-  $onBb = $w.Host -eq $BbHost
-  $s = Get-StableScan $BbSignIn
-  Say ("after submit: on {0}: {1}; sign-in buttons: {2} (document: {3}; scans: {4})" -f $BbLabel, (YesNo $onBb), $s.Match.Count, (YesNo $s.Doc), $s.Scans)
-  if ($onBb -and $s.Match.Count -eq 0) {
-    Close-Own
-    Say "SIGNED IN - $kind; own window $H closed"; exit 0
+  $sw = $script:PressSw
+  $deadline = [long]$WaitSec * 1000
+  $slack = 5000L
+  $polls = 0; $clean = 0; $lastAddr = $null; $since = 0L; $worstScan = 0L; $scans = 0; $skipped = 0
+  $seen = [pscustomobject]@{ Addr = ''; Host = ''; Scanned = $false; Why = 'off the blackboard host'; Doc = $false; Controls = 0; SignIn = 0 }
+  while ($sw.ElapsedMilliseconds -lt $deadline) {
+    $polls++
+    if (-not (Test-OwnWindow)) { Exit-WindowGone $sw $polls $scans }
+    $a = ''
+    try { $a = [string](Get-Addr) } catch { $a = '' }
+    if ($a -cne $lastAddr) { $lastAddr = $a; $since = $sw.ElapsedMilliseconds; $clean = 0 }
+    $hn = Get-AddrHost $a
+    $seen = [pscustomobject]@{ Addr = $a; Host = $hn; Scanned = $false; Why = 'off the blackboard host'; Doc = $false; Controls = 0; SignIn = 0 }
+    $margin = [Math]::Max($slack, $worstScan)
+    if ($a -and $hn -eq $BbHost -and ($deadline - $sw.ElapsedMilliseconds) -lt $margin) {
+      $skipped++; $clean = 0
+      $seen = [pscustomobject]@{ Addr = $a; Host = $hn; Scanned = $false; Why = ('less than {0} left before the bound' -f (Sec $margin)); Doc = $false; Controls = 0; SignIn = 0 }
+    } elseif ($a -and $hn -eq $BbHost) {
+      $t = $sw.ElapsedMilliseconds
+      $s = $null
+      try { $s = Get-Scan $BbSignIn } catch { $s = $null }
+      $scans++; $dt = $sw.ElapsedMilliseconds - $t; if ($dt -gt $worstScan) { $worstScan = $dt }
+      if (-not $s) {
+        $clean = 0
+        if (-not (Test-OwnWindow)) { Exit-WindowGone $sw $polls $scans }
+        $seen = [pscustomobject]@{ Addr = $a; Host = $hn; Scanned = $false; Why = 'the scan failed'; Doc = $false; Controls = 0; SignIn = 0 }
+      } else {
+        $seen = [pscustomobject]@{ Addr = $a; Host = $hn; Scanned = $true; Why = ''; Doc = $s.Doc; Controls = $s.Edits + $s.Buttons; SignIn = $s.Match.Count }
+        $a2 = $null
+        try { $a2 = [string](Get-Addr) } catch { $a2 = $null }
+        if ($a2 -cne $lastAddr) { $clean = 0 }   # moved during the scan (or unreadable): the next poll restarts the window
+        elseif ($s.Doc -and ($s.Edits + $s.Buttons) -gt 0 -and $s.Match.Count -eq 0) { $clean++ }
+        else { $clean = 0 }
+      }
+      if ($sw.ElapsedMilliseconds -ge $deadline) { break }   # F2: a scan that ended past the bound never exits 0
+      if ($clean -ge 2 -and ($sw.ElapsedMilliseconds - $since) -ge 4000) {
+        $el = $sw.ElapsedMilliseconds
+        Close-Own
+        Say ("after submit: on {0}: yes; sign-in buttons: 0 on 2 consecutive scans; controls: {1}; address stable {2}; {3} from the press (polls: {4}; scans: {5}; worst single scan {6} ms)" -f $BbLabel, $seen.Controls, (Sec ($el - $since)), (Sec $el), $polls, $scans, $worstScan)
+        Say "SIGNED IN - $kind; own window $H closed"; exit 0
+      }
+    } else { $clean = 0 }
+    $left = $deadline - $sw.ElapsedMilliseconds
+    if ($left -gt 0) { Start-Sleep -Milliseconds ([Math]::Min(1000, $left)) }
   }
-  Say "WAITS FOR THE USER - the submit did not end on $BbLabel without a sign-in control (still on the SSO page, MFA, a picker, an error or a second step); nothing more pressed; window $H left open"
+  $el = $sw.ElapsedMilliseconds
+  if (-not (Test-OwnWindow)) { Exit-WindowGone $sw $polls $scans }
+  $scanText = if ($seen.Scanned) { "document: {0}; controls: {1}; sign-in buttons: {2}" -f (YesNo $seen.Doc), $seen.Controls, $seen.SignIn } else { "not scanned ($($seen.Why))" }
+  Say ("after submit: bound of {0} s reached at {1} from the press; last poll: on {2}: {3}; host: {4}; address stable {5}; {6} (polls: {7}; scans: {8}; skipped near the bound: {9}; worst single scan {10})" -f $WaitSec, (Sec $el), $BbLabel, (YesNo ($seen.Host -eq $BbHost -and $seen.Addr)), (Show-Host $seen.Addr $seen.Host), (Sec ($el - $since)), $scanText, $polls, $scans, $skipped, $(if ($scans) { "$worstScan ms" } else { "n/a" }))
+  Say "WAITS FOR THE USER - the submit did not end on $BbLabel without a sign-in control within $WaitSec s of the press (still on the SSO page, MFA, a picker, an error, a second step or another host); nothing more pressed; window $H left open"
   exit 4
 }
 

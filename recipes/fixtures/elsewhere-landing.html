@@ -1,0 +1,18 @@
+<!doctype html>
+<!-- recipes/fixtures/elsewhere-landing.html: where the ends-elsewhere SSO stand-in's "Sign in" leads (Step 10
+     S5, leg 3; written 2026-10-25 by the S5 builder). Served as sso.localhost by
+     python -I -m http.server <port> --bind 127.0.0.1 --directory recipes/fixtures
+     Its GET in the server's log is the leg's submit counter: only sso-standin-elsewhere.html's button
+     requests it. It stays here (no redirect). It has no sign-in control: one plain button, so only the host
+     check keeps the script from exit 0. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Elsewhere</title>
+</head>
+<body>
+<h1>Not the blackboard stand-in</h1>
+<p>A page on another host. Nothing here is a sign-in control.</p>
+<button type="button">Open dashboard</button>
+</body>
+</html>

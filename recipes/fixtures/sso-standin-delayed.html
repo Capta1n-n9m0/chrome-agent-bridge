@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- recipes/fixtures/sso-standin-delayed.html: the SSO stand-in of bb-login.ps1's delayed-redirect dry run
+     (Step 10 S5, leg 1; written 2026-10-25 by the S5 builder). Served on localhost (the other loopback name
+     than the "blackboard" stand-in on 127.0.0.1) by
+     python -I -m http.server <port> --bind 127.0.0.1 --directory recipes/fixtures
+     As sso-standin.html: a fake prefilled e-mail (example.invalid), an empty password, exactly ONE
+     allowlisted button, "Sign in". Its click opens sso-submit-delayed.html on this same SSO host (with a
+     fresh query, so Chrome's cache never answers it); that page's GET is the submit counter (nothing else
+     requests it), and that page goes back to the "blackboard" stand-in signed in 12 s after it loads. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SSO stand-in (delayed)</title>
+</head>
+<body>
+<h1>SSO stand-in (delayed)</h1>
+<form id="f" onsubmit="return false">
+  <label for="u">E-mail</label>
+  <input id="u" type="email" value="standin@example.invalid" autocomplete="off">
+  <label for="p">Password</label>
+  <input id="p" type="password" autocomplete="off">
+  <button type="button" id="help">Forgot password?</button>
+  <button type="submit" id="go">Sign in</button>
+</form>
+<script>
+  document.getElementById("go").addEventListener("click", function () {
+    location.href = "/sso-submit-delayed.html?t=" + Date.now();
+  });
+</script>
+</body>
+</html>

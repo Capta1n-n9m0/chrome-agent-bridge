@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- recipes/fixtures/bb-standin-delayed.html: bb-login.ps1's delayed-redirect dry run (Step 10 S5, leg 1): the SSO submit returns to the "blackboard" stand-in only after 12 s, so the old fixed post-press wait exits 4 and the condition wait exits 0.
+     Written 2026-10-25 by the Step 10 S5 builder. Served on 127.0.0.1 by
+     python -I -m http.server <port> --bind 127.0.0.1 --directory recipes/fixtures
+     As bb-standin.html (signed in with ?signedin=1), but not signed in it redirects to sso-standin-delayed.html on localhost.
+     No real site, no credential, no network beyond the loopback server. -->
+<html lang="en" data-sso="sso-standin-delayed.html">
+<head>
+<meta charset="utf-8">
+<title>Blackboard stand-in</title>
+<script>
+  if (!/[?&]signedin=1(&|$)/.test(location.search)) {
+    location.replace("http://localhost:" + location.port + "/" + (document.documentElement.dataset.sso || "sso-standin.html"));
+  }
+</script>
+</head>
+<body>
+<h1>Blackboard stand-in</h1>
+<p>Signed in (stand-in). Nothing here is a sign-in control.</p>
+<button type="button">Open course list</button>
+</body>
+</html>

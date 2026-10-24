@@ -1,0 +1,30 @@
+<!doctype html>
+<!-- recipes/fixtures/sso-standin-elsewhere.html: the SSO stand-in of bb-login.ps1's ends-elsewhere dry run
+     (Step 10 S5, leg 3; written 2026-10-25 by the S5 builder). Served on localhost by
+     python -I -m http.server <port> --bind 127.0.0.1 --directory recipes/fixtures
+     As sso-standin.html (example.invalid only, exactly ONE allowlisted button, "Sign in"), but the click
+     leads to elsewhere-landing.html on sso.localhost - a loopback name that is neither the "blackboard"
+     host nor on the dry run's SSO allowlist (Chrome resolves *.localhost to loopback itself, so the same
+     127.0.0.1 server answers). That page's GET is the leg's submit counter. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SSO stand-in (ends elsewhere)</title>
+</head>
+<body>
+<h1>SSO stand-in (ends elsewhere)</h1>
+<form id="f" onsubmit="return false">
+  <label for="u">E-mail</label>
+  <input id="u" type="email" value="standin@example.invalid" autocomplete="off">
+  <label for="p">Password</label>
+  <input id="p" type="password" autocomplete="off">
+  <button type="button" id="help">Forgot password?</button>
+  <button type="submit" id="go">Sign in</button>
+</form>
+<script>
+  document.getElementById("go").addEventListener("click", function () {
+    location.href = "http://sso.localhost:" + location.port + "/elsewhere-landing.html?t=" + Date.now();
+  });
+</script>
+</body>
+</html>

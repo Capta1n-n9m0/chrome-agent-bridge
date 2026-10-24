@@ -3,7 +3,10 @@
      2026-10-23 by S6 builder r3). Served on localhost (the other loopback name than the "blackboard"
      stand-in on 127.0.0.1). A form with a fake prefilled e-mail (example.invalid, never a real account),
      an empty password, and exactly ONE allowlisted button, "Sign in", which navigates back to the
-     "blackboard" stand-in signed in. Other controls carry non-allowlisted names on purpose. -->
+     "blackboard" stand-in signed in. Other controls carry non-allowlisted names on purpose.
+     Changed 2026-10-25 (Step 10 S5 fixer r1, verifier F5): the submit target carries a fresh &t=<Date.now()>,
+     so Chrome cannot serve it from its cache and every submit is one request line in the server log
+     (the known-good leg is countable); the signedin=1 test of bb-standin.html still matches. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -21,7 +24,7 @@
 </form>
 <script>
   document.getElementById("go").addEventListener("click", function () {
-    location.href = "http://127.0.0.1:" + location.port + "/bb-standin.html?signedin=1";
+    location.href = "http://127.0.0.1:" + location.port + "/bb-standin.html?signedin=1&t=" + Date.now();
   });
 </script>
 </body>

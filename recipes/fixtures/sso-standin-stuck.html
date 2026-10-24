@@ -1,0 +1,33 @@
+<!doctype html>
+<!-- recipes/fixtures/sso-standin-stuck.html: the SSO stand-in of bb-login.ps1's stuck-on-SSO dry run (Step 10
+     S5, leg 2; written 2026-10-25 by the S5 builder). Served on localhost by
+     python -I -m http.server <port> --bind 127.0.0.1 --directory recipes/fixtures
+     As sso-standin.html (example.invalid only, exactly ONE allowlisted button, "Sign in"), but a click goes
+     nowhere: it counts the press in the page's own heading and as one GET of /submit-stuck in the server's
+     log (a 404, with a fresh query so nothing caches it; nothing else requests that path). The page and its
+     "Sign in" button stay, so the script must press nothing more and exit 4 at its bound. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SSO stand-in (stuck)</title>
+</head>
+<body>
+<h1 id="h">SSO stand-in (stuck)</h1>
+<form id="f" onsubmit="return false">
+  <label for="u">E-mail</label>
+  <input id="u" type="email" value="standin@example.invalid" autocomplete="off">
+  <label for="p">Password</label>
+  <input id="p" type="password" autocomplete="off">
+  <button type="button" id="help">Forgot password?</button>
+  <button type="submit" id="go">Sign in</button>
+</form>
+<script>
+  var presses = 0;
+  document.getElementById("go").addEventListener("click", function () {
+    presses++;
+    document.getElementById("h").textContent = "SSO stand-in (stuck): pressed " + presses + " time(s)";
+    fetch("/submit-stuck?t=" + Date.now()).catch(function () {});
+  });
+</script>
+</body>
+</html>
