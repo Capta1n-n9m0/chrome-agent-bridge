@@ -667,7 +667,11 @@ SAFE-3 and SAFE-4(b) are re-measured in the next live wave (Step 10) (#194)): re
 redirect half** with a threaded redirect server (the post-redirect `downloadStart` check of #140 is
 unmeasured live until then), **SAFE-POP-1** with a recipe that claims the opener first, **SAFE-3** with
 the options window visible or a page-side reporter, and **SAFE-4 (b)** polling the banner for at least
-10 s. No product change unless one of them reproduces.
+10 s. No product change unless one of them reproduces. *Updated 2026-10-24: Step 10 is planned in
+`docs/plans/2026-10-24-step10-step8-follow-ups.md` (kickoff `docs/plans/next-session-prompt.md`); these
+re-measurements are its first live wave (Run 14), and it starts only after the user's ruling on Run 13
+(decisions.md · 2026-10-24 · S4: Run 13 stands as recorded, with the runner's four self-resolved stops
+listed (#192)).*
 
 **Phase F — Ergonomics.** `wait_for` variants (element-visible; network-idle shipped in Step 5's
 Part N6) — ✅ **element-visible done in Step 8** (2026-10-23: `browser_wait_for({locator, state})`
