@@ -99,11 +99,50 @@ Step 9 (2026-10-24 on), for the user at the gate:
 
 None open now. *Updated 2026-10-24: all 32 Step 9 open decisions are ruled (#202).*
 
+Step 10 (2026-10-24 on), for the user at the gate:
+1. "The Step 10 phase doc's proposals, recorded before Stage 0 so the audit can attack them" (#204) — the
+   contract-level parts: 0.3's wire field `pastSnapshotCap` and its SDK form, 0.4's `saveTo` transport and the SDK
+   method `evaluateToFile`, 0.12's `DISARMED` keeping `scope: "all"` — as amended by Stage 0.
+
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-24 · The Step 10 phase doc's proposals, recorded before Stage 0 so the audit can attack them (#204)
+**Decided:** the session agent adopts, as proposals for Stage 0 to attack, every **(proposed)** decision of
+`docs/plans/2026-10-24-step10-step8-follow-ups.md` and every proposed detail under its (user) headings, as written
+there on 2026-10-24: 0.1 (no re-run — #192 was ratified by #202 — so Run 14 is 0.10's wave alone, on the Step 9
+build, before any Step 10 code; Run 15 after the code stages; #193's stop rule for both); 0.2's details (MCP
+`focusTab {tab}` then the action on the same handle for `trusted: true` only; a `focusTab` failure is the answer;
+schemas unchanged; the cursor never moves on a focus); 0.3's details (definition by the 800th listable element in
+walk order; an optional `pastSnapshotCap?: true` on `LocateResult` and on an action's reply; the SDK form chosen at
+Stage 0 so no Step 8 signature changes; one MCP warning line); 0.4's details (transport (A) one `evaluate` if Stage
+0 or S4 measures a ≥ 64 MiB string crossing whole, else (B) an extension store + 1 MiB chunked pull with each new
+method in `METHOD_CLASSES` as class `evaluate` and in `daemon/src/methods.ts`, the store dropped at disarm;
+`browser_download`'s file rules; an answer of path, bytes, kind and sha256 only; `Tab.evaluateToFile` and no ninth
+export; nothing logs the value or the path); 0.5's fixture leg, the pp1 leg at G10-3 only, and retirement only
+after the fixture leg passes; 0.6's local `release/step8` branch with the final tree equal to Step 8's close and the
+six Part messages, tag and push at G10-1; 0.7's row RET-1 at G10-2 only; 0.8 (measure SW-1 with a pre-written
+outcome table, a fix stage S7b only if the wait runs to its bound); 0.9's details (poll ≤ 90 s, exit 4 otherwise,
+proven on a 12 s delayed-redirect fixture old vs new); 0.10's five R14 rows in a new §4.21; 0.11 (no change to the
+safety boundary); 0.12's detail (`DISARMED` keeps `data.scope: "all"`; `"evaluate"` is no longer produced; the
+changed expected texts listed per file as ordered by #202).
+**Why:** the kickoff (§4) asks that the proposals be on record before the audit, so a wrong premise is a finding
+against a recorded decision and gets a dated note rather than a silent change.
+**Instead of:** letting Stage 0 audit an unrecorded plan.
+**Revisit if:** Stage 0 finds a wrong premise (then this entry gets a dated note, and the contract-level parts —
+0.3's wire field and SDK form, 0.4's transport and SDK method, 0.12's scope — stay under Open decisions for the user).
+**By:** Claude
+
+### 2026-10-24 · Step 10 agents run Opus 5.5 (#203)
+**Decided:** every agent at every level of Step 10 runs Claude Opus 5.5 (`claude-opus-5-5`); only the headless E2E
+actor sessions (`claude -p`) of S1 and S7 may run Sonnet.
+**Why:** the user's standing choice, decisions.md · 2026-10-23 · The user rules on R9-SCREEN-2 and the last five
+Step 7 open decisions (#69): "I like higher quality product"; the Step 10 kickoff repeats it.
+**Instead of:** a cheaper model for builders or verifiers.
+**By:** user
 
 ### 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202)
 **Decided:** the user ruled on every Step 9 open decision, after reading
