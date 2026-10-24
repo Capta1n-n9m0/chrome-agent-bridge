@@ -42,3 +42,5 @@
 - S1: PASS-with-notes. R14-4b, R14-5c, R14-REL-3 PASS; R14-POP-1 FAIL; R14-3 NOT MEASURED; R14-TEARDOWN FAIL (scanner). Four attempts, three returns, all correct under #193; state read back equal. Tests 2720 → 2763. Recorded #210–#213; as-built register created.
 - Lesson for me: commit every bookkeeping edit before dispatching a live runner (my uncommitted journal tripped the clean-tree guard, Return 1).
 - Next: S2 (MCP focus-first) ∥ S6 (release/step8, separate worktree, Variant C per #208).
+- S6 closed (`09fa604`, branch tip `db72e9a`, PASS-with-notes). S5 dispatched beside S2.
+- S2 closed (`8ae1a95`, PASS-with-notes, 2807/117); #214. S3 dispatched beside S5. S4 must re-baseline the schema test under #127/#214; S8 carries S2's doc texts (setup.md, e2e-test-plan.md:306, policy.ts header).

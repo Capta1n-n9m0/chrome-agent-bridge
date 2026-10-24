@@ -54,3 +54,45 @@ session agent; one block per stage, appended at each stage close.
 
 ### Open decisions for the user
 - None new.
+
+## S6 — The local `release/step8` branch · 2026-10-25 · verifier: PASS-with-notes · report commit `09fa604`
+
+### Contracts (binding forward)
+- Local branch `release/step8`, base `70aa754`, tip `db72e9a`, six commits carrying Step 8's six Part messages in
+  order (Variant C, #208); `git diff a1932a8 release/step8` empty; all 60 Step 8 commits named once across the bodies.
+  `main` not rewritten; no tag; no push. Intermediate trees do not build alone (Part 1 needs Part 2's type).
+
+### Decisions taken
+- None new (#208 applied).
+
+### Deviations from the phase doc
+- None beyond #208; 11 cherry-pick conflicts, all under `docs/`, resolved to the base.
+
+### Estimates vs actuals
+- 0.5 h estimated; ~8 min.
+
+### Needs the user's keyboard
+- G10-1: the annotated tag `step8` and any push. Undo: `git branch -D release/step8`.
+
+### Open decisions for the user
+- #208 (Variant C vs one squashed tree).
+
+## S2 — The MCP's trusted tools focus first · 2026-10-25 · verifier: PASS-with-notes · commit `8ae1a95`
+
+### Contracts (binding forward)
+- With `trusted: true`, `browser_click` / `browser_type` / `browser_press_key` send `focusTab {tab}` on the resolved
+  handle, then the action on the same handle; a `focusTab` error is the answer and the action is not sent; untrusted
+  actions never focus; the cursor never moves on a focus. Tool names and input schemas byte-identical to `f45e3bf`
+  (pinned by a `tools/list` baseline test, #214).
+- Known limit (Stage 0 F19): focus and input are two calls; another actor's capture can come between.
+
+### Decisions taken
+- #214.
+
+### Deviations from the phase doc
+- `browser_focus_tab`'s description edited too (its "only tool" claim became false). Two existing tests in
+  `mcp/test/tools.test.ts` now expect the `focusTab` call — the behaviour ordered by #106. Tests 2763/116 → 2807/117.
+- Doc texts outside the lane (setup.md, e2e-test-plan.md:306, `sdk/src/policy.ts` header) proposed for S8.
+
+### Estimates vs actuals
+- 1 h estimated; ~18 min.

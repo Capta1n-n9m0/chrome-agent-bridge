@@ -114,6 +114,20 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-25 · S2: the MCP schema baseline, a failed focus's answer, and the focus sentence (#214)
+**Decided:** (1) the tool-schema baseline (`mcp/test/s2-focus-first.test.ts`) is captured through a real `tools/list`
+over the MCP SDK's in-memory transport (names + `inputSchema`, keys sorted, tool descriptions excluded) at `f45e3bf`;
+it changes only by a dated, recorded re-baseline — the first is S4's `saveTo` parameter, ordered by #127; (2) when the
+`focusTab` before a trusted action fails, the answer is what `browser_focus_tab` gives for that error (one line for
+`DISARMED`/`DOMAIN_BLOCKED`, a failure report for an attach-set code), and the action is not sent; (3) the three
+descriptions end "With trusted=true the tab is first brought to the front of its window (as browser_focus_tab does)
+and is left there.", and `browser_focus_tab` no longer claims to be "the only tool that changes what the human sees".
+**Why:** byte-for-byte what Claude Code receives; one rendering path; the old claim became false with #106.
+**Instead of:** comparing zod objects; a "Focus before the trusted click failed:" prefix; leaving the false claim.
+**Revisit if:** an MCP SDK upgrade changes emitted schemas with no tool change (a user-ruled re-baseline); MCPF-1 or
+the user finds a focus failure's report misleading (it reads like the click's own failure, S2 verifier MINOR 2).
+**By:** Claude (S2 report `…step10…-steps/S2.md`)
+
 ### 2026-10-25 · S1: Run 14's wave mechanics are kept for Run 15 (#213)
 **Decided:** S7's wave reuses `recipes/s9-r14.ps1`'s model: one STOP path that restores and refuses later blocks;
 a resume only through a narrow, named `-Attempt/-Skip` form that cannot re-run an observed row; window placements
