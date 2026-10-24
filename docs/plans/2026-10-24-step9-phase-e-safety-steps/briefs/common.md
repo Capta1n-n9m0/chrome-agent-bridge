@@ -279,4 +279,4 @@ plan-side with a dated note.
 
 ## Running state (session agent updates this section at each dispatch)
 
-- Stage 0 closed 0e72503. S0 dispatched alone (rulings #132–#145). Nothing running; port 9234 free.
+- S0 closed 5dbbce7 (1783 tests / 86 files). S1 ∥ S3 dispatched (rulings #146–#148). Nothing running; port 9234 free.

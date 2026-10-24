@@ -25,3 +25,13 @@
 - Stage split (#145): S0 0.75 h → (S1 2.5 h ∥ S3 2.5 h) → S2a 3 h → S2b 1.5 h → S4 1.5 + 2.5 h live → S5 1 h.
   S0's first deliverable pastes Stage 0's plan-side amendment texts into the phase doc.
 - Next: S0 alone.
+
+## 2026-10-24 — S0 closed (5dbbce7), S1 ∥ S3 dispatched
+
+- S0: DONE, verifier PASS (round 2). Commits 3d3c4be (phase doc: 22 amendments, #141, #145), aabc3b4 and
+  2cc0049 (spec §10/§6.5), 32e64a3, 5dbbce7 (shared code). Spec notes precede the code commit. Tests 1714/85
+  → 1783/86; 62 new tests fail with the shared files stashed. Bundles differ only by the codes (+ the daemon's
+  `tabRemoved` hidden check).
+- Ruled: #146 (S0 build details), #147 (S1.1's router half closes at S2a; S2 checks per half), #148 (SDK
+  `TabInfo` keeps string title/url, adds `hidden?` — open for the user).
+- Next: S1 (extension/src/safety.ts) ∥ S3 (daemon/sdk/mcp), file-disjoint, both port 0.

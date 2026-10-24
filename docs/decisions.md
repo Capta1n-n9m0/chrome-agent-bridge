@@ -80,12 +80,49 @@ Step 9 (2026-10-24 on), for the user at the gate:
 10. "`downloadStart` and redirects onto a blocked host" (#140) — declarativeNetRequest not built.
 11. "Stricter exit checks for Step 9" (#141).
 12. "A re-arm right after a disarm is ignored" (#144).
+13. "The SDK's `TabInfo` keeps `title` and `url` as strings and gains an optional `hidden`" (#148).
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-24 · The SDK's `TabInfo` keeps `title` and `url` as strings and gains an optional `hidden` (#148)
+**Decided:** for a hidden row (#134) the SDK's exported `TabInfo` (`sdk/src/client.ts`) keeps `title: string`
+and `url: string`, set to `""`, and gains `hidden?: HiddenReason`; renderers in the SDK and the MCP print
+`(hidden: the bridge is off)` / `(hidden: blocked site)` from `hidden`. The shared wire row types stay as S0
+built them (`title?`/`url?`, #146); the SDK maps absent to `""`.
+**Why:** the SDK's public surface is a contract; an additive optional field keeps every existing consumer
+compiling and reading a string, where making `title`/`url` optional would break typed callers (S0 report
+Finding, `sdk/src/client.ts:156`). No hidden row exists while armed with an empty list, so nothing changes today.
+**Instead of:** `title?`/`url?` on `TabInfo` (a breaking type change); `undefined` at runtime under a type that
+says `string` (a lie that prints `undefined`, Stage 0 F13).
+**Revisit if:** the user prefers the optional fields.
+**By:** Claude (contract-level — the SDK's public surface; listed under Open decisions for the user)
+
+### 2026-10-24 · Where S2's and S1.1's checks close after the split (#147)
+**Decided:** S2.1 and S2.2 close at S2a, S2.3 at S2b, S2.4 at both; S2b's lane includes the `sw.ts` badge
+start-up and the `action.onClicked` registration; the `storage.local.set` half of S3.3's stricter wording
+is carried by S2a/S2b (S3 keeps the `methods.ts` and tool-list half). S1.1's stricter half — `Router.on`
+throws on a method with no safety class — closes at S2a (`extension/src/router.ts` is S2a's lane); S1 ships
+the table, a lookup that throws on an unclassified name, and the source scan of `router.on(` names.
+**Why:** #145 split the stage without assigning checks (S0 report §5); keeping S1 file-disjoint from S2a
+keeps S1 ∥ S3 clean. Every check still runs, none is loosened; one closes a stage later.
+**Instead of:** widening S1's lane to `router.ts` for one guard line; S2.4 at one close only.
+**Revisit if:** S2a cannot close S1.1's half (then escalate).
+**By:** Claude
+
+### 2026-10-24 · S0's build details: optional row fields on the wire types, the state guard, no marker on `tabCreated`, comments out of arrays (#146)
+**Decided:** as proposed in `docs/plans/2026-10-24-step9-phase-e-safety-steps/S0.md` §5: `ExtensionListTabsRow`
+and `ListTabsRow` carry `title?`/`url?`/`hidden?`; `isSafetyState` requires a non-negative safe-integer
+`blockedCount` and a non-array object; `tabCreated` stays `{tabId, openerTabId?, url}` with `url: ""` when
+hidden and no marker (#134 as written); explanatory comments sit above the code constants, never inside array
+literals (esbuild keeps those in the bundles).
+**Why:** each follows #134 or keeps the bounded bundle diff; none changes a reply while armed.
+**Instead of:** the alternatives listed in S0.md §5.
+**Revisit if:** S3 finds F40's "stop at a hidden row" needs a marker on `tabCreated` (contract-level: escalate).
+**By:** Claude
 
 ### 2026-10-24 · Step 9's stage split after Stage 0: S2 becomes S2a (enforcement) and S2b (UI) (#145)
 **Decided:** the stages run S0 (0.75 h, alone; its first deliverable also pastes Stage 0's plan-side
