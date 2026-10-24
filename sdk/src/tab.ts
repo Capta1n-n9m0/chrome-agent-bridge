@@ -17,6 +17,7 @@ import {
   type WaitForParams,
 } from "@bridge/shared";
 import { downloadToFile, type DownloadOutcome } from "./download.js";
+import { attachContext, type FailureReportConfig } from "./error.js";
 import { normalizeTarget, requireLocator, type Target } from "./locator.js";
 import { TRUSTED_INPUT_POLICY, type TrustedInputPolicy } from "./policy.js";
 
@@ -25,6 +26,11 @@ export interface TabHost {
   call(method: string, params?: Record<string, unknown>, options?: { timeoutMs?: number }): Promise<unknown>;
   /** The client's connection generation: bumped by every 4002 reconnect. */
   generation(): number;
+  /**
+   * The failure-report seams (phase doc 0.5), or null when `connect({failureReports: false})` turned
+   * reports off. Absent = off.
+   */
+  failureReports?(): FailureReportConfig | null;
 }
 
 /** The extension's own ceiling for `waitFor {text}` / `{networkIdle}`, and the locator arm's default. */
@@ -128,7 +134,32 @@ export class Tab {
   #send(method: string, params: Record<string, unknown> = {}, timeoutMs?: number): Promise<unknown> {
     this.#guard();
     const options = timeoutMs === undefined ? undefined : { timeoutMs };
-    return this.#host.call(method, defined({ ...params, tab: this.handle }), options);
+    return this.#reported(this.#host.call(method, defined({ ...params, tab: this.handle }), options));
+  }
+
+  /**
+   * Awaits a call made for this tab; if it rejects with a `BridgeError` whose code is in the attach
+   * set, attaches the failure report (`./error.ts`, ≤ 5 s, never throws) and rethrows the same object.
+   * Errors thrown before any call (the stale guard, local validation) never get here. Each attach
+   * call is stale-guarded too (#79): after a 4002 it fails as `TAB_UNKNOWN` with no call, into
+   * `attachErrors`, so a void handle never reaches the new daemon.
+   */
+  async #reported<T>(pending: Promise<T>): Promise<T> {
+    try {
+      return await pending;
+    } catch (err) {
+      const config = this.#host.failureReports?.() ?? null;
+      if (config !== null && err instanceof BridgeError) {
+        await attachContext(err, this.handle, {
+          ...config,
+          call: async (m, p, o) => {
+            this.#guard();
+            return this.#host.call(m, p, o);
+          },
+        });
+      }
+      throw err;
+    }
   }
 
   async #trusted(method: string, params: Record<string, unknown>, trusted: boolean | undefined): Promise<void> {
@@ -281,7 +312,9 @@ export class Tab {
     let result: { entries: NetworkEntry[] };
     if ("id" in options && options.id !== undefined) {
       this.#guard();
-      result = (await this.#host.call("networkRequests", { id: options.id })) as { entries: NetworkEntry[] };
+      result = (await this.#reported(this.#host.call("networkRequests", { id: options.id }))) as {
+        entries: NetworkEntry[];
+      };
     } else {
       result = (await this.#send("networkRequests", { ...options })) as { entries: NetworkEntry[] };
     }
@@ -299,12 +332,14 @@ export class Tab {
    */
   async download(url: string, filePath: string, options: DownloadOptions = {}): Promise<DownloadOutcome> {
     this.#guard();
-    return downloadToFile((m, p, o) => this.#host.call(m, p, o), {
-      url,
-      path: filePath,
-      overwrite: options.overwrite,
-      timeoutMs: options.timeoutMs,
-    });
+    return this.#reported(
+      downloadToFile((m, p, o) => this.#host.call(m, p, o), {
+        url,
+        path: filePath,
+        overwrite: options.overwrite,
+        timeoutMs: options.timeoutMs,
+      }),
+    );
   }
 
   /** Brings the tab to the front of its window and focuses the window (`focusTab`). */

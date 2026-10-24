@@ -1,5 +1,6 @@
 // BridgeClient: one welcomed connection to the daemon, id-correlated calls, events, and the
 // close-code rules of decision #15 — reconnect on 4002 only; any other close fails the client.
+import os from "node:os";
 import {
   BridgeError,
   ErrorCodes,
@@ -29,6 +30,7 @@ import {
   type TabHost,
   type TrustedOption,
 } from "./tab.js";
+import type { FailureReportConfig } from "./error.js";
 import type { Connection } from "./transport.js";
 
 /** Close code the daemon sends when it is replaced (`daemon.shutdown`, handover). */
@@ -75,6 +77,17 @@ export interface BridgeClientOptions {
    */
   knock: (ctx: KnockContext) => Promise<Knocked>;
   timers?: Timers;
+  /**
+   * Default true: a `Tab` call that fails with an attach-set code gets a failure report (phase doc
+   * 0.5); false: errors are rethrown untouched with no extra call. Raw `call()` is never enriched.
+   */
+  failureReports?: boolean;
+  /** Where `BRIDGE_FAILURES_DIR` is read from. Default `process.env`. */
+  env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
+  /** Test seam: the home directory of the default failures directory. Default `os.homedir`. */
+  homedir?: () => string;
+  /** Test seam: epoch ms, names the failure screenshot. Default `Date.now`. */
+  now?: () => number;
 }
 
 type FailureListener = (err: BridgeError) => void;
@@ -171,14 +184,25 @@ export class BridgeClient {
   /** Bumped synchronously by every 4002 close: a `Tab` from an older generation is void (#79). */
   private generation = 0;
   private cursor: Tab | null = null;
+  private readonly failureReports: FailureReportConfig | null;
   private readonly host: TabHost = {
     call: (method, params, options) => this.call(method, params, options),
     generation: () => this.generation,
+    failureReports: () => this.failureReports,
   };
 
   constructor(options: BridgeClientOptions) {
     this.knockFn = options.knock;
     this.timers = options.timers ?? realTimers;
+    this.failureReports =
+      options.failureReports === false
+        ? null
+        : {
+            timers: this.timers,
+            env: options.env ?? process.env,
+            homedir: options.homedir ?? os.homedir,
+            now: options.now ?? Date.now,
+          };
   }
 
   /**
