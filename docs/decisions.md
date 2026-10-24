@@ -103,12 +103,81 @@ Step 10 (2026-10-24 on), for the user at the gate:
 1. "The Step 10 phase doc's proposals, recorded before Stage 0 so the audit can attack them" (#204) — the
    contract-level parts: 0.3's wire field `pastSnapshotCap` and its SDK form, 0.4's `saveTo` transport and the SDK
    method `evaluateToFile`, 0.12's `DISARMED` keeping `scope: "all"` — as amended by Stage 0.
+2. "Stage 0: `saveTo` uses transport (B), with tab-carrying pulls" (#205).
+3. "Stage 0: the cap warning reaches SDK actions as a client event" (#206).
+4. "Stage 0: `saveTo`'s file rules are stricter than `browser_download`'s" (#207).
+5. "Stage 0: `release/step8` from `70aa754` to `a1932a8`, Variant C" (#208) — a third layout beyond 0.6's two.
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-25 · Stage 0: count corrections, stricter checks, SW-1 as a differential row, the retirement set, bb-login's bound (#209)
+**Decided:** the Stage 0 rulings that are mechanical or stricter only, applied to the phase doc as dated amendments
+(texts in `docs/plans/2026-10-24-step10-step8-follow-ups-steps/stage0.md` §6): (1) F8 — the Step 9 log scan has 54
+sites (15 + 33 + 0 + 6), not 60; S4.5 counts from 54; (2) the stricter checks F6 (S4.3 vs S4b: which code holds at
+S4's close), F13 with V6 (S4.1's answer bound `≤ min(300, path.length + 120)`, a random value, the SDK return and
+log lines checked too), F14, F15 (the MCP schema baseline captured before S2's first change), F16 (RET-1 runs only
+while armed), F17, F20; (3) F3 with V1/V2 — **0.8's premise was wrong**: `onActivated` already ends the 1000 ms wait
+as written and that listener predates the ~1.5 s measurements, so SW-1 becomes a differential row (background-tab
+capture minus front-tab capture, three trials; d ≥ 950 ms 3/3 → S7b names the mechanism, and a top-level listener
+escalates; d ≤ 300 ms 3/3 → closed, no change; else undetermined, no change); (4) F9 with V4 — the retirement is
+`assemble-mcp.ts`, `transcript.ts`, `export-file.ts`'s `assemble()` and **7** tests (not 6), `--mcp-plan` kept with
+help text naming `saveTo`; (5) F10 with V5 — bb-login's 90 s bound runs from the press to the exit, any page tolerated
+while polling, exit 4 at the bound, S5.1 extended with three legs and submits = 1; (6) F19 recorded as a known limit
+(focus and input are two calls; another actor's capture can come between).
+**Why:** mechanical corrections or checks made stricter before any measurement; each finding carries its command and
+output in `stage0-audit.md` §6, and the verifier re-executed F3, F9, F10.
+**Instead of:** the phase doc's original wording, two checks that could not fail (S1.5, S3.3) and one that depended on
+the test path (S4.1).
+**Revisit if:** a real login needs more than 90 s; a live row sees F19's race.
+**By:** Claude (Stage 0 report `…-steps/stage0.md` §5–§6)
+
+### 2026-10-25 · Stage 0: `release/step8` from `70aa754` to `a1932a8`, Variant C (#208)
+**Decided:** base `70aa754`, close `a1932a8`; Parts 1–5 carry their commits' code per Step 8's S7.md §4 map with
+`docs/`, `CLAUDE.md`, `README.md` held at the base; Part 6 brings the close tree; only the final tree is pinned
+(equal to `a1932a8`'s). **Why:** per-Part cumulative trees conflict 14 times (all docs) and Part 1 alone does not
+typecheck, so 0.6's "if they apply cleanly" branch fails; Variant C keeps six meaningful code commits. **Instead of:**
+0.6's fallback, one squashed tree carrying all six messages (the conservative reading; S6 builds that instead if the
+user prefers); `59be263` as the close (it carries Step 9's kickoff). **Revisit if:** the user wants every
+intermediate tree buildable or prefers the single tree. **By:** Claude (proposed by Stage 0 F7; open for the user —
+a third layout beyond 0.6's two; local and undoable)
+
+### 2026-10-25 · Stage 0: `saveTo`'s file rules are stricter than `browser_download`'s (#207)
+**Decided:** `BAD_PARAMS` for a relative path, an existing directory, a missing parent directory (nothing created),
+an existing file without `overwrite: true`, and an existing `<path>.part` (opened `"wx"`); bytes are UTF-8 by
+`TextEncoder` (a lone surrogate becomes U+FFFD; tests hash the page side the same way); a Node, Map, Set, function,
+symbol or `undefined` value is `BAD_PARAMS` before anything is stored; a throw from `JSON.stringify` is `PAGE_ERROR`.
+**Why:** `browser_download`'s directory mode, its `mkdir -p` and its `.part` clobbering each write somewhere other
+than the given path, which the kickoff forbids for `saveTo` (Stage 0 F11, F12). **Instead of:** copying
+`sdk/src/download.ts`'s rules as 0.4 proposed. **Revisit if:** a user needs parent directories created.
+**By:** Claude (contract-level, open for the user)
+
+### 2026-10-25 · Stage 0: the cap warning reaches SDK actions as a client event (#206)
+**Decided:** `LocateResult` gains `pastSnapshotCap?: true` (so `Tab.locate()` returns it); an action resolved from a
+locator past the cap carries the flag on its reply, and the SDK emits `client.on("warning", (w: {tab, method, kind:
+"pastSnapshotCap"}) => …)`, never with the locator or the element's text; no action's return type changes; the MCP
+adds one warning line. **Why:** every SDK action returns `Promise<void>` (`sdk/src/tab.ts`, `client.ts`), so a field
+on an action's result would change a Step 8 signature (Stage 0 F5); an event is additive and undoable. **Instead
+of:** a field on an action's result. **Revisit if:** a later step gives actions result objects. **By:** Claude
+(contract-level, open for the user)
+
+### 2026-10-25 · Stage 0: `saveTo` uses transport (B), with tab-carrying pulls (#205)
+**Decided:** 0.4's transport is (B): an extension-side store, filled in slices on the CDP leg so no single message
+grows with the value, pulled in 1 MiB slices of UTF-8 bytes by new methods that carry the tab (tab methods in
+`daemon/src/methods.ts`, lease-checked, no lock; class `evaluate` in `METHOD_CLASSES`); the store is dropped at disarm,
+when JavaScript is turned off, when the tab closes and after a TTL; the extension never receives the path; a pull
+after the store is lost (a worker restart) is refused cleanly and `.part` is removed. **Why:** 0.4's own rule — (A)
+needs a measurement of ≥ 64 MiB crossing the whole path, and the Chrome leg cannot be measured without Chrome; the
+host leg was measured on port 0: one frame crosses daemon → client whole up to 99 MiB, but above 100 MiB (`ws`'s
+default `maxPayload`) the extension socket closes with 1009 and every actor's in-flight call fails `NOT_CONNECTED`
+(Stage 0 F1, F2, `stage0-transport.txt`, re-run by the verifier); a pull without a tab skips the block list at the
+gate and the daemon refuses untargeted unlisted methods anyway (F4, probed). **Instead of:** (A) one `evaluate`
+carrying the whole value; tab-less pulls. **Revisit if:** a live measurement shows the Chrome leg carrying ≥ 64 MiB
+and (A) is wanted for simplicity. **By:** Claude (contract-level — a new wire method and what the gate covers; open
+for the user)
 
 ### 2026-10-24 · The Step 10 phase doc's proposals, recorded before Stage 0 so the audit can attack them (#204)
 **Decided:** the session agent adopts, as proposals for Stage 0 to attack, every **(proposed)** decision of
@@ -135,6 +204,10 @@ against a recorded decision and gets a dated note rather than a silent change.
 **Revisit if:** Stage 0 finds a wrong premise (then this entry gets a dated note, and the contract-level parts —
 0.3's wire field and SDK form, 0.4's transport and SDK method, 0.12's scope — stay under Open decisions for the user).
 **By:** Claude
+*Amended 2026-10-25: Stage 0 found two wrong premises — 0.8's (`onActivated` already ends the wait; SW-1 is now a
+differential row, #209) and 0.4's file rules copied from `browser_download` (they write beside the given path; stricter
+rules, #207); 0.4's transport is (B) by its own rule (#205), the SDK form of 0.3 is a client event (#206), and 0.6's
+layout is Variant C (#208).*
 
 ### 2026-10-24 · Step 10 agents run Opus 5.5 (#203)
 **Decided:** every agent at every level of Step 10 runs Claude Opus 5.5 (`claude-opus-5-5`); only the headless E2E

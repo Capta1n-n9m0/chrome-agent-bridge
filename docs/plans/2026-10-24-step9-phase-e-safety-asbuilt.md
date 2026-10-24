@@ -121,7 +121,7 @@ session agent; one section per stage, written at each stage close.
 - The options page: armed and JavaScript switches save on change (not debounced); the block list marks and
   counts invalid lines with S1's parser (#184); a button opens `chrome://extensions/shortcuts`; port and token
   unchanged (#186).
-- Tests: the log scan allowlists 60 log sites (extension 15, daemon 33, sdk 0, mcp 6) and a sentinel test runs
+- Tests: the log scan allowlists 54 log sites (extension 15, daemon 33, sdk 0, mcp 6; *Corrected 2026-10-25 (Step 10 Stage 0 F8): was '60 log sites', because the allowlist has 54 entries (15 + 33 + 0 + 6) since S2b.*) and a sentinel test runs
   the real daemon on port 0 (#187); only the toggle module and the options page write the safety keys, and
   `storage.local.remove`/`clear` are refused everywhere (#188).
 

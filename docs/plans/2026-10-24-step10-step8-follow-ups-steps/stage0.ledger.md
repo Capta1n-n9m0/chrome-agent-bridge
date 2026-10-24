@@ -6,3 +6,4 @@
 - 2026-10-24T19:50:48Z · verifier spawned (independent), background · started · writes stage0-verifier.md · next: on PASS* commit via builder; on FAIL fixer round 1
 - 2026-10-24T20:01:56Z · verifier returned · done · PASS-with-notes, V1–V5 MINOR, V6–V9 NIT; no fix round needed · next: write stage0.md, commit via builder
 - 2026-10-24T20:03:18Z · stage0.md written (step agent rulings on V1–V9 folded into amendment texts) · done · next: commit via builder (exact file list)
+- 2026-10-24T20:04:16Z · committed 9f91e5f (15 files) · done · Stage 0 closed DONE, verifier PASS-with-notes; this line is uncommitted (the session agent's next docs commit carries it)

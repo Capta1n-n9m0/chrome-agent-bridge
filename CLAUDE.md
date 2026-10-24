@@ -211,7 +211,7 @@ records nothing while disarmed and drops blocked hosts. The daemon only relays t
   `chrome.action` injected, unit-tested) logs one fixed line per press (`toggleLogLine`); `options.ts` +
   `extension/options.html` are page glue (DOM + `chrome.storage.local`, the Safety and Blocked sites
   boxes), not unit-tested, read statically by `safety-writers.test.ts`. Tests that guard them:
-  `extension/test/log-scan.test.ts` (+ `log-allowlist.ts`, 60 log sites) and `log-sentinel.test.ts` (no
+  `extension/test/log-scan.test.ts` (+ `log-allowlist.ts`, 54 log sites — *Corrected 2026-10-25 (Step 10 Stage 0 F8): was '60 log sites', because the allowlist has 54 entries (15 + 33 + 0 + 6) since S2b.*) and `log-sentinel.test.ts` (no
   pattern/URL/token in any log), `safety-writers.test.ts` (only the toggle and the options page write the
   safety keys), `manifest.test.ts`.
 
@@ -340,6 +340,12 @@ and follow `docs/e2e-test-plan.md`.
   debugger is already attached…"; clicking the banner's Cancel mid-action makes `sendCommand` throw
   "Detached while handling command". `withDebugger` maps both through `describeDebuggerError` — add new
   Chrome strings there, not in handlers.
+- **One WebSocket frame over 100 MiB closes the extension socket (1009).** `ws`'s default `maxPayload`
+  (100 MiB) is set nowhere in the repo, so one oversized reply drops the extension's socket and every actor's
+  in-flight call fails `NOT_CONNECTED`; a single result frame crossed daemon → client whole up to 99 MiB (measured
+  on port 0 with a fake extension, Step 10 Stage 0 F1/F2, `…step10…-steps/stage0-transport.txt`, re-run by its
+  verifier). Bulk data moves in slices (`downloadChunk`; `saveTo`'s pulls, decisions.md · 2026-10-25 · Stage 0:
+  `saveTo` uses transport (B), with tab-carrying pulls (#205)).
 - **`ws` is `external` in the daemon and MCP esbuild bundles** (it's CJS; `daemon/build.mjs`,
   `mcp/build.mjs`) — it resolves from `node_modules` at runtime, so both run from the repo.
 - **`@types/chrome` quirks**: use `chrome.tabs.OnUpdatedInfo` (not `TabChangeInfo`);
@@ -699,7 +705,7 @@ and follow `docs/e2e-test-plan.md`.
   50-case table of stage0-audit.md §5 is `extension/test/safety-match.test.ts`. (Unit tests.)
 - **Never log a pattern, URL or title from the safety code.** The gate, matcher and state modules have no
   log call; a press logs one fixed line (`badge.ts` `toggleLogLine`); the daemon logs booleans and the
-  count (`intercept.ts` `safetyLogLine`). `log-scan.test.ts` allowlists every log site (60 at S2b: extension
+  count (`intercept.ts` `safetyLogLine`). `log-scan.test.ts` allowlists every log site (54 at S2b — *Corrected 2026-10-25 (Step 10 Stage 0 F8): was '60 log sites', because the allowlist has 54 entries (15 + 33 + 0 + 6) since S2b.* — extension
   15, daemon 33, sdk 0, mcp 6) and `log-sentinel.test.ts` runs the real daemon on port 0 (#187). Run 13:
   `daemon.log` 210 lines and the worker console 0 for the token, non-fixture `://` and the test patterns
   (SAFE-10).

@@ -1,6 +1,8 @@
 # Step 10 — the Step 8 follow-ups (MCP focus-first, the 800-cap warning, `saveTo`, the release tag, a live retire row, Step 9's live re-measurements)
 
-**Date:** 2026-10-24 · **Status:** Planned (kickoff `docs/plans/next-session-prompt.md`, written 2026-10-24).
+**Date:** 2026-10-24 · **Status:** Stage 0 closed 2026-10-25 (`9f91e5f`); next S1. *Superseded 2026-10-25: was
+"Planned (kickoff `docs/plans/next-session-prompt.md`, written 2026-10-24)", because Stage 0 closed and its
+amendments are applied below as dated notes (`…-steps/stage0.md` §6).*
 **Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change (§5 layer contract, §6 the human, §10 protocol and codes, with Step 9's
 dated notes) · **Roadmap:** `docs/progress-and-roadmap.md` §5 ("Step 10 inputs from Step 9") · **As-built:**
@@ -81,6 +83,10 @@ the front and stays. This replaces "the MCP's trusted tools keep today's behavio
   before any input).
 - The MCP cursor does not move: an explicit `tab` and the cursor's tab are focused alike, and focusing is not
   `browser_select_tab` (`CLAUDE.md`, "The MCP cursor never follows the human …").
+- *Amended 2026-10-24 (Stage 0 F19): a known limit — focus and input are two calls (`focusTab` holds the visibility
+  lock only for itself), so another actor's default capture in the same window can come between them and the input
+  lands on a background tab answering `ok` (the SDK has the same gap); MCPF-1 (one actor) cannot show it. Revisit
+  if a live row sees it.*
 
 ### 0.3 A warning when a locator resolves past the snapshot's cap (user)
 
@@ -98,10 +104,19 @@ the MCP say so. *Proposed details:*
 - **SDK.** `tab.locate()` returns the flag; for actions the SDK must not change an existing return type —
   Stage 0 rules between a field on the action's result object (where one exists) and a client event
   (`client.on("warning", …)`), choosing the form that leaves every Step 8 signature as it is.
+  *Amended 2026-10-24 (Stage 0 F5): the SDK form is (i) `LocateResult` gains the optional `pastSnapshotCap?: true`
+  (so `Tab.locate()` returns it) and (ii) a client event `client.on("warning", (w: {tab: string; method: string;
+  kind: "pastSnapshotCap"}) => …)` — a new overload of `on`, emitted by the SDK for an action whose reply carries the
+  flag, never carrying the locator or the element's text. No action's return type changes; `S3.3` asserts each Step 8
+  signature by type equality.* (decisions.md · 2026-10-25 · Stage 0: the cap warning reaches SDK actions as a client
+  event (#206); contract-level, open for the user.)
 - **MCP.** One extra line after the tool's normal answer: `Warning: this element is past the snapshot's
   800-element cap — browser_snapshot does not list it.` (wording a build decision; never the element's text).
 - **Never** a change to `a11y.ts`'s rules, `locate`'s matching or the snapshot's output to make the warning appear
   (`CLAUDE.md`, "Locators are resolved by the snapshot's own rules — change `a11y.ts`, not two places").
+- *Amended 2026-10-24 (Stage 0 F18): `waitFor {locator}` carries no flag; the count stops measuring at the 800th
+  listable element.* (decisions.md · 2026-10-25 · Stage 0: count corrections, stricter checks, SW-1 as a differential
+  row, the retirement set, bb-login's bound (#209).)
 
 ### 0.4 `browser_evaluate {saveTo}` (user)
 
@@ -120,9 +135,38 @@ description says chunked paging is a test device only. *Proposed details:*
   JavaScript switch and the kill switch refuse it — `GatedRouter.on` throws on an unclassified method) and the
   daemon's method table (`daemon/src/methods.ts`), and the store is dropped at disarm. Recommendation: (A) if the
   measurement holds, else (B). Either way contract-level, listed under Open decisions.
+  *Amended 2026-10-24 (Stage 0 F1): Stage 0 measured the host leg on port 0 — one result frame crosses daemon →
+  client whole up to 99 MiB (UTF-8 bytes) and above 100 MiB (`ws`'s default `maxPayload`, set nowhere in the repo)
+  the daemon closes the extension socket (1009), failing every actor's call `NOT_CONNECTED`; the Chrome leg
+  (`chrome.debugger` → worker → `runtime.sendMessage` → offscreen → WebSocket) is not measurable without Chrome. No
+  measurement shows ≥ 64 MiB crossing the whole path, so by this decision's own rule the transport is (B). (A) is not
+  built. The threshold, where it is cited, is in UTF-8 bytes of the frame, not characters.*
+  *Amended 2026-10-24 (Stage 0 F2): under (B) no frame grows with the value — the evaluate-to-store path slices
+  **also on the CDP leg** (a holder object's `objectId` and `Runtime.callFunctionOn` slices of ≤ 1 MiB within one
+  debugger session, never one CDP reply of the whole value), and S4's lane names `extension/src/debugger.ts`. A size
+  refusal for plain `evaluate` would be a new refusal (a contract change): recorded under Open items, not built in
+  Step 10 unless ruled.*
+  *Amended 2026-10-24 (Stage 0 F4): (B)'s new methods carry the tab (`tab` on the wire, a `tabId` at the extension):
+  they enter `daemon/src/methods.ts` `TAB_METHODS` (lease-checked, not the lock) and `METHOD_CLASSES` as
+  `"evaluate"`, so the kill switch, the JavaScript switch and the block list refuse each pull and only the tab's
+  holder can pull. The store is dropped at disarm, on JavaScript off, on the tab's close, and after a TTL. The
+  extension never receives the path; a pull after the store is lost (a worker restart) is refused and `.part`
+  removed (test).*
+  (F1, F2, F4: decisions.md · 2026-10-25 · Stage 0: `saveTo` uses transport (B), with tab-carrying pulls (#205);
+  contract-level, open for the user.)
+  *Amended 2026-10-24 (Stage 0 F25): the serialiser also has `maxString: 5000` (`extension/src/evaluate/serialize.ts`),
+  which truncates nested strings, beside the 100 items and depth 6 named above.*
 - **File rules** as `browser_download` (`sdk/src/download.ts`): `saveTo` absolute, a file path; an existing file
   is refused unless `overwrite: true`; written to `<path>.part` then renamed; `.part` removed on failure; sha256 of
   the bytes written. Strings are written as UTF-8 without a BOM.
+  *Amended 2026-10-24 (Stage 0 F11): `saveTo` refuses with `BAD_PARAMS` a relative path, an existing directory, a
+  missing parent directory (nothing is created), an existing file without `overwrite: true`, and an existing
+  `<path>.part` (opened exclusively, `"wx"`); a refusal leaves no file.*
+  *Amended 2026-10-24 (Stage 0 F12): the bytes are the value's UTF-8 as `TextEncoder` makes it (a lone surrogate
+  becomes U+FFFD), and tests hash the page side the same way; a Node, Map, Set, function, symbol or `undefined`
+  value is `BAD_PARAMS` before anything is stored; a throw from `JSON.stringify` is `PAGE_ERROR`.*
+  (F11, F12: decisions.md · 2026-10-25 · Stage 0: `saveTo`'s file rules are stricter than `browser_download`'s
+  (#207); contract-level, open for the user.)
 - **The answer** is `Saved <path>` and `<bytes> bytes · <kind> · sha256 <hex>` — no part of the value. `asRef`
   with `saveTo` is `BAD_PARAMS`. A value of kind `undefined`, `node` or `function` is refused `BAD_PARAMS` (nothing
   to save).
@@ -147,6 +191,14 @@ description says chunked paging is a test device only. *Proposed details:*
   that cover only them are removed, `recipes/README.md` and `docs/setup.md` updated; the removed test count is
   documented. Run 12's S6.3 record stays as written (decisions.md · 2026-10-23 · SDK-7's MCP leg is re-registered
   with a cap that fits pp1's export (#102)). If the fixture leg fails, nothing is retired (a proposed decision).
+  *Amended 2026-10-24 (Stage 0 F9): retired = `recipes/blackboard/assemble-mcp.ts`, `transcript.ts`,
+  `export-file.ts`'s `assemble()`, and the 7 tests that cover only them (5 in `blackboard-export-file.test.ts` —
+  `parseTranscriptChunks` — plus its `assemble` test, 1 in `blackboard-held.test.ts`), listed per file, test count
+  −7 documented; `--mcp-plan` stays, its help text naming `browser_evaluate {saveTo}`. S8's lane gains the
+  header/help-text edits in `export-file.ts`, `export-grades.ts`, `held.ts`,
+  `recipes/test/blackboard-export-file.test.ts` and `recipes/README.md`, so that S8.1's grep finds only dated
+  history notes.* (decisions.md · 2026-10-25 · Stage 0: count corrections, stricter checks, SW-1 as a differential
+  row, the retirement set, bb-login's bound (#209).)
 
 ### 0.6 A squashed `step8` release branch; the tag at the user's grant (user)
 
@@ -162,6 +214,14 @@ messages; `main` is not rewritten. *Proposed details:*
   results`. Since the stage commits interleave (S7.md §4's map), the intermediate trees are a build choice (Stage 0
   rules: per-Part cumulative trees if they apply cleanly, else one squashed tree carrying all six messages); only
   the final tree is pinned.
+  *Amended 2026-10-24 (Stage 0 F7; listed for the user — a third layout beyond this decision's two): base `70aa754`,
+  close `a1932a8`. The branch uses Variant C (stage0-release-trees.txt): Parts 1–5 = the code changes of their
+  commits (S7.md §4's map; recipe commits `6398f27 bc78ded 036909f 7c16a00 75f0bd6` in Part 5, `201f5c8` in Part 4),
+  docs held at the base; Part 6 = the close tree. Intermediate trees are not buildable (Part 1 precedes the shared
+  types); only the final tree is pinned. Each commit carries `Co-Authored-By: Claude Opus 5.5` (as all 60 originals)
+  and the S6 session's `Claude-Session` line, and its body lists the original commits it carries.* (decisions.md ·
+  2026-10-25 · Stage 0: `release/step8` from `70aa754` to `a1932a8`, Variant C (#208); contract-level, open for the
+  user — the single squashed tree remains the conservative alternative.)
 - **Human gate G10-1:** creating the annotated tag `step8` and pushing the branch or the tag. decisions.md · 2026-10-24 · The user grants the skill edit, the data deletion and the push at Step 8's close (#105) said "Push is
   allowed" was given at Step 8's close and is not read as a standing grant.
 
@@ -181,6 +241,10 @@ held handles live (Run 12 saw only `0 handles retired`, because `chrome://quit` 
   "Restore pages?" prompt after a crash versus automatic session restore (the profile's start-up setting); the
   user's own tabs coming back; a window handle not surviving the restart (`CLAUDE.md`, "Chrome restarts and live
   sites").
+- *Amended 2026-10-24 (Stage 0 F16): RET-1 runs only with the found state armed (else 'not run — disarmed as
+  found'); its PASS does not depend on session restore or the 'Restore pages?' prompt; G10-2's request names that
+  unsaved form data in the user's open tabs is lost.* (decisions.md · 2026-10-25 · Stage 0: count corrections,
+  stricter checks, SW-1 as a differential row, the retirement set, bb-login's bound (#209).)
 
 ### 0.8 The ~1.5 s failure-report screen switch (proposed: measure, then decide)
 
@@ -197,6 +261,18 @@ not a frame": "suggests `onActivated` does not end the wait (unconfirmed)").
   ≤ 100 ms after the call starts **and** the call ≥ 1000 ms in 3/3 → the wait runs to its bound → a fix stage S7b
   (the listener ends the wait; the 1000 ms bound and the 50 ms settle stay as they are) with its own re-measure row;
   otherwise → recorded, no change, and the carried input closes.
+  *Amended 2026-10-24 (Stage 0 F3): Stage 0 read `showTab` (`extension/src/tabs.ts:249-271`): `onActivated` for the
+  target ends the wait as written. That listener has been in the code since T3 (`43c0a53`, 2026-10-22), before Runs
+  8, 9 and 12 measured ~1.3–1.5 s, so the measured time was taken with this code: either the event is missed (it is
+  registered only per call — `sw.ts` has no top-level `tabs.onActivated` listener) or the capture itself is slow.
+  SW-1 is a differential row: per trial, (i) a default-mode screenshot of a background fixture tab in the human's
+  window and (ii) one of a fixture tab already in front of the same window, ≥ 1.5 s apart, three trials; d =
+  client-measured duration of (i) − that of (ii). d ≥ 950 ms in 3/3 → the wait runs to its bound → S7b first names
+  the mechanism (a top-level listener would touch the 'listeners at the top level of `sw.ts`' invariant and
+  escalates); d ≤ 300 ms in 3/3 → the event ends the wait, recorded, no change, the carried input closes; anything
+  else → undetermined, recorded, no change. The `visibilitychange` stamps stay as a record.* (decisions.md ·
+  2026-10-25 · Stage 0: count corrections, stricter checks, SW-1 as a differential row, the retirement set,
+  bb-login's bound (#209).)
 - Never lower the 1000 ms or 50 ms waits without a measurement; never add window focus to the capture.
 
 ### 0.9 `bb-login.ps1`'s condition-based post-submit wait (user — the item; proposed details)
@@ -207,6 +283,14 @@ the Blackboard host with no sign-in control and an address stable for 4 s, at mo
 SSO page, another host, or the bound reached → exit 4, nothing more pressed. Proven by `-DryRunBase` runs on
 `recipes/fixtures/` pages served from 127.0.0.1, with a new fixture whose redirect back arrives after 12 s: the new
 script exits 0 where the old one (run first on the same fixture) exits 4. A run on the real site needs G10-3.
+
+*Amended 2026-10-24 (Stage 0 F10): the 90 s bound runs from the press to the exit, every scan included; while
+polling, any page is tolerated; exit 0 as soon as the Blackboard host shows no sign-in control with the address
+stable 4 s; at the bound, exit 4 whatever the page, nothing more pressed. S5.1 is extended, not replaced: (1) the
+old-vs-new pair on the delayed-redirect fixture stays (old exits 4, new exits 0); (2) stuck on the SSO stand-in →
+exit 4 at ≤ 95 s from the press; (3) a fixture that ends on a non-Blackboard host → exit 4 at the bound; in every
+leg the fixture counts submits = 1.* (decisions.md · 2026-10-25 · Stage 0: count corrections, stricter checks, SW-1
+as a differential row, the retirement set, bb-login's bound (#209).)
 
 ### 0.10 Step 9's live follow-ups: the first live wave (proposed — #194, #196, #201)
 
@@ -257,16 +341,23 @@ works; ask them") follow; `JS_DISABLED` stays out of the failure-report attach s
 `DISARMED scope:"evaluate"` change their expected text **by this ruling**, each listed per file in the stage report
 (this is a contract change the user ordered, not the forbidden "edit a test's text to match a changed error").
 
+*Amended 2026-10-24 (Stage 0 F17): the SDK and MCP keep rendering `DISARMED {scope:"evaluate"}` as the
+JavaScript-off line (an old extension); `SafetyScope` keeps its two values; S4b.2 adds that case.* (decisions.md ·
+2026-10-25 · Stage 0: count corrections, stricter checks, SW-1 as a differential row, the retirement set, bb-login's
+bound (#209).)
+
 ## Stages
 
 **Lane** is the explicit grant a step agent needs under the `step-agent` ESCALATION list. Budgets are estimates.
 
 ### Stage 0 — Spec audit (1.5 h, first, alone)
-- [ ] The four lenses of the kickoff §4 over this doc; Step 9's contracts re-executed on port 0 (the as-built's
+- [x] The four lenses of the kickoff §4 over this doc; Step 9's contracts re-executed on port 0 (the as-built's
       "Contracts (binding forward)"); counts recomputed (23 router methods, 25 codes, 23 tools, 2720 tests / 116
       files); 0.4's transport measured or shown unmeasurable without Chrome (then S4 measures it first, live-free
       where possible); 0.6's base and close commits named; 0.8's code reading.
 **Lane:** the steps dir; read-only elsewhere; port 0 only.
+*Done 2026-10-25 (`9f91e5f`): report `…-steps/stage0.md`, verifier PASS-with-notes; its amendments are the dated
+"Stage 0 Fn" notes in this doc.*
 
 ### Stage S1 — Live wave A, Run 14: Step 9's follow-ups (1 h prep + 1 h live, after Stage 0, alone)
 - [ ] §4.21 rows R14-5c, R14-POP-1, R14-3, R14-4b, R14-REL-3 with expected text, committed before the wave's first
@@ -295,6 +386,9 @@ run here first under the same rules.
 **Lane:** `extension/src/` (evaluate handler, a store module, `sw.ts` registration, `safety.ts` table — for (B) only),
 `daemon/src/methods.ts` (B only), `shared/src/protocol.ts`, `sdk/src/`, `mcp/src/tools/registry.ts`, their tests.
 **Parallel with:** S5, S6.
+*Amended 2026-10-25 (Stage 0 stage split, `stage0.md` §7; F2, F4): the transport is (B) (#205), so the lane holds
+`daemon/src/methods.ts` (the tab-carrying pulls, F4) and gains `extension/src/debugger.ts` (CDP-leg slicing, F2);
+budget 3.5 h (was 3 h). The work also carries F11/F12's file rules and V8's lost-store refusal (0.4's notes).*
 
 ### Stage S4b — The `JS_DISABLED` code (1.5 h, after S4)
 - [ ] 0.12: spec §10 note first; the code in `shared/src/codes.ts` and its type; the extension's refusal; the SDK and
@@ -321,6 +415,9 @@ another branch in the main working tree (a separate worktree, removed after).
       **SAVE-1…n** (0.4's rules live, including 0.5's fixture leg); **SW-1** (0.8); **BBL-1** (0.9's dry runs);
       **RET-1** (0.7, at G10-2 only); the S6.3 pp1 leg (G10-3 only); the safety-state restore and read-back.
 - [ ] S7b, only if SW-1 reads "runs to its bound": the fix (failing test first where pure) and its re-measure row.
+      *Amended 2026-10-24 (Stage 0 F3): SW-1 is the differential row of 0.8's note; S7b first names the mechanism,
+      and a top-level `tabs.onActivated` listener escalates (it touches the 'listeners at the top level of `sw.ts`'
+      invariant). F16: RET-1 runs only with the found state armed (0.7's note).*
 **Lane:** `recipes/`, `docs/e2e-test-plan.md` §4.22 and §5, the steps dir; S7b: `extension/src/tabs.ts` and tests.
 
 ### Stage S8 — Retire the chunked recipe; docs (1 h, last)
@@ -328,6 +425,10 @@ another branch in the main working tree (a separate worktree, removed after).
       warning, `saveTo`, the test-device sentence), `recipes/README.md`, `README.md` where the tool text changed;
       `CLAUDE.md` changes proposed for the session agent; the roadmap's Step 10 block.
 **Lane:** `recipes/blackboard/` (removals only), `recipes/test/` (removals only), docs.
+*Amended 2026-10-24 (Stage 0 F9): the lane also allows the header/help-text edits in
+`recipes/blackboard/export-file.ts`, `export-grades.ts`, `held.ts`, `recipes/test/blackboard-export-file.test.ts`
+and `recipes/README.md` (`--mcp-plan`'s help text naming `browser_evaluate {saveTo}`); the retirement set and its
+−7 tests are 0.5's note.*
 
 ## Exit checks (pre-registered)
 
@@ -344,27 +445,44 @@ file; `npm run typecheck` and `npm run build` exit 0; `git status --short` shows
   printed. **S1.5** the ledger shows every STOP line the wave met as a return to the step agent (#193); a runner
   that continued past one fails the stage on process. **S1.6** `daemon.log` and the worker console captured in
   the wave: 0 for the token, a non-fixture `://`, and the test patterns, by count.
+  *Amended 2026-10-24 (Stage 0 F20): the fresh verifier lists every `STOP`/guard line in the run's raw output and
+  daemon log and matches each to a return entry in the ledger; an unmatched one fails S1.5.* (Applies to S7.6 through
+  "as S1.5–S1.6"; decisions.md · 2026-10-25 · Stage 0: count corrections, stricter checks, SW-1 as a differential
+  row, the retirement set, bb-login's bound (#209).)
 - **S2.1** for ref and locator targets, trusted click / type / press send `focusTab {tab:T}` then the action with
   the same `tab`; untrusted sends no `focusTab` — tests that fail on the code at `f45e3bf`. **S2.2** a `focusTab`
   error is the answer and the action is not sent (test). **S2.3** the MCP tool list's names and input schemas equal
   `f45e3bf`'s (a test diffs them); the three descriptions carry the focus sentence.
+  *Amended 2026-10-24 (Stage 0 F15): S2.3's baseline is captured from the code at `f45e3bf` before S2's first code
+  change and never regenerated; S4 changes only `browser_evaluate`'s entry, listed in its report as #127's change.*
 - **S3.1** on a fixture with 1 000 listable elements, `locate` of listable element 900 → `pastSnapshotCap: true`; element 10 → absent; on a
   799-element page → absent at every index; a non-listable `{css}` match before the 800th listable → absent
   (tests). **S3.2** `extension/test/fixtures/snapshot-pre-s1.json` and `sdk/test/fixtures/baseline-51de800.json`
   checks still pass unchanged; `git diff f45e3bf -- extension/src/content/a11y.ts extension/src/content/snapshot.ts`
   is empty. **S3.3** the MCP warning line and the SDK surface tested; every Step 8 SDK signature unchanged (a
   type-level test or `tsc` over a pinned usage file).
+  *Amended 2026-10-24 (Stage 0 F14): S3.1 adds: on an 801-listable page the 800th listable (index 799) → absent, the
+  801st → `true`; on an 800-listable page every index → absent; a non-listable `{css}` match after the 800th
+  listable → `true`; a `{text}` match past the cap → `true`; listable elements inside an open shadow root and a
+  same-origin frame count. S3.3 asserts each Step 8 SDK signature by type equality
+  (`expectTypeOf(...).toEqualTypeOf<…>()`) against a list captured at `f45e3bf`.*
 - **S4.1** over port 0 with a fake extension (and, for (A), Stage 0's measured bound): a value of 1 000 000
   characters saved; file sha256 = the expected; the MCP answer is under 300 characters and contains no 16-character
-  run of the value (tests). **S4.2** file rules: relative path, existing file without `overwrite`, failure mid-write
+  run of the value (tests). *Amended 2026-10-24 (Stage 0 F13): S4.1's bound is `answer.length ≤ min(300,
+  path.length + 120)` with a test path of ≤ 180 characters; the value is random (crypto); the SDK's return value and
+  every captured log line are checked as well as the MCP answer.* **S4.2** file rules: relative path, existing file without `overwrite`, failure mid-write
   (`.part` gone), `asRef` + `saveTo`, an `undefined` value — each refused as 0.4 says (tests). **S4.3** for (B):
   Step 9's S1.1 router-scan test passes with the new methods classified; JavaScript off → `DISARMED {scope:
-  "evaluate"}`; disarmed → `DISARMED {scope:"all"}`; the store emptied at disarm (tests). **S4.4** the description
+  "evaluate"}`; disarmed → `DISARMED {scope:"all"}`; the store emptied at disarm (tests). *Amended 2026-10-24
+  (Stage 0 F6): S4.3's JavaScript-off clause reads: 'each new method's refusal equals `evaluate`'s own refusal for
+  the same state (at S4: `DISARMED {scope:"evaluate"}`; after S4b: `JS_DISABLED`)', asserted by equality, so S4b
+  changes no S4 test text. S4b.2 adds: (B)'s methods answer `JS_DISABLED` with JavaScript off.* **S4.4** the description
   sentence of 0.4 verbatim (test). **S4.5** the log scan and the sentinel test pass with a sentinel value and path
   added, and find neither.
 - **S5.1** on the delayed-redirect fixture the old script exits 4 and the new exits 0; stuck on the SSO stand-in →
   exit 4 within 95 s, nothing pressed after the first press; another host → exit 4, nothing pressed (dry-run
-  outputs in the report).
+  outputs in the report). *Amended 2026-10-24 (Stage 0 F10): extended as 0.9's note says — three legs, "another
+  host" judged only at the bound, ≤ 95 s from the press, submits = 1 in every leg.*
 - **S6.1** `git diff <step8-close> release/step8` is empty; **S6.2** the branch's messages are the six Part messages
   in order (plus trailers); **S6.3** `git rev-parse main` unchanged across the stage; no commit on the branch names
   `dist/`, `bridge.token`, `.env`, `exports/` or a PNG; no tag exists before G10-1.
@@ -372,11 +490,14 @@ file; `npm run typecheck` and `npm run build` exit 0; `git status --short` shows
   G10-3; otherwise both are recorded "not run — waits for the user". **S7.6** as S1.5–S1.6.
 - **S8.1** the retirement's removed tests listed per file with the count change; `grep -rn "assemble-mcp\|transcript.ts"
   recipes docs/setup.md` finds only dated history notes; every new `CLAUDE.md` gotcha cites its source.
+  *Amended 2026-10-24 (Stage 0 F9): the removed tests are the 7 of 0.5's note (count −7).*
 - **S4b.1** `codes.ts` lists 26 codes with `JS_DISABLED` on the wire list; spec §10's note precedes the code commit
   (`git log` order). **S4b.2** with JavaScript off: `evaluate`, `evaluate {asRef}` and a `javascript:`/`data:`
   navigation answer `JS_DISABLED`; with the bridge off they answer `DISARMED`; with JavaScript on nothing changes
   (tests, each failing at the S4 close). **S4b.3** `JS_DISABLED` is not in `ATTACH_CODES` (test); the MCP renders it
-  as one line (test). *Added 2026-10-24 (#202).*
+  as one line (test). *Added 2026-10-24 (#202).* *Amended 2026-10-24 (Stage 0 F6, F17): S4b.2 adds (B)'s methods
+  answering `JS_DISABLED` with JavaScript off, and an old extension's `DISARMED {scope:"evaluate"}` still rendered by
+  the SDK and MCP as the JavaScript-off line.*
 
 ## Human gates
 
@@ -424,6 +545,13 @@ the token rule; making `BridgeClient` reconnect on a close code other than 4002;
 
 - Ruled at Stage 0 (conservative rule, listed for the user): 0.3's wire field and SDK form; 0.4's transport and the
   SDK method; 0.6's intermediate trees; 0.8's fix, if SW-1 calls for one.
+- *Amended 2026-10-25: Stage 0 ruled these conservatively, and each stays open for the user — 0.3's SDK form as a
+  client event (decisions.md · 2026-10-25 · Stage 0: the cap warning reaches SDK actions as a client event (#206));
+  0.4's transport (B) with tab-carrying pulls and the stricter file rules (· Stage 0: `saveTo` uses transport (B),
+  with tab-carrying pulls (#205); · Stage 0: `saveTo`'s file rules are stricter than `browser_download`'s (#207));
+  0.6's layout Variant C (· Stage 0: `release/step8` from `70aa754` to `a1932a8`, Variant C (#208)). The rest of
+  Stage 0's rulings are #209. A size refusal for plain `evaluate` (F2) is not built unless the user rules it. 0.8's
+  fix, if any, is decided by SW-1 as amended (F3).*
 - Waiting for the user: G10-0 (#192), G10-1, G10-2, G10-3.
 - Not this step: blocking a redirect hop onto a blocked host (`declarativeNetRequest`, #140); SAFE-7c stays unmeasured
   (decisions.md · 2026-10-24 · SAFE-7c (the debugger on this extension's own options page) stays unmeasured (#200)).
