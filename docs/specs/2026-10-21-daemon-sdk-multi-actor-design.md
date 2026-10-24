@@ -254,6 +254,14 @@ active tab is theirs. Rules that follow: nothing the bridge does changes the act
 screen-needing instruction (which restores it) or an explicit `focusTab`; and the MCP's current tab
 does not follow the human (§8.3).
 
+*Added 2026-10-24 (Step 9 S0; phase doc `docs/plans/2026-10-24-step9-phase-e-safety.md` 0.1–0.2;
+decisions.md · 2026-10-24 · Phase E's design: the kill switch, the disarmed state, blocked sites, the
+JavaScript switch (#128)): the human now also holds three controls, enforced in the extension — the kill
+switch (toolbar button, keyboard shortcut, options page: disarmed refuses page calls with `DISARMED`), the
+JavaScript switch (off refuses `evaluate`) and the block list (calls on a blocked site are refused
+`DOMAIN_BLOCKED`). They are changed only by the human, through the extension's own UI — never by a client,
+the daemon or a page (§10's Step 9 note).*
+
 ## 7. Screenshots
 
 `chrome.tabs.captureVisibleTab` photographs *what is on screen in a window*; it cannot capture a
@@ -475,6 +483,11 @@ event    E→D  {event, params}   tabCreated | tabRemoved | tabReplaced | (later
 event    D→C  {event, params}   tabGone | leaseGranted | extensionStatus
 ```
 
+*Added 2026-10-24 (Step 9 S0; decisions.md · 2026-10-24 · The safety state travels as two events and a
+`daemon.status` field (#132)): the event lines above gain one name each — E→D `safetyState`, D→C
+`safetyStatus` (both `{armed, evaluate, blockedCount}`; see the Step 9 note at the end of this section).
+The block itself is left as written.*
+
 - **Tab parameter.** Clients pass `tab: "T3"` (handle) in `params`; the daemon resolves it to
   `tabId: 412` before forwarding and strips the handle. The extension never sees handles.
 - **Daemon-handled methods** (never forwarded): `daemon.status`, `daemon.shutdown`, `tabs.claim`,
@@ -532,6 +545,32 @@ event    D→C  {event, params}   tabGone | leaseGranted | extensionStatus
   - *The extension's hello carries `session` (§13), and the new method `locate {locator}` →
     `{ref, role, name}` is a tab method; actions take `ref` or `locator`.*
   - *The code count is 23: the 22 above plus the SDK-only `NO_CURSOR` (`shared/src/codes.ts`).*
+- *Added 2026-10-24 (Step 9 S0; Phase E safety, phase doc `docs/plans/2026-10-24-step9-phase-e-safety.md`
+  0.3–0.6; decisions.md · 2026-10-24 · The safety state travels as two events and a `daemon.status` field
+  (#132); · The JavaScript switch reuses `DISARMED` with a scope (#133); · What `listTabs`, tab events and the
+  daemon reveal while disarmed or for a blocked tab (#134)):*
+  - *Two extension codes join, on the wire: `DISARMED` (the human turned the bridge off in Chrome, or turned
+    JavaScript off for an `evaluate`) and `DOMAIN_BLOCKED` (the tab's URL, or the call's own target URL, is on
+    the human's block list, or is one of the extension's own pages). The count is 25: 24 on the wire (9
+    daemon + 15 extension) plus the SDK-only `NO_CURSOR`.*
+  - *`DISARMED` carries `data: {scope: "all" | "evaluate"}` — `"all"` for the kill switch, `"evaluate"` for
+    `evaluate` (with or without `asRef`) while JavaScript is off (#133). `DOMAIN_BLOCKED` reveals no host or
+    pattern in message or data.*
+  - *Neither code is in the SDK's failure-report attach set (a report's calls would only be refused too).*
+  - *Events: E→D `safetyState {armed, evaluate, blockedCount}` (`blockedCount` = the valid patterns only),
+    sent each time the extension's connection comes up and on every change; D→C `safetyStatus` with the same
+    params, relayed on every change. The state never rides the hello (#132). An older daemon counts and drops
+    the unknown event; an older SDK ignores it.*
+  - *`daemon.status` adds `safety: {armed, evaluate, blockedCount} | null` — null until the extension has
+    reported, and null again after the extension socket closes (#132).*
+  - *A hidden tab: a `listTabs` row while disarmed, or for a blocked tab, drops `title` and `url` and adds
+    `hidden: "disarmed" | "blocked"` (it keeps `id`, `windowId`, `active`, `openerTabId`, `current`, and the
+    daemon's `tab`, `owner`); `tabRemoved` then carries `hidden` and no `lastUrl`/`lastTitle`; `tabCreated.url`
+    is `""` in the same cases (no new field on `tabCreated`) (#134). The daemon, while the last state it
+    received says disarmed, omits `url` from `daemon.status` rows and `lastUrl`/`lastTitle` from `tabGone`
+    and `TAB_GONE`; `leaseGranted.url` is then `""` (#134).*
+  - *No method of any layer arms, disarms, edits the block list or turns JavaScript on: only the human
+    changes the safety state, in Chrome (§6.5).*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
