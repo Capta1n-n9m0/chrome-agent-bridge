@@ -59,7 +59,7 @@ daemon/ (one per machine, detached, outlives sessions; token gate; holds the one
          turns a client's `tab` handle (T<n>) into a numeric tabId, checks the tab's lease, takes the
          FIFO visibility lock for screen-needing calls, then forwards under its own ids)
                               ⇅ JSON {id,method,params:{tabId,…}} / {id,result|error{code,message,data?}}
-                                + events tabCreated/tabRemoved/tabReplaced  (extension hello: proto:2, session)
+                                + events tabCreated/tabRemoved/tabReplaced/safetyState  (extension hello: proto:2, session)
   extension/ (loaded unpacked in the real profile):
     offscreen document  → holds the WebSocket (survives MV3 service-worker culling)
     service worker      → routes methods to handlers; uses chrome.tabs/scripting/debugger
@@ -67,7 +67,8 @@ daemon/ (one per machine, detached, outlives sessions; token gate; holds the one
 ```
 
 Flow: tool → `BridgeLink.call` → `BridgeClient.call(method, params, {timeoutMs})` → WS → daemon
-(`route.ts`) → extension socket → `router.on(method, …)` → handler → `chrome.*` / `callInPage`. Default actions use synthetic content-script events (no banner);
+(`route.ts`) → extension socket → `GatedRouter` (the safety gate at receipt, again before each first side effect and as
+the post-check) → handler → `chrome.*` / `callInPage`. Default actions use synthetic content-script events (no banner);
 `browser_click {trusted:true}` (or a content-action failure) escalates to real CDP `Input` via
 `chrome.debugger` (shows the "extension is debugging this browser" banner). Clients name tabs by
 daemon-minted **handles** (`T3`), never Chrome ids; one client holds a tab at a time (a **lease**:
@@ -120,7 +121,8 @@ records nothing while disarmed and drops blocked hosts. The daemon only relays t
   table — a new extension method must enter it; `REMOVED_METHODS`: `selectTab` → `UNKNOWN_METHOD`),
   `intercept.ts` (`TabLayer`: resolve, lease check, lock, forward with `tabId`; events → handles; the
   opener rule and `leaseGranted`; `tab is required`; `retireAll` on a changed session marker; Step 9: keeps the extension's last
-  `safetyState` (null until reported and after the socket closes), logs one line per change (booleans and the
+  `safetyState` (null until reported, from each new extension hello until that socket reports, and after the socket closes;
+  `safetyStatus` is never sent with null), logs one line per change (booleans and the
   count), serves `daemon.status.safety`, broadcasts `safetyStatus`, withholds URLs/titles while the last state
   says disarmed, one `listTabs` per change),
   `handle-mark.ts` (Step 8 S2b: handle numbers continue across daemons from
@@ -174,8 +176,8 @@ records nothing while disarmed and drops blocked hosts. The daemon only relays t
   redirect server), `test/` (part of `npm test`), `tsconfig{,.fe,.s6,.s9}.json` (recipes are not in `npm run
   typecheck`: `npx tsc --noEmit -p recipes/tsconfig.s6.json`). *Superseded 2026-10-24: was `hello.ts`,
   `reload-extension.ps1`, `t5*`, `bgf-*.ps1` "BG-FLAGS only", because Step 8 FE and S6 added the rest.*
-- `extension/src/`: `sw.ts` (router + offscreen orchestration; the top-level `chrome.tabs.on*`
-  listeners), `router.ts` (thrown error →
+- `extension/src/`: `sw.ts` (the `GatedRouter` + offscreen orchestration; the top-level `chrome.tabs.on*`,
+  `action.onClicked` and `storage.onChanged` listeners), `router.ts` (thrown error →
   `{code, message, data?}`; Step 9's `GatedRouter`, the only router `sw.ts` builds: `on` throws for a method
   with no safety class, unknown → `UNKNOWN_METHOD` in every state), `offscreen.ts` (the socket; accepts only
   this extension's non-tab senders, `relay-sender.ts`),
@@ -717,6 +719,8 @@ and follow `docs/e2e-test-plan.md`.
   extension button and the Extensions (puzzle) button expose **no UIA Invoke pattern**: pinning and
   pressing need a mouse click at a `FromPoint`-verified point in the driver's own window (Run 13 record
   block 9; S4.md §10 finding 1).
+- **Chrome 156 shows a second line under the extension's action title** ("Has access to this site"; Run 13
+  record SAFE-1 (4), SAFE-9): read only the first line when checking the title by UI automation.
 - **Chrome refuses a `javascript:` navigation through the bridge itself**: `NAV_FAILED JavaScript URLs are
   not allowed in API based extension navigations. …`, page unchanged (Run 13 SAFE-6c, JavaScript on,
   record). With JavaScript off the gate refuses first (`DISARMED`, scope `evaluate`, SAFE-6).
@@ -784,7 +788,8 @@ and follow `docs/e2e-test-plan.md`.
 Logic units (protocol, WS correlation, bridge, handshake, the daemon's registry/routing/lifecycle/log,
 the SDK's knock/client/connect over injected I/O and clocks, the MCP link, RefMap, snapshot, actions,
 geometry, tools, inject helpers, the `NetworkLog` reducer/query, the daemon's handles/leases/lock/
-tab layer, the extension's error mapping and tab events, the MCP cursor, the SDK formatters) are
+tab layer, the extension's error mapping and tab events, the MCP cursor, the SDK formatters, Step 9's safety gate, block-list matcher, state store, badge model and
+options model) are
 **TDD with real assertions**; `mcp/test/multi-actor.test.ts` runs a real daemon + SDK + MCP against a
 fake proto:2 extension on port 0.
 Socket tests bind port 0, never 9234. The `chrome.*` glue (service worker,
@@ -835,7 +840,11 @@ E2E-run (2026-10-23/24, Runs 11 (FE) and 12 (S6)):** locators resolved by the sn
 the background-input policy `focusFirst`, the Step 6 compatibility path removed, `code` required, the
 session marker, the MCP's `browser_use_active_tab` (23 tools), the first recipes
 (`docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor.md`, as-built `…-asbuilt.md`, reports in
-`…-steps/`); its open decisions are listed in `docs/decisions.md` → Open decisions.
+`…-steps/`); its open decisions were ruled in wave W2 (decisions.md #106–#127) and Step 8 closed 2026-10-24.
+*Superseded 2026-10-24: was "its open decisions are listed in `docs/decisions.md` → Open decisions", because W2
+ruled them.* **Step 9 built and E2E-run (2026-10-24, Run 13):** the kill switch, the JavaScript switch and the
+block list, enforced by one gate in the extension (`docs/plans/2026-10-24-step9-phase-e-safety.md`, as-built
+`…-asbuilt.md`); its gate waits on the user's ruling on Run 13 (#192).
 *Superseded 2026-10-24: was "Next: Step 8 (SDK surface, cursor tools, the background-input policy) —
 `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`, plan `docs/plans/2026-10-21-step8…`",
 because Step 8 was built and run (Step 8 as-built register).*

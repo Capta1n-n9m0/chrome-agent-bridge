@@ -107,6 +107,26 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-24 · The Step 10 kickoff carries Run 13's live follow-ups as its first wave (#201)
+**Decided:** the Step 10 kickoff lists #194's four re-measurements (SAFE-5c's redirect half with a threaded
+redirect server, SAFE-POP-1 with the opener claimed first, SAFE-3 with the options window visible, SAFE-4 (b)
+polling the banner ≥ 10 s) and #196's SAFE-REL-3 URL-class print as a required first live wave, run under
+#193's stop rule (a runner returns on every stop). It comes after the user's ruling on #192.
+**Why:** no Step 10 phase doc exists yet to carry them (propagator, "Needs a decision" 2); one wave is cheaper
+than a separate pre-Step-10 wave and keeps the post-redirect download check from staying unmeasured.
+**Instead of:** a separate short wave before Step 10.
+**Revisit if:** the user asks for a re-run of Run 13's affected rows under #192; then that wave comes first and
+can carry these rows.
+**By:** Claude
+
+### 2026-10-24 · SAFE-7c (the debugger on this extension's own options page) stays unmeasured (#200)
+**Decided:** whether `chrome.debugger` can attach to this extension's own options page is not measured.
+**Why:** the own-page block refuses every call on such a tab before any attach (Run 13 SAFE-7b, PASS), so no
+behaviour depends on the answer; measuring it needs a throwaway extension in a driver-only profile (a new grant).
+**Instead of:** measuring it in Step 10.
+**Revisit if:** a gate exemption for own pages is ever proposed.
+**By:** Claude (propagator recommendation, `docs/plans/2026-10-24-step9-phase-e-safety-steps/propagator.md`)
+
 ### 2026-10-24 · S5: the roadmap's Step 9 block lists the 32 open decisions by number and short title (#199)
 **Decided:** number + short title, in the order that decisions.md → Open decisions → Step 9 uses, with #192
 first and in bold. **Why:** the decisions.md Open list itself names them by quoted title + number, and a full

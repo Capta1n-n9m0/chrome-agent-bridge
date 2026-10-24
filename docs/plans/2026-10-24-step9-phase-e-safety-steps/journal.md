@@ -92,3 +92,11 @@
   state with the gate open on #192), wrote the phase doc's Outcome and Status, ticked the checkboxes, added
   the as-built S5 section and S5's note on the daemon's disconnect reset; recorded #198, #199.
 - Next: propagator (no code), then session-closeout and the Step 10 kickoff (conditional on #192).
+
+## 2026-10-24 — propagator (c4cb2c1): 26 corrections; CLAUDE.md stale lines applied
+
+- Propagator: 26 dated corrections (phase doc 16, spec 6, setup 2, roadmap 1, e2e header 1); README correct.
+- Session agent applied its 8 CLAUDE.md items (diagram event, flow line via GatedRouter, intercept null rule,
+  sw.ts listeners, testing list, Docs section Steps 8/9, the action-title second-line gotcha).
+- Ruled #200 (SAFE-7c stays unmeasured) and #201 (Step 10's kickoff carries #194/#196 as its first wave under #193).
+- Next: session-closeout, then the Step 10 kickoff (conditional on #192).
