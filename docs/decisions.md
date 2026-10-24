@@ -114,6 +114,21 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-25 · S3: the cap warning's edges as built (#216)
+**Decided:** (1) "past the cap" needs > 800 listable elements, counted up to the 801st (a non-listable match after the
+800th listable element on an exactly-800 page is not flagged — S3 verifier MAJOR 1, fixed); (2) a `{text}` match
+inside the 800th listable element itself is flagged on a > 800 page, per 0.3's wording, pinned by a test, though the
+snapshot lists the enclosing element; (3) `waitFor {locator}` carries no flag; (4) the MCP's six action tools add the
+one line `Warning: this element is past the snapshot's 800-element cap — browser_snapshot does not list it.`;
+(5) the SDK exports a new **type** `BridgeWarning` (values stay eight) — part of #206 for the user; (6) "absent at every
+index" on 799/800 pages is a counter check plus sampled `locate` calls (the literal loop, ~2 min per page, was run
+once by the verifier: 0 flagged).
+**Why:** S3 report and verifier re-check (`…step10…-steps/S3.md`, `S3-verifier.md`).
+**Instead of:** flagging on exactly-800 pages; a literal every-index loop in the suite.
+**Revisit if:** the user prefers (2) unflagged (the snapshot does list the enclosing element).
+**By:** Claude
+*Note 2026-10-25: #206's open item now also covers the type export `BridgeWarning`.*
+
 ### 2026-10-25 · S5: `bb-login.ps1`'s post-submit wait — exit rules and the hard bound (#215)
 **Decided:** after its one press the script waits inside one bound counted from the press (`-WaitSec`, default 90):
 exit 0 once the Blackboard host shows no sign-in control on two clean scans in a row with the address unchanged

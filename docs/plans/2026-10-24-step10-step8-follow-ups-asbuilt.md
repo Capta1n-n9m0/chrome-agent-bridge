@@ -113,3 +113,30 @@ session agent; one block per stage, appended at each stage close.
 
 ### Estimates vs actuals
 - 1 h estimated; ~2 h 45 min (one fix round on the hard bound).
+
+## S3 — The 800-cap warning · 2026-10-25 · verifier: PASS-with-notes · commit `89d6de7`
+
+### Contracts (binding forward)
+- `LocateResult.pastSnapshotCap?: true` when the page has > 800 listable elements and the match comes after the 800th
+  in walk order; an action resolved from such a locator carries the flag on its reply (every branch); absent
+  otherwise, so ≤ 800 pages answer byte for byte as before. `waitFor {locator}` carries none.
+- SDK: `client.on("warning", (w: BridgeWarning) => …)` with `{tab, method, kind: "pastSnapshotCap"}`, no locator or
+  text; actions still resolve `undefined`; eight exported values, plus the type `BridgeWarning`.
+- MCP: one line `Warning: this element is past the snapshot's 800-element cap — browser_snapshot does not list it.`
+  after the six action tools' answers. `a11y.ts`/`snapshot.ts` unchanged since `f45e3bf`.
+
+### Decisions taken
+- #216 (and #206 applied).
+
+### Deviations from the phase doc
+- Phase doc 0.3 got a dated mechanical note (801 size checks, not F18's 800). The pre-S1 snapshot capture holds 45
+  fixtures, not 46 (`CLAUDE.md` and the kickoff say 46 — propagator). One exact `LocateResult` type pin changed on
+  purpose; the old shape still pinned. Tests 2807/117 → 2989/122.
+- Found, outside the lane: `npx tsc --noEmit -p recipes/tsconfig.s6.json` fails with 26 errors already at `2479301`
+  (S8 investigates).
+
+### Estimates vs actuals
+- 2 h estimated; ~63 min.
+
+### Open decisions for the user
+- #206 (incl. `BridgeWarning`), #216 item 2.
