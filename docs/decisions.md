@@ -176,6 +176,22 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
 
+### 2026-10-25 · S5-rules: SW-2's edge cases and UP-LOGS's fixture set, ruled before Run 16 (#277)
+**Decided:** (a) SW-2 is NOT MEASURED when the warm-up trial itself is not measured or when there are not exactly one
+warm-up and three trials (as `s11-rules.ts` already does). (b) UP-LOGS counts as fixture only `http://` on the wave's
+fixture servers (127.0.0.1 and `*.localhost` aliases, ports 8081 and 8084), `chrome://extensions`, and this
+extension's own `chrome-extension://<id>/` pages — Step 10's reading (`recipes/s10-rules.ts` `isFixture10`); any other
+loopback port counts as other. S5-actor aligns `s11-rules.ts` to (b) (today it treats every loopback port as fixture
+and the extension's pages as other). Both as a dated §4.23 note, before any observation; (c) the S5-rules step agent's
+one-line `exclude` in `recipes/tsconfig.s6.json` (outside its lane, the s9/s10 pattern of #228) is accepted.
+**Why:** the sheet was silent on both (S5-rules verifiers 1 MINOR 3 and 2 MINOR 1). (a) can never turn a fail into a
+pass; (b) is the stricter of the two readings for real hosts (a stray local server is not "fixture") and the earlier
+run's for the wave's own extension pages, which the wave opens itself (options page, `chrome://extensions`).
+**Instead of:** any loopback port as fixture (lets an unrelated local server's URL pass); the extension's own pages as
+other (a STOP the wave causes itself).
+**Revisit if:** a live slice opens a page outside this set on purpose (then a new dated note before that slice).
+**By:** Claude
+
 ### 2026-10-25 · S3c: an erased type import lets the recipes programs see `Window.__agentBridge` (#276)
 **Decided:** `extension/src/upload-files.ts` gains `import type {} from "./content/index.js";` (with a comment), which
 the compiler removes; every recipes typecheck exits 0 and every `dist/` file is byte-identical (S3c verifier).

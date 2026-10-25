@@ -1538,6 +1538,13 @@ blocked sites — a miss is a `STOP:`; the toolbar button presses need it pinned
 
 *Known limits, recorded before the run (not failures):* the file-URL toggle's UI Automation exposure on this Chrome, F12 docking DevTools in window X, the banner's visibility after a detach, and `createIsolatedWorld` without `Page.enable` are unmeasured until this wave; a helper that cannot read what it needs prints a `STOP:` or records NOT MEASURED, and a fix between rows is a recorded set-up fix, never a change of a pass rule. The Run 16 record goes to `docs/plans/2026-10-25-step11-file-upload-steps/S5-run-record.md` and §5 gets a Run 16 section from S5-record.
 
+*Added 2026-10-25, before any observation (S5-rules verifiers; decisions.md · 2026-10-25 · S5-rules: SW-2's edge
+cases and UP-LOGS's fixture set, ruled before Run 16 (#277)):* **SW-2** — a warm-up trial that is itself not measured,
+or a trial count other than one warm-up plus three, makes SW-2 NOT MEASURED (never a decided outcome). **UP-LOGS** — a
+URL counts as fixture only when it is `http://` on the wave's own fixture servers (127.0.0.1 and its `*.localhost`
+aliases on ports 8081 and 8084), `chrome://extensions`, or this extension's own `chrome-extension://<id>/` pages;
+any other `scheme://host`, another loopback port included, counts as other.
+
 ## 5. Results template
 
 Copy this and fill it in during the run:
