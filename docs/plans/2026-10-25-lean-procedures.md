@@ -60,7 +60,7 @@ Budgets: root ≤ 3,000 words, each package file ≤ 3,500 (`scripts/doc-check.m
 
 ## Stages
 
-### L1 — Rules and skills (session, risk: low) — done
+### L1 — Rules and skills (session, risk: low) — done (`817f8b1`)
 `docs/agent-rules.md`; `long-run`, `step-agent`, `phase-kickoff`, `session-closeout` rewritten to
 point instead of paste; `role-prompts.md` and `asbuilt.md` folded in; `cleanup-pass` skill;
 `scripts/doc-check.mjs`; `docs/docs-writing-guide.md` updated.
@@ -69,7 +69,7 @@ point instead of paste; `role-prompts.md` and `asbuilt.md` folded in; `cleanup-p
 1. The map above. Gotcha text moves unchanged, except: history notes dropped, pointers fixed,
    a count brought to the code's current value.
 2. The history notes → `docs/plans/2026-10-25-lean-procedures-steps/claude-md-history.md` (the
-   table; the session agent records it as one decisions entry).
+   table, cited from § As built).
 3. `docs/decisions.md` → Open decisions (compressed: struck-through lists removed), **Standing
    decisions** (one line each: still governs how we work or what the product promises), an index
    of `docs/decisions-archive/` files (by step, numbers unchanged), and the current step's entries.
@@ -79,7 +79,7 @@ point instead of paste; `role-prompts.md` and `asbuilt.md` folded in; `cleanup-p
    added to the package `CLAUDE.md` it concerns as a measured fact with its source.
 5. Pointers in living docs to "CLAUDE.md Runtime gotchas" now name the package file.
 
-### L3 — Step 11 kickoff and phase doc (session, risk: low)
+### L3 — Step 11 kickoff and phase doc (session, risk: low) — done (`64c4d67`, `973ede0`)
 Kickoff rewritten to the new template (≤ 1.5k words); phase doc: risk tier per stage, As built
 section instead of a separate file.
 
@@ -96,6 +96,26 @@ section instead of a separate file.
   `decisions.md` or the archive (count of `### ` entries equal; text diff empty per entry).
 - **L.4** No code file changed (`git diff --stat` shows only `.md` files and `scripts/doc-check.mjs`).
 - **L.5** Kickoff ≤ 1.5k words; every path and decision it cites exists.
+
+## As built
+
+### L2 — 2026-10-25 · verifier: PASS (third check) · commits `3035149`, `bcb9b09`, `ec9092f` · models: builders and fixers Sonnet 5.5 (effort high), verifiers Opus 5.5
+- **Result:** root `CLAUDE.md` 189 lines, about 2.2k words (from 1,000 lines, 13.3k); package files `extension/`
+  3.3k (with `src/{content,evaluate,handlers}/` 0.9k, 0.5k, 0.5k), `daemon/` 2.0k, `recipes/` 1.8k, `sdk/` 0.7k,
+  `mcp/` 0.6k, `shared/` 0.1k; `docs/decisions.md` 2.5k words (from 37k) with 102 Standing decisions; archive
+  `docs/decisions-archive/step6.md` … `step10.md` (`wc -w`; `L2-builder.md`).
+- **Proof:** `check-l2.mjs`: 91/91 gotchas in exactly one file, 231/231 decision entries identical, 0 history notes;
+  verifier 1 also compared every gotcha body independently (86 verbatim, 5 differ only by a fixed pointer).
+- **Fix rounds (Sonnet), findings (Opus):** round 1 for F1 (SDK and extension code facts reachable only from
+  `daemon/`, a gap in the map) and F2 (one-off Chrome-restart grants listed as standing); round 2 for R1 (two
+  safety-gate gotchas moved into `handlers/`, where an agent editing `safety*.ts` would not load them). Each was a
+  placement or judgement error the Opus verifier caught; no text was lost in any round.
+- **Deviation:** the first builder hung on an API request (no transcript growth from 14:56 UTC); stopped after ~19 min
+  and replaced by a fresh builder from its partial state (`agent-rules.md` §8).
+- **History notes:** 43, not 37 (`claude-md-history.md`); recorded there, not as a decisions entry, because each
+  row already cites its cause.
+- **Probe gap:** sub-folder files (`extension/src/*/CLAUDE.md`) were not in the Linux probe; the Step 11 kickoff's
+  first check covers them on Windows.
 
 ## Trial: Step 11 against Step 10
 
