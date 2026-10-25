@@ -151,8 +151,10 @@ export function parseUploadFolderLine(text: string): UploadFolderLine {
   if (text.trim() === "" || text.startsWith("#")) return { kind: "ignored", text };
   const invalid: UploadFolderLine = { kind: "invalid", text };
   if (PAD_RE.test(text)) return invalid; // never trimmed: a folder is taken exactly as typed
-  // One trailing separator is allowed on a folder line (`D:\Data\Shared\`, `/srv/drop/`).
-  const body = text.endsWith("\\") || text.endsWith("/") ? text.slice(0, -1) : text;
+  // One trailing separator is allowed on a folder line (`D:\Data\Shared\`, `/srv/drop/`). A trailing `\` is a
+  // separator only on a drive-letter line: on a POSIX line it stays, so BACKSLASH refuses it (#249).
+  const trailingSep = text.endsWith("/") || (text.endsWith("\\") && WIN_DRIVE_RE.test(text));
+  const body = trailingSep ? text.slice(0, -1) : text;
   const s = shapeOf(body);
   if ("refused" in s) return invalid;
   // A root (`C:\`, `/`) never parses as a folder here: its body is `C:` (RELATIVE) or `` (EMPTY).

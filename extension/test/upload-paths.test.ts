@@ -215,6 +215,18 @@ describe("S2.1 — folder lines", () => {
     for (const ignored of ["", "   ", "# C:\\Up", "#comment"]) expect(parseUploadFolderLine(ignored).kind).toBe("ignored");
   });
 
+  it("S2 verifier MINOR 1 (#249): a POSIX folder line ending in `\\` is refused, never normalised", () => {
+    for (const bad of ["/home/u/Up\\", "/srv/drop\\", "/\\"]) {
+      expect(parseUploadFolderLine(bad).kind, JSON.stringify(bad)).toBe("invalid");
+    }
+    for (const ok of ["D:\\Data\\Shared\\", "C:/Up/", "C:\\Up/", "/srv/drop/", "/home/u/Up/"]) {
+      expect(parseUploadFolderLine(ok).kind, ok).toBe("valid");
+    }
+    const f = parseUploadFolders("/home/u/Up\\");
+    expect(f.count).toBe(0);
+    expect(uploadPathAllowed("/home/u/Up/x", f)).toBe(false);
+  });
+
   it("parseUploadFolders splits CRLF, CR and LF, keeps every line in order, and counts the valid folders only", () => {
     const f = parseUploadFolders(["C:\\Up", "Up", "# c", "/srv/drop/", "", "C:\\"].join("\r\n").replace("\r\n/srv", "\r/srv"));
     expect(f.lines.map((l) => l.kind)).toEqual(["valid", "invalid", "ignored", "valid", "ignored", "invalid"]);
