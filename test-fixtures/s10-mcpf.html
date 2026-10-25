@@ -1,0 +1,42 @@
+<!doctype html>
+<!--
+  Step 10 S7 (Run 15) fixture: MCPF-1 (the MCP's trusted tools focus first) and SW-1 (the screenshot
+  switch). Written 2026-10-25 by the S7 prep builder, before any R15 row ran. The page's own reporter is
+  the evidence (an `ok` from a tool is not): every click on the button, every input into the field and
+  every keydown anywhere on the page is pushed to `window.__s10log` with the event's `isTrusted` and the
+  page's `visibilityState` at that moment; `window.__s10vis` keeps every `visibilitychange` with its time
+  (`performance.timeOrigin + performance.now()`). recipes/s10.ts reads both by `evaluate`. Nothing here
+  fetches, stores or sends anything.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>S10 MCPF fixture</title>
+  </head>
+  <body>
+    <h1>S10 MCPF fixture</h1>
+    <p>Trusted input reporter for the Step 10 live wave.</p>
+    <button id="mcpf-btn">MCPF target</button>
+    <input id="mcpf-input" aria-label="MCPF input" />
+    <p id="mcpf-report">no input yet</p>
+    <script>
+      (function () {
+        var now = function () { return performance.timeOrigin + performance.now(); };
+        window.__s10log = [];
+        window.__s10vis = [[document.visibilityState, now(), "start"]];
+        var report = document.getElementById("mcpf-report");
+        function rec(type, e, extra) {
+          var t = e.target && e.target.id ? e.target.id : (e.target === document ? "document" : "other");
+          var entry = { n: window.__s10log.length + 1, type: type, isTrusted: e.isTrusted === true, target: t, key: e.key || "", vis: document.visibilityState, at: now() };
+          if (extra) for (var k in extra) entry[k] = extra[k];
+          window.__s10log.push(entry);
+          report.textContent = type + " isTrusted=" + entry.isTrusted + " (" + window.__s10log.length + " events)";
+        }
+        document.getElementById("mcpf-btn").addEventListener("click", function (e) { rec("click", e); });
+        document.getElementById("mcpf-input").addEventListener("input", function (e) { rec("input", e, { len: e.target.value.length }); });
+        document.addEventListener("keydown", function (e) { rec("keydown", e); }, true);
+        document.addEventListener("visibilitychange", function () { window.__s10vis.push([document.visibilityState, now(), "change"]); });
+      })();
+    </script>
+  </body>
+</html>

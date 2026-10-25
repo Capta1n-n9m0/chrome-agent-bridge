@@ -1,0 +1,109 @@
+<!doctype html>
+<!--
+  Step 10 S7 (Run 15) fixture: the SAVE rows (`browser_evaluate {saveTo}` / `Tab.evaluateToFile`) and
+  SAVE-FIX (phase doc 0.5's fixture leg). Written 2026-10-25 by the S7 prep builder, before any R15 row ran.
+
+  `await window.__s10build(key)` builds one value in page memory, deterministically (a fixed xorshift32
+  seed per key; no Math.random, no clock), and answers only {key, kind, length, bytes, sha256}: `bytes` and
+  `sha256` are the page's OWN digest of the value's UTF-8 as `TextEncoder` makes it (a lone surrogate
+  becomes U+FFFD) through `crypto.subtle` — what the saved file must equal (phase doc 0.4, Stage 0 F12).
+  Keys:
+    1m    1 048 576 letters                                      (SAVE-1M)
+    4m    4 x 1 048 576 + 12 345 letters (several 1 MiB pulls)    (SAVE-DISARM, -CLOSE, -JSOFF, -BLOCK, -TTL, -HOLD)
+    64m   64 x 1 048 576 + 7 letters (>= 64 MiB)                  (SAVE-64, SAVE-PRIM)
+    surr  an astral character across the 1 MiB boundary, a lone high and a lone low surrogate (SAVE-SURR)
+    json  an object: 150 items, depth 11, a 6 000-character nested string; held as an OBJECT, so a save
+          JSON.stringify's it in the page; the digest is of JSON.stringify(value)          (SAVE-JSON)
+    fix   a synthetic ~420 000-character export of reserved names only (example.invalid, "Example Student
+          0001", ids _9100_n), held as a string in window.__s10export too                 (SAVE-FIX)
+  Every letter value uses only G H J K L M N P Q R S T U V W X Y Z: no hex digit, no lower case, no
+  punctuation, so no 16-character run of an answer (a path, a count, a hex sha256) can occur in it by
+  chance. `window.__s10drop(key)` frees one value. Nothing here fetches, stores or sends anything.
+  recipes/test/s10-fixtures.test.ts runs this script in node:vm and checks the lengths and offsets
+  recipes/s10-rules.ts expects.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>S10 SAVE fixture</title>
+  </head>
+  <body>
+    <h1>S10 SAVE fixture</h1>
+    <p id="save-report">nothing built yet</p>
+    <script id="s10-save-script">
+      (function () {
+        "use strict";
+        var ALPHA = "GHJKLMNPQRSTUVWXYZ";
+        var MIB = 1048576;
+        function letters(n, seed) {
+          var s = (seed >>> 0) || 1;
+          var out = new Array(n);
+          for (var i = 0; i < n; i++) {
+            s ^= s << 13; s >>>= 0;
+            s ^= s >>> 17;
+            s ^= s << 5; s >>>= 0;
+            out[i] = ALPHA.charAt(s % 18);
+          }
+          return out.join("");
+        }
+        function pad(n, w) { var t = String(n); while (t.length < w) t = "0" + t; return t; }
+        function hex(buf) {
+          var b = new Uint8Array(buf), out = "";
+          for (var i = 0; i < b.length; i++) out += (b[i] < 16 ? "0" : "") + b[i].toString(16);
+          return out;
+        }
+        function makeFix() {
+          var columns = [];
+          for (var c = 1; c <= 12; c++) columns.push({ id: "_9001_" + c, name: "Fixture Column " + pad(c, 2), points: 10 });
+          var grades = [];
+          var total = 0;
+          for (var i = 0; total < 418000; i++) {
+            var scores = [];
+            for (var k = 0; k < columns.length; k++) scores.push(((i * 7 + k * 3) % 100) + ".50");
+            var g = { email: "student" + pad(i + 1, 4) + "@example.invalid", name: "Example Student " + pad(i + 1, 4), scores: scores, userId: "_9100_" + (i + 1) };
+            grades.push(g);
+            total += JSON.stringify(g).length + 1;
+          }
+          return JSON.stringify({ columns: columns, course: "S10-FIXTURE", grades: grades });
+        }
+        function makeJson() {
+          var items = [];
+          for (var i = 0; i < 150; i++) items.push({ i: i, s: letters(30, 1000 + i) });
+          var deep = { leaf: letters(10, 7) };
+          for (var d = 0; d < 10; d++) deep = { child: deep, level: 10 - d };
+          return { big: { a: { b: { text: letters(6000, 99) } } }, deep: deep, items: items, n: null, num: 12.5, t: true };
+        }
+        var MAKERS = {
+          "1m": function () { return letters(MIB, 11); },
+          "4m": function () { return letters(4 * MIB + 12345, 44); },
+          "64m": function () { return letters(MIB, 64).repeat(64) + "GHJKLMN"; },
+          "surr": function () { return "G".repeat(MIB - 1) + "😀" + "H".repeat(100) + "\uD800" + "J".repeat(100) + "\uDC00" + "K".repeat(MIB); },
+          "json": makeJson,
+          "fix": makeFix
+        };
+        window.__s10v = {};
+        window.__s10status = {};
+        window.__s10build = async function (key) {
+          var make = MAKERS[key];
+          if (!make) return { key: key, error: "unknown key" };
+          var v = make();
+          var text = typeof v === "string" ? v : JSON.stringify(v);
+          var bytes = new TextEncoder().encode(text);
+          var sha256 = hex(await crypto.subtle.digest("SHA-256", bytes));
+          window.__s10v[key] = v;
+          if (key === "fix") window.__s10export = text;
+          var st = { key: key, kind: typeof v === "string" ? "string" : "json", length: text.length, bytes: bytes.length, sha256: sha256 };
+          window.__s10status[key] = st;
+          var r = document.getElementById("save-report");
+          if (r) r.textContent = "built " + key + " (" + bytes.length + " bytes)";
+          return st;
+        };
+        window.__s10drop = function (key) {
+          delete window.__s10v[key];
+          if (key === "fix") delete window.__s10export;
+          return "dropped " + key;
+        };
+      })();
+    </script>
+  </body>
+</html>
