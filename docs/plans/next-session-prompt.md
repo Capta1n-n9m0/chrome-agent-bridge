@@ -55,7 +55,7 @@ and add it where it belongs, not to a brief.
 ## 3. This phase's settings
 
 - **Form: three levels.** One step agent per stage (Stage 0, S1–S6); each spawns a fresh builder (or live runner),
-  an independent verifier, and at most two fix rounds.
+  an independent verifier, and fix rounds per `docs/agent-rules.md` §6–§7.
 - **Models:** by each stage's risk in the phase doc, per `docs/agent-rules.md` §7.
 - **Order and parallelism:** Stage 0 → S1 → S2 → (S3 ∥ S4, file-disjoint) → S5 alone, with no uncommitted code in
   the main tree → S6. At most two step agents at once. Host tests bind port 0; only S5 starts the real daemon on 9234.
@@ -80,8 +80,8 @@ with estimates and risk tiers in `journal.md`.
 
 ## 5. Close-out
 
-`long-run` §5, and the trial numbers into `docs/plans/2026-10-25-lean-procedures.md` § Trial. Then `phase-kickoff` for the next step: **the
-block list stops redirected requests** (#140, its own small step by #229), then **Step 12 — Phase F** (decisions.md ·
-2026-10-24 · The roadmap after Step 8 (#129)). The final report leads with the decisions taken while I was away.
+`long-run` §5 (its order), plus the trial numbers into `docs/plans/2026-10-25-lean-procedures.md` § Trial. The next
+step is **the block list stops redirected requests** (#140, its own small step by #229), then **Step 12 — Phase F**
+(decisions.md · 2026-10-24 · The roadmap after Step 8 (#129)). The final report leads with the decisions taken while I was away.
 
 I trust you — decide well and leave a trail we can audit.

@@ -15,13 +15,14 @@ from `docs/agent-rules.md`, the `long-run` skill, the phase doc or a `CLAUDE.md`
    sections, the earlier as-built sections it builds on, the decisions that bind (date + title),
    `docs/agent-rules.md`, the `long-run` and `step-agent` skills.
 5. **This phase's settings**: the form (three levels, unless a reason is given), parallel lanes,
-   the steps dir, the commit trailer, grants for live work beyond the standing ones, and any
-   deviation from `agent-rules.md` (normally none).
-6. **Stage 0 — spec audit**: one step agent, no feature code. Name the lenses briefly (code
-   citations executed, not read; counts recomputed; blind spots, with a short seed list that
-   points to the package `CLAUDE.md` files and the phase doc; testability) and that it
-   re-executes the previous phase's as-built contracts. Output path; the session agent writes the
-   stage split after it.
+   the steps dir, grants for live work beyond the standing ones, and any deviation from
+   `agent-rules.md` (normally none). Models, fix rounds and commits are `agent-rules.md`'s: point,
+   don't state.
+6. **Stage 0 — spec audit**: one line pointing to the phase doc's Stage 0, which holds the lenses
+   (code citations executed, not read; counts recomputed; blind spots with a seed list;
+   testability), the re-execution of the previous phase's contracts, and its exit check. Before
+   it: record the phase doc's proposed decisions so the audit can attack them. After it: the
+   stage split in the journal.
 7. **Close-out**: the `long-run` §5 end of phase, and what follows this step on the roadmap.
 
 ## Bookkeeping invariants (carry into every phase)

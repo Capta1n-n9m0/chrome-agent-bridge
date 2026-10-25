@@ -485,7 +485,9 @@ every new test of pure logic fails on the code before the stage (the verifier pr
 
 ## STOP rules and forbidden fixes
 
-**Stops the gate** (the write-up continues): a pre-registered check fails after 2 fix rounds; a router method
+**Stops the gate** (the write-up continues): a pre-registered check fails after the fix rounds `docs/agent-rules.md`
+§6–§7 allow (2; 3 on a low-risk stage) *(Corrected 2026-10-25: was "after 2 fix rounds", because #230's third, Opus
+round for low-risk stages applies from Step 11)*; a router method
 reachable without the safety gate; an upload accepted for a file outside the human's folders; any path by which a
 client, the daemon or a page changes the safety state (the upload folders included) or reaches the extension's own
 pages; a safety state not restored after the wave; a path, folder, file name, pattern, URL, title, evaluated value or

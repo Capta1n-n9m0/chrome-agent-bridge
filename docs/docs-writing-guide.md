@@ -8,7 +8,7 @@ current, not a pile that keeps growing. Ported 2026-10-21 from the user's resear
 | Place | Holds | Never holds |
 |---|---|---|
 | `CLAUDE.md` (root) | what the project is, the architecture map, a dated **Current state** block, commands, the invariants that bind every package, conventions, the skills and docs index | results tables, narratives, history, rationale, package gotchas |
-| `<package>/CLAUDE.md` (`extension/`, `daemon/`, `sdk/`, `mcp/`, `shared/`, `recipes/`; `extension/src/{content,evaluate,handlers}/` for deeper extension files) | that package's Key files and **Runtime gotchas** (measured facts); `recipes/` holds the live-run and Windows tooling facts. Claude Code loads one the first time an agent opens a file in that folder (probed 2026-10-25) | anything about another package; history |
+| `<package>/CLAUDE.md` (`extension/`, `daemon/`, `sdk/`, `mcp/`, `shared/`, `recipes/`; `extension/src/{content,evaluate,handlers}/` for deeper extension files) | that package's Key files and the **Runtime gotchas** of its code: a gotcha lives with the code an agent would edit to break it, and the other packages it binds get a one-line pointer (decisions.md · 2026-10-25 · Gotchas follow the code they bind (#232)); `recipes/` holds the live-run and Windows tooling facts. Claude Code loads one the first time an agent opens a file in that folder (probed 2026-10-25) | another package's gotchas (a pointer only); history |
 | `docs/agent-rules.md` | the standing rules for every subagent; briefs point to it | rules restated elsewhere |
 | `docs/specs/<date>-*-design.md` | the design of record: what and why, the decided shape of a step | how it went, status |
 | `docs/plans/<date>-stepN-*.md` | one phase doc per roadmap step: how, stages (with risk tier), exit checks, status line, measured results, and an **As built** block per stage; beside it `…-steps/` (journal, step and verifier reports, ledgers of waiting stages, evidence). Steps 6–10 kept a separate `…-asbuilt.md` | design rationale (link the spec) |
@@ -32,7 +32,8 @@ Never duplicate across these places. Point to the source instead.
    in-place amendments.
 3. **Reference docs**, living material about how things are (`setup.md`, `e2e-test-plan.md`,
    this guide, `README.md`).
-4. **Records**: `decisions.md`, `progress-and-roadmap.md`, as-built registers, steps dirs.
+4. **Records**: as-built registers, steps dirs, the decisions archive, closed phase docs (the full
+   list below). `decisions.md` and `progress-and-roadmap.md` are logs kept true: living.
 
 **Records and living docs.** Living docs are kept true: the `CLAUDE.md` files, `docs/agent-rules.md`,
 the skills, the guide, `setup.md`, `e2e-test-plan.md` (§1–§4), `README.md`, `recipes/README.md`,

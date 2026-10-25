@@ -60,7 +60,7 @@ for (const r of living.filter((r) => !PATH_RECORDS.some((re) => re.test(r)))) {
   const lines = text.split("\n");
   lines.forEach((line, i) => {
     // A dated note saying a file was retired names it on purpose.
-    if (/\bretired\b/i.test(line)) return;
+    if (/\b(is|are|was|were) retired\b/i.test(line)) return;
     const cands = [...line.matchAll(PATH_RE)].map((m) => [m[1], true]).concat([...line.matchAll(LINK_RE)].map((m) => [m[1], false]));
     for (const [tok, rootRel] of cands) {
       if (/^(https?:|mailto:)/.test(tok) || /[*{}<>…]|\.\.\.|YYYY|<|N\b|\/dist\//.test(tok)) continue;

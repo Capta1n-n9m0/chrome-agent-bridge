@@ -45,6 +45,7 @@ mismatch behind the first failure) is a future improvement item, not a priority 
 **By:** user
 
 ### 2026-10-22 · Live E2E waves are run by Claude end to end (#33)
+*Superseded in part 2026-10-25: "no extension change or reload" by decisions.md · 2026-10-23 · Later extension reloads use `recipes/reload-extension.ps1` (#65); "Sonnet or Haiku" actors and "Opus subagents" by #230 (actors may run Sonnet; subagent models by risk, `docs/agent-rules.md` §7). The rest stands.*
 **Decided:** From now on Claude runs live E2E waves autonomously: it starts and prompts its own
 Claude sessions (headless `claude -p`, Sonnet or Haiku for simple tool-call prompts), runs
 PowerShell windows, opens and closes Chrome, captures Chrome's window for banner checks, and

@@ -29,6 +29,7 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-25 · The user rules on Step 10's open decisions; Step 10 closes (#229) — `decisions-archive/step10.md`
 - 2026-10-25 · Lean procedures: rules by pointer, package CLAUDE.md files, risk-tiered models (#230) — this file (Log)
 - 2026-10-25 · Commits carry exactly one trailer and no Claude-Session line (#231) — this file (Log)
+- 2026-10-25 · Gotchas follow the code they bind (#232) — this file (Log)
 
 **Product promises: the daemon, the clients and their lifecycle**
 - 2026-10-21 · The actor name carries the MCP's own process id (#2) — `decisions-archive/step6.md`
@@ -147,6 +148,17 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
+
+### 2026-10-25 · Gotchas follow the code they bind (#232)
+**Decided:** A runtime gotcha lives in the `CLAUDE.md` of the code an agent would edit to break it (a top-level
+extension file's fact in `extension/CLAUDE.md`, never a sub-folder file); every other package it binds gets a one-line
+pointer that does not repeat the headline. Cross-package facts stay in the root.
+**Why:** a folder `CLAUDE.md` loads only when an agent opens a file in that folder, so a fact filed by where it was
+measured (e.g. the SDK's knock facts in `daemon/`) never reached the agent editing that code (L2 verifier F1, R1;
+cleanup pass 2026-10-25, G1–G4).
+**Instead of:** placing by the package where the fact was measured, with pointers only.
+**Revisit if:** a gotcha binds two folders equally and pointers stop being enough.
+**By:** user (ruled on the cleanup pass, 2026-10-25)
 
 ### 2026-10-25 · Commits carry exactly one trailer and no Claude-Session line (#231)
 **Decided:** Every commit ends with exactly one trailer, `Co-Authored-By: Claude <model> <noreply@anthropic.com>`

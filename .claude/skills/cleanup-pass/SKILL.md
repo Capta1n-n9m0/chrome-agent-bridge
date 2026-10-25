@@ -30,7 +30,7 @@ OUTPUT: <docs/cleanup/<date>-evidence/<area>.md>, numbered findings as above. Re
 | Area | Checks | Model |
 |---|---|---|
 | **State** | the root Current state against the phase doc, the roadmap header and `git log`; status text anywhere else | Sonnet, effort high |
-| **Gotcha placement** | each gotcha sits in the `CLAUDE.md` of the package it concerns; no duplicates; each file within budget; Key files match the tree | Sonnet, effort high |
+| **Gotcha placement** | each gotcha sits with the code an agent would edit to break it, other packages get a pointer (#232); no duplicates; each file within budget; Key files match the tree | Sonnet, effort high |
 | **Procedure** | skills, kickoffs and briefs that paste rules, spec text or numbers; drift from `docs/agent-rules.md` | Sonnet, effort high |
 | **Decisions** | Open and Standing decisions match what was ruled and built; superseded entries marked; the archive index and `#N` citations resolve | Opus |
 | **Plan drift** (full pass only) | what the as-built broke in later plans, `docs/setup.md`, `docs/e2e-test-plan.md`, `recipes/README.md`, `README.md`, the spec | Opus |
