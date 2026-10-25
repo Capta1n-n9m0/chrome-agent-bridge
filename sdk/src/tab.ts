@@ -18,6 +18,7 @@ import {
 } from "@bridge/shared";
 import { downloadToFile, type DownloadOutcome } from "./download.js";
 import { saveEvaluateToFile, type EvaluateToFileOptions, type EvaluateToFileResult } from "./evaluate-save.js";
+import { prepareUpload, type UploadOptions, type UploadResult } from "./upload.js";
 import { attachContext, type FailureReportConfig } from "./error.js";
 import { normalizeTarget, requireLocator, type Target } from "./locator.js";
 import { TRUSTED_INPUT_POLICY, type TrustedInputPolicy } from "./policy.js";
@@ -389,6 +390,30 @@ export class Tab {
         timeoutMs: options.timeoutMs,
       }),
     );
+  }
+
+  /**
+   * Step 11 S4 (phase doc 0.8; decisions.md #240): puts the local file(s) at `paths` into the file input at
+   * `target` — an `<input type="file">`, a `<label>` for one, or an element holding exactly one — by one CDP call
+   * in the extension (`uploadFiles`); Chrome reads the files itself, no bytes cross the wire. Before any call each
+   * path must be absolute, an existing regular file and readable (`BAD_PARAMS` otherwise, naming the entry's index,
+   * never its path); what is sent is each file's real path (`fs.promises.realpath`). Resolves with each file's name,
+   * size and the sha256 of the bytes this client read — what Chrome accepted, not proof the page took it (#247).
+   *
+   * The files must lie in a folder the user allows in Chrome (extension options → Upload folders), and the user
+   * must allow the extension file access; otherwise `UPLOAD_REFUSED` (no failure report) — ask the user, never
+   * retry with another path. Not trusted input: no `focusTab`. Shows Chrome's debugging banner for the call.
+   * Never `click` a file input: that opens a native file dialog the bridge cannot see or close.
+   */
+  async upload(target: Target, paths: string | string[], options: UploadOptions = {}): Promise<UploadResult> {
+    this.#guard();
+    const where = normalizeTarget(target);
+    const files = await prepareUpload(paths);
+    const reply = await this.#send("uploadFiles", { ...where, paths: files.map((f) => f.path) }, options.timeoutMs);
+    if (typeof reply === "object" && reply !== null && (reply as { pastSnapshotCap?: unknown }).pastSnapshotCap === true) {
+      this.#host.notifyWarning?.({ tab: this.handle, method: "uploadFiles", kind: "pastSnapshotCap" });
+    }
+    return { files: files.map(({ name, bytes, sha256 }) => ({ name, bytes, sha256 })) };
   }
 
   /** Brings the tab to the front of its window and focuses the window (`focusTab`). */

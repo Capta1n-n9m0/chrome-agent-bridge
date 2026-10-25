@@ -13,6 +13,9 @@ export const CHUNK_BYTES = 1024 * 1024;
 // half (the SDK's main entry keeps its eight values; decisions.md #205).
 export { saveEvaluateToFile, checkSaveTarget } from "./evaluate-save.js";
 export type { EvaluateToFileOptions, EvaluateToFileResult } from "./evaluate-save.js";
+// Step 11 S4 (#240, #241): the upload preflight, shared with the MCP's browser_upload_file.
+export { prepareUpload } from "./upload.js";
+export type { PreparedUpload, UploadOptions, UploadResult } from "./upload.js";
 
 const WINDOWS_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
 

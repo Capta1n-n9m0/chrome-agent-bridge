@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerTools, type RegisterToolsOptions, type ToolBridge } from "../src/tools/registry.js";
 import { BridgeLink } from "../src/link.js";
@@ -75,10 +76,12 @@ describe("registerTools", () => {
     expect(textOf(res)).toBe("Navigated active tab to https://example.com");
   });
 
-  it("registers 23 tools (Step 8 S5 adds browser_use_active_tab)", () => {
+  // Amended 2026-10-25 (Step 11 S4, #241): 24 tools — browser_upload_file is added.
+  it("registers 24 tools (Step 8 S5 adds browser_use_active_tab, Step 11 S4 browser_upload_file)", () => {
     const names = Object.keys(tools(fakeBridge().bridge).registered);
-    expect(names).toHaveLength(23);
+    expect(names).toHaveLength(24);
     expect(names).toContain("browser_use_active_tab");
+    expect(names).toContain("browser_upload_file");
   });
 });
 
@@ -293,6 +296,8 @@ describe("tab resolution (T4.4)", () => {
       "browser_press_key", "browser_scroll", "browser_hover", "browser_select_option", "browser_back",
       "browser_forward", "browser_wait_for", "browser_evaluate", "browser_select_tab", "browser_close_tab",
       "browser_focus_tab", "browser_network_requests", "browser_network_clear",
+      // Amended 2026-10-25 (Step 11 S4, #241): the new tab tool.
+      "browser_upload_file",
     ];
     for (const name of Object.keys(registered)) {
       const shape = registered[name].inputSchema?.shape ?? {};
@@ -305,7 +310,7 @@ describe("tab resolution (T4.4)", () => {
         expect(shape.tab, name).toBeUndefined();
       }
     }
-    expect(tabTouching.filter((n) => registered[n])).toHaveLength(18);
+    expect(tabTouching.filter((n) => registered[n])).toHaveLength(19); // 18 + browser_upload_file (Step 11 S4)
   });
 });
 
@@ -762,6 +767,8 @@ describe("no daemon (connect() failing)", () => {
     browser_network_requests: {},
     browser_network_clear: {},
     browser_use_active_tab: {},
+    // Step 11 S4 (#241): a real file (this test file), so the preflight passes and the call reaches the link.
+    browser_upload_file: { ref: "e1", paths: [fileURLToPath(import.meta.url)] },
   };
 
   async function linkWithFailingConnect() {
@@ -777,10 +784,11 @@ describe("no daemon (connect() failing)", () => {
     return { link, connect };
   }
 
-  it("registers all 23 tools and a tool call carries the stored reason", async () => {
+  // Amended 2026-10-25 (Step 11 S4, #241): 24 tools.
+  it("registers all 24 tools and a tool call carries the stored reason", async () => {
     const { link, connect } = await linkWithFailingConnect();
     const t = tools(link);
-    expect(Object.keys(t.registered)).toHaveLength(23);
+    expect(Object.keys(t.registered)).toHaveLength(24);
     expect(connect).toHaveBeenCalledTimes(1);
     await expect(t.run("browser_snapshot")).rejects.toThrow(REASON);
     expect(textOf(await t.run("browser_status"))).toBe(`Daemon: not connected\nProblem: ${REASON}`);

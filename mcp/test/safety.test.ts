@@ -241,8 +241,13 @@ describe("S3.3 — no tool added, removed or renamed", () => {
     "browser_network_clear",
   ];
 
-  it("the 23 tool names, in registration order, are Step 8's", () => {
-    expect(Object.keys(tools(fakeBridge().bridge).registered)).toEqual(STEP8_TOOLS);
+  // Amended 2026-10-25 (Step 11 S4; decisions.md #241, phase doc 0.9): the list gains exactly one tool,
+  // `browser_upload_file`, registered right after `browser_select_option`; Step 8's 23 keep their order.
+  it("the 23 tool names, in registration order, are Step 8's; Step 11 adds browser_upload_file after browser_select_option", () => {
+    const names = Object.keys(tools(fakeBridge().bridge).registered);
+    expect(names.filter((n) => n !== "browser_upload_file")).toEqual(STEP8_TOOLS);
+    expect(names).toHaveLength(24);
+    expect(names.indexOf("browser_upload_file")).toBe(names.indexOf("browser_select_option") + 1);
   });
 
   it("no tool name speaks of arming, disarming, the safety state or blocking", () => {

@@ -26,6 +26,7 @@ import {
 import type { LocateResult, Locator, NetworkEntry, SnapshotResult, WaitForParams } from "@bridge/shared";
 import type { DownloadOutcome } from "./download.js";
 import type { EvaluateToFileOptions, EvaluateToFileResult } from "./evaluate-save.js";
+import type { UploadOptions, UploadResult } from "./upload.js";
 import type { Knocked } from "./knock.js";
 import type { Target } from "./locator.js";
 import {
@@ -472,6 +473,10 @@ export class BridgeClient {
   }
   async download(url: string, path: string, options?: DownloadOptions): Promise<DownloadOutcome> {
     return this.tab().download(url, path, options);
+  }
+  /** `Tab.upload` on the cursor (Step 11 S4, #240): the preflight, then `uploadFiles` with the real paths. */
+  async upload(target: Target, paths: string | string[], options?: UploadOptions): Promise<UploadResult> {
+    return this.tab().upload(target, paths, options);
   }
   async focus(): Promise<void> {
     return this.tab().focus();

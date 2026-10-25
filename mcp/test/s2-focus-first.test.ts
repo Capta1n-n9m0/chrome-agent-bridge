@@ -223,11 +223,40 @@ describe("S2.3 the tool list's names and input schemas equal f45e3bf's; the desc
     saveTo: { ...S4_ADDED_EVALUATE_PROPERTIES.saveTo, description: S1_SAVETO_DESCRIPTION },
   };
 
-  it("names and input schemas deep-equal the fixture captured at f45e3bf (browser_evaluate re-baselined by Step 10 S4 and Step 11 S1)", async () => {
+  // Re-baselined 2026-10-25 (Step 11 S4; decisions.md #241, phase doc 0.9, exit check S4.3): the tool list gains
+  // exactly one entry, `browser_upload_file`, whose input schema is written out below; every one of the other 23
+  // is unchanged from S1's expectation (the f45e3bf fixture, with `browser_evaluate` as re-baselined above). The
+  // fixture file is left untouched. `ref`, `locator` and `tab` are browser_click's own fields (the same constants).
+  const UPLOAD_TOOL = "browser_upload_file";
+  const UPLOAD_PATHS_PROPERTY = {
+    type: "array",
+    items: { type: "string", minLength: 1 },
+    minItems: 1,
+    maxItems: 20,
+    description:
+      "Absolute paths of the files to put into the input (1–20; more than one only if the input takes several). Each must lie in a folder the user allowed in Chrome (extension options → Upload folders).",
+  };
+
+  it("names and input schemas deep-equal the fixture captured at f45e3bf (browser_evaluate re-baselined by Step 10 S4 and Step 11 S1; browser_upload_file added by Step 11 S4)", async () => {
     const fixture = JSON.parse(
       readFileSync(fileURLToPath(new URL("./fixtures/tool-schemas-f45e3bf.json", import.meta.url)), "utf8"),
     ) as Array<{ name: string; inputSchema: { properties: Record<string, unknown> } }>;
-    const live = await captureToolSchemas();
+    const all = await captureToolSchemas();
+    expect(all).toHaveLength(24);
+    const upload = all.filter((t) => t.name === UPLOAD_TOOL);
+    expect(upload).toHaveLength(1);
+    const click = fixture.find((t) => t.name === "browser_click")!.inputSchema as { properties: Record<string, unknown> } & Record<string, unknown>;
+    expect(upload[0]!.inputSchema).toEqual({
+      ...click,
+      properties: {
+        ref: click.properties.ref,
+        locator: click.properties.locator,
+        paths: UPLOAD_PATHS_PROPERTY,
+        tab: click.properties.tab,
+      },
+      required: ["paths"],
+    });
+    const live = all.filter((t) => t.name !== UPLOAD_TOOL);
     expect(live.map((t) => t.name)).toEqual(fixture.map((t) => t.name));
     expect(fixture).toHaveLength(23);
     for (const [i, t] of live.entries()) {

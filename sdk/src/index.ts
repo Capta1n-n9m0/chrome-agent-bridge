@@ -36,6 +36,8 @@ export { downloadToFile } from "./download.js";
 // Step 10 S4 (#205): `Tab.evaluateToFile`'s option and result shapes — types only; the values stay eight.
 export type { EvaluateToFileOptions, EvaluateToFileResult } from "./evaluate-save.js";
 export type { DownloadOutcome } from "./download.js";
+// Step 11 S4 (#240): `Tab.upload`'s option and result shapes — types only; the values stay eight.
+export type { UploadOptions, UploadResult } from "./upload.js";
 // The formatters are also on the `@bridge/sdk/format` subpath, which the MCP uses (#46, #75).
 export { formatSnapshot, formatNetwork } from "./format/index.js";
 export type { FormatNetworkOptions, FormattableResult } from "./format/index.js";

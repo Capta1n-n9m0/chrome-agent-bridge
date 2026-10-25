@@ -2,10 +2,10 @@ import { readFile } from "node:fs/promises";
 import os from "node:os";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { isHiddenReason, isLocator, isSafetyState, type EvalEnvelope, type Locator, type SnapshotResult } from "@bridge/shared";
+import { UPLOAD_FILES_MAX_PATHS, isHiddenReason, isLocator, isSafetyState, type EvalEnvelope, type Locator, type SnapshotResult } from "@bridge/shared";
 import { BridgeError, ErrorCodes, downloadToFile, type BridgeClient } from "@bridge/sdk";
 import { formatEntry, formatNetwork, formatSnapshot, type FormattableResult } from "@bridge/sdk/format";
-import { checkSaveTarget, saveEvaluateToFile } from "@bridge/sdk/download";
+import { checkSaveTarget, prepareUpload, saveEvaluateToFile } from "@bridge/sdk/download";
 import { attachContext, isAttachCode, safetyRefusalLine, type FailureReportConfig } from "@bridge/sdk/report";
 import { CONNECTING_REASON } from "../link.js";
 import { TabCursor } from "../cursor.js";
@@ -291,7 +291,7 @@ const realFailureReports = (): FailureReportConfig => ({
 });
 
 /**
- * Registers the 23 tools. `cursor` is this session's tab: by default a fresh one over `bridge`; the MCP
+ * Registers the 24 tools (Step 11 S4 added `browser_upload_file`, #241). `cursor` is this session's tab: by default a fresh one over `bridge`; the MCP
  * passes the one its BridgeLink feeds (`../index.ts`), so a daemon restart is noticed.
  */
 export function registerTools(
@@ -489,7 +489,7 @@ export function registerTools(
 
   reg.tool(
     "browser_click",
-    "Click the element with the given ref (or found by `locator`) in this session's tab (the active tab is claimed on first use) or `tab`. Set trusted=true to force real CDP input (shows the debugging banner). With trusted=true the tab is first brought to the front of its window (as browser_focus_tab does) and is left there.",
+    "Click the element with the given ref (or found by `locator`) in this session's tab (the active tab is claimed on first use) or `tab`. Set trusted=true to force real CDP input (shows the debugging banner). To put a file into a file input use browser_upload_file instead: clicking a file input opens a native file dialog the bridge cannot see or close. With trusted=true the tab is first brought to the front of its window (as browser_focus_tab does) and is left there.",
     {
       ref: z.string().optional().describe(REF_DESCRIPTION),
       locator: LOCATOR_SCHEMA,
@@ -601,6 +601,40 @@ export function registerTools(
       return onTab(tab, async (t) => {
         const reply = await bridge.call("selectOption", { ...target, values, tab: t });
         return capped(reply, `Selected ${values.join(", ")} in ${describeTarget(target)}`);
+      });
+    },
+  );
+
+  // Step 11 S4 (phase doc 0.9; decisions.md #241, #245, #247): the preflight (shared with the SDK's `Tab.upload`)
+  // runs before any call, the cursor's claim included; the wire gets each file's real path; the answer names files,
+  // never a directory. `UPLOAD_REFUSED` is the one safety line (`withSafetyRefusals`).
+  reg.tool(
+    "browser_upload_file",
+    "Put one or more local files into a file input — an <input type=\"file\">, a label for one, or an element holding exactly one (the hidden input behind an \"Attach\" button or drop zone) — found by ref or `locator` in this session's tab (the active tab is claimed on first use) or `tab`, as if the user had picked them in the file dialog. `paths` are absolute file paths on this computer; Chrome reads the files itself. The tab is not brought to the front. Every file must lie in a folder the user allowed in Chrome (extension options → Upload folders), and the user must have turned on \"Allow access to file URLs\" for the extension (chrome://extensions → the extension's Details); otherwise the answer is UPLOAD_REFUSED — then stop and ask the user, and never retry with another path. Shows Chrome's 'is debugging this browser' banner briefly. Never click a file input (browser_click): that opens a native file dialog the bridge cannot see or close. The answer lists each file's name, size and sha256 as read on this computer: it says what Chrome accepted, which is not proof that the page received them — check the page (e.g. browser_snapshot) to confirm.",
+    {
+      ref: z.string().optional().describe(REF_DESCRIPTION),
+      locator: LOCATOR_SCHEMA,
+      paths: z
+        .array(z.string().min(1))
+        .min(1)
+        .max(UPLOAD_FILES_MAX_PATHS)
+        .describe(
+          "Absolute paths of the files to put into the input (1–20; more than one only if the input takes several). Each must lie in a folder the user allowed in Chrome (extension options → Upload folders).",
+        ),
+      tab: z.string().optional().describe(TAB_DESCRIPTION),
+    },
+    async ({ ref, locator, paths, tab }) => {
+      const checked = targetOf("browser_upload_file", ref, locator);
+      if ("error" in checked) return checked.error;
+      const target = checked.target!;
+      const files = await prepareUpload(paths);
+      return onTab(tab, async (t) => {
+        const reply = await bridge.call("uploadFiles", { ...target, paths: files.map((f) => f.path), tab: t });
+        const lines = [
+          `Uploaded ${files.length} file(s) to ${describeTarget(target)}:`,
+          ...files.map((f) => `${f.name} · ${f.bytes} bytes · sha256 ${f.sha256}`),
+        ];
+        return capped(reply, lines.join("\n"));
       });
     },
   );
