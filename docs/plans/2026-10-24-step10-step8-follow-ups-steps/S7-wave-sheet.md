@@ -172,6 +172,39 @@ the bridge tools load directly, not behind Claude Code's `ToolSearch`; the runne
 `tool search off`) — the PP1 actor's command in §7 carries the flag too; `-Block sw1r` runs `s10.ts sw1 --row SW-1R`.
 MCPF-1 and CAP-1 stay FAIL as recorded (not re-run, the step agent's decision on Return 2).
 
+### Resume after Return 3 (attempt 3)
+
+*Added 2026-10-25 by the S7 builder after Return 3, before any observation of the rows still to run; no helper and no
+row text changed.* Runner 3's attempt 2 ran blocks 1–11, `sw1r` … `save-ttl`, and stopped at block 27 `r3` (Return 3:
+the placement guard before the toolbar click found an occluder above O — a topmost, no-activate Chrome popup owned by
+the driver's own options window O; the stop procedure re-armed and read the state back equal by hash). The stored state
+(`r15-globals.clixml`) says attempt 2, stopped at `r3`, done row blocks `sw1r, pop2, save-a, savefix, save-64,
+save-64-mcp, prim, idonly, save-ttl`, the earlier resume's skip `bbl1, bbl2, mcpf-click, mcpf-type, mcpf-press, cap,
+sw1`; so the skip set is all of those plus the stopped row block `r3`. The next runner's first call, exactly:
+
+```powershell
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\s10-r15.ps1 -Block reset -Attempt 3 -Skip bbl1,bbl2,mcpf-click,mcpf-type,mcpf-press,cap,sw1,sw1r,pop2,save-a,savefix,save-64,save-64-mcp,prim,idonly,save-ttl,r3
+"exit $LASTEXITCODE"
+```
+
+It prints `RESUME attempt 3: bbl1, bbl2, mcpf-click, mcpf-type, mcpf-press, cap, sw1, sw1r, pop2, save-a, savefix,
+save-64, save-64-mcp, prim, idonly, save-ttl, r3 observed in an earlier attempt or stopped in one, not re-run` and the
+run order `preflight, build, servers, window, daemon, reload, setup, safe0, console, found, rep0, savedis, savejs,
+saveblk, jsd, off, restore, logs, teardown` (daemon.log mark `2026-10-25T09:57:04.349Z`, the first attempt's); then
+block 1 as usual. `USAGE: …` (exit 3) changes nothing and is a RETURN (never adjust the skip set). A call that leaves
+any observed or stopped block out of the skip set (e.g. without `r3`, `save-a` or `sw1`), adds `savedis`, names a
+framing block or gives `-Attempt 2` is refused (dry run without Chrome on a copy of the state file, the real file's
+sha256 equal before and after). The record gets the heading `## Attempt 3 (runner 4) — resume after Return 3` and
+continues from its SAFE-0 line. **R15-3 stays NOT MEASURED** and is not re-run in Run 15: its disarm half was
+observed, and exempting the occluder (a popup owned by O) from the placement guard is the user's call (#212's
+Revisit-if, a proposed decision in S7.md). **SAVE-REFUSE's FAIL stands** as recorded (the `[chrome.debugger] ` prefix
+on the four refusal messages; whether the row text or the product is wrong is a proposed decision). Block `off` takes
+MCPF-1-off's baseline and turns JavaScript off itself only if block `jsd` did not run in this attempt (here it runs).
+After block 35 (teardown): **PP1, then RET-1**, exactly as §7 and §6 say. The 10 leftover `s15v-*` files in
+`%TEMP%\bridge-e2e\s15\sv` (written by attempt 2's `saveTo` rows; teardown was not reached) are deleted by block 35's
+teardown with this attempt's own — nothing deletes them earlier.
+
 ## 2. PIDs and handles to track (the ledger's "Live PIDs")
 
 daemon (block 5), http8080 / http8085 (block 3), driver windows W, E, D, O (handles; blocks 4, 9, 10), R (block 11,

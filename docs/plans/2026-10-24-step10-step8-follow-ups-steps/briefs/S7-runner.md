@@ -99,7 +99,19 @@ throwaway headless Chrome with its own temporary profile (SAVE-IDONLY; never the
   heading `## Attempt 2 (runner 3) — resume after Return 2` and continues from its SAFE-0 line (sheet §1, "Resume after
   Return 2"). SW-1R's outcome table is filled like SW-1's; SW-1 stays NOT MEASURED. Every actor now starts with
   `--no-tool-search` (the runner does it and STOPs if the start line lacks `tool search off`); the PP1 actor's `start`
-  command in sheet §7 carries it too.
+  command in sheet §7 carries it too. *(Superseded 2026-10-25 by the S7 builder after Return 3: runner 3's attempt 2
+  stopped at block 27 `r3`; the next runner resumes as attempt 3, below.)*
+- **Resume after Return 3 (attempt 3, the next runner):** the first call is exactly
+  `powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\s10-r15.ps1 -Block reset -Attempt 3 -Skip bbl1,bbl2,mcpf-click,mcpf-type,mcpf-press,cap,sw1,sw1r,pop2,save-a,savefix,save-64,save-64-mcp,prim,idonly,save-ttl,r3`
+  (never a plain `-Block reset`). It must print `RESUME attempt 3: …` and the run order `preflight, build, servers,
+  window, daemon, reload, setup, safe0, console, found, rep0, savedis, savejs, saveblk, jsd, off, restore, logs,
+  teardown`; `USAGE: …` (exit 3) means nothing changed — RETURN, do not adjust the skip set. The record gets the heading
+  `## Attempt 3 (runner 4) — resume after Return 3` and continues from its SAFE-0 line (sheet §1, "Resume after Return
+  3 (attempt 3)"). **R15-3 stays NOT MEASURED** and is not re-run: its disarm half was observed, and exempting the
+  occluder (a popup owned by the driver's own options window O) from the placement guard is the user's call (#212). **SAVE-REFUSE's
+  FAIL stands** as recorded. After block 35 (teardown): PP1, then RET-1, exactly as sheet §7 and §6 say. The 10
+  leftover `s15v-*` files in `%TEMP%\bridge-e2e\s15\sv` (attempt 2's `saveTo` rows; teardown not reached) are deleted
+  by block 35's teardown — never earlier, never by hand.
 - Long blocks: the PowerShell tool caps a call at 10 min; the longest block (save-ttl) takes about 6 min — call every
   block with the tool's timeout at its maximum (600 000 ms). Every block stops itself within its budget (sheet §1:
   budget + stop procedure ≤ 570 s). **A block that the tool still ends at its cap is a STOP:** run `-Block stop -Why
