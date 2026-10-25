@@ -41,3 +41,6 @@ One line per event, UTC. Agent lines: stage · role · model · start → end.
 - 2026-10-25T19:58Z · S5-sheet · step agent · Opus 5.5 · 19:58Z → (running) — builder Sonnet medium, verifier Opus
 - 2026-10-25T20:12Z · S5-sheet · step agent · Opus 5.5 · 19:58Z → ~20:12Z — DONE; builder Sonnet 5.5 medium 19:58–20:02 (~110k context); verifier Opus FAIL (2 MAJOR) → fixer Sonnet medium → verifier2 Opus PASS-with-notes (+1 MINOR, fixed) → verifier3 Opus PASS-with-notes (1 NIT to S5-helpers). Commit 36cfc43 (§4.23, +96 lines in the plan).
 - 2026-10-25T20:12Z · session · S5-sheet accepted; #272 (UP-9 stays behind G11-3). Next: S5-fixtures.
+- 2026-10-25T20:13Z · S5-fixtures · step agent · Opus 5.5 · 20:13Z → (running)
+- 2026-10-25T20:32Z · S5-fixtures · step agent · Opus 5.5 · 20:13Z → ~20:31Z — DONE; builder Sonnet 5.5 medium (~80k context); verifier Opus PASS-with-notes (MINOR 3, NIT 4); fixer Sonnet medium; verifier2 Opus PASS. Commit 38e6afd. Tests 3593/144 → 3625/146. ~920 lines (≈475 tests).
+- 2026-10-25T20:32Z · session · S5-fixtures accepted; #273 (fixtures on 8081: 8080 held by VS Code PID 28444; §4.23's one 8080 mention amended before observation), #274, #275 (S3c fixes recipes/tsconfig.s10.json, exit 2 since S3). Daemon PID 14072 gone (idle exit); 9234 free. Next: S3c ∥ S5-helpers.

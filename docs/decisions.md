@@ -176,7 +176,37 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
 
-### 2026-10-26 · S5-sheet: Run 16's sheet choices; UP-9 stays behind G11-3 (#272)
+### 2026-10-25 · S5: a recipes typecheck broken since S3 is fixed before the live slices (#275)
+**Decided:** a one-item slice **S3c** (doers Sonnet medium, verifier Opus) makes `npx tsc --noEmit -p
+recipes/tsconfig.s10.json` exit 0 again (it exits 2 at `extension/src/upload-files.ts:133-134` since S3, measured by
+the S5-fixtures verifier, NIT-4) without changing behaviour, and adds that typecheck to the checks the next code
+stage runs. It runs in parallel with S5-helpers (file-disjoint).
+**Why:** the root `CLAUDE.md` says all five recipes configs exit 0; the live helpers compile against the product
+sources; S3's verifiers ran only the root typecheck.
+**Instead of:** carrying it to S6 or amending the claim.
+**Revisit if:** the fix needs a behaviour change (it escalates).
+**By:** Claude
+
+### 2026-10-25 · S5-fixtures: the fixture choices the sheet left open (#274)
+**Decided:** UP-NAV uses `s11-upload.html?nav=1`, which lands on `?s11=nav-after`; the reporter records the text
+input as `inputs["up-text"]`, so UP-6B's text-input step has its own record; the patch counter is
+`window.__s11PatchedCalls` (also `state().patchedCalls`).
+**Why:** the rows needed a landing page and a record for the text input; both verifiers passed it.
+**Instead of:** a second fixture page for the navigation.
+**Revisit if:** a live slice finds a row that cannot read them.
+**By:** Claude (S5-fixtures' proposal)
+
+### 2026-10-25 · Run 16 serves its fixtures on 8081, since 8080 is held by another program (#273)
+**Decided:** the wave's fixture server listens on 127.0.0.1:8081 (the CSP server stays on 8084); §4.23's one mention
+of 8080 (UP-8's control page) is amended to 8081 before any observation, with a dated note in the row. #251's port
+stop now covers 8081 and 8084; 8080 is not used and its holder is never touched.
+**Why:** 8080 is LISTENING by VS Code (PID 28444, the user's program), measured by S5's first ledger line and again
+by the session agent at 20:32Z; 8081 and 8084 are free.
+**Instead of:** stopping for the user to free 8080; killing its holder (never).
+**Revisit if:** 8081 is taken at the live slice's port check (then it stops, per #251).
+**By:** Claude
+
+### 2026-10-25 · S5-sheet: Run 16's sheet choices; UP-9 stays behind G11-3 (#272)
 **Decided:** as committed in §4.23 (`36cfc43`): UP-0, UP-RESTORE and UP-LOGS run in both live slices; UP-L1 opens
 with a `FOUNDCHECK` that records only true/false (the found folders allow neither `<ROOT>` nor `<OUTSIDE>`); the
 control for SAVE-REFUSE-R is judged by the `[chrome.debugger] ` prefix plus `boom`; the MCP leg is judged by
