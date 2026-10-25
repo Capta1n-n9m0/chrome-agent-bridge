@@ -50,3 +50,7 @@
 - S4b closed (`2866c43` spec, `da16277`, PASS-with-notes, 3165/130); #219, #220 (node_modules junction lesson added to common.md). All code stages done; S7 (Run 15) next, alone.
 - S7 closed (`c8169ff`, PASS-with-notes, 3280/132); #221–#227. S8 dispatched (retirement, docs, CLAUDE.md proposals).
 - S8 closed (`7e12566`, PASS-with-notes, 3273/132); #228. Next: propagator (also applies S8-claude-md-proposals.md under the session agent's instruction), then close-out.
+
+## 2026-10-25 — close-out
+
+- Propagator done (`de1a103`). Phase doc Status/Outcome rewritten as results; as-built gate checklist; CLAUDE.md Current state; memory. Gate open: #204 (contract parts), #205–#208, #216 item 2, #217, #218, #219 item 1, #227; G10-1. Next: the user rules (plain-language review doc), Step 11 kickoff.

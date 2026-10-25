@@ -9,41 +9,40 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-24, Step 9 closed)
+## Current state (2026-10-25, Step 10 built; its gate waits on the user)
 
-- **Shipped:** Steps 1–8 (Step 7 — multi-actor tabs — closed 2026-10-23; Step 8 — the SDK surface —
-  closed 2026-10-24, as-built `docs/plans/2026-10-21-step8-sdk-surface-and-mcp-cursor-asbuilt.md`).
-  Public on GitHub (MIT). **23 tools, 25 codes, 2720 tests in 116 files** (`npm test` 2026-10-24 at
-  `ba6029e`). *Superseded 2026-10-24: was "23 tools, 1714 tests in 85 files (… at `a1932a8`)", because
-  Step 9 added two codes and 1006 tests in 31 files (Step 9 as-built, per stage).*
-- **Step 9 — Phase E safety — closed 2026-10-24**, as-built
-  `docs/plans/2026-10-24-step9-phase-e-safety-asbuilt.md`: the kill switch (toolbar button,
-  `Alt+Shift+K`, options page), the JavaScript switch, a block list, the own-page block; Run 13 24 PASS /
-  7 FAIL / 3 RECORD / 5 NOT MEASURED, none a product defect. The user ruled all 32 open decisions
-  (decisions.md · 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202)): all as
-  built, except a new code `JS_DISABLED` for "JavaScript is off" (Step 10) and a later network rule that stops
-  redirects onto blocked sites (#140).
-- **Step 8 closed 2026-10-24 (wave W2):** the user ruled its 25 open decisions (decisions.md
-  #106–#127): 19 ratified as built, six with a work item for Step 10; the `blackboard-ultra` skill
-  now boots by `npm --prefix ~/Projects/chrome-remote-extention run recipe --
-  recipes/blackboard/boot-bb.ts <course> --keep-open` (skill `dfa2e50`; the local-server boot kept as a
-  one-release fallback; the course repos PP1-2026 and NLP-Bachelor allow the command).
+- **Shipped:** Steps 1–9 (Step 9 — Phase E safety — closed 2026-10-24, #202; Step 8 closed 2026-10-24, wave W2,
+  #106–#127). Public on GitHub (MIT). **23 tools, 26 codes (25 on the wire), 26 router methods, 3273 tests in 132
+  files** (`npm test` 2026-10-25 at `025bdef`). *Superseded 2026-10-25: was "23 tools, 25 codes, 2720 tests in 116
+  files (… at `ba6029e`)", because Step 10 added `JS_DISABLED`, three `evaluateSave*` methods and 553 tests net in 16
+  files (+560, −7; Step 10 as-built, per stage).*
+- **Step 10 — the Step 8 follow-ups — built and E2E-run 2026-10-25** (Runs 14–15), as-built
+  `docs/plans/2026-10-24-step10-step8-follow-ups-asbuilt.md`: the MCP's trusted tools focus first (#106, #214); the
+  800-cap warning (`pastSnapshotCap`, the SDK `warning` event, the MCP line; #117, #206, #216); `browser_evaluate
+  {saveTo}` + `Tab.evaluateToFile` through an extension-side store (#127, #205, #207, #217, #218); `JS_DISABLED`
+  (#202, #219); `bb-login.ps1`'s condition wait (#215); the local branch `release/step8` (Variant C, #208); a live
+  retire row on a killed Chrome (RET-1R, 3 handles retired); the chunked MCP recipe retired (#228). Run 15: 27 PASS /
+  3 FAIL / 3 NOT MEASURED / 4 RECORD, none a product defect (#226). **Gate open for the user:** #204 (contract-level
+  parts), #205–#208, #216 item 2, #217, #218, #219 item 1, #227 (decisions.md → Open decisions → Step 10); G10-1 — the
+  annotated `step8` tag and any push.
 - **Reloads need no human:** `recipes/reload-extension.ps1` reloads the extension by UI automation
   and proves it (#65); an exit-2 reload may be re-run during waves (#99).
-- **Resume:** Step 10 — the Step 8 follow-ups: kickoff `docs/plans/next-session-prompt.md`, phase doc
-  `docs/plans/2026-10-24-step10-step8-follow-ups.md` (its precondition, #192, is met). Interactive sessions
-  using the bridge need `/mcp` or a fresh session (the daemon build changed in Step 9).
-- **Next after Step 9** (decisions.md · 2026-10-24 · The roadmap after Step 8 (#129), order open for
-  veto): **Step 10** — the Step 8 follow-ups: the MCP's trusted tools focus first (#106), a warning when
-  a locator resolves past the snapshot's 800 cap (#117), a squashed `step8` release tag (#125), a live
-  N ≥ 1 retire row on a killed Chrome (#126), `browser_evaluate {saveTo}` with S6.3 redone through it
-  (#127), plus the carried inputs (failure reports switch the human's view ~1.5 s; `bb-login.ps1`'s
-  condition-based post-submit wait, #102; and Run 13's four re-measurements — SAFE-5c's redirect half (the
-  post-redirect `downloadStart` check, unmeasured live), SAFE-POP-1, SAFE-3, SAFE-4 (b) (#194)); **Step 11** —
-  D3 file upload; **Step 12** — Phase F (`args`
-  for `browser_evaluate`, console capture, keep-attached debugger). Live waves run autonomously (#33).
+- **Resume:** Step 10's close (the user's rulings above; G10-1), then Step 11 — kickoff
+  `docs/plans/next-session-prompt.md`. Interactive sessions using the bridge need `/mcp` or a fresh session (the MCP
+  and daemon builds changed in Step 10); the loaded extension is already the Step 10 build (Run 15).
+- **Next** (decisions.md · 2026-10-24 · The roadmap after Step 8 (#129), order open for veto): **Step 11** — D3 file
+  upload (`browser_upload_file` / `Tab.upload` via `DOM.setFileInputFiles`); **Step 12** — Phase F (`args` for
+  `browser_evaluate`, console capture, keep-attached debugger). Carried from Step 10: the ~1.5 s capture switch
+  re-measured with a warm-up trial (#226 item 1); #227's option (b) if the user picks it; the `saveTo` parameter
+  description's missing `kind` (a schema re-baseline); a popup lease for a background opener only as a design change
+  (#226 item 3); the focus/input race of the MCP's trusted tools as a known limit (Stage 0 F19); the network rule
+  against redirects onto blocked sites (#140), its place in the order still to be set. Live waves run autonomously
+  (#33).
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
+
+*Superseded 2026-10-25: the block dated 2026-10-24 ("Step 9 closed") listed Step 9's close, Step 8's W2 close and
+Step 10 as next, because Step 10 was built (history: decisions.md #202, #106–#127).*
 
 ## Architecture
 

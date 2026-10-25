@@ -1,6 +1,9 @@
 # Step 10 — the Step 8 follow-ups (MCP focus-first, the 800-cap warning, `saveTo`, the release tag, a live retire row, Step 9's live re-measurements)
 
-**Date:** 2026-10-24 · **Status:** Stage 0 closed 2026-10-25 (`9f91e5f`); next S1. *Superseded 2026-10-25: was
+**Date:** 2026-10-24 · **Status:** Complete 2026-10-25 — Stage 0 and S1–S8 built and run (Runs 14–15); the gate
+waits on the user's open decisions (#204 contract parts, #205–#208, #216 item 2, #217, #218, #219 item 1, #227) and
+G10-1. *Superseded 2026-10-25: was "Stage 0 closed 2026-10-25 (`9f91e5f`); next S1", because every stage closed
+(as-built register).* *Superseded 2026-10-25: was
 "Planned (kickoff `docs/plans/next-session-prompt.md`, written 2026-10-24)", because Stage 0 closed and its
 amendments are applied below as dated notes (`…-steps/stage0.md` §6).*
 **Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
@@ -36,17 +39,27 @@ reaches a file only by paging it through a model's context; Step 8's history has
 has never run live. The order (Step 10, then D3 file upload, then Phase F) is decisions.md · 2026-10-24 · The
 roadmap after Step 8 (#129).
 
-## Outcome (planned; rewritten as results at the close)
+## Outcome (results, 2026-10-25)
 
-- The MCP's trusted `browser_click` / `browser_type` / `browser_press_key` call `focusTab` first, as the SDK's
-  `Tab` does (`sdk/src/policy.ts` `"focusFirst"`); a trusted MCP action on a background fixture tab lands.
-- A locator that resolves to an element past the snapshot's 800-element cap carries a warning to the SDK and the MCP.
-- `browser_evaluate {saveTo}` writes the value to a file and returns only path, size and sha256; S6.3 is redone
-  through it and the 53-chunk recipe (`recipes/blackboard/assemble-mcp.ts`, `transcript.ts`) is retired.
-- A `step8` release branch whose commits carry Step 8's six Part messages, with `main` untouched; the tag at
-  the user's grant.
-- Live: Run 14 (Step 9's re-measurements) and Run 15 (Step 10's own rows, the N ≥ 1 retire row at the user's
-  grant), each leaving the safety state as found. Baseline: `npm test` 2720 passed / 116 files at `f45e3bf`.
+*Superseded 2026-10-25: the planned outcome (five bullets: focus-first, the cap warning, `saveTo` with S6.3 redone and
+the 53-chunk recipe retired, the `step8` branch, Runs 14–15) was rewritten as results; every planned item was met
+except the `step8` tag, which waits for G10-1.*
+
+- The MCP's trusted `browser_click` / `browser_type` / `browser_press_key` send `focusTab` first; live 9/9 on a
+  background fixture tab (Run 15 MCPF-1R). Tool schemas byte-identical to `f45e3bf` except `browser_evaluate`'s
+  (decisions.md · 2026-10-25 · S2: the MCP schema baseline, a failed focus's answer, and the focus sentence (#214)).
+- A locator past the snapshot's 800-element cap warns: `pastSnapshotCap` on the wire, the SDK's `warning` event, one
+  MCP line; live on the SDK (CAP-1's SDK leg) and the MCP (CAP-1R).
+- `browser_evaluate {saveTo}` and `Tab.evaluateToFile` write a value to a file through an extension-side store
+  (transport (B)); Run 15 saved 1 MiB, 4 MiB, 2 MiB with surrogates, JSON and 64 MiB (by `return` and as a
+  primitive) by sha256, and the pp1 leg gave page = SDK file = MCP file (419 015 bytes) under G10-3; the chunked
+  recipe is retired (−7 tests).
+- `JS_DISABLED` is the 26th code (25 on the wire); `bb-login.ps1` waits on a condition inside 90 s from the press; the
+  local branch `release/step8` (`db72e9a`, Variant C) waits for G10-1 (tag and push).
+- Live: Run 14 (R14-5c — the first live post-redirect `downloadStart` check —, R14-4b, R14-REL-3 PASS) and Run 15
+  (27 PASS / 3 FAIL / 3 NOT MEASURED / 4 RECORD, none a product defect; RET-1R retired 3 handles on a killed Chrome);
+  the safety state read back equal after every wave, attempt and leg. `npm test` 2720 / 116 (at `f45e3bf`) → 3273 /
+  132 (at `025bdef`).
 
 ## Decisions
 

@@ -235,3 +235,25 @@ session agent; one block per stage, appended at each stage close.
 
 ### Estimates vs actuals
 - 1 h estimated; ~25 min.
+
+## Gate checklist (session agent, 2026-10-25)
+
+| Item | Met? | Evidence |
+|---|---|---|
+| Z.1 Stage 0 audit | yes | `stage0.md`, `stage0-audit.md`; contracts held on port 0; split in `journal.md` |
+| S1.1–S1.6 Run 14 | yes (with notes) | `S1.md`, `S1-run-record.md`; §4.21 committed `5f17d54` before the first press; state equal by hash |
+| S2.1–S2.3 | yes | `S2.md`; tests fail at `f45e3bf`; schema baseline test |
+| S3.1–S3.3 | yes | `S3.md`; `a11y.ts`/`snapshot.ts` diff empty since `f45e3bf` |
+| S4.1–S4.5 | yes | `S4.md`; real `ws` harness; no value slice or path in any answer or log; 54 log sites |
+| S4b.1–S4b.3 | yes | `S4b.md`; spec note `2866c43` before code `da16277` |
+| S5.1 | yes | `S5.md`; verifier re-ran every leg |
+| S6.1–S6.3 | yes | `S6.md`; `git diff a1932a8 release/step8` empty; `main` not rewritten; no tag |
+| S7.1–S7.6 Run 15 | yes (with notes) | `S7.md`, `S7-run-record.md`; 8 STOP lines = Returns 1–5; state equal by hash after every attempt; RET-1/pp1 run under #221/#222 |
+| S8.1 | yes | `S8.md`; −7 tests listed per file; grep finds only dated notes |
+| STOP rules fired | none that stop the gate | a hung fixer (stopped), RET-1's failed relaunch (Chrome relaunched by the session agent under #222), all recorded |
+| One commit per stage; no `dist/`, token, `exports/`, screenshot | yes | stage commits listed per block above |
+| Safety state restored after each wave | yes | S1.4, S7.4 |
+| Test count never dropped without a documented removal | yes | 2720 → 2763 → 2807 → 2989 → 3145 → 3165 → 3280 → 3273 (−7 documented, S8) |
+
+**Not closed until the user rules:** #204 (contract-level parts), #205, #206, #207, #208, #216 item 2, #217, #218,
+#219 item 1, #227; G10-1 (the `step8` tag, any push).
