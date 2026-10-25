@@ -1,5 +1,7 @@
 # Wave handoff prompts (newest first)
 
+*Historical record (closed 2026-10-25); current procedures: `docs/agent-rules.md` and the skills.*
+
 Format: `.claude/skills/phase-kickoff/template-wave.md`. Phase kickoffs live in
 `next-session-prompt.md`, not here.
 

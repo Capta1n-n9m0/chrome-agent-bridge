@@ -278,6 +278,7 @@ trip.
 **By:** Claude (S3 report `docs/plans/2026-10-24-step9-phase-e-safety-steps/S3.md` §5)
 
 ### 2026-10-24 · S3: The refusal wording (#164)
+*Superseded 2026-10-24: was a `DISARMED` line with `scope:"evaluate"` for JavaScript off, because the user ruled a new code `JS_DISABLED` (#202); since Step 10 the same body reads `JS_DISABLED: <body>`, and an old Step 9 extension's `DISARMED {scope:"evaluate"}` reads `DISARMED: <body>` (#219).*
 **Decided:**
 - `DISARMED` all: "DISARMED: the user has turned the bridge off in Chrome. Stop and ask the user to
   turn it back on; do not retry."
@@ -528,6 +529,7 @@ and the shortcut share one top-level `action.onClicked` listener; no `commands.o
 **By:** Claude (pre-registered rules — listed under Open decisions for the user; Stage 0 audit D10, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
 
 ### 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140)
+*Ruled 2026-10-25 by the user (#229): that network rule (`declarativeNetRequest`) becomes its own small step after Step 11, before Step 12.*
 **Decided:** check the URL before the fetch and `res.url` when `fetch` resolves, aborting the body; document that a
 hop onto a blocked host is still requested. A `declarativeNetRequest` session rule that blocks requests to
 blocked hosts itself (new manifest permission `declarativeNetRequestWithHostAccess`) is **not** built in Step 9.
@@ -553,6 +555,7 @@ listener registration, guarded so it cannot throw synchronously, not awaited (V7
 **By:** Claude (contract-level — listed under Open decisions for the user; Stage 0 audit D8, `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §8)
 
 ### 2026-10-24 · Script URLs and the JavaScript switch; own pages of every extension (#138)
+*Superseded 2026-10-24: was `DISARMED` `scope:"evaluate"` for a script URL while JavaScript is off, because the user ruled a new code `JS_DISABLED` for it (#202), built in Step 10 (#219); the own-pages rule stands as built (#202).*
 **Decided:** while JavaScript is off, `navigate`/`newTab` to a `javascript:`, `data:` or `blob:` URL →
 `DISARMED` `scope:"evaluate"`; while it is on, those behave as today. `navigate`/`newTab` to any
 `chrome-extension://` URL → `DOMAIN_BLOCKED`; acting on a tab, and its `listTabs` row/events, are blocked/hidden
@@ -711,6 +714,7 @@ Step 8 by #70 and restated by the Step 9 kickoff.
 **By:** user
 
 ### 2026-10-24 · The roadmap after Step 8 (#129)
+*Ruled 2026-10-25 by the user (#229): the network rule against redirects onto blocked sites (#140) becomes its own small step after Step 11, before Step 12.*
 **Decided:** Step 9 is Phase E safety (phase doc `docs/plans/2026-10-24-step9-phase-e-safety.md`, kickoff
 `docs/plans/next-session-prompt.md`). The other items are planned as later steps, in this order:
 Step 10 — the Step 8 follow-ups (W2's six work items, #106/#117/#125/#126/#127, plus the carried inputs:

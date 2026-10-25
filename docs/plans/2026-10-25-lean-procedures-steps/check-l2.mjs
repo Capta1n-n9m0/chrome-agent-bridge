@@ -87,6 +87,8 @@ const split = (txt) => {
   for (const l of L) {
     if (/^### /.test(l)) { if (cur) out.push(cur); cur = [l]; }
     else if (/^#{1,2} /.test(l)) { if (cur) out.push(cur); cur = null; }
+    // A dated marker directly under a heading (cleanup follow-up D, 2026-10-25) is not part of the entry text.
+    else if (cur && cur.length === 1 && /^\*(Superseded|Ruled|Corrected|Note)\b/.test(l)) continue;
     else if (cur) cur.push(l);
   }
   if (cur) out.push(cur);

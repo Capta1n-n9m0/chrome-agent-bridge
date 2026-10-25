@@ -39,6 +39,7 @@ editing pre-registered rows. **Revisit if:** a new recipes test imports chrome-t
 **By:** Claude
 
 ### 2026-10-25 · S7: SAVE-REFUSE's `[chrome.debugger] ` prefix — the product stays for now; a fix is offered (#227)
+*Ruled 2026-10-25 by the user (#229): option (b) — the bridge's own coded refusals inside `withDebugger` lose the `[chrome.debugger] ` prefix (raw Chrome and page errors keep it), built in Step 11's first code stage with a new live row SAVE-REFUSE-R.*
 **Decided:** SAVE-REFUSE's FAIL stands as recorded. The product behaved as built: `saveTo`'s own refusals are thrown
 inside `withDebugger`, and `describeDebuggerError` keeps an own `BridgeError`'s code and data but prefixes its message
 `[chrome.debugger] ` (`extension/src/debugger-errors.ts`), so §4.22's expected text (tied to the throwing constants,
@@ -125,6 +126,7 @@ The grants are for Run 15 only, not standing.
 **By:** user
 
 ### 2026-10-25 · Scratch worktrees never share `node_modules` through a junction a recursive delete can follow (#220)
+*Superseded 2026-10-25 (who carries the rule): was "every brief … says", because briefs now point to the `CLAUDE.md` files and `docs/agent-rules.md` instead of repeating the lesson, which lives as a `CLAUDE.md` gotcha (#230); the rule itself stands.*
 **Decided:** every brief that makes a scratch worktree says: run `npm ci` in the worktree, or remove a `node_modules`
 junction only with `cmd /c rmdir <link>` before removing the worktree — never `rm -rf` / `Remove-Item -Recurse`
 across it. **Why:** during S4b's builder cleanup the main tree's `node_modules/.bin` and `node_modules/@asamuzakjp`
@@ -362,6 +364,7 @@ rules, #207); 0.4's transport is (B) by its own rule (#205), the SDK form of 0.3
 layout is Variant C (#208).*
 
 ### 2026-10-24 · Step 10 agents run Opus 5.5 (#203)
+*Superseded 2026-10-25: was Opus 5.5 for every agent, because the user's lean-procedures decision (#230) picks the model by a stage's risk (`docs/agent-rules.md` §7).*
 **Decided:** every agent at every level of Step 10 runs Claude Opus 5.5 (`claude-opus-5-5`); only the headless E2E
 actor sessions (`claude -p`) of S1 and S7 may run Sonnet.
 **Why:** the user's standing choice, decisions.md · 2026-10-23 · The user rules on R9-SCREEN-2 and the last five

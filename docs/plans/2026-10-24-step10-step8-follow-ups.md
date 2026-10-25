@@ -618,6 +618,8 @@ the token rule; making `BridgeClient` reconnect on a close code other than 4002;
 
 ## Open items
 
+*Historical record (closed 2026-10-25); current procedures: `docs/agent-rules.md` and the skills.*
+
 - Ruled at Stage 0 (conservative rule, listed for the user): 0.3's wire field and SDK form; 0.4's transport and the
   SDK method; 0.6's intermediate trees; 0.8's fix, if SW-1 calls for one.
 - *Amended 2026-10-25: Stage 0 ruled these conservatively, and each stays open for the user — 0.3's SDK form as a

@@ -5,6 +5,7 @@ entry by date + title ([`docs-writing-guide.md`](../docs-writing-guide.md#decisi
 [`decisions.md`](../decisions.md#archive).
 
 ### 2026-10-23 · The user rules on R9-SCREEN-2 and the last five Step 7 open decisions (#69)
+*Superseded 2026-10-25 (the model rule only): was Opus 5.5 for every agent (#37), because the user's lean-procedures decision (#230) picks the model by a stage's risk (`docs/agent-rules.md` §7); the rest of this ruling stands.*
 **Decided:** R9-SCREEN-2 is accepted (option A): its positive control's image came back, and CDP
 simply renders saturated colours differently from `captureVisibleTab` (cyan `#00ffff` read
 `#97fdfd`; magenta `#ff00ff` read `#dd00fa` through the default capture) — a measured fact, not a

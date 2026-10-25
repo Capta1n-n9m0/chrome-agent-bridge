@@ -266,6 +266,7 @@ you had it open. I just entered pp1 course for you".
 **By:** user
 
 ### 2026-10-23 · An MCP failure report with a screenshot is returned as a non-error result (#100)
+*Ruled 2026-10-24 by the user (#124): stands as built; the probe is re-run after each Claude Code upgrade and the flag restored if images pass.*
 **Decided:** accepted as proposed in `…-steps/S6b.md` §5: an attach-eligible failure whose report carries
 the screenshot is returned with no `isError` flag, content `[text, image]`; the text's first line is
 `<CODE>: …` as before, then `Full message:`, then `The call failed (<CODE>). This result is not flagged
@@ -352,6 +353,7 @@ restart chrome, you have my explicit permission for that as well".
 **By:** user
 
 ### 2026-10-23 · S5's MCP details: `browser_new_tab` activation, the status lines, the tool schemas, reports (#95)
+*Ruled 2026-10-24 by the user (#122): items 1, 3, 4 and 5 ratified.*
 **Decided:** accepted as proposed in `…-steps/S5.md` §5: (1) `browser_new_tab` sends `active: true` only
 when the cursor is set and `listTabs` shows its tab as `current`; with no cursor (a session's first
 tab, F26), a lost cursor or a failed `listTabs` it opens in the background and says so (` (in the
@@ -374,6 +376,7 @@ or the user wants a session's first tab in front.
 decisions)
 
 ### 2026-10-23 · S2b's details: the `selectTab` refusal grep, the marker's edge cases, the handle mark (#94)
+*Ruled 2026-10-24 by the user (#121): ratified.*
 **Decided:** accepted as proposed in `…-steps/S2b.md` §"Proposed decisions": (1) S2b.2's daemon check
 reads: `grep -rn "LEGACY_ID_METHODS\|selectTab" daemon/src` prints exactly one line, the
 `REMOVED_METHODS` entry in `daemon/src/methods.ts`; `REMOVED_METHODS` is read only in
@@ -402,6 +405,7 @@ reuse on reload; a write per handle.
 decisions)
 
 ### 2026-10-23 · S4's failure-report details, and how the MCP reaches them (#93)
+*Ruled 2026-10-24 by the user (#120): ratified; failure reports stay on by default.*
 **Decided:** (1) Accepted as proposed in `…-steps/S4.md` §5: a report's own snapshot renumbers the tab's
 refs, so when a report is attached each candidate/match ref in `error.data` is rewritten to the attached
 snapshot's ref (non-empty role + name, unique hit only) or else deleted; `BridgeClientOptions` gains
@@ -460,6 +464,7 @@ command.
 Open decisions)
 
 ### 2026-10-23 · The SDK `Tab` surface details and the cursor rule as built (#90)
+*Ruled 2026-10-24 by the user (#118): items 1, 2 and 7 ratified.*
 **Decided:** (1) `BridgeClient.close()` keeps closing the client; the client mirrors every `Tab` method
 but `close` (the cursor tab closes with `client.tab().close()`). (2) `tabs()` returns `{handle, title,
 url, owner?, current}`, `current` from `listTabs` only (#43). (3) `scroll` takes `"up" | "down"` only;
@@ -479,6 +484,7 @@ on `release`/`close`/`tabGone` (friendlier, but a change to the cursor rule — 
 **By:** Claude (items 1, 2 and 7 — SDK surface and cursor rule — listed under Open decisions)
 
 ### 2026-10-23 · The background-input policy (#89)
+*Ruled 2026-10-24 by the user (#106): ratified; the MCP's trusted tools focus first too, replacing "keep today's behaviour".*
 *Updated 2026-10-23: the FE live record is committed (829368e) after the user approved the commit the classifier had denied.*
 **Decided:** outcome **(B)**, policy `"focusFirst"`: `Tab.click/type/pressKey({trusted:true})` call
 `focus()` first, and the docs say the tab comes to the front and stays there. The MCP's trusted tools
@@ -512,6 +518,7 @@ throw).
 **By:** Claude
 
 ### 2026-10-23 · S1's locator details (#87)
+*Ruled 2026-10-24 by the user (#117): items 2–4 ratified, plus a work item: a warning when a locator resolves to an element past the snapshot's cap.*
 **Decided:** accepted as proposed in `…-steps/S1.md` §5: (1) one walk (`a11y.ts` `walkElements`) serves
 `buildSnapshot` and every `locate` variant; (2) `{role, name}` matches the snapshot's name as shown
 (capped at 120 chars with `…`), substring case-insensitive, `exact` = case-sensitive equality after
@@ -586,6 +593,7 @@ check's intent and none follows a result.
 **By:** Claude (contract-level, pre-registered rules — listed under Open decisions)
 
 ### 2026-10-23 · Locator rules, the MCP locator schema and the exported `BridgeError` (#83)
+*Ruled 2026-10-24 by the user (#115): ratified.*
 **Decided:** (1) F13: a `{text}` locator matches the innermost element that survives the snapshot's
 pruning gates (`aria-hidden`/`inert`/`hidden`/`display:none`, zero-size when `hasLayout`) whose
 normalised text contains the needle, case-insensitive substring; `exact` means equality; `nth` counts in
@@ -604,6 +612,7 @@ fields; exporting a subclass as `BridgeError`.
 **By:** Claude (contract-level — listed under Open decisions)
 
 ### 2026-10-23 · Page-function failures may carry `data` beside the marker (#82)
+*Ruled 2026-10-24 by the user (#114): ratified.*
 **Decided:** `content/guard.ts` also returns `__bridgeData` when the thrown error has plain-JSON `data`;
 `unwrapResult` hands it on as the `BridgeError`'s `data`. The `{__bridgeError: "CODE:message"}` string,
 the return-not-throw rule and null/undefined → `REF_STALE` are unchanged; S7 adds the field to that
@@ -615,6 +624,7 @@ on a changed invariant does not fire.
 **By:** Claude (contract-level, page-function shape — listed under Open decisions)
 
 ### 2026-10-23 · The Chrome `id` stays beside `tab` this step; network calls without `tab` stay "active" (#81)
+*Ruled 2026-10-24 by the user (#113): ratified.*
 **Decided:** S2b does not remove the Chrome `id` from `newTab`/`listTabs` results (F7: `recipes/hello.ts`,
 `t5.ts` LEASE-6, `t5-lib.ts`, five daemon tests and `registry.ts` read it). A network call without `tab`
 keeps #40's meaning (the human's tab), resolved without the legacy-path log. After S2b an **unlisted**
@@ -626,6 +636,7 @@ by design. Refusing unlisted untargeted methods is stricter (today one acts on t
 **By:** Claude (contract-level — listed under Open decisions)
 
 ### 2026-10-23 · The session marker's mechanism, amended (#80)
+*Ruled 2026-10-24 by the user (#109): ratified, with #74 as amended here.*
 *Amended 2026-10-23 by #94 item 4: a reload with no `storage.session` marker waits out the 2 s bound for `onStartup` before reusing the local marker.*
 **Decided:** amends #74. The service worker's `connect()` awaits a marker: `storage.session` has one →
 reuse (worker restart); else wait up to 2 s for `onStartup` (a fresh random marker) or `onInstalled`
@@ -643,6 +654,7 @@ the offscreen key ignores the marker — #74 as worded would not close the hole 
 **By:** Claude (contract-level, wire — listed under Open decisions with #74)
 
 ### 2026-10-23 · A new daemon never reuses a handle number; the SDK guards stale `Tab`s (#79)
+*Ruled 2026-10-24 by the user (#112): ratified.*
 **Decided:** S2b: `HandleTable` starts above a high-water mark kept under `~/.chrome-agent-bridge/`
 (written before a minted handle is returned; reserving in blocks is allowed), falling back to a
 start-time base when the file cannot be read or written; the base is injectable so tests keep `T1…`.
@@ -692,6 +704,7 @@ gotcha gets a dated note that `spawnDaemon` inherits no pipe (the hold came from
 **By:** Claude (build decision; the lane is `sdk/src/spawn.ts`, `sdk/test/`)
 
 ### 2026-10-23 · `NO_CURSOR` enters `shared/src/codes.ts` as the 23rd code (#76)
+*Ruled 2026-10-24 by the user (#111): ratified.*
 **Decided:** S0 adds `NO_CURSOR` to `ErrorCodes` (23 codes); spec §10 gets a dated note; the SDK alone
 raises it, never the daemon or the extension.
 **Why:** the spec's §8 names `NO_CURSOR` for a `Tab`-less call with no cursor, but it is not among the
@@ -701,6 +714,7 @@ kickoff §7 item 5; contract-level (codes), conservative rule.
 **By:** Claude (contract-level — listed under Open decisions)
 
 ### 2026-10-23 · S3.4 applies as written: the main entry also re-exports the formatters (#75)
+*Ruled 2026-10-24 by the user (#110): ratified.*
 **Decided:** `sdk/src/index.ts` re-exports `formatSnapshot` and `formatNetwork`; the
 `@bridge/sdk/format` subpath stays and the MCP keeps importing it. Stage 0 confirms the re-export pulls
 no new runtime dependency into the main entry.
@@ -726,6 +740,7 @@ restart (retires leases for nothing).
 **By:** Claude (contract-level, wire — listed under Open decisions)
 
 ### 2026-10-23 · S2b makes `code` required on error frames (#73)
+*Ruled 2026-10-24 by the user (#108): ratified.*
 **Decided:** with the legacy path removed (#51's trigger), `WireError.code` becomes required in the
 type; every extension error path sends a code (a test over `router.ts`'s paths). On receipt, a proto:2
 peer's error without a non-empty string `code` is still delivered as `INTERNAL` — never dropped, never
