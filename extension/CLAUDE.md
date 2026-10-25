@@ -4,7 +4,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply. Three sub-folders hav
 you open a file there; read the one whose topic you touch from elsewhere in `extension/`:
 - `src/content/` — IIFE build, snapshot rules, `centerOf`, content-script failures, locators and `a11y.ts`, `locate` vs RefMap, marks.
 - `src/evaluate/` — `returnByValue` flattening, `replMode` levels, primitive values over CDP, the `saveTo` store.
-- `src/handlers/` — `browser_download` from the worker, `tabId` and `targetTab`, `newTab` in the background, the CDP screenshot refusal, the URL gate on `navigate`/`newTab`, redirects onto blocked hosts.
+- `src/handlers/` — `browser_download` from the worker, `tabId` and `targetTab`, `newTab` in the background, the CDP screenshot refusal, redirects onto blocked hosts.
 
 ## Key files
 - `extension/src/`: `sw.ts` (the `GatedRouter` + offscreen orchestration; the top-level `chrome.tabs.on*`,
@@ -218,6 +218,16 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
 - **The matcher matches only at a dot boundary** — `host === p || host.endsWith("." + p)`
   (`safety-match.ts` `patternMatches`); never substring or dot-less `endsWith` (a forbidden fix). The
   50-case table of stage0-audit.md §5 is `extension/test/safety-match.test.ts`. (Unit tests.)
+- **`navigate`/`newTab` are gated on the URL Chrome will open**, so a relative URL that resolves to this
+  extension's `options.html` is refused, not just `chrome-extension://…` written out (S2a round-1
+  CRITICAL, #175; measured in Run 13 SAFE-REL-1, PASS). `view-source:` of a relative own-page path
+  answered `ok` (SAFE-REL-3 `rel`, recorded) — it resolves against the page's origin, not the extension
+  (`wrapper=view-source inner=http own=no`, Run 14 R14-REL-3; #196 answered); every later call on such a tab is
+  refused.
+- **Chrome refuses a `javascript:` navigation through the bridge itself**: `NAV_FAILED JavaScript URLs are
+  not allowed in API based extension navigations. …`, page unchanged (Run 13 SAFE-6c, JavaScript on,
+  record). With JavaScript off the gate refuses first (Run 13: `DISARMED`, scope `evaluate`, SAFE-6; since Step 10
+  S4b `JS_DISABLED` with no `data`, measured live in Run 15 JSD; #202, #219).
 - **Never log a pattern, URL or title from the safety code.** The gate, matcher and state modules have no
   log call; a press logs one fixed line (`badge.ts` `toggleLogLine`); the daemon logs booleans and the
   count (`intercept.ts` `safetyLogLine`). `log-scan.test.ts` allowlists every log site (54 at S2b — extension

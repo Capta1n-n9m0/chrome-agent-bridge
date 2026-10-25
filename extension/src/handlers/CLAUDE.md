@@ -25,16 +25,6 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply. `extension/CLAUDE.md`
   window, `WINDOW_MINIMIZED` for a minimized window, both in 3 ms with no banner (Run 9 R9-SCREEN-2,
   R9-SCREEN-4; decisions.md · 2026-10-23 · T5b's three fixes). `cdp` mode is useful only for a tab
   already in front of a visible window.
-- **`navigate`/`newTab` are gated on the URL Chrome will open**, so a relative URL that resolves to this
-  extension's `options.html` is refused, not just `chrome-extension://…` written out (S2a round-1
-  CRITICAL, #175; measured in Run 13 SAFE-REL-1, PASS). `view-source:` of a relative own-page path
-  answered `ok` (SAFE-REL-3 `rel`, recorded) — it resolves against the page's origin, not the extension
-  (`wrapper=view-source inner=http own=no`, Run 14 R14-REL-3; #196 answered); every later call on such a tab is
-  refused.
-- **Chrome refuses a `javascript:` navigation through the bridge itself**: `NAV_FAILED JavaScript URLs are
-  not allowed in API based extension navigations. …`, page unchanged (Run 13 SAFE-6c, JavaScript on,
-  record). With JavaScript off the gate refuses first (Run 13: `DISARMED`, scope `evaluate`, SAFE-6; since Step 10
-  S4b `JS_DISABLED` with no `data`, measured live in Run 15 JSD; #202, #219).
 - **The block list is not a network firewall.** A redirect hop of a bridge `navigate` or `downloadStart`
   onto a blocked host is still requested; the post-check refuses the reply and a download drops its bytes
   (`downloadStart` checks its own URL, then `res.url`, #140, #154). The post-redirect download check is
