@@ -1,0 +1,64 @@
+<!doctype html>
+<!--
+  Step 11 S5 (Run 16) fixture: every file input the upload rows (docs/e2e-test-plan.md section 4.23) need, and the
+  page's own reporter (s11-upload.js: count, names, sizes, SHA-256, event.isTrusted of what THIS page received, and
+  every mutation of the bridge's one-off upload attribute). Written 2026-10-25 by the S5 prep builder, before any Run 16
+  row ran. The script is an external file so the page also works under `script-src 'self'` (UP-8, port 8084).
+  Locators the rows use: #up-single, #up-multi, {text: "Attach a file"} (the label of the hidden input), #up-drop (a
+  wrapper holding exactly one hidden input), #up-shadow-host (an open shadow root holding one input), #up-frame-wrap (a
+  same-origin frame holding one input), #up-disabled, #up-dir, #up-text. Nothing here fetches, stores or sends anything.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>S11 upload fixture</title>
+  </head>
+  <body>
+    <h1>S11 upload fixture</h1>
+    <p>Receives files only to report them; it sends nothing anywhere.</p>
+
+    <h2>Single</h2>
+    <label for="up-single">Single file</label>
+    <input id="up-single" type="file" />
+
+    <h2>Multiple</h2>
+    <label for="up-multi">Several files</label>
+    <input id="up-multi" type="file" multiple />
+
+    <h2>Hidden input behind a label</h2>
+    <label id="up-hidden-label" for="up-hidden">Attach a file</label>
+    <input id="up-hidden" type="file" style="display: none" />
+
+    <h2>Drop zone wrapper</h2>
+    <div id="up-drop" style="border: 2px dashed #888; padding: 1rem">
+      <p>Drop zone: no file chosen</p>
+      <input id="up-drop-input" type="file" hidden />
+    </div>
+
+    <h2>Open shadow root</h2>
+    <div id="up-shadow-host"></div>
+
+    <h2>Same-origin frame</h2>
+    <div id="up-frame-wrap">
+      <iframe id="up-frame" title="S11 frame" src="s11-frame.html"></iframe>
+    </div>
+
+    <h2>Not uploadable</h2>
+    <label for="up-disabled">Disabled file input</label>
+    <input id="up-disabled" type="file" disabled />
+    <label for="up-dir">Folder input</label>
+    <input id="up-dir" type="file" webkitdirectory multiple />
+    <label for="up-text">Plain text field</label>
+    <input id="up-text" type="text" />
+    <div id="up-two">
+      <label for="up-two-a">First of two</label>
+      <input id="up-two-a" type="file" />
+      <label for="up-two-b">Second of two</label>
+      <input id="up-two-b" type="file" />
+    </div>
+
+    <h2>Reporter</h2>
+    <pre id="s11-report">no files yet</pre>
+    <script src="s11-upload.js"></script>
+  </body>
+</html>

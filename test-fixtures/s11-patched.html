@@ -1,0 +1,22 @@
+<!doctype html>
+<!--
+  Step 11 S5 (Run 16) fixture: row UP-PATCH. The same reporter as s11-upload.html, then a script that replaces
+  Element.prototype.getAttribute with a function that counts its calls and answers null. The bridge's mark and finder run
+  in an isolated world, so they must never reach the patched function: the page reads the count
+  (window.__s11PatchedCalls, state().patchedCalls) after the upload. Written 2026-10-25 by the S5 prep builder.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>S11 patched fixture</title>
+  </head>
+  <body>
+    <h1>S11 patched fixture</h1>
+    <p>Element.prototype.getAttribute is replaced on this page.</p>
+    <label for="up-single">Single file</label>
+    <input id="up-single" type="file" />
+    <pre id="s11-report">no files yet</pre>
+    <script src="s11-upload.js"></script>
+    <script src="s11-patched.js"></script>
+  </body>
+</html>
