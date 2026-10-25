@@ -118,6 +118,32 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-25 · Fresh agents instead of resumed ones (#225)
+**Decided:** from now on, a stage that needs to continue is handed to a **new** step agent that resumes from its
+ledger, and every builder, verifier and fixer is a new agent too; the session agent and step agents no longer continue
+an earlier agent by message (`SendMessage`).
+**Why:** the user (2026-10-25): "we keep resuming subagents, even tho their context is pretty full. Our whole system
+is built so a new agent will have good context and will be able to continue from scratch." The S7 step agent had been
+resumed five times.
+**Instead of:** resuming long-lived agents whose context is nearly full.
+**Revisit if:** a resume is the only way to recover work that is not in a ledger or report (then write it there first).
+**By:** user
+
+### 2026-10-25 · R15-3R: the guard ignores a popup owned by the wave's own window that covers nothing the row reads (#224)
+**Decided:** asked under #212's Revisit-if, the user allowed the exemption: for R15-3R, the occlusion guard ignores
+a covering window only if one of the wave's own windows owns it **and** it covers none of the five things the row
+reads; any other covering window still stops the row. **Why:** Run 15 identified the occluder as a small popup owned by
+the wave's own options window; the S7 wave verifier found the rule sound. **Instead of:** keeping R15-3 NOT MEASURED.
+**Revisit if:** a covered read is ever accepted under this rule. **By:** user
+
+### 2026-10-25 · RET-1's end safety read-back reads only a window the wave opens and marks (#223)
+**Decided:** after a Chrome relaunch the read-back helper waits until Chrome's set of windows stops changing, opens
+its check window with a unique marker, and reads only that window; zero or two matches is a STOP. RET-1R's reconnect
+wait turns "Chrome never reconnects" into a STOP rather than a FAIL. **Why:** Run 15's Return 5 — the restored
+session brought back two Chrome windows (the user's) and the helper, rightly, touched neither, so the state was never
+compared. **Instead of:** reading only `daemon.status` (cannot hash the block list — weaker). **Revisit if:** the
+marker cannot be placed in Chrome 156's window title. **By:** Claude
+
 ### 2026-10-25 · The user widens Step 10's grants: unlimited Chrome restarts, repeated pp1 reads, hidden pp1 writes (#222)
 **Decided:** for Step 10's remaining work, the user allows (1) restarting (including killing and relaunching) their
 real Chrome as many times as needed; (2) reading the pp1 Blackboard course as many times as needed; (3) test writes on
