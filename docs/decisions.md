@@ -28,6 +28,8 @@ conservative rule and they wait for the user at the gate).** Each entry is in th
   meaning of `files`.
 - 2026-10-25 · Stage 0: who the folder rule protects against, and the broad-folder warning (#250) — warn or refuse a
   home folder.
+- 2026-10-25 · S1: the marked set is the `saveTo` value refusals and the cap; the save leg's breakdowns keep the
+  prefix (#254) — which wire messages lose the prefix.
 
 ## Standing decisions
 
@@ -165,6 +167,32 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
+
+### 2026-10-25 · S1: the wording of `kind` in `saveTo`'s description (#255)
+**Decided:** `browser_evaluate`'s `saveTo` description reads `… answer only the path, size, kind ("string" for a string
+saved as is, "json" for anything else) and sha256 …`.
+**Why:** it names both values `evaluateSaveStart` returns (#218), as #229 ordered.
+**Instead of:** a bare "kind".
+**Revisit if:** a third `kind` appears.
+**By:** Claude (S1 builder's proposal)
+
+### 2026-10-25 · S1: the marked set is the `saveTo` value refusals and the cap; the save leg's breakdowns keep the prefix (#254)
+**Decided:** the refusals marked to pass through unprefixed are `save.ts`'s value refusals (including the stringify
+`PAGE_ERROR`) and the in-session size cap — SAVE-REFUSE's set (#207, #218). The save leg's `INTERNAL` failures and its
+transfer timeout keep `[chrome.debugger] `, as do `keys.ts`'s unsupported-key refusal and every page error.
+**Why:** #246 names the `saveTo` refusals; the `INTERNAL` failures are breakdowns, not refusals; outside the session the
+cap was already unprefixed. The narrower set changes the least wire text.
+**Instead of:** marking every own error `save.ts` throws.
+**Revisit if:** the user wants the `INTERNAL` failures, the timeouts or the key refusal unprefixed.
+**By:** Claude (wire message text — for user review, listed under Open decisions)
+
+### 2026-10-25 · S1: the own-refusal marker is a module-private WeakSet (#253)
+**Decided:** `markOwnRefusal(err)` adds the error to a `WeakSet` private to `debugger-errors.ts`; only a marked own
+coded `BridgeError` passes `describeDebuggerError` unchanged; a copy of a marked error is not marked.
+**Why:** a marker carried by the error's shape (a property, a subclass) could be forged or copied onto a page error.
+**Instead of:** a property or a subclass.
+**Revisit if:** errors are cloned across a boundary before `describeDebuggerError`.
+**By:** Claude
 
 ### 2026-10-25 · Stage 0 accepted; the stage split (#252)
 **Decided:** Stage 0's audit is accepted (verifier PASS-with-notes, `…-steps/Stage0.md`). Stages: S1 1.5 h standard ·

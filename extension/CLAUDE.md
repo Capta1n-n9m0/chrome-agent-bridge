@@ -104,10 +104,13 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   (`extension/src/evaluate-save-store.ts`: 5 min TTL refreshed per pull, 8 entries, 256 MiB per value and in
   total), dropped at a worker restart, a disarm, JavaScript off, the tab's close or replace, or the TTL; a later
   pull answers `INTERNAL Unknown or expired evaluateSave id: <id>` and the SDK removes `.part` (S4.md §6 candidate
-  2; unit + cross-package tests; Run 15 SAVE-TTL, SAVE-CLOSE, SAVE-DISARM, SAVE-JSOFF). The extension never sees the path; the SDK's file finish is in `sdk/CLAUDE.md`. A refusal thrown inside
-  `withDebugger` reaches the wire prefixed `[chrome.debugger] ` (`describeDebuggerError`; Run 15 SAVE-REFUSE;
-  decisions.md · 2026-10-25 · S7: SAVE-REFUSE's `[chrome.debugger] ` prefix — the product stays for now; a fix is
-  offered (#227)).
+  2; unit + cross-package tests; Run 15 SAVE-TTL, SAVE-CLOSE, SAVE-DISARM, SAVE-JSOFF). The extension never sees the path; the SDK's file finish is in `sdk/CLAUDE.md`. An error thrown inside
+  `withDebugger` reaches the wire prefixed `[chrome.debugger] ` (`describeDebuggerError`; Run 15 SAVE-REFUSE) unless
+  it was passed to `markOwnRefusal` (`debugger-errors.ts`, a module-private WeakSet): since Step 11 S1 the `saveTo`
+  value refusals and the in-session size cap are marked and pass through unchanged, while page errors, `TIMEOUT`,
+  the save leg's `INTERNAL` failures and `keys.ts`'s unsupported-key refusal keep the prefix (`extension/test/
+  s1-own-refusals.test.ts`; decisions.md · 2026-10-25 · Stage 0: S1 marks the bridge's own refusals explicitly; page
+  errors and timeouts keep the prefix (#246)). A new refusal raised inside a session must be marked, or it is prefixed.
 - **A module service worker must not use top-level `await`** — Chrome fails the worker with
   `TypeError: Top-level await is disallowed in service workers`, since the script must finish
   evaluating synchronously for its listeners to be known. The network log therefore ingests into

@@ -173,6 +173,9 @@ closed at the gate (#249).*
   prefixed `[chrome.debugger] ` (`extension/src/debugger-errors.ts`). #229 rules #227 (b), so after S1 the bridge's
   own coded refusals keep their message unprefixed wherever they are thrown; the upload's refusals are raised before
   the attach anyway. Expected texts are tied to the throwing constants and to S1's rule.
+  *Corrected 2026-10-25 (S1 verifier MINOR 1, 2): S1 built #246, not the code-based wording above: only errors passed
+  to `markOwnRefusal` keep their message unprefixed. Any refusal the upload raises inside the debugger session
+  (the finder's `REF_STALE`, `INTERNAL`) must be marked by S3 and its wire text pinned through `withDebugger`.*
 
 ### 0.6 The method, its tables, the lock and focus (proposed — contract-level wire)
 
@@ -444,6 +447,9 @@ patterns, the sentinel folder and the profile path by count. A failed row is rec
       `CLAUDE.md` files proposed for the session agent (`…-steps/S6-claude-md-proposals.md`).
 **Lane:** docs only. **Verifier focus:** setup text matches the code byte for byte; gotchas cite sources.
 
+*S6 addition 2026-10-25 (S1 verifier MINOR 1): `docs/setup.md`'s `saveTo` text that says refusals come out
+prefixed is amended to S1's behaviour.*
+
 ## Exit checks (pre-registered)
 
 Every stage: `npm test` = before + n, no test removed unless the stage's text says so and the report lists it per
@@ -555,6 +561,19 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - **Contracts (binding forward):** the gate passes `file:` URLs until S2 lands #245 (a); `fs.realpathSync` keeps 8.3
   names and the given case, `fs.promises.realpath` canonicalises (F8, S4 uses the latter);
   `s2-focus-first.test.ts` requires `browser_click`'s description to end with the focus sentence (F12, S4).
+
+### S1 — Step 10's ordered follow-ups · 2026-10-25 · verifier: PASS-with-notes · commits `eefb4d8`, `b31ee80` · models: step agent, builder, verifier Opus 5.5
+- **R.1 met:** `markOwnRefusal` (module-private WeakSet, `extension/src/debugger-errors.ts`) marks `save.ts`'s value
+  refusals and the in-session cap; page errors, `TIMEOUT`, raw Chrome errors keep the prefix; the new tests fail at
+  the pre-change source (16 of 65 red), and #244's first wording as a mutant turns 7 red. **R.2 (code) met:** `kind`
+  named; the baseline differs in `browser_evaluate` only, dated note in the test. Tests 3273/132 → 3294/133 (+21).
+- **Verifier:** MINOR 4, NIT 2, none blocking (`S1-verifier.md`); the doc contradictions fixed by the session agent
+  (`extension/CLAUDE.md`, the 0.5 note) or placed in S6 (`docs/setup.md`). The pinned fallback line is now
+  `debugger-errors.ts:68` (Step 10/Stage 0 records cite `:58`, unchanged as records).
+- **Decisions:** #253, #254, #255.
+- **Contracts (binding forward):** a refusal raised inside `withDebugger` is prefixed unless marked (S3's finder
+  errors); `keys.ts:40`'s unsupported-key refusal stays prefixed (#227's Revisit-if, not ordered); the loaded
+  extension is older than `dist/` from here on (S5's reload).
 
 ## Open items
 
