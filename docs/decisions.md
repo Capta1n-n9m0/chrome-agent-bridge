@@ -172,6 +172,16 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
 
+### 2026-10-25 · S4b: the `UPLOAD_REFUSED` client line's wording (#264)
+**Decided:** the line in `sdk/src/error.ts` opens "the bridge will not upload that file", gives the two causes as
+"either … or …" (not in an allowed Upload folder; "Allow access to file URLs" off for the extension, in the tool
+description's own words), and keeps the closing "stop and ask the user; do not retry with another path". The MCP
+shows the SDK's line and has no text of its own.
+**Why:** one setting per cause, in the words the agent already has from the tool description.
+**Instead of:** the extension's own toggle message, which names the product.
+**Revisit if:** the user rules #257's texts differently, or wants a separate code for the toggle.
+**By:** Claude (S4b builder's proposal; wire wording — for user review with #257 and #263)
+
 ### 2026-10-25 · S4: the client line for `UPLOAD_REFUSED` names both causes (#263)
 **Decided:** the SDK's and the MCP's one-line rendering of `UPLOAD_REFUSED` (`sdk/src/error.ts`, S2's wording, #257)
 names both causes the extension can refuse for — the file is not in a folder the user allows (extension options →

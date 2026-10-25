@@ -28,3 +28,7 @@ One line per event, UTC. Agent lines: stage · role · model · start → end.
 - 2026-10-25T18:16Z · S4 · step agent · Opus 5.5 · 18:16Z → (running) — in parallel with S3, file-disjoint
 - 2026-10-25T18:43Z · S4 · step agent · Opus 5.5 · 18:16Z → ~18:43Z — DONE; verifier PASS-with-notes (CRITICAL 0, MAJOR 0, MINOR 2, NIT 4), no fix round; builder, verifier Opus 5.5 (times in S4.md). Commit acbb042. Tests → 3532/140.
 - 2026-10-25T18:43Z · session · S4 accepted; #261–#263 (#261, #263 under Open); counts in root, mcp/, extension/ CLAUDE.md → 24 tools, 27 codes (26 wire), 27 router methods; setup.md/README counts left to S6. S4b (#263) queued after S3.
+- 2026-10-25T18:43Z · S4b · step agent · Opus 5.5 · 18:43Z → (running) — #263, parallel with S3
+- 2026-10-25T19:01Z · S4b · step agent · Opus 5.5 · 18:42Z → ~19:01Z — DONE; builder Opus 5.5 18:43–18:48; verifier Opus 5.5 18:49–~19:01 PASS-with-notes (CRITICAL 0, MAJOR 0, MINOR 1, NIT 2). Commit 01f60b2. Tests 3585/143 (with S3's commits).
+- 2026-10-25T19:02Z · session · S4b accepted; #264; spec §10 amended (two causes); S6 gets one sentence on the other refusal causes.
+- 2026-10-25T19:02Z · session · trial note: builders commit before their verifier, so every code commit's message says "verifier: pending" (agent-rules §10 wants the verdict); the verdict lands in the as-built instead. Recorded for the trial; rule to fix at close-out.

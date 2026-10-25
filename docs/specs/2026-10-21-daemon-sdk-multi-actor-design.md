@@ -686,6 +686,9 @@ The block itself is left as written.*
     carries no `data`; it is not in the SDK's failure-report attach set; the SDK and the MCP render it as one plain
     line. A refusal reveals only that a path is outside the folders, never which folders exist. A malformed `paths`
     (not an array, empty, more than 20 entries, an entry that is not a string) is refused the same way (#249).*
+    *Amended 2026-10-25 (S4b verifier): the upload handler also answers `UPLOAD_REFUSED`, with its own fixed message,
+    when the user has not allowed the extension file access in Chrome (#245 (b), S3); the SDK/MCP line names both
+    causes (#263).*
   - *A new tab method: `uploadFiles {tab, ref | locator, paths: string[]}` → `{files: number}` (plus
     `pastSnapshotCap?: true` as every locator-resolved action since Step 10 S3). `paths` holds 1–20 absolute paths
     that Chrome itself opens (`DOM.setFileInputFiles`); no file bytes cross the wire (#235). `files` is the number of

@@ -599,6 +599,13 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   `subst` or mapped drive (the real path may resolve past the drive letter) — S5/S6 notes.
 - **Decisions:** #261–#263; #263 orders S4b (the client line names both causes), after S3.
 
+### S4b — The `UPLOAD_REFUSED` client line names both causes · 2026-10-25 · verifier: PASS-with-notes · commit `01f60b2` · models: all Opus 5.5
+- The SDK line names the folder rule and the file-URL toggle (#263, #264); three tests that pinned the old line carry
+  dated notes, two added; the old `error.ts` turns 8 red. `npm test` 3585 / 143 at `01f60b2` (S3's commits included).
+- **Verifier:** CRITICAL 0, MAJOR 0, MINOR 1 (spec §10 still one-cause: amended by the session agent), NIT 2 (the
+  "either … or" reads exhaustive — malformed paths and `subst`/mapped drives also refuse: one sentence for S6; the
+  line says "the extension's Details", the extension's own message names the product).
+
 ## Open items
 
 - Contract-level, ruled at Stage 0 by the conservative rule and listed for the user at the gate: 0.3 (paths only),
