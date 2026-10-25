@@ -119,6 +119,18 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-25 · S8: the retirement as done, the s6 typecheck fix, and where the pointers go (#228)
+**Decided:** (1) retired `recipes/blackboard/assemble-mcp.ts`, `transcript.ts`, `export-file.ts`'s `assemble()` and
+exactly the 7 tests of 0.5/F9 (6 in `blackboard-export-file.test.ts`, 1 in `blackboard-held.test.ts`; 3280 → 3273);
+`--mcp-plan` stays, naming `browser_evaluate {saveTo}`; `exportFileName`'s `"mcp"` option and its tests stay; (2)
+`recipes/tsconfig.s6.json` excludes `test/s9-rules.test.ts`, `test/s10-rules.test.ts` and `test/s10-fixtures.test.ts`
+— its glob had pulled in chrome-typed rule tests (29 errors since `e91e437` and `b55048d`), which `tsconfig.s9.json` /
+`tsconfig.s10.json` already cover; all five recipes tsconfigs exit 0; (3) pointers in `docs/e2e-test-plan.md` (§4.6
+`:306`, §4.19 SDK-7) are dated notes after their tables, never inside a run row.
+**Why:** S8 report and verifier (`…step10…-steps/S8.md`). **Instead of:** adding chrome types to the s6 project;
+editing pre-registered rows. **Revisit if:** a new recipes test imports chrome-typed extension code; §4.19 is re-run.
+**By:** Claude
+
 ### 2026-10-25 · S7: SAVE-REFUSE's `[chrome.debugger] ` prefix — the product stays for now; a fix is offered (#227)
 **Decided:** SAVE-REFUSE's FAIL stands as recorded. The product behaved as built: `saveTo`'s own refusals are thrown
 inside `withDebugger`, and `describeDebuggerError` keeps an own `BridgeError`'s code and data but prefixes its message

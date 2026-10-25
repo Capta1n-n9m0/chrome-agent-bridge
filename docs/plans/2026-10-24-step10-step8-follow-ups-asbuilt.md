@@ -217,3 +217,21 @@ session agent; one block per stage, appended at each stage close.
 
 ### Open decisions for the user
 - #227.
+
+## S8 — Retirement and docs · 2026-10-25 · verifier: PASS-with-notes · commit `7e12566`
+
+### Contracts (binding forward)
+- The chunked MCP recipe is retired (`assemble-mcp.ts`, `transcript.ts`, `assemble()`, 7 tests); bulk data through the
+  MCP goes by `browser_evaluate {saveTo}`. `docs/setup.md`, `recipes/README.md`, `README.md`, the roadmap's Step 10
+  block and `sdk/src/policy.ts`'s header describe Step 10 as built, quoted byte for byte from the code.
+- All five recipes tsconfigs typecheck (s6's glob fixed).
+
+### Decisions taken
+- #228.
+
+### Deviations from the phase doc
+- Tests 3280/132 → 3273/132 (−7, listed per file). Three docs-only edits after the verifier were reviewed by the step
+  agent only. Found, outside the lane: the `saveTo` parameter's description omits `kind` (a schema text change — later).
+
+### Estimates vs actuals
+- 1 h estimated; ~25 min.

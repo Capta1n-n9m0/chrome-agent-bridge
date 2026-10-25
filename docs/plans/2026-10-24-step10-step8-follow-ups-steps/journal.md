@@ -49,3 +49,4 @@
 - S4 closed (`6ba2d10`, PASS-with-notes, 3145/130); #217 (primitive leg, S7 measures SAVE-PRIM/SAVE-IDONLY), #218. S4b dispatched alone (S5, S6 already done).
 - S4b closed (`2866c43` spec, `da16277`, PASS-with-notes, 3165/130); #219, #220 (node_modules junction lesson added to common.md). All code stages done; S7 (Run 15) next, alone.
 - S7 closed (`c8169ff`, PASS-with-notes, 3280/132); #221–#227. S8 dispatched (retirement, docs, CLAUDE.md proposals).
+- S8 closed (`7e12566`, PASS-with-notes, 3273/132); #228. Next: propagator (also applies S8-claude-md-proposals.md under the session agent's instruction), then close-out.
