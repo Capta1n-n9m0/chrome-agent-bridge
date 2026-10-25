@@ -577,9 +577,17 @@ The block itself is left as written.*
     JavaScript off for an `evaluate`) and `DOMAIN_BLOCKED` (the tab's URL, or the call's own target URL, is on
     the human's block list, or is one of the extension's own pages). The count is 25: 24 on the wire (9
     daemon + 15 extension) plus the SDK-only `NO_CURSOR`.*
+    *Superseded 2026-10-25: was "`DISARMED` (… or turned JavaScript off for an `evaluate`) … The count is 25: 24 on
+    the wire (9 daemon + 15 extension)", because Step 10 S4b adds `JS_DISABLED` for "JavaScript is off" (decisions.md
+    · 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202): #133 changed): the count is
+    26, 25 on the wire (9 daemon + 16 extension) plus the SDK-only `NO_CURSOR`; see the Step 10 note at the end of
+    this section.*
   - *`DISARMED` carries `data: {scope: "all" | "evaluate"}` — `"all"` for the kill switch, `"evaluate"` for
     `evaluate` (with or without `asRef`) while JavaScript is off (#133). `DOMAIN_BLOCKED` reveals no host or
     pattern in message or data.*
+    *Superseded 2026-10-25: was "`"evaluate"` for `evaluate` … while JavaScript is off", because #202 changed #133:
+    a Step 10 extension answers those calls `JS_DISABLED` and produces only `scope: "all"`; `"evaluate"` stays in
+    the type for an old (Step 9) extension (see the Step 10 note at the end of this section).*
   - *Neither code is in the SDK's failure-report attach set (a report's calls would only be refused too).*
   - *Events: E→D `safetyState {armed, evaluate, blockedCount}` (`blockedCount` = the valid patterns only),
     sent each time the extension's connection comes up and on every change; D→C `safetyStatus` with the same
@@ -606,6 +614,8 @@ The block itself is left as written.*
   (#138), which this note adds):*
   - *`DISARMED` with `data: {scope: "evaluate"}` also answers `navigate`/`newTab` to a `javascript:`, `data:` or
     `blob:` URL while JavaScript is off; while JavaScript is on, those navigations behave as before Step 9 (#138).*
+    *Superseded 2026-10-25: was "`DISARMED` with `data: {scope: "evaluate"}` also answers", because #202 changed
+    #133: from Step 10 S4b these navigations answer `JS_DISABLED` while JavaScript is off (the Step 10 note below).*
     *Corrected 2026-10-24 (Step 9 propagator): "behave as before" left Chrome's answer unmeasured; Run 13 measured
     it on Chrome 156: a `javascript:` navigation through the bridge with JavaScript on → `NAV_FAILED`, page unchanged
     (SAFE-6c, record) — Step 9 as-built § Stage S4 "Contracts".*
@@ -617,6 +627,24 @@ The block itself is left as written.*
     pattern in message/data"), not from #132–#134.*
   - *`leaseGranted.url` is `""` also for a tab opened onto a blocked URL, not only while disarmed (#134; phase
     doc 0.3's F40 note).*
+- *Amended 2026-10-25 (Step 10 S4b, #202; phase doc `docs/plans/2026-10-24-step10-step8-follow-ups.md` 0.12 with
+  its Stage 0 F17 note; decisions.md · 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes
+  (#202), which changed · The JavaScript switch reuses `DISARMED` with a scope (#133)):*
+  - *A new extension code joins, on the wire: `JS_DISABLED` — the human turned JavaScript off for the bridge in
+    Chrome. The count is 26: 25 on the wire (9 daemon + 16 extension) plus the SDK-only `NO_CURSOR`.*
+  - *Produced, while the bridge is armed and JavaScript is off, for exactly the calls that Step 9 answered
+    `DISARMED {scope:"evaluate"}`: `evaluate` (with or without `asRef`), Step 10 S4's `evaluateSaveStart`,
+    `evaluateSaveChunk` and `evaluateSaveEnd` (class `evaluate`, decisions.md #218), and `navigate`/`newTab` to a
+    `javascript:`, `data:` or `blob:` URL (#138). Which methods are gated, and when, is unchanged; only the code
+    and its wording change. Its message keeps Step 9's meaning (JavaScript is off; every other tool still works;
+    ask the user) and names no URL, pattern, title or id; it carries no `data`.*
+  - *While the bridge is off, `DISARMED` with `data: {scope: "all"}` wins over `JS_DISABLED`, for these calls as
+    for every other. `DISARMED` keeps `data.scope` for compatibility; a Step 10 extension produces only `"all"`. An
+    old (Step 9) extension may still send `DISARMED {scope:"evaluate"}`; the SDK and the MCP render it as the
+    JavaScript-off line, and `SafetyScope` keeps its two values (Stage 0 F17).*
+  - *`JS_DISABLED` is not in the SDK's failure-report attach set: the MCP renders it as one plain line, with no
+    failure report and no screenshot.*
+  - *With the bridge armed and JavaScript on, nothing changes.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
