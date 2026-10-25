@@ -107,12 +107,53 @@ Step 10 (2026-10-24 on), for the user at the gate:
 3. "Stage 0: the cap warning reaches SDK actions as a client event" (#206).
 4. "Stage 0: `saveTo`'s file rules are stricter than `browser_download`'s" (#207).
 5. "Stage 0: `release/step8` from `70aa754` to `a1932a8`, Variant C" (#208) — a third layout beyond 0.6's two.
+6. "S3: the cap warning's edges as built" (#216), item 2 (a text match inside the 800th element is flagged).
+7. "S4: a primitive completion value crosses the CDP leg whole; S7 measures it" (#217).
+8. "S4: `saveTo`'s wire methods, refusals, store caps, SDK form and file finish" (#218).
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-25 · S4: `saveTo`'s wire methods, refusals, store caps, SDK form and file finish (#218)
+**Decided:** as built in S4 (`6ba2d10`; full texts in `…step10…-steps/S4.md` §5): (1) three tab methods
+`evaluateSaveStart {tab, expression, timeoutMs?}` → `{id, bytes, kind: "string"|"json"}`, `evaluateSaveChunk {tab,
+id, offset, length?}` → `{data}` (base64, ≤ 1 MiB), `evaluateSaveEnd {tab, id}` → `{released}`, class `evaluate`,
+daemon tab methods, no lock; (2) an unknown, expired, lost or other tab's id → `INTERNAL Unknown or expired
+evaluateSave id: <id>`, as `downloadChunk`; (3) store: 5 min TTL, 8 entries, 256 MiB, oldest evicted across all tabs
+(one client's saves can push out another's, which then fails cleanly), over the cap → `BAD_PARAMS` before any slice;
+(4) value refusals: `undefined`, function, symbol, Map, Set, DOM node, a `JSON.stringify` of `undefined` →
+`BAD_PARAMS` with fixed texts; a throwing `JSON.stringify` → `PAGE_ERROR` with a fixed text; (5) SDK:
+`Tab.evaluateToFile(expression, {path, overwrite?, timeoutMs?})` → `{path, bytes, kind, sha256}` plus the client
+mirror, new types `EvaluateToFileOptions`/`EvaluateToFileResult` (values stay eight), two helpers on the existing
+`@bridge/sdk/download` subpath; (6) the finish: `rename` with `overwrite`, otherwise a hard link (`EEXIST` →
+`BAD_PARAMS`) then `.part` removed, retried once, a second failure → `INTERNAL` with the target kept.
+**Why:** #205 and #207 applied, mirroring `downloadStart`/`Chunk`/`End`; the verifier measured each refusal and the
+cross-actor eviction over real `ws` on port 0.
+**Instead of:** a `store` flag on `evaluate`; `BAD_PARAMS`/`TAB_UNKNOWN` for a lost id; per-tab quotas; a ninth export
+value; a plain `rename` that replaced a file appearing mid-save.
+**Revisit if:** S7's SAVE rows show memory pressure; concurrent actors' saves collide in practice; clients need to
+tell "lost" from a bug.
+**By:** Claude (contract-level — wire methods, codes, the SDK surface; open for the user)
+
+### 2026-10-25 · S4: a primitive completion value crosses the CDP leg whole; S7 measures it (#217)
+**Decided:** `saveTo` keeps `evaluate`'s semantics. Objects and promise-valued completions (any `return …`) are sliced
+on the CDP leg; a **primitive** completion value (an expression whose last value is a plain string, with no `return`)
+arrives whole in `Runtime.evaluate`'s reply — CDP gives a primitive no `objectId` — and is sliced from the worker on,
+so no runtime message or WebSocket frame grows with it (largest frame ~1.4 MB for an 8 MiB value; the 100 MiB 1009
+close cannot be reached through `saveTo`). The description and SDK docs advise `return …` for a very large value. S7
+measures rows SAVE-PRIM and SAVE-IDONLY.
+**Why:** no semantics-preserving fix was found (S4 builder §7, verifier §4: `objectGroup`/`$_` still return the reply
+whole; wrapping the expression loses `replMode`'s top-level `await` and may meet CSP; `serializationOptions: idOnly`
+is unproven); this is the conservative choice — no new refusal, every tool unchanged. It falls short of Stage 0 F2's
+note ("no single message grows with the value") for this one leg, inside Chrome.
+**Instead of:** a save-only rewrite of the expression; `idOnly` unmeasured; a new size refusal for primitive
+completions.
+**Revisit if:** SAVE-PRIM fails at ≥ 64 MiB (then a size refusal at the measured bound), or SAVE-IDONLY shows an
+`objectId` for a primitive (then `idOnly`).
+**By:** Claude (touches 0.4 (user) and #205; open for the user)
 
 ### 2026-10-25 · S3: the cap warning's edges as built (#216)
 **Decided:** (1) "past the cap" needs > 800 listable elements, counted up to the 801st (a non-listable match after the

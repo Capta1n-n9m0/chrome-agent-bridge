@@ -46,3 +46,4 @@
 - S2 closed (`8ae1a95`, PASS-with-notes, 2807/117); #214. S3 dispatched beside S5. S4 must re-baseline the schema test under #127/#214; S8 carries S2's doc texts (setup.md, e2e-test-plan.md:306, policy.ts header).
 - S5 closed (`34adfdc`, PASS-with-notes); #215. S8 carries its README row text and a gotcha candidate (PowerShell variable names ignore case).
 - S3 closed (`89d6de7`, PASS-with-notes, 2989/122); #216. S4 dispatched (transport (B), #205/#207; schema re-baseline per #214).
+- S4 closed (`6ba2d10`, PASS-with-notes, 3145/130); #217 (primitive leg, S7 measures SAVE-PRIM/SAVE-IDONLY), #218. S4b dispatched alone (S5, S6 already done).

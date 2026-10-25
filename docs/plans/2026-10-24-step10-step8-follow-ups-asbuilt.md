@@ -140,3 +140,29 @@ session agent; one block per stage, appended at each stage close.
 
 ### Open decisions for the user
 - #206 (incl. `BridgeWarning`), #216 item 2.
+
+## S4 — `browser_evaluate {saveTo}` · 2026-10-25 · verifier: PASS-with-notes · commit `6ba2d10`
+
+### Contracts (binding forward)
+- `browser_evaluate {saveTo, overwrite?}` → `Saved <path>` / `<bytes> bytes · <kind> · sha256 <hex>`, nothing of the
+  value; `Tab.evaluateToFile` + client mirror. Transport (B): `evaluateSaveStart`/`Chunk`/`End` (tab methods, class
+  `evaluate`, lease-checked, no lock); an in-memory store (5 min, 8 entries, 256 MiB) dropped at disarm, JavaScript
+  off, tab close, TTL; the extension never sees the path. File rules per #207; finish by hard link without
+  `overwrite` (#218).
+- A primitive completion value crosses the CDP leg in one reply (#217); S7 measures it.
+- Log allowlist still 54; MCP schema test re-baselined for `browser_evaluate` only (#214), the other 22 byte-identical.
+
+### Decisions taken
+- #217, #218.
+
+### Deviations from the phase doc
+- F2's "no single message grows with the value" not met for a primitive completion inside Chrome (#217). Two fix
+  rounds (on notes). Tests 2989/122 → 3145/130.
+- Open notes: a value held on a tab that becomes blocked mid-save lives until its TTL; `overwrite` without `saveTo`
+  is ignored silently.
+
+### Estimates vs actuals
+- 3.5 h estimated; ~1 h.
+
+### Open decisions for the user
+- #205, #207, #217, #218.
