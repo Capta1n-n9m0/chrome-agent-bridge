@@ -262,3 +262,25 @@ Every line below is RECORD (RET-1 NOT MEASURED: relaunch failed by our bug); non
    restore was run. The options window the helper opened (if it opened) was left open — "none is touched".
 4. Not done (returned at the STOP): step 3's clean-up. Still running: python 23944 (http 8080, the runner-4's), daemon
    node 17360 (now 0 clients; idles out). Chrome 6448 (12 chrome.exe) untouched; node 22152, claude 23208/24284 untouched.
+
+## RET-1 end read-back (redone under #223)
+
+Runner A (redo), Opus 5.5, 2026-10-25, HEAD `29f9efc`. The sheet §1 "Before attempt 4" command (sheet §6 step 3 with
+`$env:S9_RAW`); Chrome running (12 processes); nothing pressed. A read-back only — RET-1 stays NOT MEASURED. Output verbatim:
+
+```
+2026-10-25T11:47:44.333Z s9-win: LEG RET-1 end: Chrome's window set stable - 3 visible window(s) unchanged for 5274 ms (after 5329 ms, 0 change(s)); 12 chrome process(es)
+2026-10-25T11:47:45.581Z s9-win: LEG RET-1 end: my check window 3869320 - the only window carrying this call's marker (after 1046 ms), its address bar on the marker URL
+2026-10-25T11:47:45.597Z s9-win: PARK skipped (before the omnibox foreground/focus guard): no driver window W
+2026-10-25T11:47:46.647Z s9-win: window 3869320 now shows chrome-extension://cpnemjbgecfbeicldpaaegbhjgjgjfep/options.html
+2026-10-25T11:47:46.749Z s9-win: STATE armed=true evaluate=true count=0 lines=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 status "Bridge armed." summary "0 blocked sites."
+2026-10-25T11:47:52.484Z ROW RET-1-end wait-safety reached safety armed=true evaluate=true blockedCount=0 after 3 ms (wanted {"armed":true,"evaluate":true,"blockedCount":0})
+2026-10-25T11:47:52.750Z s9-win: window 3869320 closed
+2026-10-25T11:47:52.757Z s9-win: LEG RET-1 end: stored armed+JavaScript on+0 sites true, block-list sha256 vs found equal, daemon.status equal true -> equal
+exit 0
+```
+
+Result: `-> equal` (armed, JavaScript on, 0 sites, sha256 e3b0c442…b855 = found), exit 0. The check window 3869320 was
+opened and closed by the helper; no window left over. Daemon serving after the read-back: node 33480 (spawned by
+`Test-S9DaemonSafety`, created 11:47:47Z; left to idle out). Python 23944 (runner 4's http 8080) ended after
+`safe: the tree of 23944 does not contain the driver`; 8080 no LISTENING (11:48:09Z).
