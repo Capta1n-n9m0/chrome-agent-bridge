@@ -10,7 +10,9 @@
 //     text item … (#162), whose Revisit-if this reads), with a `SAFETY-DELIVERY` line per result that has one;
 //   - `extract` writes the whole transcript as text, for the count-grep before any line of it is quoted.
 //
-//   node --import tsx recipes/s9-actor.ts start <name> [--model sonnet]
+//   node --import tsx recipes/s9-actor.ts start <name> [--model sonnet] [--failures-dir <abs>] [--no-tool-search]
+//     (--no-tool-search, S7 wave fixer 2: the session runs with ENABLE_TOOL_SEARCH=false, so the bridge tools load
+//      directly instead of behind Claude Code's ToolSearch; opt-in, Run 13/14 behaviour unchanged without it)
 //   node --import tsx recipes/s9-actor.ts send <name> "<prompt>" [--timeout <s>]
 //   node --import tsx recipes/s9-actor.ts end <name>
 //   node --import tsx recipes/s9-actor.ts extract <name> --out <file>
@@ -25,7 +27,7 @@ import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readdirSync
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { actorArgs, mcpConfig, safetyDelivery, toolResultItems } from "./s9-rules.js";
+import { actorArgs, actorEnv, mcpConfig, safetyDelivery, toolResultItems } from "./s9-rules.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const BASE = process.env.S9_ACTORS?.trim() || join(tmpdir(), "bridge-e2e", "s9-actors");
@@ -52,8 +54,10 @@ function host(): void {
   const out = join(d, "out.jsonl");
   const errFd = openSync(join(d, "err.txt"), "a");
   // shell:false; on Windows `claude` resolves through PATHEXT only with a shell, so S9_CLAUDE may name claude.exe.
-  const child = spawn(CLAUDE, actorArgs(model, cfg), { cwd: ROOT, stdio: ["pipe", "pipe", errFd], windowsHide: true });
-  writeFileSync(join(d, "pids.json"), JSON.stringify({ host: process.pid, claude: child.pid ?? null, model, started: stamp() }));
+  // S7 wave fixer 2: `--no-tool-search` (opt-in) gives the session ENABLE_TOOL_SEARCH=false (s9-rules.ts actorEnv).
+  const noToolSearch = rest.includes("--no-tool-search");
+  const child = spawn(CLAUDE, actorArgs(model, cfg), { cwd: ROOT, env: actorEnv(process.env, noToolSearch), stdio: ["pipe", "pipe", errFd], windowsHide: true });
+  writeFileSync(join(d, "pids.json"), JSON.stringify({ host: process.pid, claude: child.pid ?? null, model, toolSearch: noToolSearch ? "off" : "default", started: stamp() }));
   let buf = "";
   child.stdout!.setEncoding("utf8");
   child.stdout!.on("data", (chunk: string) => {
@@ -108,7 +112,9 @@ function start(): void {
   if (failuresDir && !isAbsolute(failuresDir)) throw new Error("--failures-dir needs an absolute path");
   if (failuresDir) mkdirSync(failuresDir, { recursive: true });
   writeFileSync(join(d, "mcp.json"), JSON.stringify(mcpConfig(process.execPath, join(ROOT, "mcp", "dist", "index.js"), failuresDir || undefined), null, 2));
-  const h = spawn(process.execPath, ["--import", "tsx", fileURLToPath(import.meta.url), "host", n, "--model", option("--model", "sonnet")], {
+  const hostArgs = ["--import", "tsx", fileURLToPath(import.meta.url), "host", n, "--model", option("--model", "sonnet")];
+  if (rest.includes("--no-tool-search")) hostArgs.push("--no-tool-search");
+  const h = spawn(process.execPath, hostArgs, {
     cwd: ROOT,
     detached: true,
     stdio: "ignore",
@@ -118,8 +124,8 @@ function start(): void {
   const t0 = Date.now();
   const wait = (): void => {
     if (existsSync(join(d, "pids.json")) && readFileSync(join(d, "pids.json"), "utf8").trim()) {
-      const p = JSON.parse(readFileSync(join(d, "pids.json"), "utf8")) as { host: number; claude: number | null; model: string };
-      console.log(`${stamp()} actor ${n}: started — host pid ${p.host}, claude pid ${p.claude ?? "?"}, model ${p.model}, MCP config ${join(d, "mcp.json")} (chrome-agent-bridge only)`);
+      const p = JSON.parse(readFileSync(join(d, "pids.json"), "utf8")) as { host: number; claude: number | null; model: string; toolSearch?: string };
+      console.log(`${stamp()} actor ${n}: started — host pid ${p.host}, claude pid ${p.claude ?? "?"}, model ${p.model}, MCP config ${join(d, "mcp.json")} (chrome-agent-bridge only)${p.toolSearch === "off" ? " · tool search off (ENABLE_TOOL_SEARCH=false)" : ""}`);
       return;
     }
     if (Date.now() - t0 > 15_000) {

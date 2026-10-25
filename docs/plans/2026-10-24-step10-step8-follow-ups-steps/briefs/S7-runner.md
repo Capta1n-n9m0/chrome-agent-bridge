@@ -86,9 +86,20 @@ throwaway headless Chrome with its own temporary profile (SAVE-IDONLY; never the
   `recipes/blackboard/` script and `recipes/s10-ret1.ps1` nowhere else. *(Amended 2026-10-25 by the S7 wave fixer 1:
   was "RET-1 and PP1 are recorded `not run — waits for the user (G10-2 / G10-3)`; you never run
   `recipes/s10-ret1.ps1` or any `recipes/blackboard/` script", because of #221 and #222.)*
-- **Run 15 restarts from block 1:** attempt 1 stopped at block 4 before any row (Return 1); call a plain `-Block reset`
-  first (it archives attempt 1), then block 1. Block 4's pin reader is `Get-S10PinState` (bounded wait, widens only the
-  driver's own window W; never a click); if it still reads unpinned, the PINNING RULE's STOP stands.
+- ~~**Run 15 restarts from block 1:** attempt 1 stopped at block 4 before any row (Return 1); call a plain `-Block reset`
+  first (it archives attempt 1), then block 1.~~ Block 4's pin reader is `Get-S10PinState` (bounded wait, widens only the
+  driver's own window W; never a click); if it still reads unpinned, the PINNING RULE's STOP stands. *(Superseded
+  2026-10-25 by the S7 wave fixer 2: was "call a plain `-Block reset` first, then block 1", because runner 2 ran blocks
+  1–17 and stopped at block 18 `sw1` (Return 2): the next runner resumes, below.)*
+- **Resume after Return 2 (the next runner):** the first call is exactly
+  `powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\s10-r15.ps1 -Block reset -Attempt 2 -Skip bbl1,bbl2,mcpf-click,mcpf-type,mcpf-press,cap,sw1`
+  (never a plain `-Block reset`, which would archive attempt 1 as a fresh start). It must print `RESUME attempt 2: …`;
+  `USAGE: …` (exit 3) means nothing changed — RETURN, do not adjust the skip set. Then the run order it prints: blocks
+  1–11 (framing, REP-0 again), **`sw1r` (SW-1R, block 18a)**, pop2 … teardown, then PP1 and RET-1. The record gets the
+  heading `## Attempt 2 (runner 3) — resume after Return 2` and continues from its SAFE-0 line (sheet §1, "Resume after
+  Return 2"). SW-1R's outcome table is filled like SW-1's; SW-1 stays NOT MEASURED. Every actor now starts with
+  `--no-tool-search` (the runner does it and STOPs if the start line lacks `tool search off`); the PP1 actor's `start`
+  command in sheet §7 carries it too.
 - Long blocks: the PowerShell tool caps a call at 10 min; the longest block (save-ttl) takes about 6 min — call every
   block with the tool's timeout at its maximum (600 000 ms). Every block stops itself within its budget (sheet §1:
   budget + stop procedure ≤ 570 s). **A block that the tool still ends at its cap is a STOP:** run `-Block stop -Why

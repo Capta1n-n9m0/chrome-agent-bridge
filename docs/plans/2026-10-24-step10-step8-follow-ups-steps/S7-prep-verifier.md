@@ -373,3 +373,87 @@ restored from a copy. The sha256 before and after: `s10-rules.ts` `7b77460a…d8
   user's) in that window would also be deleted. With `failureReports: false` the expected count is 0.
   **Fix:** delete only when the count is above 0 *and* the file was written by this leg (e.g. its name carries the
   leg's tab handle); otherwise record the count and leave the files.
+
+## Wave fixer 2 check (after Return 2; `S7-wave-fixer2.md`, uncommitted on `e28b609`)
+
+Read-only: no Chrome, no daemon, no 9234, no `claude -p`. Long commands ran in the background with `timeout` bounds. My
+only changes were two temporary mutations, each restored from a copy. The sha256 before and after: `s10.ts`
+`b2f3f092…214e`, `s10-rules.ts` `ed34fb1f…f5cc7`.
+
+### Verdict: **PASS-with-notes**
+
+### Checks
+
+| Check | Result |
+|---|---|
+| Typechecks | `s10 exit 0` · `s9 exit 0` · `typecheck exit 0` |
+| `npx vitest run` | `Test Files 132 passed (132)` · `Tests 3247 passed (3247)` = 3238 + 9 |
+| STOP sentence (CR stripped, whitespace normalised) | sheet and runner brief both `06b34a38…07ae` |
+| `git diff e28b609 -- docs/e2e-test-plan.md` | only additions (0 removed words): the dated SW-1R note, a blank line and the SW-1R row |
+| Leftover processes (node / claude / python / esbuild) | only `22152 node host-daemon.mjs`, `23208 claude`, `24284 claude`, the three the fixer found before it began; nothing on 9234 |
+
+### The five items
+
+**(1) The `evalValue` audit: PASS.**
+- `grep -n '"evaluate"\|\.evaluate(\|evaluateRef\|evaluateToFile\|evaluateSaveStart\|evalValue(' recipes/s10.ts` lists
+  every page-evaluate path. Its harness reads all go through `evalValue`: the setup title, `LOG_EXPR`, the field value,
+  `CAP_CLICKS`, VISLOG install/read, `pageDigest` and `save-build`. These are now sent as `return (<expr>);`.
+- The measured expressions keep their form:
+  - `valueExpr` (`return window.__s10v[k]`) only moved to `s10-rules.ts`;
+  - the SAVE-REFUSE cases;
+  - JSD's `1+1`, `document.body` and `return 'S15'`;
+  - JSOFF's raw `evaluate "1+1"` (line 927);
+  - the s10check empty expression.
+- SAVE-PRIM is still `valueExpr("64m", true)`, the bare `window.__s10v["64m"]` with no `return`, which is what #217
+  measures.
+- Mutants:
+
+| Mutant | Result |
+|---|---|
+| E1: `evalValue` sends the raw expression | `1 failed` ("s10.ts evalValue uses it, and nothing else in s10.ts does") |
+| E2: SAVE-PRIM's bare form gains `return` | `1 failed` ("SAVE-PRIM's exception (#217) …") |
+
+**(2) `ENABLE_TOOL_SEARCH`: PASS.**
+- The fixer's offline evidence is kept in the shared scratchpad's `ts-probe\`.
+  - In `control.jsonl` the tool calls are `ToolSearch`, then `mcp__dummy__probe_echo`, and the init lists `ToolSearch`.
+  - In `off.jsonl` there is one call, `mcp__dummy__probe_echo`, and no `ToolSearch` in the init.
+  - `probe.mjs` deletes the variable for the control run and sets `ENABLE_TOOL_SEARCH=false` only for the "off" run.
+  - That supports the claim.
+- The change is opt-in: `actorEnv(base, false)` returns `base` itself, so `s9-actor.ts` without `--no-tool-search`
+  spawns exactly as before, and Run 13/14 behaviour is unchanged.
+- Every Run 15 actor starts through the one `Start-Actor`. It passes `--no-tool-search` and STOPs, after recording the
+  actor as running, if the start line lacks `tool search off`. That covers cap, save, fix, big, jsd, off and on. The
+  sheet's PP1 command (§7, line 350) also carries the flag.
+- No check text changed. In `s10-rules.ts` and `s9-rules.ts` the only removed line is the `SwOutcome` type, which came
+  back with a lost space (see N1).
+
+**(3) SW-1R: PASS.**
+- I applied the four substitutions to SW-1's row (line 1380): the ID cell, `` `ROW SW-1 `` → `` `ROW SW-1R ``,
+  `` `-Block sw1` `` → `` `-Block sw1r` `` and `` `s10.ts sw1` `` → `` `s10.ts sw1 --row SW-1R` ``. The result is
+  byte-identical to the SW-1R row (line 1381): `cmp` reported no difference.
+- Both thresholds (950 ms and 300 ms) are unchanged.
+- SW-1's own row is untouched (`-| SW-1` count 0).
+- The amendment says "recorded NOT MEASURED and re-measured as SW-1R".
+
+**(4) The resume: PASS.**
+- The state file `%TEMP%\bridge-e2e\s15\r15-globals.clixml`, read only:
+  - `attempt=1`;
+  - `stopped=sw1: s10.ts sw1 printed a STOP line (exit 2)`;
+  - `done=preflight,…,rep0,bbl1,bbl2,mcpf-click,mcpf-type,mcpf-press,cap`;
+  - `resume=none`;
+  - mark `2026-10-25T09:57:04.349Z`.
+- The required skip set is the row blocks done plus the stopped row block: `bbl1,bbl2,mcpf-click,mcpf-type,mcpf-press,
+  cap,sw1`. That equals the call in the sheet and the runner brief.
+- The record's ROW lines (blocks 8 and 10–18) and the raw output's two `STOP:` lines (both at `sw1`, 10:06:17Z) agree
+  with the state file.
+- Nothing observed is re-run. MCPF-1 and CAP-1 are skipped, as the step agent ruled. `sw1r` is not in the set, and the
+  script refuses it as an extra.
+
+**(5) Checks:** all pass (table above).
+
+### Notes
+
+- **N1 (NIT):** `s10-rules.ts` reformatted `export type SwOutcome ="runs to its bound" | …` (a space lost after `=`).
+  It has no effect, but the file is no longer formatted consistently.
+- **N2 (record):** the actor start line still prints its MCP config path, a local temp path with no `://`. This is
+  unchanged from Run 14 and passes the committed-file scan.

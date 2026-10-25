@@ -19,7 +19,7 @@
 //                                   focus question, RECORD); press prints the attempt's tally and the 3of3 check
 //   mcpf-off-prep | mcpf-off --actor <n> | mcpf-off-judge     MCPF-1's disarmed leg (prep armed, the call disarmed, the judge re-armed)
 //   cap1-sdk | cap1-mcp --actor <n> CAP-1's two legs
-//   sw1                             SW-1, three trials of (i) background capture, (ii) front capture
+//   sw1 [--row SW-1R]               SW-1 (or its re-measurement SW-1R), three trials of (i) background capture, (ii) front capture
 //   pop2 --leg a|b                  R15-POP-2: the opener (a) in front, (b) behind; its popup's opener class; leaseGranted
 //   save-build <key> [--tab t]      the page builds one value (s10-save.html) and prints its own digest
 //   save-sdk <ROW> <key> [--bare] [--tab t]     Tab.evaluateToFile (`return window.__s10v[key]`, or the bare primitive)
@@ -67,6 +67,7 @@ import {
   EXPECT10,
   expiredIdMessage,
   EXPR_MARKER,
+  harnessExpression,
   hidePath,
   idonlyReading,
   isPageDigest,
@@ -100,10 +101,12 @@ import {
   swMeasured,
   swOutcome,
   swPre,
+  SW_ROWS,
   tabGoneMessage,
   tabHeldRe,
   toolLine,
   typedCssText,
+  valueExpr,
   W_TITLE,
   WANT,
   type BblLeg,
@@ -214,7 +217,9 @@ async function rowOf(c: BridgeClient, handle: string): Promise<ListedRow | undef
 }
 
 async function evalValue(c: BridgeClient, handle: string, expression: string, timeoutMs = 10_000): Promise<unknown> {
-  const env = (await c.call("evaluate", { tab: handle, expression, timeoutMs }, { timeoutMs: timeoutMs + 5_000 })) as { kind?: string; value?: unknown };
+  // S7 wave fixer 2 (Return 2, block 18): sent as `return (<expr>);` (harnessExpression), as s9.ts / t5-lib.ts do —
+  // SW-1's VISLOG IIFE has an inner `return`, so the extension's async-body wrap returned undefined without it.
+  const env = (await c.call("evaluate", { tab: handle, expression: harnessExpression(expression), timeoutMs }, { timeoutMs: timeoutMs + 5_000 })) as { kind?: string; value?: unknown };
   if (env?.kind !== "json") throw new Error(`evaluate returned kind ${String(env?.kind)}`);
   return env.value;
 }
@@ -556,7 +561,10 @@ const VISLOG_INSTALL =
 const VISLOG_READ = "(window.__s10vl || [])";
 
 async function cmdSw1(): Promise<void> {
-  const id = "SW-1";
+  // S7 wave fixer 2: `sw1 --row SW-1R` runs the same row under SW-1R (SW-1 stopped in set-up in Run 15, NOT MEASURED;
+  // §4.22's dated amendment). Only these two IDs; the steps, the pass rule and the outcome table are SW-1's.
+  const id = option("--row") ?? "SW-1";
+  if (!SW_ROWS.includes(id)) throw new SetUp(`SET-UP: sw1 --row takes ${SW_ROWS.join(" or ")} only`);
   const c = await client("s10-sw1");
   try {
     const w = tabOf("w");
@@ -688,7 +696,6 @@ function freshPath(name: string): string {
   return p;
 }
 
-const valueExpr = (key: string, bare = false): string => (bare ? `window.${EXPR_MARKER}v[${JSON.stringify(key)}]` : `return window.${EXPR_MARKER}v[${JSON.stringify(key)}]`);
 
 async function pageDigest(c: BridgeClient, t: string, key: string): Promise<PageDigest> {
   const v = await evalValue(c, t, `window.${EXPR_MARKER}status[${JSON.stringify(key)}]`);

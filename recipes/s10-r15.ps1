@@ -25,7 +25,7 @@
 #   found                   O = the options page; the found-state record and its guard
 #   rep0                    REP-0's probe (#97) in its own window R (recipes/s6.ts rep0)
 #   bbl1 | bbl2             BBL-1: delayed old/new | stuck + elsewhere (no bridge; recipes/fixtures on 8085)
-#   mcpf-click | mcpf-type | mcpf-press | cap | sw1 | pop2 | save-a | savefix | save-64 | save-64-mcp | prim | idonly |
+#   mcpf-click | mcpf-type | mcpf-press | cap | sw1 | sw1r | pop2 | save-a | savefix | save-64 | save-64-mcp | prim | idonly |
 #   save-ttl                rows that change no safety state
 #   r3 | savedis | savejs | saveblk | jsd | off                            rows that change the safety state
 #                           Every row block builds the page values it reads at its start (a resume may have skipped the
@@ -56,7 +56,7 @@
 # A block the tool still ends at its cap is itself a STOP: the runner runs -Block stop -Why "<block> hit the tool's cap".
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet('preflight', 'build', 'servers', 'window', 'daemon', 'reload', 'setup', 'safe0', 'console', 'found', 'rep0', 'bbl1', 'bbl2', 'mcpf-click', 'mcpf-type', 'mcpf-press', 'cap', 'sw1', 'pop2', 'save-a', 'savefix', 'save-64', 'save-64-mcp', 'prim', 'idonly', 'save-ttl', 'r3', 'savedis', 'savejs', 'saveblk', 'jsd', 'off', 'restore', 'logs', 'teardown', 'status', 'stop', 'reset')]
+  [ValidateSet('preflight', 'build', 'servers', 'window', 'daemon', 'reload', 'setup', 'safe0', 'console', 'found', 'rep0', 'bbl1', 'bbl2', 'mcpf-click', 'mcpf-type', 'mcpf-press', 'cap', 'sw1', 'sw1r', 'pop2', 'save-a', 'savefix', 'save-64', 'save-64-mcp', 'prim', 'idonly', 'save-ttl', 'r3', 'savedis', 'savejs', 'saveblk', 'jsd', 'off', 'restore', 'logs', 'teardown', 'status', 'stop', 'reset')]
   [string]$Block,
   [string]$Prep = '',
   [string]$Why = '',
@@ -77,9 +77,9 @@ $env:S9_RAW = Join-Path $env:S10_OUT 'r15-raw.txt'
 $global:S9PinUiaOnly = $true                     # never pin or unpin by mouse in this wave
 $Steps = 'docs\plans\2026-10-24-step10-step8-follow-ups-steps'
 $StateFile = Join-Path $env:S10_OUT 'r15-globals.clixml'
-$Order = @('preflight', 'build', 'servers', 'window', 'daemon', 'reload', 'setup', 'safe0', 'console', 'found', 'rep0', 'bbl1', 'bbl2', 'mcpf-click', 'mcpf-type', 'mcpf-press', 'cap', 'sw1', 'pop2', 'save-a', 'savefix', 'save-64', 'save-64-mcp', 'prim', 'idonly', 'save-ttl', 'r3', 'savedis', 'savejs', 'saveblk', 'jsd', 'off', 'restore', 'logs', 'teardown')
+$Order = @('preflight', 'build', 'servers', 'window', 'daemon', 'reload', 'setup', 'safe0', 'console', 'found', 'rep0', 'bbl1', 'bbl2', 'mcpf-click', 'mcpf-type', 'mcpf-press', 'cap', 'sw1', 'sw1r', 'pop2', 'save-a', 'savefix', 'save-64', 'save-64-mcp', 'prim', 'idonly', 'save-ttl', 'r3', 'savedis', 'savejs', 'saveblk', 'jsd', 'off', 'restore', 'logs', 'teardown')
 # Row blocks: an observation is made in them, so a resume never runs one again (#213). The others are framing.
-$RowBlocks = @('bbl1', 'bbl2', 'mcpf-click', 'mcpf-type', 'mcpf-press', 'cap', 'sw1', 'pop2', 'save-a', 'savefix', 'save-64', 'save-64-mcp', 'prim', 'idonly', 'save-ttl', 'r3', 'savedis', 'savejs', 'saveblk', 'jsd', 'off')
+$RowBlocks = @('bbl1', 'bbl2', 'mcpf-click', 'mcpf-type', 'mcpf-press', 'cap', 'sw1', 'sw1r', 'pop2', 'save-a', 'savefix', 'save-64', 'save-64-mcp', 'prim', 'idonly', 'save-ttl', 'r3', 'savedis', 'savejs', 'saveblk', 'jsd', 'off')
 $Names = @('W', 'O', 'E', 'D', 'R', 'WinStart', 'PinnedBefore', 'L0', 'S9ChromeStart', 'S9Found', 'S9WinIds', 'WaveStart', 'S15Touched', 'S15Stopped', 'S15Pids', 'S15Done', 'S15Resume', 'S15LogMark', 'S15Actors', 'S15BbWins', 'S15Attempt', 'S15Claude', 'S15Born', 'S15IdonlyLaunch')
 # Block budgets in seconds (see BLOCK BUDGETS above; the sheet section 1 lists each block's worst case).
 $DefaultBudgetS = 330
@@ -259,11 +259,14 @@ function Stop-S15Background {
   $ok
 }
 
+# S7 wave fixer 2 (Return 2): every Run 15 actor starts with --no-tool-search (ENABLE_TOOL_SEARCH=false), so its bridge
+# tools load directly and its first call is the bridge tool, not Claude Code's ToolSearch (S7-wave-fixer2.md section 2).
 function Start-Actor([string]$Name) {
-  $out = @(S9Actor start $Name --model sonnet)
+  $out = @(S9Actor start $Name --model sonnet --no-tool-search)
   Show-Lines $out
   if (-not ($out -match 'started')) { Fail-S15 "the headless actor $Name did not start" }
   $global:S15Actors[$Name] = 'running'; Save-S15
+  if (-not ($out -match 'tool search off')) { Fail-S15 "the headless actor $Name started without tool search off (no --no-tool-search line) - its first call could be ToolSearch" }
 }
 function End-Actor([string]$Name) {
   $out = @(S9Actor end $Name)
@@ -569,6 +572,17 @@ function B-sw1 {
   try { Select-S9Tab $global:W 'S9 W human tab' } catch { Fail-S15 "SW-1: W's own tab could not be selected: $($_.Exception.Message)" }
   Park-S9Cursor 'before SW-1'
   S10 sw1
+  [void](Set-S9Foreground $global:W)
+}
+
+# SW-1R (S7 wave fixer 2, 2026-10-25; docs/e2e-test-plan.md section 4.22, the dated amendment): SW-1 stopped in its
+# set-up on a helper bug (evalValue) before its first trial (Return 2) and is recorded NOT MEASURED; SW-1R re-measures
+# it with SW-1's steps, pass rule and outcome table, under its own row ID. Same body as B-sw1 but the row ID.
+function B-sw1r {
+  [void](Set-S9Foreground $global:W)
+  try { Select-S9Tab $global:W 'S9 W human tab' } catch { Fail-S15 "SW-1R: W's own tab could not be selected: $($_.Exception.Message)" }
+  Park-S9Cursor 'before SW-1R'
+  S10 sw1 --row SW-1R
   [void](Set-S9Foreground $global:W)
 }
 

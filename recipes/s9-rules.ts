@@ -573,6 +573,19 @@ export function mcpConfig(nodePath: string, mcpEntry: string, failuresDir?: stri
   return { mcpServers: { "chrome-agent-bridge": { command: nodePath, args: [mcpEntry] } } };
 }
 
+/**
+ * The environment of an actor's `claude -p` (S7 wave fixer 2, 2026-10-25; Run 15 Return 2). With `noToolSearch`,
+ * `ENABLE_TOOL_SEARCH=false`: Claude Code 2.1.310 defers MCP tools behind its `ToolSearch` tool, so an actor's first
+ * turn called `ToolSearch` before the bridge tool (MCPF-1, CAP-1); the installed binary's own text names
+ * `ENABLE_TOOL_SEARCH` `false` as the way to turn tool search off, and an offline probe (a dummy MCP server, the
+ * actors' flags) showed `ToolSearch` gone from the init tool list and the dummy tool called first
+ * (`S7-wave-fixer2.md` §2). Opt-in (`s9-actor.ts start <name> --no-tool-search`): without it the environment is the
+ * parent's, unchanged (Run 13 / Run 14 behaviour), and an inherited `ENABLE_TOOL_SEARCH` is left as it is.
+ */
+export function actorEnv(base: NodeJS.ProcessEnv, noToolSearch: boolean): NodeJS.ProcessEnv {
+  return noToolSearch ? { ...base, ENABLE_TOOL_SEARCH: "false" } : base;
+}
+
 export function actorArgs(model: string, configPath: string): string[] {
   return [
     "-p",

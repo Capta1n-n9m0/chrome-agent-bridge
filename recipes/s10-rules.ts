@@ -31,6 +31,28 @@ export const SAVE_PREFIX = "s15v-";
 /** Every page expression of the SAVE rows names this marker; SAVE-LOG counts it in daemon.log and the worker console. */
 export const EXPR_MARKER = "__s10";
 
+/**
+ * The page code the harness evaluates for its OWN reads and installs (`s10.ts evalValue`: the setup title, the page
+ * logs, SW-1's VISLOG, the page digests, `save-build`) is sent as `return (<expr>);` — the set-up fix of
+ * `recipes/t5-lib.ts` evalJson (2026-10-22) and `recipes/s9.ts` evalValue (2026-10-24): the extension wraps an
+ * expression that contains `return` (`extension/src/evaluate/wrap.ts` RETURN_RE) in an async function body, so an IIFE
+ * with an inner `return` (SW-1's VISLOG_INSTALL) came back kind `undefined` with no return of its own (S7 Return 2,
+ * block 18). `return (<expr>);` makes the value the body's return value in every case. S7 wave fixer 2, 2026-10-25.
+ * Never used for the expressions a row MEASURES (`valueExpr`, the SAVE / JSD / MCP prompts): those keep their form.
+ */
+export function harnessExpression(expression: string): string {
+  return `return (${expression});`;
+}
+
+/**
+ * The SAVE rows' value expression (moved from `s10.ts`, unchanged, by S7 wave fixer 2 so a rule test pins it):
+ * `return window.__s10v[key]` (the `return` form the SAVE rows measure), or with `bare` the primitive completion value
+ * with NO `return` — SAVE-PRIM's form (#217), which must never be wrapped.
+ */
+export function valueExpr(key: string, bare = false): string {
+  return bare ? `window.${EXPR_MARKER}v[${JSON.stringify(key)}]` : `return window.${EXPR_MARKER}v[${JSON.stringify(key)}]`;
+}
+
 export function s15Url(origin: string, page: string, marker: string): string {
   return `${origin}/${page}?s15=${encodeURIComponent(marker)}`;
 }
@@ -466,7 +488,10 @@ export function capClickVerdict(clicks: Array<{ name: string }>, before: number,
 
 // ── SW-1: the differential row (0.8 with Stage 0 F3) ──────────────────────────────────────────────────
 
-export type SwOutcome = "runs to its bound" | "the event ends the wait" | "undetermined";
+/** The row IDs `s10.ts sw1` runs under: SW-1, and SW-1R (its re-measurement after Run 15's set-up stop, S7 wave fixer 2). */
+export const SW_ROWS: readonly string[] = Object.freeze(["SW-1", "SW-1R"]);
+
+export type SwOutcome ="runs to its bound" | "the event ends the wait" | "undetermined";
 
 /**
  * d = (i) − (ii) per trial: (i) a default screenshot of a background fixture tab of the human's window, (ii) one of

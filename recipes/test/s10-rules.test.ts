@@ -13,7 +13,8 @@ import { CAP_WARNING_LINE } from "../../mcp/src/tools/registry.js";
 import { collectSaveText, primitiveSaveText, STRINGIFY_FAILED_MESSAGE } from "../../extension/src/evaluate/save.js";
 import { EvaluateSaveStore } from "../../extension/src/evaluate-save-store.js";
 import { evaluateSaveStart } from "../../extension/src/handlers/evaluate-save.js";
-import { mcpConfig, W_TITLE as S9_W_TITLE, s9Url } from "../s9-rules.js";
+import { actorEnv, mcpConfig, W_TITLE as S9_W_TITLE, s9Url } from "../s9-rules.js";
+import { RETURN_RE, wrapExpression } from "../../extension/src/evaluate/wrap.js";
 import {
   answerBound,
   answerIs,
@@ -99,6 +100,9 @@ import {
   WANT,
   type PageDigest,
   type PageEvent,
+  harnessExpression,
+  SW_ROWS,
+  valueExpr,
 } from "../s10-rules.js";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -881,5 +885,108 @@ describe("PP1's actor failures folder (wave fixer 1, N3)", () => {
     const sheet = src("docs/plans/2026-10-24-step10-step8-follow-ups-steps/S7-wave-sheet.md");
     expect(sheet).toContain("--failures-dir");
     expect(sheet).toContain("pp1-failures");
+  });
+});
+
+// ── S7 wave fixer 2 (Run 15 Return 2): the harness's evaluate wrapper, the actors' tool loading, SW-1R, the resume ──
+
+describe("evalValue sends the harness's own page code as `return (<expr>);` (wave fixer 2, item 1)", () => {
+  // The extension's path for an expression with a top-level `return`: wrapExpression → an async IIFE, awaited.
+  const runWrapped = async (code: string): Promise<unknown> => {
+    const w = wrapExpression(code);
+    expect(w, "this helper only runs the wrapped path").not.toBe(code);
+    return await (0, eval)(w);
+  };
+  const iife = "(() => { const v = 'visible'; return v; })()"; // the shape of SW-1's VISLOG_INSTALL
+  it("the bug (Return 2): an IIFE with an inner `return` is wrapped by the extension and comes back undefined", async () => {
+    expect(RETURN_RE.test(iife)).toBe(true);
+    expect(await runWrapped(iife)).toBeUndefined();
+  });
+  it("the fix: harnessExpression makes the value the body's return value", async () => {
+    expect(harnessExpression(iife)).toBe(`return (${iife});`);
+    expect(await runWrapped(harnessExpression(iife))).toBe("visible");
+    expect(await runWrapped(harnessExpression("1 + 1"))).toBe(2);
+    expect(await runWrapped(harnessExpression("await Promise.resolve(7)"))).toBe(7); // save-build's `await …build()`
+  });
+  it("s10.ts evalValue uses it, and nothing else in s10.ts does (the measured expressions keep their form)", () => {
+    const s10 = src("recipes/s10.ts");
+    const body = s10.slice(s10.indexOf("async function evalValue("), s10.indexOf("async function safetyNow("));
+    expect(body).toContain("expression: harnessExpression(expression)");
+    expect(s10.match(/harnessExpression\(/g)?.length).toBe(1);
+    // SW-1's VISLOG install is the IIFE with an inner `return` that met the bug
+    const vis = s10.slice(s10.indexOf("const VISLOG_INSTALL ="), s10.indexOf("const VISLOG_READ ="));
+    expect(vis).toContain("return document.visibilityState; })()");
+    expect(s10).not.toMatch(/const valueExpr =/); // moved to s10-rules.ts, imported
+  });
+  it("SAVE-PRIM's exception (#217): the bare value is a primitive completion with NO `return`, never wrapped", () => {
+    const bare = valueExpr("64m", true);
+    expect(bare).toBe('window.__s10v["64m"]');
+    expect(RETURN_RE.test(bare)).toBe(false);
+    expect(wrapExpression(bare)).toBe(bare);
+    expect(valueExpr("64m")).toBe('return window.__s10v["64m"]');
+    const s10 = src("recipes/s10.ts");
+    expect(s10).toContain('const r = await cmdSaveSdk("SAVE-PRIM", "64m", true);');
+    expect(s10).toContain("tab.evaluateToFile(valueExpr(key, bare), { path: p, timeoutMs: 60_000 })");
+  });
+});
+
+describe("the actors load the bridge tools directly: ENABLE_TOOL_SEARCH=false (wave fixer 2, item 2)", () => {
+  it("actorEnv sets it only when asked; the default environment is the parent's, unchanged", () => {
+    const base = { PATH: "x", OTHER: "y" };
+    expect(actorEnv(base, true)).toEqual({ PATH: "x", OTHER: "y", ENABLE_TOOL_SEARCH: "false" });
+    expect(actorEnv(base, false)).toBe(base);
+    expect(base).toEqual({ PATH: "x", OTHER: "y" }); // not mutated
+  });
+  it("s9-actor.ts passes --no-tool-search to its host and the env to claude; Run 15's runner starts every actor with it and checks the start line", () => {
+    const actor = src("recipes/s9-actor.ts");
+    expect(actor).toContain('if (rest.includes("--no-tool-search")) hostArgs.push("--no-tool-search");');
+    expect(actor).toContain("env: actorEnv(process.env, noToolSearch)");
+    expect(actor).toContain('" · tool search off (ENABLE_TOOL_SEARCH=false)"');
+    const ps1 = src("recipes/s10-r15.ps1");
+    expect(ps1).toContain("$out = @(S9Actor start $Name --model sonnet --no-tool-search)");
+    expect(ps1).toContain("if (-not ($out -match 'tool search off')) { Fail-S15");
+    expect(ps1.match(/S9Actor start /g)?.length).toBe(1);
+    const sheet = src("docs/plans/2026-10-24-step10-step8-follow-ups-steps/S7-wave-sheet.md");
+    expect(sheet).toContain("node --import tsx recipes/s9-actor.ts start pp1 --failures-dir $pf --no-tool-search");
+  });
+});
+
+describe("SW-1R: SW-1 re-measured under a new row ID (wave fixer 2, item 3)", () => {
+  const plan = (): string[] => src("docs/e2e-test-plan.md").split(/\r?\n/);
+  it("§4.22: the dated amendment, and SW-1R = SW-1's row with only the row ID, the block and the --row changed", () => {
+    const l = plan();
+    const sw1 = l.find((x) => x.startsWith("| SW-1 ★ |")) ?? "";
+    const sw1r = l.find((x) => x.startsWith("| SW-1R ★ |")) ?? "";
+    expect(sw1).not.toBe("");
+    const want = sw1.replace("| SW-1 ★ |", "| SW-1R ★ |").split("`ROW SW-1 ").join("`ROW SW-1R ").replace("`-Block sw1`", "`-Block sw1r`").replace("`s10.ts sw1`", "`s10.ts sw1 --row SW-1R`");
+    expect(sw1r).toBe(want);
+    expect(sw1r).toContain("d ≥ 950 ms in 3/3"); // 0.8's thresholds, unchanged
+    expect(sw1r).toContain("d ≤ 300 ms in 3/3");
+    expect(l.indexOf(sw1r)).toBe(l.indexOf(sw1) + 1);
+    expect(l).toContain("*Added 2026-10-25 (S7 Return 2, before any observation): SW-1 stopped in set-up on a helper bug (`evalValue`), before its first trial; it is recorded NOT MEASURED and re-measured as SW-1R.*");
+  });
+  it("the runner: sw1r right after sw1, a row block, accepted by -Block, running s10.ts sw1 --row SW-1R; s10.ts takes only SW-1 / SW-1R", () => {
+    const ps1 = src("recipes/s10-r15.ps1");
+    const { order, rowBlocks } = runnerLists(ps1);
+    expect(order.indexOf("sw1r")).toBe(order.indexOf("sw1") + 1);
+    expect(rowBlocks.indexOf("sw1r")).toBe(rowBlocks.indexOf("sw1") + 1);
+    expect(ps1).toMatch(/\[ValidateSet\([^)]*'sw1', 'sw1r', 'pop2'/);
+    const body = runnerBlocks(ps1).get("sw1r") ?? "";
+    expect(runnerCalls(body).map((c) => c.text)).toEqual(["sw1 --row SW-1R"]);
+    expect(body.replace(/SW-1R/g, "SW-1").replace("S10 sw1 --row SW-1", "S10 sw1")).toBe(runnerBlocks(ps1).get("sw1"));
+    expect(SW_ROWS).toEqual(["SW-1", "SW-1R"]);
+    expect(src("recipes/s10.ts")).toContain('const id = option("--row") ?? "SW-1";');
+  });
+});
+
+describe("the resume after Return 2 (wave fixer 2, item 4)", () => {
+  const CALL = "-Block reset -Attempt 2 -Skip bbl1,bbl2,mcpf-click,mcpf-type,mcpf-press,cap,sw1";
+  it("the skip set = the row blocks up to sw1 (done or stopped in attempt 1), never sw1r; the sheet and the runner brief carry the same call", () => {
+    const { order, rowBlocks } = runnerLists(src("recipes/s10-r15.ps1"));
+    const upToSw1 = order.slice(0, order.indexOf("sw1") + 1).filter((b) => rowBlocks.includes(b));
+    expect(CALL.split("-Skip ")[1].split(",")).toEqual(upToSw1);
+    expect(upToSw1).not.toContain("sw1r");
+    expect(src("docs/plans/2026-10-24-step10-step8-follow-ups-steps/S7-wave-sheet.md")).toContain(CALL);
+    expect(src("docs/plans/2026-10-24-step10-step8-follow-ups-steps/briefs/S7-runner.md")).toContain(CALL);
   });
 });

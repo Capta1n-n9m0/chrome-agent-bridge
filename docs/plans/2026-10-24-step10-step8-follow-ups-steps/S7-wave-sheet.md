@@ -111,6 +111,7 @@ Call every block with the tool's timeout at 600 000 ms.
 | 16 | `-Block mcpf-press` | MCPF-1 press ×3, the tally | 1–2 min | 330 · 505 s | actor `mcpf-press`; 3 turns; prints `ROW MCPF-1 tally …` + `CHECK MCPF-1 3of3` |
 | 17 | `-Block cap` | CAP-1 | 1–2 min | 330 · 505 s | SDK, then actor `cap` (2 turns) |
 | 18 | `-Block sw1` | SW-1 | 30 s | 330 · 505 s | W in front, `w` selected; a pre-check before each capture (M2) |
+| 18a | `-Block sw1r` | SW-1R (SW-1 re-measured; added 2026-10-25 by the S7 wave fixer 2) | 30 s | 330 · 505 s | as block 18, `s10.ts sw1 --row SW-1R`; a row block (never re-run in a resume) |
 | 19 | `-Block pop2` | R15-POP-2 (a), (b) | 30 s | 330 · 505 s | |
 | 20 | `-Block save-a` | SAVE-1M, SAVE-4M, SAVE-SURR, SAVE-JSON, SAVE-REFUSE, SAVE-HOLD, SAVE-CLOSE | 2–3 min | 330 · 505 s | builds 1m, 4m, surr, json, 4m on `close`; actor `save` (1 turn) |
 | 21 | `-Block savefix` | SAVE-FIX | 1 min | 330 · 505 s | builds fix; actor `fix` (1 turn); the transcript extracted and judged |
@@ -145,6 +146,31 @@ observed). The resume prints `RESUME attempt <n>: <skipped> observed in an earli
 re-run` and the run order; R15-LOGS counts `daemon.log` from the first attempt's mark; the record gets a heading
 `## Attempt <n> (runner <n>) — resume after Return <k>`, from its SAFE-0 line on. Every brief fill-in for a resume is
 committed before the runner starts (#213).
+
+### Resume after Return 2
+
+*Added 2026-10-25 by the S7 wave fixer 2, before any observation of the rows still to run.* Runner 2's attempt 1 ran
+blocks 1–17 and stopped at block 18 `sw1` (Return 2: `evalValue`'s missing `return (<expr>);` wrapper, met in SW-1's
+set-up before its first trial; SW-1 recorded NOT MEASURED). The stored state (`r15-globals.clixml`) says attempt 1,
+stopped at `sw1`, done row blocks `bbl1, bbl2, mcpf-click, mcpf-type, mcpf-press, cap`; so the skip set is those plus the
+stopped row block `sw1` — and **not** `sw1r`, the new row block 18a that re-measures SW-1 as SW-1R (§4.22's dated
+amendment). The next runner's first call, exactly:
+
+```powershell
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\s10-r15.ps1 -Block reset -Attempt 2 -Skip bbl1,bbl2,mcpf-click,mcpf-type,mcpf-press,cap,sw1
+"exit $LASTEXITCODE"
+```
+
+It prints `RESUME attempt 2: bbl1, bbl2, mcpf-click, mcpf-type, mcpf-press, cap, sw1 observed in an earlier attempt or
+stopped in one, not re-run` and the run order (blocks 1–11, then `sw1r`, `pop2` … `teardown`); then block 1 as usual.
+`USAGE: …` (exit 3) changes nothing and is a RETURN (never adjust the skip set). A call naming any of the observed
+blocks out of the skip set, or `sw1r` in it, is refused (dry-run without Chrome on a copy of the state file:
+`S7-wave-fixer2.md` §4). Between Return 2 and this resume (helpers only, no row text): `recipes/s10.ts` `evalValue`
+sends `return (<expr>);`; every actor starts with `s9-actor.ts start … --no-tool-search` (`ENABLE_TOOL_SEARCH=false`:
+the bridge tools load directly, not behind Claude Code's `ToolSearch`; the runner STOPs if an actor's start line lacks
+`tool search off`) — the PP1 actor's command in §7 carries the flag too; `-Block sw1r` runs `s10.ts sw1 --row SW-1R`.
+MCPF-1 and CAP-1 stay FAIL as recorded (not re-run, the step agent's decision on Return 2).
 
 ## 2. PIDs and handles to track (the ledger's "Live PIDs")
 
@@ -321,7 +347,7 @@ Steps (the PowerShell tool, repo root, unless Git Bash is named; `$env:S9_OUT`, 
 3. SDK leg: `npm run recipe -- recipes/blackboard/export-grades.ts pp1 --hold` (prints the page's length `<L>`, bytes,
    sha256 `<H>`, the held tab `<T#>`, and `written exports\pp1-<date>.json — <b> bytes, sha256 <H>`).
 4. MCP leg: `New-Item -ItemType Directory -Force "$env:TEMP\bridge-e2e\s15\sv" | Out-Null` (the teardown removed it);
-   `node --import tsx recipes/s9-actor.ts start pp1 --failures-dir $pf` (the actor's MCP config then carries
+   `node --import tsx recipes/s9-actor.ts start pp1 --failures-dir $pf --no-tool-search` (the actor's MCP config then carries
    `env: {BRIDGE_FAILURES_DIR: <$pf>}`, which the MCP's failure reports read — `sdk/src/error.ts` `failuresDir`, the
    MCP passes `process.env`; the SDK leg takes no report at all, `failureReports: false`);
    `node --import tsx recipes/s10.ts pp1-plan --length <L>
@@ -381,6 +407,7 @@ L1: … · SAFE-0 · 8 · `ROW SAFE-0 safety …` · …
 
 ## Outcome tables (written in §4.22 before the run; filled from the lines)
 SW-1: d = [<d1>, <d2>, <d3>] ms → <runs to its bound | the event ends the wait | undetermined>
+SW-1R (added 2026-10-25, wave fixer 2; SW-1's table): d = [<d1>, <d2>, <d3>] ms → <runs to its bound | the event ends the wait | undetermined>
 SAVE-PRIM (#217): <not met | MET | corrupt> · SAVE-IDONLY (#217): <not met | MET | not measured>
 R15-POP-2 (#211): (a) <class> / <grant> → <reading> · (b) <class> / <grant> → <reading>
 
