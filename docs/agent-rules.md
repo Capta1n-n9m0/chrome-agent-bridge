@@ -14,7 +14,7 @@ Changes are made in place. The history lives in `docs/decisions.md` and git; the
 - Read the files your brief names, at the sections it names. If a path or section does not exist,
   say so in your report. Never guess its content.
 - `CLAUDE.md` loads at start. Each package's own `CLAUDE.md` (`extension/`, `daemon/`, `sdk/`, `mcp/`,
-  `shared/`, `recipes/`) loads by itself the first time you open a file in that package. Its gotchas
+  `shared/`, `recipes/`, and `extension/src/{content,evaluate,handlers}/`) loads by itself the first time you open a file in that package. Its gotchas
   are measured facts and bind. If your work touches a package whose files you have not opened, read
   its `CLAUDE.md` before deciding anything about it.
 - Numbers come from their source: a command you ran or the file that records them. Never from a

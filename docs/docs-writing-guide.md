@@ -8,7 +8,7 @@ current, not a pile that keeps growing. Ported 2026-10-21 from the user's resear
 | Place | Holds | Never holds |
 |---|---|---|
 | `CLAUDE.md` (root) | what the project is, the architecture map, a dated **Current state** block, commands, the invariants that bind every package, conventions, the skills and docs index | results tables, narratives, history, rationale, package gotchas |
-| `<package>/CLAUDE.md` (`extension/`, `daemon/`, `sdk/`, `mcp/`, `shared/`, `recipes/`) | that package's Key files and **Runtime gotchas** (measured facts); `recipes/` holds the live-run and Windows tooling facts. Claude Code loads one the first time an agent opens a file in that folder (probed 2026-10-25) | anything about another package; history |
+| `<package>/CLAUDE.md` (`extension/`, `daemon/`, `sdk/`, `mcp/`, `shared/`, `recipes/`; `extension/src/{content,evaluate,handlers}/` for deeper extension files) | that package's Key files and **Runtime gotchas** (measured facts); `recipes/` holds the live-run and Windows tooling facts. Claude Code loads one the first time an agent opens a file in that folder (probed 2026-10-25) | anything about another package; history |
 | `docs/agent-rules.md` | the standing rules for every subagent; briefs point to it | rules restated elsewhere |
 | `docs/specs/<date>-*-design.md` | the design of record: what and why, the decided shape of a step | how it went, status |
 | `docs/plans/<date>-stepN-*.md` | one phase doc per roadmap step: how, stages (with risk tier), exit checks, status line, measured results, and an **As built** block per stage; beside it `…-steps/` (journal, step and verifier reports, ledgers of waiting stages, evidence). Steps 6–10 kept a separate `…-asbuilt.md` | design rationale (link the spec) |

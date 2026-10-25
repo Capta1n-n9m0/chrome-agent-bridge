@@ -89,7 +89,7 @@ opens**. Chrome runs on the same machine as the daemon and every client (the `12
 path the client can read, Chrome can read. The extension cannot read local files at all.
 - **(A) Paths only (recommended).** The client sends absolute paths; the extension passes them to
   `DOM.setFileInputFiles`; Chrome reads the files. No bytes on the wire, no size limit from the 100 MiB frame
-  (`CLAUDE.md`, "one frame > 100 MiB closes the extension socket"), the page gets real `File` objects with Chrome's
+  (`daemon/CLAUDE.md`, "one frame > 100 MiB closes the extension socket"), the page gets real `File` objects with Chrome's
   own name, size, type and `lastModified`, and the `change`/`input` events come from Chrome.
 - (B) Bytes over the wire: the client reads the file, pushes it in 1 MiB chunks into an extension store, and the
   page builds a `File` from a `DataTransfer` and assigns `input.files`. Rejected: a new push direction and a store

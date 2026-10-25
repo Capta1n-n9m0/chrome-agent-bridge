@@ -25,10 +25,8 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply. `extension/CLAUDE.md`
   (e.g. `LOCATOR_NOT_FOUND {candidates}`) — which `unwrapResult` hands on as the `BridgeError`'s `data`;
   the marker string, return-not-throw and null/undefined → `REF_STALE` are unchanged (decisions.md ·
   2026-10-23 · Page-function failures may carry `data` beside the marker (#82); `content/guard.ts`
-  `toMarker`, `inject.ts` `unwrapResult`). On the wire, `code` is required since S2b: a proto:2
-  extension error without one is still delivered, as `INTERNAL`, and logged once per connection as
-  `extension error without code: <method>` (decisions.md · 2026-10-23 · S2b makes `code` required on
-  error frames (#73); `daemon/src/wsHost.ts`).
+  `toMarker`, `inject.ts` `unwrapResult`). What the daemon does with an error frame that has no `code`:
+  `daemon/CLAUDE.md`.
 - **Locators are resolved by the snapshot's own rules — change `a11y.ts`, not two places.**
   `extension/src/content/a11y.ts` holds the one walk (`walkElements`: the pruning gates, open shadow
   roots, same-origin frames), `roleOf`, the accessible name and the `hasLayout`-gated zero-size filter;

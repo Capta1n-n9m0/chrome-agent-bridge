@@ -3,7 +3,7 @@
 Maintained by the Step 8 session agent; one section per stage, appended at stage close, never
 rewritten (corrections are dated notes). Phase doc: `2026-10-21-step8-sdk-surface-and-mcp-cursor.md`.
 Steps dir: `2026-10-21-step8-sdk-surface-and-mcp-cursor-steps/` (journal, ledgers, reports).
-Format: `.claude/skills/phase-kickoff/asbuilt.md`.
+Format: `.claude/skills/phase-kickoff/asbuilt.md` (*Note 2026-10-25, cleanup pass: that file was folded into `docs/docs-writing-guide.md` § Templates, Phase doc header; it is in git at `0e79130`.*).
 
 ## Open decisions (for the user at the gate)
 

@@ -1,6 +1,6 @@
 ---
 name: cleanup-pass
-description: Keep this repo's docs true and small — a lead cleaner runs scripts/doc-check.mjs, reads the diff since the last cleanup report, sends area cleaners (state, gotcha placement, procedure, decisions, plan drift) at the areas the diff touched, applies mechanical fixes itself and proposes the rest to the user. Use at a phase close (full pass, replaces the old propagator), at closeout after any session that changed docs, CLAUDE.md files or skills (quick pass), or when the user asks to "clean up the docs", "check the docs", or "run the cleaner".
+description: Keep this repo's docs true and small — a lead cleaner runs scripts/doc-check.mjs, reads the diff since the last cleanup report, sends area cleaners (state, gotcha placement, procedure, decisions, plan drift) at the areas the diff touched, applies mechanical fixes itself and proposes the rest to the user. Use at a phase close (full pass), at closeout after any session that changed docs, CLAUDE.md files or skills (quick pass), or when the user asks to "clean up the docs", "check the docs", or "run the cleaner".
 ---
 
 # Cleanup pass

@@ -20,7 +20,7 @@ on the user's ruling on Run 13 and its open decisions. Contracts and deviations:
 "its gate waits on the user's ruling on Run 13 and its open decisions" as the latest state; Step 9 closed 2026-10-24
 (#202), and Step 10 (the Step 8 follow-ups: the dated Step 10 notes in §8, §10, §11, §12 and §13) is built and
 E2E-run (Runs 14–15): 23 tools, 26 codes (25 on the wire), 26 router methods, 3273 tests in 132 files (`npm test`
-at `025bdef`); its gate waits on the user's open decisions. Contracts and deviations:
+at `025bdef`); closed 2026-10-25, every open decision ruled (#229). *Corrected 2026-10-25 (cleanup pass): was "its gate waits on the user's open decisions".* Contracts and deviations:
 `docs/plans/2026-10-24-step10-step8-follow-ups-asbuilt.md`.* Plans: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`, `…step7-multi-actor-tabs.md`, `…step8-sdk-surface-and-mcp-cursor.md`.
 - **Owner:** Abbas Aliyev (@Capta1n-n9m0)
 - **Supersedes in part:** `2026-06-04-chrome-real-profile-agent-bridge-design.md` §3 "Controller: MCP server", §4 topology, and the "Tab targeting: active tab" decision. Everything about the extension's perception/action model stands.

@@ -65,7 +65,7 @@ Budgets: root ≤ 3,000 words, each package file ≤ 3,500 (`scripts/doc-check.m
 point instead of paste; `role-prompts.md` and `asbuilt.md` folded in; `cleanup-pass` skill;
 `scripts/doc-check.mjs`; `docs/docs-writing-guide.md` updated.
 
-### L2 — Split CLAUDE.md, archive decisions (builder Sonnet high, verifier Opus; risk: low)
+### L2 — Split CLAUDE.md, archive decisions (builder Sonnet high, verifier Opus; risk: low) — done (`3035149`, `bcb9b09`, `ec9092f`)
 1. The map above. Gotcha text moves unchanged, except: history notes dropped, pointers fixed,
    a count brought to the code's current value.
 2. The history notes → `docs/plans/2026-10-25-lean-procedures-steps/claude-md-history.md` (the
@@ -83,7 +83,7 @@ point instead of paste; `role-prompts.md` and `asbuilt.md` folded in; `cleanup-p
 Kickoff rewritten to the new template (≤ 1.5k words); phase doc: risk tier per stage, As built
 section instead of a separate file.
 
-### L4 — First cleanup pass (lead Opus; areas per the `cleanup-pass` skill)
+### L4 — First cleanup pass (lead Opus; areas per the `cleanup-pass` skill) — done (`docs/cleanup/2026-10-25.md`)
 
 ## Exit checks (pre-registered)
 - **L.1** Every bold gotcha headline of the old `CLAUDE.md` (`git show 0e79130:CLAUDE.md`) appears
@@ -100,9 +100,9 @@ section instead of a separate file.
 ## As built
 
 ### L2 — 2026-10-25 · verifier: PASS (third check) · commits `3035149`, `bcb9b09`, `ec9092f` · models: builders and fixers Sonnet 5.5 (effort high), verifiers Opus 5.5
-- **Result:** root `CLAUDE.md` 189 lines, about 2.2k words (from 1,000 lines, 13.3k); package files `extension/`
+- **Result** (at `ec9092f`): root `CLAUDE.md` 189 lines, about 2.2k words (from 1,000 lines, 13.3k); package files `extension/`
   3.3k (with `src/{content,evaluate,handlers}/` 0.9k, 0.5k, 0.5k), `daemon/` 2.0k, `recipes/` 1.8k, `sdk/` 0.7k,
-  `mcp/` 0.6k, `shared/` 0.1k; `docs/decisions.md` 2.5k words (from 37k) with 102 Standing decisions; archive
+  `mcp/` 0.6k, `shared/` 0.1k; `docs/decisions.md` 2.3k words (from 37k; 2.5k at `3035149`) with 102 Standing decisions; archive
   `docs/decisions-archive/step6.md` … `step10.md` (`wc -w`; `L2-builder.md`).
 - **Proof:** `check-l2.mjs`: 91/91 gotchas in exactly one file, 231/231 decision entries identical, 0 history notes;
   verifier 1 also compared every gotcha body independently (86 verbatim, 5 differ only by a fixed pointer).

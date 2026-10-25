@@ -28,7 +28,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   won, so it logs `port <p> in use — another daemon owns it` and exits **0**, never retrying
   (`daemon/src/main.ts`; spec §9.3; decisions.md · 2026-10-22 · D3's daemon lifecycle). Don't add a
   retry or a non-zero exit there. The MCP keeps the no-crash rule in `mcp/src/link.ts`: the 23 tools
-  (22 before Step 8 S5) are registered with no daemon, a failed `connect()` stores its message (every tool error and
+  are registered with no daemon, a failed `connect()` stores its message (every tool error and
   `browser_status`'s `Problem:` line show it), and the next `connect()` runs 5 s after each attempt
   settles, never overlapping — also after an established connection closes with a code other than
   4002. Several Claude sessions and scripts can now share the one daemon as separate clients.
@@ -87,6 +87,10 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `saveTo` uses transport (B), with tab-carrying pulls (#205)).
 - **`ws` is `external` in the daemon and MCP esbuild bundles** (it's CJS; `daemon/build.mjs`,
   `mcp/build.mjs`) — it resolves from `node_modules` at runtime, so both run from the repo.
+- **An extension error frame must carry `code`.** On the wire, `code` is required since S2b: a proto:2
+  extension error without one is still delivered, as `INTERNAL`, and logged once per connection as
+  `extension error without code: <method>` (decisions.md · 2026-10-23 · S2b makes `code` required on
+  error frames (#73); `daemon/src/wsHost.ts`).
 - **Clients see handles (`T3`), never Chrome ids.** Only the daemon maps them (`daemon/src/handles.ts`);
   a daemon restart renumbers, so the MCP cursor is lost and re-claimed with a one-line notice (T4).
   `newTab`/`listTabs` results still carry the Chrome `id` beside `tab` (kept through Step 8 for its

@@ -99,7 +99,7 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   stop page-side work already in flight.
 - **`describeDebuggerError(err, what)` / `withDebugger(tabId, fn, what)` take a caller name** —
   it's interpolated into the restricted-URL and timeout messages ("Trusted input" by default,
-  `"browser_evaluate"`, `"Full-page screenshot"`). Add new Chrome strings there, not in handlers.
+  `"browser_evaluate"`, `"Full-page screenshot"`).
 - **A module service worker must not use top-level `await`** — Chrome fails the worker with
   `TypeError: Top-level await is disallowed in service workers`, since the script must finish
   evaluating synchronously for its listeners to be known. The network log therefore ingests into
@@ -123,6 +123,8 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   stop or a crash.
 - **Never log a URL from the service worker** — URLs carry tokens. The network code prints counts
   only (`[bridge] network: rehydrated N entries`). Same rule for header values and bodies.
+- **Build fact: esbuild keeps comments placed inside array literals** in the bundle (S0 bundle diff, S0.md
+  §6 item 3) — keep comments out of literals where a bounded bundle diff is checked.
 
 ### Tabs, trusted input and capture
 - **Only `captureVisibleTab` needs the tab on screen** — the default (`switch`) viewport screenshot,
@@ -248,7 +250,5 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   R15-3R: the guard ignores a popup owned by the wave's own window that covers nothing the row reads (#224)). After a `write-failed` disarm the options page shows the stored state ("Bridge armed.")
   while the badge says OFF and every call is refused — the memory disarm is not visible to the page (S2b
   verifier F4, by construction, not producible live). The badge is the indicator.
-- **Build fact: esbuild keeps comments placed inside array literals** in the bundle (S0 bundle diff, S0.md
-  §6 item 3) — keep comments out of literals where a bounded bundle diff is checked.
 
 The session marker's 2 s bound and the handle retirement on a Chrome restart are in `daemon/CLAUDE.md`.

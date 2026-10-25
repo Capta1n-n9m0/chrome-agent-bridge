@@ -131,7 +131,7 @@ at the repo root (gitignored). Full setup + the 23 tools + "Writing a script": `
 E2E: serve `test-fixtures/e2e-playground.html` (`python -m http.server 8080 --directory test-fixtures`)
 and follow `docs/e2e-test-plan.md`.
 
-### Gotchas that cut across packages
+## Gotchas that cut across packages
 - **Editing extension code requires a manual reload**: `npm run build` then `chrome://extensions` →
   reload ↻. The service worker won't pick up `dist/` changes otherwise — **not even after a full Chrome
   restart** (seen 2026-10-06: a restarted Chrome still ran the old worker and answered the new
