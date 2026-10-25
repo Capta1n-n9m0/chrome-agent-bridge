@@ -125,6 +125,23 @@ export function uploadFinderExpression(mark: string, count: number): string {
   return `(${UPLOAD_FINDER_SRC})(${JSON.stringify(mark)}, ${JSON.stringify(count)})`;
 }
 
+/**
+ * The two page functions the handler hands to `chrome.scripting.executeScript` (Chrome ships them as their source,
+ * so they must be closure-free, like the finder; `s3-closure-free.test.ts` guards all three).
+ */
+export const UPLOAD_MARK_PAGE_FN = (r: unknown, n: unknown, m: unknown): unknown =>
+  window.__agentBridge!.markUpload(r as string, n as number, m as string);
+export const UPLOAD_UNMARK_PAGE_FN = (m: unknown): unknown => window.__agentBridge!.unmarkUpload(m as string);
+
+/**
+ * The failure sweep's `executeScript` target: the one document the mark was set in (its `documentId` from the mark
+ * call's `InjectionResult`), never the tab, so a tab that navigated since is not scripted at all (Chrome refuses a
+ * document it no longer shows). No document id → `null`: no sweep (S3 verifier MINOR 1).
+ */
+export function uploadSweepTarget(tabId: number, documentId: unknown): { tabId: number; documentIds: string[] } | null {
+  return typeof documentId === "string" && documentId !== "" ? { tabId, documentIds: [documentId] } : null;
+}
+
 /** A finder status → the marked own refusal it raises inside the session. */
 export function finderRefusal(status: FinderStatus): BridgeError {
   switch (status) {

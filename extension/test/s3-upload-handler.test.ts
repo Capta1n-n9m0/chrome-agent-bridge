@@ -30,6 +30,7 @@ import {
   fileAccessRefusal,
   finderRefusal,
   setFilesByMark,
+  uploadSweepTarget,
   uploadFinderExpression,
   uploadTimeoutMessage,
 } from "../src/upload-files.js";
@@ -52,26 +53,36 @@ const refOf = (el: Element) => window.__agentBridge!.refs.add(el);
 let cdp: FakeUploadCdp;
 let log: string[];
 let fileAccess: unknown;
+/** The document the stub tab shows; a "navigation" changes it. */
+let currentDoc: string;
+let targets: { tabId: number; documentIds?: string[] }[];
 
 beforeEach(() => {
   document.body.innerHTML = "";
   log = [];
+  currentDoc = "DOC-1";
+  targets = [];
   cdp = new FakeUploadCdp();
   fileAccess = true;
   vi.stubGlobal("chrome", {
     tabs: { get: vi.fn(async (id: number) => (log.push("tabs.get"), { id, url: "http://localhost:8080/e2e-playground.html", discarded: false })) },
     extension: { isAllowedFileSchemeAccess: vi.fn(async () => (log.push("fileAccess"), fileAccess)) },
     scripting: {
-      executeScript: vi.fn(async (o: { files?: string[]; func?: (...a: unknown[]) => unknown; args?: unknown[] }) => {
-        if (o.files) {
-          log.push("inject");
-          return [];
-        }
-        const result = o.func!(...(o.args ?? []));
-        const r = result as { ok?: boolean; removed?: number } | null;
-        log.push(r && "removed" in r ? "page:unmark" : r && (r as { __bridgeError?: string }).__bridgeError ? "page:refused" : "page:mark");
-        return [{ result }];
-      }),
+      executeScript: vi.fn(
+        async (o: { target: { tabId: number; documentIds?: string[] }; files?: string[]; func?: (...a: unknown[]) => unknown; args?: unknown[] }) => {
+          targets.push(o.target);
+          // As Chrome does: a target naming a document the tab no longer shows is refused, and nothing runs.
+          if (o.target.documentIds && !o.target.documentIds.includes(currentDoc)) throw new Error("No document with id");
+          if (o.files) {
+            log.push("inject");
+            return [];
+          }
+          const result = o.func!(...(o.args ?? []));
+          const r = result as { ok?: boolean; removed?: number } | null;
+          log.push(r && "removed" in r ? "page:unmark" : r && (r as { __bridgeError?: string }).__bridgeError ? "page:refused" : "page:mark");
+          return [{ result, documentId: currentDoc, frameId: 0 }];
+        },
+      ),
     },
     debugger: {
       attach: vi.fn(async () => void log.push("attach")),
@@ -274,12 +285,44 @@ describe("the handler — order, the file-access check, and the mark removed on 
     }
   });
 
-  it("a CDP error (DOM.setFileInputFiles fails): the error stands, the mark is swept", async () => {
+  it("a CDP error (Page.createIsolatedWorld fails): the error stands, the mark is swept", async () => {
     const p = setup(`<input id="f" type="file">`);
     cdp.fail["Page.createIsolatedWorld"] = "boom";
     expect(await wire(uploadFiles(p, fakeCall()))).toEqual({ code: "DEBUGGER_ATTACH", message: "[chrome.debugger] boom" });
     expect(log.slice(-2)).toEqual(["detach", "page:unmark"]);
     expect(marks()).toBe(0);
+  });
+
+  it("a CDP error (DOM.setFileInputFiles fails): the error stands, the object released, nothing left marked", async () => {
+    const p = setup(`<input id="f" type="file">`);
+    cdp.fail["DOM.setFileInputFiles"] = "Not allowed";
+    expect(await wire(uploadFiles(p, fakeCall()))).toEqual({ code: "DEBUGGER_ATTACH", message: "[chrome.debugger] Not allowed" });
+    expect(log.slice(-4)).toEqual(["DOM.setFileInputFiles", "Runtime.releaseObject", "detach", "page:unmark"]);
+    expect(marks()).toBe(0);
+  });
+
+  it("the failure sweep targets the document the mark was set in, never the tab (verifier S3 MINOR 1)", async () => {
+    const p = setup(`<input id="f" type="file">`);
+    cdp.fail["Page.createIsolatedWorld"] = "boom";
+    await wire(uploadFiles(p, fakeCall()));
+    expect(targets.at(-1)).toEqual({ tabId: 5, documentIds: ["DOC-1"] });
+    expect(marks()).toBe(0);
+  });
+
+  it("a tab navigated after the mark: the sweep names the old document, so the new page is never scripted", async () => {
+    const p = setup(`<input id="f" type="file">`);
+    cdp.before["Page.createIsolatedWorld"] = () => {
+      currentDoc = "DOC-2";
+      throw new Error("boom");
+    };
+    expect(await wire(uploadFiles(p, fakeCall()))).toEqual({ code: "DEBUGGER_ATTACH", message: "[chrome.debugger] boom" });
+    expect(targets.at(-1)).toEqual({ tabId: 5, documentIds: ["DOC-1"] });
+    expect(log).not.toContain("page:unmark");
+  });
+
+  it("uploadSweepTarget: a document id → that document only; no id → no sweep", () => {
+    expect(uploadSweepTarget(5, "DOC-1")).toEqual({ tabId: 5, documentIds: ["DOC-1"] });
+    for (const v of [undefined, null, "", 7, {}]) expect(uploadSweepTarget(5, v), String(v)).toBeNull();
   });
 
   it("not found: the page removed the input after the mark → REF_STALE; nothing left marked", async () => {

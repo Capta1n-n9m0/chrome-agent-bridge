@@ -9,17 +9,19 @@
  * and one-off mark → the CDP leg (`uploadByMark`: effect before the attach, the isolated-world finder removes the
  * mark, `DOM.setFileInputFiles`) → `{files}` (+ `pastSnapshotCap`). On every failure after the mark was asked for,
  * the content script sweeps this call's mark (`sweepUploadMark`), a disarm and a newly blocked tab included: the
- * sweep only removes the bridge's own attribute, so it does not pass the gate (see the S3 report's decision).
+ * sweep only removes the bridge's own attribute, so it does not pass the gate (see the S3 report's decision). It
+ * targets the document the mark was set in (`documentIds`), never the tab: a tab that navigated since is not
+ * scripted (S3 verifier MINOR 1).
  *
  * Nothing here logs a path, a file name or the mark.
  */
 import type { UploadFilesResult } from "@bridge/shared";
 import { pageTab } from "../tabs.js";
-import { ensureContent, callInPage } from "../inject.js";
+import { ensureContent, classifyInjectError, toSerializableArgs, unwrapResult } from "../inject.js";
 import { uploadByMark } from "../debugger.js";
 import { BridgeError, ErrorCodes } from "../errors.js";
 import { newMark } from "../evaluate/mark.js";
-import { fileAccessRefusal } from "../upload-files.js";
+import { UPLOAD_MARK_PAGE_FN, UPLOAD_UNMARK_PAGE_FN, fileAccessRefusal, uploadSweepTarget } from "../upload-files.js";
 import { UPLOAD_MAX_PATHS } from "../upload-paths.js";
 import { checkTarget, resolveTargetCapped, withCapFlag } from "./target.js";
 import type { HandlerSafety } from "../safety-call.js";
@@ -55,12 +57,38 @@ async function readFileAccess(): Promise<unknown> {
   }
 }
 
-/** Best effort: removes this call's mark wherever the content script can reach it. Never throws. */
-async function sweepUploadMark(tabId: number, mark: string): Promise<void> {
+/**
+ * Asks the content script to mark the input (as `callInPage` does, with its error texts). Hands the marked
+ * document's id to `onDocument` before the result is judged, so a refusal still leaves the sweep its target.
+ */
+async function markInPage(tabId: number, args: [ref: string | undefined, count: number, mark: string], onDocument: (id: unknown) => void): Promise<void> {
+  let injection: chrome.scripting.InjectionResult<any> | undefined;
   try {
-    await callInPage(tabId, (m) => window.__agentBridge!.unmarkUpload(m as string), [mark]);
+    [injection] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: UPLOAD_MARK_PAGE_FN,
+      args: toSerializableArgs(args) as [unknown, unknown, unknown],
+      world: "ISOLATED",
+    });
+  } catch (err) {
+    const raw = err instanceof Error ? err.message : String(err);
+    throw new BridgeError(
+      classifyInjectError(raw),
+      `Could not run script in the target tab — it may be a restricted URL (chrome://, the New Tab page, or the Chrome Web Store). (${raw})`,
+    );
+  }
+  onDocument(injection?.documentId);
+  unwrapResult(injection);
+}
+
+/** Best effort: removes this call's mark in the document it was set in, and nowhere else. Never throws. */
+async function sweepUploadMark(tabId: number, documentId: unknown, mark: string): Promise<void> {
+  const target = uploadSweepTarget(tabId, documentId);
+  if (!target) return; // no document known: never script whatever the tab shows now
+  try {
+    await chrome.scripting.executeScript({ target, func: UPLOAD_UNMARK_PAGE_FN, args: [mark], world: "ISOLATED" });
   } catch {
-    /* the tab is gone or not scriptable: nothing is left to remove there */
+    /* the document is gone (navigated, closed) or not scriptable: nothing is left to remove there */
   }
 }
 
@@ -75,16 +103,13 @@ export async function uploadFiles(p: Record<string, unknown>, call?: HandlerSafe
   const mark = newMark();
   await call?.effect();
   let done = false;
+  let markedDocument: unknown;
   try {
-    await callInPage(
-      tab.id!,
-      (r, n, m) => window.__agentBridge!.markUpload(r as string, n as number, m as string),
-      [ref, paths.length, mark],
-    );
+    await markInPage(tab.id!, [ref, paths.length, mark], (id) => (markedDocument = id));
     const files = await uploadByMark(tab.id!, mark, paths, call);
     done = true;
     return withCapFlag<UploadFilesResult>({ files }, pastSnapshotCap);
   } finally {
-    if (!done) await sweepUploadMark(tab.id!, mark);
+    if (!done) await sweepUploadMark(tab.id!, markedDocument, mark);
   }
 }
