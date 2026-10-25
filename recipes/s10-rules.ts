@@ -11,7 +11,21 @@
 // printed by any helper line), never a `saveTo` path (printed as `<saveTo>`), never an evaluated value (hashes,
 // sizes and counts only), never an expression (printed as `<expr>`).
 import { createHash } from "node:crypto";
-import { FIXTURE_8080, PAGE, W_TITLE, s9Url, type Outcome, type Judged, type TabRow } from "./s9-rules.js";
+import {
+  FIXTURE_8080,
+  overlapArea,
+  PAGE,
+  placementVerdict,
+  rectText,
+  W_TITLE,
+  s9Url,
+  type Judged,
+  type OccluderId,
+  type Outcome,
+  type Placement,
+  type Rect,
+  type TabRow,
+} from "./s9-rules.js";
 
 export { FIXTURE_8080, W_TITLE };
 
@@ -491,6 +505,14 @@ export function capClickVerdict(clicks: Array<{ name: string }>, before: number,
 /** The row IDs `s10.ts sw1` runs under: SW-1, and SW-1R (its re-measurement after Run 15's set-up stop, S7 wave fixer 2). */
 export const SW_ROWS: readonly string[] = Object.freeze(["SW-1", "SW-1R"]);
 
+/**
+ * S7 wave fixer 3 (after Return 4, #222): MCPF-1 and CAP-1's MCP leg are re-measured as MCPF-1R / CAP-1R with the
+ * actors' tool search off (their first call is then the bridge tool; no check is relaxed). The row IDs `s10.ts mcpf
+ * --row` and `s10.ts cap1-mcp --row` take; the MCP leg's own ID is `<row>-mcp` (CAP-1-mcp, CAP-1R-mcp).
+ */
+export const MCPF_ROWS: readonly string[] = Object.freeze(["MCPF-1", "MCPF-1R"]);
+export const CAP_ROWS: readonly string[] = Object.freeze(["CAP-1", "CAP-1R"]);
+
 export type SwOutcome ="runs to its bound" | "the event ends the wait" | "undetermined";
 
 /**
@@ -853,6 +875,12 @@ export function checkLine10(id: string, step: string, j: Judged & { notMeasured?
 
 // ── RET-1 (0.7 with Stage 0 F16; prepared, NOT run — waits for G10-2) ───────────────────────────────────
 
+/**
+ * The row IDs `s10-ret1.ps1` / `s10-ret1.ts` run under: RET-1, and RET-1R (its re-measurement after Run 15's Return 4,
+ * whose relaunch failed by our bug — S7 wave fixer 3, #222).
+ */
+export const RET_ROWS: readonly string[] = Object.freeze(["RET-1", "RET-1R"]);
+
 /** daemon/src/intercept.ts: the line the session-change retire logs (`extension session changed: <n> handles retired`). */
 export function retiredCount(lines: string[]): number | null {
   let n: number | null = null;
@@ -934,6 +962,7 @@ export const S10_VALUE_NEEDS: Readonly<Record<string, readonly ValueNeed[] | "ar
   scan: [],
   "scan-log": [],
   "values-clean": [],
+  "r3r-check": [],
 });
 
 /**
@@ -1254,4 +1283,186 @@ export function pinStep(p: { found: number; elapsedMs: number; widthPx: number; 
   if (!p.widened && p.widthPx < PIN_NARROW_PX && p.elapsedMs >= PIN_WIDEN_AFTER_MS) return "widen";
   if (p.elapsedMs >= PIN_WAIT_MS) return "unpinned";
   return "wait";
+}
+
+// ── R15-3R's guard rule (S7 wave fixer 3, 2026-10-25; #212's Revisit-if, the session agent's order) ────────
+//
+// Run 15's R15-3 stopped at its guard before the toolbar click (Return 3) on one occluder: a 223×25 topmost,
+// no-activate Chrome popup whose owner AND root owner were the driver's own options window O, over O's top-right
+// (y 80–105, above the page area). R15-3R is R15-3 with one guard rule more, written before it runs: an occluder above
+// O is exempt only when (1) it is not itself a driver window, (2) its owner and root owner are both driver windows
+// (W/E/D/O, by handle), and (3) its rect overlaps none of the rects of the elements R15-3R reads on O — O's page
+// area and the checkboxes, the status and the summary — measured by UI Automation at guard time, each non-empty and
+// inside O's window rect (else not measured: nothing is exempt). Any other occluder still stops the row.
+
+/** The UIA elements of O whose rects the exemption needs, measured at guard time (s10-win.ps1 Get-S10OptionsReadRects). */
+export const R3R_READ_ELEMENTS: readonly string[] = Object.freeze(["page", "armed", "evaluate", "safety-status", "blocklist-summary"]);
+
+export interface ReadRect {
+  name: string;
+  rect: Rect | null;
+}
+
+const DRIVER_OWNERS = new Set(["W", "E", "D", "O"]);
+
+function rectNonEmpty(r: Rect | null | undefined): r is Rect {
+  return !!r && [r.left, r.top, r.right, r.bottom].every((n) => Number.isFinite(n)) && r.right > r.left && r.bottom > r.top;
+}
+
+function rectInside(r: Rect, area: Rect): boolean {
+  return r.left >= area.left && r.top >= area.top && r.right <= area.right && r.bottom <= area.bottom;
+}
+
+/** Whether the read rects were measured: every R3R_READ_ELEMENTS name once, non-empty, inside O's window rect. */
+export function r3rReadMeasured(read: ReadRect[] | null | undefined, o: Rect): { measured: boolean; why: string } {
+  if (!Array.isArray(read)) return { measured: false, why: "the read elements' rects were not measured" };
+  for (const n of R3R_READ_ELEMENTS) {
+    const hits = read.filter((x) => x.name === n);
+    if (hits.length !== 1) return { measured: false, why: `element ${n} ${hits.length ? "measured twice" : "not found"}` };
+    if (!rectNonEmpty(hits[0].rect)) return { measured: false, why: `element ${n} has no on-screen rect` };
+    if (!rectInside(hits[0].rect, o)) return { measured: false, why: `element ${n}'s rect lies outside O's window rect` };
+  }
+  return { measured: true, why: `${R3R_READ_ELEMENTS.length} element rects measured inside O` };
+}
+
+/** One occluder under R15-3R's rule: exempt only when owned (owner and root owner) by a driver window and over none of the read rects. */
+export function r3rOccluderExempt(occ: OccluderId, read: ReadRect[] | null | undefined, o: Rect): { exempt: boolean; why: string } {
+  if (occ.driver !== undefined) return { exempt: false, why: `it is the driver window ${occ.driver} itself` };
+  if (!(typeof occ.owner === "string" && DRIVER_OWNERS.has(occ.owner))) return { exempt: false, why: `its owner is ${occ.owner ?? "not read"}, not a driver window` };
+  if (!(typeof occ.rootOwner === "string" && DRIVER_OWNERS.has(occ.rootOwner))) return { exempt: false, why: `its root owner is ${occ.rootOwner ?? "not read"}, not a driver window` };
+  if (!rectNonEmpty(occ.rect)) return { exempt: false, why: "its rect was not read" };
+  const m = r3rReadMeasured(read, o);
+  if (!m.measured) return { exempt: false, why: m.why };
+  const hit = (read as ReadRect[]).filter((x) => overlapArea(occ.rect as Rect, x.rect as Rect) > 0).map((x) => x.name);
+  if (hit.length) return { exempt: false, why: `it overlaps ${hit.join(", ")}` };
+  return { exempt: true, why: `owner and root owner driver:${occ.owner}/driver:${occ.rootOwner}; over none of ${R3R_READ_ELEMENTS.join(", ")}` };
+}
+
+/**
+ * R15-3R's placement verdict: placementVerdict over the occluders that are NOT exempt. When the occluder count and the
+ * identified list disagree, nothing is exempt (an unidentified occluder can never be excused).
+ */
+export function r3rPlacementVerdict(p: Placement & { readRects?: ReadRect[] | null }): { verdict: Judged; lines: string[] } {
+  const ids = Array.isArray(p.occluderIds) ? p.occluderIds : [];
+  const counted = typeof p.occluders === "number" && Number.isInteger(p.occluders) && p.occluders >= 0 && ids.length === p.occluders;
+  const lines: string[] = [];
+  const read = p.readRects;
+  lines.push(`READ rects ${Array.isArray(read) ? read.map((x) => `${x.name} ${x.rect ? rectText(x.rect) : "none"}`).join(" · ") : "not measured"}`);
+  const judged = ids.map((occ, i) => {
+    const e = counted ? r3rOccluderExempt(occ, read, p.o.rect) : { exempt: false, why: "the occluders were not all identified" };
+    lines.push(`EXEMPT ${i + 1} ${e.exempt ? "yes" : "no"} — ${e.why}`);
+    return e.exempt;
+  });
+  const exempt = judged.filter(Boolean).length;
+  if (!exempt) return { verdict: placementVerdict(p), lines };
+  const rest: Placement = { ...p, occluders: p.occluders - exempt, occluderIds: ids.filter((_, i) => !judged[i]) };
+  const v = placementVerdict(rest);
+  return {
+    verdict: v.pass ? { pass: true, why: `${v.why} except ${exempt} exempt window(s) (owned by a driver window, over none of the read elements)` } : v,
+    lines,
+  };
+}
+
+// ── The leg read-back's own window (S7 fixer, 2026-10-25; decisions.md #223, after Return 5) ──────────────
+//
+// Return 5: after RET-1's relaunch, session restore brought back two Chrome windows (the user's) while
+// Test-S10LegState waited for "exactly one new window"; it touched neither, the read threw, and the state was printed
+// "NOT equal" without being compared. #223: wait until Chrome's set of visible windows has not changed for
+// LEG_QUIET_MS (bounded by LEG_BOUND_MS; past it, a STOP and nothing opened), open the check window on a data: URL whose
+// <title> is a unique per-call marker, and act only on the one window whose title carries it; 0 or ≥ 2 is a STOP.
+// s10-win.ps1 Wait-S10StableWindows / Open-S10MarkedWindow mirror these rules (tied by recipes/test/s10-rules.test.ts).
+
+/** The quiet period the window set must show, the whole bound, the poll, the wait for the marked window, its settle. */
+export const LEG_QUIET_MS = 5000;
+export const LEG_BOUND_MS = 60000;
+export const LEG_POLL_MS = 500;
+export const LEG_MARK_WAIT_MS = 15000;
+export const LEG_SETTLE_MS = 700;
+/** The marker: this prefix + a GUID's 32 hex digits ([guid]::NewGuid().ToString('N')). */
+export const LEG_MARKER_PREFIX = "s15leg-";
+const LEG_MARKER_RE = /^s15leg-[0-9a-f]{32}$/;
+
+export type LegWinStep = "no-chrome" | "stable" | "timeout" | "wait";
+
+/**
+ * One poll of the stable-set wait: `chrome` chrome.exe processes now, the set unchanged for `sameForMs`, `elapsedMs`
+ * since the wait began. No Chrome process -> no-chrome (opening a window would START Chrome: never). Unchanged for the
+ * quiet period -> stable. Past the bound -> timeout. Else wait.
+ */
+export function legWinStep(p: { chrome: number; sameForMs: number; elapsedMs: number }): LegWinStep {
+  if (p.chrome === 0) return "no-chrome";
+  if (p.sameForMs >= LEG_QUIET_MS) return "stable";
+  if (p.elapsedMs >= LEG_BOUND_MS) return "timeout";
+  return "wait";
+}
+
+export interface LegWinSample {
+  atMs: number;
+  chrome: number;
+  windows: number[];
+}
+
+const winKey = (w: number[]): string => [...new Set(w)].sort((a, b) => a - b).join(",");
+
+/**
+ * The wait over a sequence of polls, as Wait-S10StableWindows walks it: the set (order ignored) is compared with the
+ * previous poll's; a change restarts the quiet period. Returns the first non-wait step (or wait when the polls end).
+ */
+export function legWinRun(samples: LegWinSample[]): { step: LegWinStep; atMs: number; sameForMs: number; changes: number; windows: number } {
+  if (!samples.length) return { step: "wait", atMs: 0, sameForMs: 0, changes: 0, windows: 0 };
+  const t0 = samples[0].atMs;
+  let prev: string | null = null;
+  let since = t0;
+  let changes = 0;
+  let last = { step: "wait" as LegWinStep, atMs: t0, sameForMs: 0, changes: 0, windows: 0 };
+  for (const s of samples) {
+    const key = winKey(s.windows);
+    if (prev === null || key !== prev) {
+      if (prev !== null) changes++;
+      prev = key;
+      since = s.atMs;
+    }
+    const step = legWinStep({ chrome: s.chrome, sameForMs: s.atMs - since, elapsedMs: s.atMs - t0 });
+    last = { step, atMs: s.atMs, sameForMs: s.atMs - since, changes, windows: key ? key.split(",").length : 0 };
+    if (step !== "wait") return last;
+  }
+  return last;
+}
+
+/** How many Chrome windows carry this call's marker: exactly one is mine; none or several is a STOP (nothing touched). */
+export function markedVerdict(n: number): "one" | "none" | "several" {
+  if (n === 1) return "one";
+  return n === 0 ? "none" : "several";
+}
+
+/** The check window's URL: a data: page whose <title> is the marker (Chrome 156 shows it as the window title). */
+export function legMarkerUrl(marker: string): string {
+  if (!LEG_MARKER_RE.test(marker)) throw new Error("legMarkerUrl: the marker is s15leg- + 32 hex digits");
+  return `data:text/html,<title>${marker}</title>`;
+}
+
+/**
+ * #223 round 2 (verifier MINOR): may Close-S10MarkedWindow close the handle it picked? Every Chrome window belongs to
+ * the one browser process, so a live window of the recorded pid and class could still be another Chrome window that
+ * reused the handle. It is closed only with a proof it is still the check window: its title exactly the one recorded
+ * when it was picked (it carries the per-call marker), or its address bar / document URL exactly the marker URL or
+ * this extension's options URL (what the read typed). Empty never matches. Not live -> gone; else not-mine. Mirrored
+ * by s10-win.ps1 Close-S10MarkedWindow's `$v` line.
+ */
+export function closeMarkedVerdict(p: {
+  live: boolean;
+  pid: number;
+  recordedPid: number;
+  cls: string;
+  title: string;
+  recordedTitle: string;
+  urls: string[];
+  markerUrl: string;
+  optionsUrl: string;
+}): "close" | "gone" | "not-mine" {
+  if (!p.live) return "gone";
+  if (p.pid !== p.recordedPid || p.cls !== "Chrome_WidgetWin_1") return "not-mine";
+  const titleOk = p.title !== "" && p.title === p.recordedTitle;
+  const urlOk = (p.markerUrl !== "" && p.urls.includes(p.markerUrl)) || (p.optionsUrl !== "" && p.urls.includes(p.optionsUrl));
+  return titleOk || urlOk ? "close" : "not-mine";
 }

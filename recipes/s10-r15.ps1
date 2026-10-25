@@ -25,9 +25,11 @@
 #   found                   O = the options page; the found-state record and its guard
 #   rep0                    REP-0's probe (#97) in its own window R (recipes/s6.ts rep0)
 #   bbl1 | bbl2             BBL-1: delayed old/new | stuck + elsewhere (no bridge; recipes/fixtures on 8085)
-#   mcpf-click | mcpf-type | mcpf-press | cap | sw1 | sw1r | pop2 | save-a | savefix | save-64 | save-64-mcp | prim | idonly |
-#   save-ttl                rows that change no safety state
-#   r3 | savedis | savejs | saveblk | jsd | off                            rows that change the safety state
+#   mcpf-click | mcpf-type | mcpf-press | mcpf1r-click | mcpf1r-type | mcpf1r-press | cap | cap1r | sw1 | sw1r | pop2 |
+#   save-a | savefix | save-64 | save-64-mcp | prim | idonly | save-ttl   rows that change no safety state
+#   r3 | r3r | savedis | savejs | saveblk | jsd | off                      rows that change the safety state
+#                           (mcpf1r-*, cap1r, r3r: S7 wave fixer 3's re-measurements MCPF-1R, CAP-1R's MCP leg, R15-3R;
+#                           they run after off and before restore, in that order)
 #                           Every row block builds the page values it reads at its start (a resume may have skipped the
 #                           block that built them before: S7 prep fixer 1, C1/M3; recipes/test/s10-rules.test.ts checks
 #                           it), and block off sets JavaScript off itself when block jsd did not run in this attempt.
@@ -37,7 +39,8 @@
 #   status                  prints the globals (the ledger's "Live PIDs"); runs even after a stop
 #   stop -Why <text>        the stop procedure by hand, for a STOP met outside a block
 #   reset                   archives a finished or stopped wave (a new wave needs the step agent's decision)
-#   reset -Attempt <n> -Skip <blocks>   the ONLY resume: from a stored stop, attempt n = the stored attempt + 1, and
+#   reset -Attempt <n> -Skip <blocks>   the ONLY resume: from a stored stop (or, S7 wave fixer 3, a torn-down attempt),
+#                           attempt n = the stored attempt + 1, and
 #                           -Skip must name every ROW block already done plus the stopped block when it is a row block
 #                           (an observed row is never re-run); anything else prints USAGE: (never STOP:), exit 3
 #
@@ -56,7 +59,7 @@
 # A block the tool still ends at its cap is itself a STOP: the runner runs -Block stop -Why "<block> hit the tool's cap".
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet('preflight', 'build', 'servers', 'window', 'daemon', 'reload', 'setup', 'safe0', 'console', 'found', 'rep0', 'bbl1', 'bbl2', 'mcpf-click', 'mcpf-type', 'mcpf-press', 'cap', 'sw1', 'sw1r', 'pop2', 'save-a', 'savefix', 'save-64', 'save-64-mcp', 'prim', 'idonly', 'save-ttl', 'r3', 'savedis', 'savejs', 'saveblk', 'jsd', 'off', 'restore', 'logs', 'teardown', 'status', 'stop', 'reset')]
+  [ValidateSet('preflight', 'build', 'servers', 'window', 'daemon', 'reload', 'setup', 'safe0', 'console', 'found', 'rep0', 'bbl1', 'bbl2', 'mcpf-click', 'mcpf-type', 'mcpf-press', 'cap', 'sw1', 'sw1r', 'pop2', 'save-a', 'savefix', 'save-64', 'save-64-mcp', 'prim', 'idonly', 'save-ttl', 'r3', 'savedis', 'savejs', 'saveblk', 'jsd', 'off', 'mcpf1r-click', 'mcpf1r-type', 'mcpf1r-press', 'cap1r', 'r3r', 'restore', 'logs', 'teardown', 'status', 'stop', 'reset')]
   [string]$Block,
   [string]$Prep = '',
   [string]$Why = '',
@@ -77,9 +80,12 @@ $env:S9_RAW = Join-Path $env:S10_OUT 'r15-raw.txt'
 $global:S9PinUiaOnly = $true                     # never pin or unpin by mouse in this wave
 $Steps = 'docs\plans\2026-10-24-step10-step8-follow-ups-steps'
 $StateFile = Join-Path $env:S10_OUT 'r15-globals.clixml'
-$Order = @('preflight', 'build', 'servers', 'window', 'daemon', 'reload', 'setup', 'safe0', 'console', 'found', 'rep0', 'bbl1', 'bbl2', 'mcpf-click', 'mcpf-type', 'mcpf-press', 'cap', 'sw1', 'sw1r', 'pop2', 'save-a', 'savefix', 'save-64', 'save-64-mcp', 'prim', 'idonly', 'save-ttl', 'r3', 'savedis', 'savejs', 'saveblk', 'jsd', 'off', 'restore', 'logs', 'teardown')
+$Order = @('preflight', 'build', 'servers', 'window', 'daemon', 'reload', 'setup', 'safe0', 'console', 'found', 'rep0', 'bbl1', 'bbl2', 'mcpf-click', 'mcpf-type', 'mcpf-press', 'cap', 'sw1', 'sw1r', 'pop2', 'save-a', 'savefix', 'save-64', 'save-64-mcp', 'prim', 'idonly', 'save-ttl', 'r3', 'savedis', 'savejs', 'saveblk', 'jsd', 'off', 'mcpf1r-click', 'mcpf1r-type', 'mcpf1r-press', 'cap1r', 'r3r', 'restore', 'logs', 'teardown')
 # Row blocks: an observation is made in them, so a resume never runs one again (#213). The others are framing.
-$RowBlocks = @('bbl1', 'bbl2', 'mcpf-click', 'mcpf-type', 'mcpf-press', 'cap', 'sw1', 'sw1r', 'pop2', 'save-a', 'savefix', 'save-64', 'save-64-mcp', 'prim', 'idonly', 'save-ttl', 'r3', 'savedis', 'savejs', 'saveblk', 'jsd', 'off')
+$RowBlocks = @('bbl1', 'bbl2', 'mcpf-click', 'mcpf-type', 'mcpf-press', 'cap', 'sw1', 'sw1r', 'pop2', 'save-a', 'savefix', 'save-64', 'save-64-mcp', 'prim', 'idonly', 'save-ttl', 'r3', 'savedis', 'savejs', 'saveblk', 'jsd', 'off', 'mcpf1r-click', 'mcpf1r-type', 'mcpf1r-press', 'cap1r', 'r3r')
+# Every actor of Run 15's earlier attempts (S7 wave fixer 3: R15-LOGS of attempt 3 scanned only its own actors; block logs
+# now also scans each of these whose folder exists). PP1's actor is not here: its own leg counts its transcript (sheet section 7).
+$EarlierActors = @('mcpf-click', 'mcpf-type', 'mcpf-press', 'cap', 'save', 'fix', 'big', 'jsd', 'off', 'on')
 $Names = @('W', 'O', 'E', 'D', 'R', 'WinStart', 'PinnedBefore', 'L0', 'S9ChromeStart', 'S9Found', 'S9WinIds', 'WaveStart', 'S15Touched', 'S15Stopped', 'S15Pids', 'S15Done', 'S15Resume', 'S15LogMark', 'S15Actors', 'S15BbWins', 'S15Attempt', 'S15Claude', 'S15Born', 'S15IdonlyLaunch')
 # Block budgets in seconds (see BLOCK BUDGETS above; the sheet section 1 lists each block's worst case).
 $DefaultBudgetS = 330
@@ -541,12 +547,15 @@ function B-bbl2 {
 
 # MCPF-1 in three blocks (S7 prep fixer 1, m2: 10 actor turns do not fit one call): click (with the focus question),
 # type, press; each its own actor, ended before the next client; the press block prints the tally of the attempt.
-function Invoke-S15Mcpf([string]$Kind) {
+# S7 wave fixer 3: -Row MCPF-1R runs the same under the re-measurement's ID with actors mcpf1r-<kind> (tool search off,
+# as every actor since wave fixer 2; Start-Actor STOPs without its `tool search off` start line).
+function Invoke-S15Mcpf([string]$Kind, [string]$Row = 'MCPF-1') {
+  $actor = if ($Row -eq 'MCPF-1') { "mcpf-$Kind" } else { "mcpf1r-$Kind" }
   [void](Set-S9Foreground $global:W)
-  Start-Actor "mcpf-$Kind"
-  S10 mcpf --kind $Kind --actor "mcpf-$Kind"
-  End-Actor "mcpf-$Kind"
-  S9 wait-alone --row "MCPF-1-$Kind-end" --timeout 15000
+  Start-Actor $actor
+  S10 mcpf --kind $Kind --actor $actor --row $Row
+  End-Actor $actor
+  S9 wait-alone --row "$Row-$Kind-end" --timeout 15000
   [void](Set-S9Foreground $global:W)
 }
 function B-mcpf-click {
@@ -559,12 +568,34 @@ function B-mcpf-press {
   Invoke-S15Mcpf 'press'
 }
 
+# MCPF-1R (S7 wave fixer 3, 2026-10-25; docs/e2e-test-plan.md section 4.22 MCPF-1R): MCPF-1's three blocks under the
+# re-measurement's row ID, actors mcpf1r-click / -type / -press started with tool search off; no check relaxed.
+function B-mcpf1r-click {
+  Invoke-S15Mcpf 'click' 'MCPF-1R'
+}
+function B-mcpf1r-type {
+  Invoke-S15Mcpf 'type' 'MCPF-1R'
+}
+function B-mcpf1r-press {
+  Invoke-S15Mcpf 'press' 'MCPF-1R'
+}
+
 function B-cap {
   S10 cap1-sdk
   Start-Actor 'cap'
   S10 cap1-mcp --actor cap
   End-Actor 'cap'
   S9 wait-alone --row CAP-1-end --timeout 15000
+}
+
+# CAP-1R (S7 wave fixer 3; section 4.22 CAP-1R): CAP-1's MCP leg only, actor cap1r (tool search off). The SDK half passed
+# in Run 15 and is not re-run: the MCP leg needs nothing it sets up (the tab cap comes from setup, the leg reads its own
+# click baseline, and cap1-sdk releases its claim before it ends).
+function B-cap1r {
+  Start-Actor 'cap1r'
+  S10 cap1-mcp --actor cap1r --row CAP-1R
+  End-Actor 'cap1r'
+  S9 wait-alone --row CAP-1R-end --timeout 15000
 }
 
 function B-sw1 {
@@ -715,6 +746,36 @@ function B-r3 {
   Assert-Default 'R15-3-end'
 }
 
+# R15-3R (S7 wave fixer 3, 2026-10-25; section 4.22 R15-3R, #212's Revisit-if and the session agent's order): R15-3's
+# body under the new row ID with ONE guard rule more, in the two guards only (-ExemptOwned): an occluder above O whose
+# owner and root owner are driver windows and whose rect overlaps none of the elements R15-3R reads on O (measured at the
+# guard) is exempt; any other occluder still stops the row. The placement tries are unchanged (no exemption there).
+function B-r3r {
+  Park-S9Cursor 'before the R15-3R placement'
+  if (-not (Find-S10FreePlacement $global:W $global:O 'R15-3R')) { Fail-S15 'R15-3R placement guard: W and O are not side by side, uncovered by each other and by any window above O (no occluder), on a work area and restored' }
+  Park-S9Cursor 'before placement-before-switch'
+  if (-not (Test-S10Placement $global:W $global:O 'placement-before-switch' -Row 'R15-3R' -ExemptOwned)) { Fail-S15 'R15-3R placement guard (before the switch): an occluder above O that is not exempt (owned by a driver window and over none of the read elements), or W and O not side by side' }
+  $global:S15Touched = $true; Save-S15
+  [void](Set-S9Switch $global:O -Which armed -On $false)
+  Wait-S9ActionTitle $global:W $S9TitleOff 1000
+  S9 call R15-3R snap snapshot a --expect DISARMED:all
+  Read-S9OptionsLines $global:O
+  Start-Sleep -Milliseconds 1500
+  Park-S9Cursor 'before placement-before-click'
+  Write-S10Cursor 'before the re-arm'
+  if (-not (Test-S10Placement $global:W $global:O 'placement-before-click' -Row 'R15-3R' -ExemptOwned)) { Fail-S15 'R15-3R placement guard before the toolbar click: an occluder above O that is not exempt (diagnostics above), or W and O not side by side' }
+  [void](Invoke-S9ActionButton $global:W)
+  Wait-S9ActionTitle $global:W $S9TitleArmed 1000
+  $reached = Wait-S9OptionsStatus $global:O 'Bridge armed.' 2000
+  Read-S9OptionsLines $global:O
+  [void](Read-S9SafetyState $global:O)
+  if (-not $reached) {
+    Say9 'R15-3R supplementary read (record, not a re-run; nothing pressed): O brought to the front'
+    [void](Set-S9Foreground $global:O); Read-S9OptionsLines $global:O; [void](Set-S9Foreground $global:W)
+  }
+  Assert-Default 'R15-3R-end'
+}
+
 function B-savedis {
   S10 save-build 4m
   $global:S15Touched = $true; Save-S15
@@ -826,7 +887,9 @@ function B-logs {
   $since = if ($global:S15LogMark) { $global:S15LogMark } else { $global:WaveStart }
   S10 scan-log --since $since --copy "$Steps\S7-daemon-log.txt"
   if ($global:S10Code -ne 0) { $bad += 'daemon.log' }
-  foreach ($n in @($global:S15Actors.Keys | Sort-Object)) {
+  $scanActors = @(@($global:S15Actors.Keys) + @($EarlierActors | Where-Object { Test-Path -LiteralPath (Join-Path $env:S9_ACTORS $_) }) | Sort-Object -Unique)
+  Say9 "R15-LOGS actors scanned: $($scanActors.Count) ($($scanActors -join ', ')) - this attempt's and every earlier Run 15 attempt's whose folder exists"
+  foreach ($n in $scanActors) {
     $tr = Join-Path $env:S9_ACTORS "$n.transcript.txt"
     $o = @(S9Actor extract $n --out $tr)
     Say9 "actor ${n}: transcript extracted ($(@($o).Count) line(s) of output; path not printed)"
@@ -874,9 +937,12 @@ function B-reset {
     if (-not (Test-Path $StateFile)) { Write-Host "USAGE: no stored state to resume from - $usage; nothing changed"; exit 3 }
     $h = Import-Clixml $StateFile
     $prev = if ($h['S15Attempt']) { [int]$h['S15Attempt'] } else { 1 }
-    if (-not $h['S15Stopped']) { Write-Host "USAGE: the stored attempt $prev is not stopped - $usage; nothing changed"; exit 3 }
+    # S7 wave fixer 3 (after Return 4): a torn-down attempt (teardown done, no stop) is a resume base too - Run 15's
+    # attempt 3 ran to its teardown and the stop came after it (RET-1); its skip set is computed the same way (no stopped block).
+    $tornDown = @($h['S15Done']) -contains 'teardown'
+    if (-not $h['S15Stopped'] -and -not $tornDown) { Write-Host "USAGE: the stored attempt $prev is neither stopped nor torn down - $usage; nothing changed"; exit 3 }
     if ($Attempt -ne $prev + 1) { Write-Host "USAGE: -Attempt $Attempt refused (the stored attempt is $prev) - $usage; nothing changed"; exit 3 }
-    $stopAt = "$($h['S15Stopped'])".Split(':')[0]
+    $stopAt = if ($h['S15Stopped']) { "$($h['S15Stopped'])".Split(':')[0] } else { '' }
     $done = @($h['S15Done'])
     $prevSkip = if ($h['S15Resume']) { @($h['S15Resume'].Skip) } else { @() }
     $must = @($Order | Where-Object { $RowBlocks -contains $_ -and (($done -contains $_) -or ($prevSkip -contains $_) -or ($_ -eq $stopAt)) })

@@ -126,6 +126,11 @@ Call every block with the tool's timeout at 600 000 ms.
 | 30 | `-Block saveblk` | SAVE-BLOCK | 20 s | 330 · 505 s | builds 4m on `blk` first (C1); background `s10.ts save-block`; options block list set / emptied |
 | 31 | `-Block jsd` | MCPF-1-off prep, JSD (JavaScript off) | 1–2 min | 330 · 505 s | ends with JavaScript **still off** (block off uses it in the same attempt) |
 | 32 | `-Block off` | JSD (bridge off), MCPF-1-off, JSD (JavaScript on) | 2–4 min | 330 · 505 s | if block jsd did not run in this attempt (a resume), it first takes MCPF-1-off's baseline and turns JavaScript off itself (M3); toolbar OFF, re-arm, JavaScript on; ends at the found state |
+| 32a | `-Block mcpf1r-click` | MCPF-1R focus question + click ×3 (added 2026-10-25 by the S7 wave fixer 3) | 1–3 min | 330 · 505 s | as block 14 under MCPF-1R; actor `mcpf1r-click` (tool search off) |
+| 32b | `-Block mcpf1r-type` | MCPF-1R type ×3 | 1–2 min | 330 · 505 s | actor `mcpf1r-type` |
+| 32c | `-Block mcpf1r-press` | MCPF-1R press ×3, the tally | 1–2 min | 330 · 505 s | actor `mcpf1r-press`; prints `ROW MCPF-1R tally …` + `CHECK MCPF-1R 3of3` |
+| 32d | `-Block cap1r` | CAP-1R (CAP-1's MCP leg) | 1 min | 330 · 505 s | actor `cap1r` (2 turns); the SDK half is not re-run (§4.22 CAP-1R) |
+| 32e | `-Block r3r` | R15-3R | 30 s | 330 · 505 s | state change (the options switch); toolbar click; R15-3's guard plus the one exemption rule (§4.22 R15-3R); any other occluder → STOP |
 | 33 | `-Block restore` | R15-RESTORE (S7.4 end) | 20 s | 330 · 505 s | a mismatch is a STOP that escalates |
 | 34 | `-Block logs` | R15-LOGS (S7.6), SAVE-LOG | 1 min | 330 · 505 s | console, daemon.log (copied to `S7-daemon-log.txt` at 0), every transcript |
 | 35 | `-Block teardown` | R15-TEARDOWN | 30 s | 330 · 505 s | raw output scanned and copied to `S7-run-raw.txt` at 0; the saveTo files deleted |
@@ -204,6 +209,105 @@ MCPF-1-off's baseline and turns JavaScript off itself only if block `jsd` did no
 After block 35 (teardown): **PP1, then RET-1**, exactly as §7 and §6 say. The 10 leftover `s15v-*` files in
 `%TEMP%\bridge-e2e\s15\sv` (written by attempt 2's `saveTo` rows; teardown was not reached) are deleted by block 35's
 teardown with this attempt's own — nothing deletes them earlier.
+
+### Re-measurements after Return 4 (attempt 4)
+
+*Added 2026-10-25 by the S7 wave fixer 3 (`S7-wave-fixer3.md`), before any observation of the rows it runs; the rows
+are §4.22's MCPF-1R, CAP-1R, R15-3R and RET-1R (#222: a re-measurement is a new row, written and committed before it
+runs).*
+
+**STOP RULE (#193): on any STOP line — a restore that fails, a guard that prints STOP, a human gate (pinning, a
+grant), any throw — run the restore first if the safety state was touched since the found-state record, record its
+read-back, write the ledger, and RETURN to the step agent. A helper may be fixed only between rows, before any
+observation of the next row, and never past a STOP line.**
+
+Runner 4's attempt 3 ran blocks 1–11, `savedis` … `off`, `restore`, `logs`, `teardown` (all done), then PP1 (PASS) and
+RET-1, which stopped after its kill (Return 4: the relaunch's `-ArgLine ''`, now fixed). The stored state
+(`r15-globals.clixml`, sha256 `fb166f6b…2c9e7c` when this was written) says attempt 3, **not stopped, torn down**;
+`-Block reset` now resumes from a torn-down attempt as from a stopped one (no stopped block to add). So the skip set is
+every row block observed or stopped in attempts 1–3 — all 22 of Run 15's original row blocks — and **not** the five new
+row blocks `mcpf1r-click`, `mcpf1r-type`, `mcpf1r-press`, `cap1r`, `r3r` (blocks 32a–32e).
+
+**Before attempt 4: the RET-1 end read-back redo** (*added 2026-10-25 by the S7 fixer #223; decisions.md · 2026-10-25 ·
+RET-1's end safety read-back reads only a window the wave opens and marks (#223)*). Return 5's end read-back threw before
+it compared anything, so the safety state after RET-1's relaunch has not been read back. The next runner's first act,
+before the reset call below, is the same command as §6 step 3, now under #223's helper (Chrome is running; nothing is
+pressed; it is a read-back, not a re-run of RET-1, which stays NOT MEASURED):
+
+```powershell
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+$env:S9_RAW = Join-Path $env:TEMP 'bridge-e2e\s15\legs-raw.txt'
+powershell -NoProfile -ExecutionPolicy Bypass -Command ". .\recipes\s10-win.ps1; if (Test-S10LegState -Leg RET-1 -Phase end) { exit 0 } else { exit 2 }"
+"exit $LASTEXITCODE"
+```
+
+Its output goes verbatim into the record under the heading `## RET-1 end read-back (redone under #223)`. Exit 0 with
+`LEG RET-1 end: … -> equal` → go on to the reset call below. `-> NOT equal` (its STOP line), or any `STOP: LEG RET-1 end:
+not read - …` line (the window set not stable within 60 s, Chrome not running, 0 or ≥ 2 marked windows, the marked
+window's address bar), or any other exit → **STOP: write the ledger and RETURN at once** (the step agent escalates to
+the session agent); attempt 4 does not start.
+
+The next runner's first call after the redo, exactly:
+
+```powershell
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\s10-r15.ps1 -Block reset -Attempt 4 -Skip bbl1,bbl2,mcpf-click,mcpf-type,mcpf-press,cap,sw1,sw1r,pop2,save-a,savefix,save-64,save-64-mcp,prim,idonly,save-ttl,r3,savedis,savejs,saveblk,jsd,off
+"exit $LASTEXITCODE"
+```
+
+It prints (dry run on a copy of the state files, `S7-wave-fixer3.md` §5) `RESUME attempt 4: bbl1, bbl2, mcpf-click,
+mcpf-type, mcpf-press, cap, sw1, sw1r, pop2, save-a, savefix, save-64, save-64-mcp, prim, idonly, save-ttl, r3, savedis,
+savejs, saveblk, jsd, off observed in an earlier attempt or stopped in one, not re-run` and `RESUME attempt 4: blocks
+preflight, build, servers, window, daemon, reload, setup, safe0, console, found, rep0, mcpf1r-click, mcpf1r-type,
+mcpf1r-press, cap1r, r3r, restore, logs, teardown; daemon.log mark 2026-10-25T09:57:04.349Z (the first attempt's)`.
+`USAGE: …` (exit 3) changes nothing and is a RETURN (never adjust the skip set). Then, one call each as in §0, in this
+order: `-Block preflight -Prep b55048d`, `build`, `servers`, `window`, `daemon`, `reload`, `setup`, `safe0`, `console`,
+`found`, `rep0` (the framing blocks; REP-0's probe runs again), **`mcpf1r-click`, `mcpf1r-type`, `mcpf1r-press`, `cap1r`,
+`r3r`**, `restore`, `logs`, `teardown`. Every actor starts with tool search off (`Start-Actor` STOPs when its start line
+lacks `tool search off`). Block `logs` now counts **every** Run 15 actor transcript: this attempt's (`mcpf1r-click`,
+`mcpf1r-type`, `mcpf1r-press`, `cap1r`) and every earlier attempt's whose folder exists (`mcpf-click`, `mcpf-type`,
+`mcpf-press`, `cap`, `save`, `fix`, `big`, `jsd`, `off`, `on` — attempts 1–2's were never counted, runner 4's gap); it
+prints `R15-LOGS actors scanned: <n> (…)`. PP1's actor is counted by its own leg (§7) and PP1 is not re-run. The record
+gets the heading `## Attempt 4 (runner 5) — re-measurements after Return 4` and continues from its SAFE-0 line.
+MCPF-1, CAP-1, R15-3 (NOT MEASURED), SAVE-REFUSE (FAIL) and RET-1 (NOT MEASURED) stand as recorded.
+
+**After block 35 (teardown): RET-1R**, exactly as §6 with these changes (the leg's lines all say `RET-1R`; its output
+folder is `%TEMP%\bridge-e2e\s15-ret1r`; its STOP rules are RET-1's — **Chrome NOT running → STOP, RETURN at once, the
+first line of the return says "Chrome is NOT running"**):
+
+0. The fixture server (the teardown stopped it; RET-1R's holder needs `http://localhost:8080/e2e-playground.html`) —
+   record the printed PID in the ledger:
+   ```powershell
+   $py = Start-Process -PassThru -WindowStyle Hidden -WorkingDirectory . -FilePath "$HOME\miniconda3\python.exe" -ArgumentList '-I', '-m', 'http.server', '8080', '--bind', '127.0.0.1', '--directory', 'test-fixtures' -RedirectStandardOutput "$env:TEMP\bridge-e2e\s15\http8080-ret1r.out" -RedirectStandardError "$env:TEMP\bridge-e2e\s15\http8080-ret1r.err"
+   "fixture server PID $($py.Id)"
+   ```
+1. `powershell -NoProfile -ExecutionPolicy Bypass -Command ". .\recipes\s10-win.ps1; if (Test-S10LegState -Leg RET-1R -Phase start) { exit 0 } else { exit 2 }"` (with `$env:S9_RAW` as §6 step 1).
+2. `powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\s10-ret1.ps1 -Granted G10-2 -Row RET-1R` (the
+   relaunch now passes no `-ArgLine`: `bgf-launch.ps1`'s default `''`, a plain launch).
+3. `powershell -NoProfile -ExecutionPolicy Bypass -Command ". .\recipes\s10-win.ps1; if (Test-S10LegState -Leg RET-1R -Phase end) { exit 0 } else { exit 2 }"`.
+   *Amended 2026-10-25 (#223): was "Known (Return 5, the post-relaunch runner): this helper's read after a relaunch
+   threw `expected exactly 1 new Chrome window, found 2` and so printed `NOT equal`; it is not changed here … a repeat
+   is a STOP as written", because decisions.md · 2026-10-25 · RET-1's end safety read-back reads only a window the wave
+   opens and marks (#223) changed the helper (S7 fixer #223, `S7-fix223.md`). `Test-S10LegState` (every leg, both
+   phases) now first waits until Chrome's set of visible windows has not changed for 5 s (bounded at 60 s), then opens
+   its check window on a `data:` page whose title is a per-call marker (`s15leg-<guid>`), acts only on the one window
+   carrying it (its address bar must show the marker URL before the options URL is typed), and closes it by its
+   handle. New STOP lines, each a RETURN, each printed instead of the `-> equal / NOT equal` line (no read was made):
+   `STOP: LEG <leg> <phase>: not read - Chrome's set of windows did not stay unchanged for 5000 ms within 60000 ms …`,
+   `STOP: LEG <leg> <phase>: not read - Chrome is NOT running (0 chrome processes) …`, `STOP: LEG <leg> <phase>: not
+   read - <n> Chrome window(s) carry this call's marker (need exactly 1) …` (nothing typed, moved or closed in any
+   window), `STOP: LEG <leg> <phase>: not read - the one marked window <h> does not show the marker URL …`. The
+   `-> equal` / `-> NOT equal` line and its STOP are unchanged. In step 2, a reconnect wait that fails is now
+   `STOP: RET-1R: Chrome did not reconnect to the bridge within 90 s (… chrome processes now: <n>) …` (exit 2, a
+   RETURN), not a judge FAIL.*
+   *Amended 2026-10-25 (#223 round 2, verifier MINOR): was "closes it by its handle" while the handle had the
+   recorded pid and class only; every Chrome window shares the browser pid, so it now closes the window only with a
+   proof it is still the check window (its title as recorded when picked, or the marker URL / this extension's options
+   URL exactly in its address bar or document); otherwise it prints `window <h> cannot be proved to be my check window
+   … - not closed` (or `window <h> is gone - not closed`) and touches nothing. Such a line is not a STOP; the runner
+   names the left-over window's handle in its ledger and return (`S7-fix223.md` § Round 2).*
+4. As §6 step 4; then end the step-0 fixture server by its PID through `Test-SafeToKill` and show no LISTENING line on
+   8080.
 
 ## 2. PIDs and handles to track (the ledger's "Live PIDs")
 
@@ -324,6 +428,16 @@ Steps (the PowerShell tool, repo root; output pasted verbatim into the record un
    ```
    `LEG RET-1 end: … block-list sha256 vs found equal … -> equal` is the leg's restore read-back (Chrome's restart
    never re-arms or changes `storage.local`: the state is read back, nothing is pressed). Not equal → STOP, RETURN.
+   *Amended 2026-10-25 (#223): was only "Not equal → STOP, RETURN", because Return 5's read after the relaunch threw
+   (`expected exactly 1 new Chrome window, found 2`: session restore brought the user's windows back) and printed `NOT
+   equal` for a state it never compared (decisions.md · 2026-10-25 · RET-1's end safety read-back reads only a window
+   the wave opens and marks (#223)). `Test-S10LegState` (steps 1 and 3, and PP1's legs) now waits until Chrome's set
+   of visible windows has not changed for 5 s (bounded at 60 s), opens its check window on a `data:` page titled with
+   a per-call marker, and acts only on the one window carrying it. A `STOP: LEG RET-1 <phase>: not read - …` line (the
+   window set not stable, Chrome not running, 0 or ≥ 2 marked windows — nothing typed, moved or closed in any window —
+   or the marked window's address bar not on the marker URL) is a STOP, RETURN, printed instead of the `-> equal /
+   NOT equal` line. In step 2, `s10-ret1.ps1` now stops (`STOP: RET-1: Chrome did not reconnect to the bridge within
+   90 s …`, exit 2 — a RETURN) when the reconnect wait fails, instead of judging.*
 4. Record the daemon serving after the leg (`netstat -ano | findstr ":9234"`: its PID; it idles out by itself and is
    never killed by hand) and `@(Get-Process chrome).Count` ≥ 1 (a count only).
 

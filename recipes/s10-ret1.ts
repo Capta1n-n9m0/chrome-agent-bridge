@@ -11,12 +11,14 @@
 // the driver's <OUT>\RET-1.pressed (written after Chrome was relaunched and the extension reconnected); meanwhile it
 // records every `tabGone`. Then it waits ≤ 30 s for the tabGone of its handle and calls `snapshot` on the old Tab.
 // Its lines: `ROW RET-1 holder …`, `ROW RET-1 tabGone …`, `ROW RET-1 old-tab <CODE> …`. It prints fixture URLs only.
+// S7 wave fixer 3 (2026-10-25, after Return 4): `--row RET-1R` (hold and judge) runs the same under the re-measurement's
+// row ID (§4.22 RET-1R): its lines and the <OUT>\<row>.ready / .pressed signals carry the row; RET_ROWS only.
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { BridgeError, connect } from "@bridge/sdk";
 import { logLinesSince, type Outcome } from "./s9-rules.js";
-import { checkLine10, retiredCount, ret1Verdict, rowLine10, show10, stopLine10 } from "./s10-rules.js";
+import { checkLine10, RET_ROWS, retiredCount, ret1Verdict, rowLine10, show10, stopLine10 } from "./s10-rules.js";
 
 const OUT = process.env.S10_OUT?.trim() || process.env.S9_OUT?.trim() || join(tmpdir(), "bridge-e2e", "s15");
 const URL_RET1 = "http://localhost:8080/e2e-playground.html?s15=ret1";
@@ -25,10 +27,17 @@ const option = (f: string): string | undefined => (rest.indexOf(f) >= 0 ? rest[r
 const iso = (): string => new Date().toISOString();
 const say = (m: string): void => console.log(`${iso()} ${m}`);
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+/** The row ID (`--row`, default RET-1); only RET_ROWS (RET-1, RET-1R). */
+function rowId(): string {
+  const r = option("--row") ?? "RET-1";
+  if (!RET_ROWS.includes(r)) throw new Error(`--row takes ${RET_ROWS.join(" or ")} only`);
+  return r;
+}
 
 async function hold(): Promise<void> {
+  const id = rowId();
   mkdirSync(OUT, { recursive: true });
-  rmSync(join(OUT, "RET-1.pressed"), { force: true });
+  rmSync(join(OUT, `${id}.pressed`), { force: true });
   const c = await connect({ name: "s10-ret1-holder", failureReports: false });
   const gone: Array<{ at: string; p: { tab?: string; lastUrl?: string } }> = [];
   c.on("tabGone", (p) => gone.push({ at: iso(), p }));
@@ -36,16 +45,16 @@ async function hold(): Promise<void> {
     const tab = await c.newTab(URL_RET1);
     await tab.waitFor({ text: "Agent Bridge E2E Playground" });
     writeFileSync(join(OUT, "ret1.json"), JSON.stringify({ handle: tab.handle, url: URL_RET1 }));
-    say(`ROW RET-1 holder ${tab.handle} at ${URL_RET1} (held by s10-ret1-holder)`);
-    writeFileSync(join(OUT, "RET-1.ready"), iso());
-    say("READY RET-1");
+    say(`ROW ${id} holder ${tab.handle} at ${URL_RET1} (held by s10-ret1-holder)`);
+    writeFileSync(join(OUT, `${id}.ready`), iso());
+    say(`READY ${id}`);
     const t0 = Date.now();
-    while (!existsSync(join(OUT, "RET-1.pressed")) && Date.now() - t0 < 600_000) await sleep(200);
-    if (!existsSync(join(OUT, "RET-1.pressed"))) throw new Error("the driver did not signal the relaunch within 10 min");
+    while (!existsSync(join(OUT, `${id}.pressed`)) && Date.now() - t0 < 600_000) await sleep(200);
+    if (!existsSync(join(OUT, `${id}.pressed`))) throw new Error("the driver did not signal the relaunch within 10 min");
     const t1 = Date.now();
     while (!gone.some((g) => g.p.tab === tab.handle) && Date.now() - t1 < 30_000) await sleep(200);
     const g = gone.find((x) => x.p.tab === tab.handle);
-    say(`ROW RET-1 tabGone ${g ? `${JSON.stringify({ tab: g.p.tab, lastUrl: show10(g.p.lastUrl) })} at ${g.at}` : "none for the held handle within 30 s"} (all tabGone events: ${gone.length})`);
+    say(`ROW ${id} tabGone ${g ? `${JSON.stringify({ tab: g.p.tab, lastUrl: show10(g.p.lastUrl) })} at ${g.at}` : "none for the held handle within 30 s"} (all tabGone events: ${gone.length})`);
     writeFileSync(join(OUT, "ret1-gone.json"), JSON.stringify(g ? g.p : null));
     const s0 = Date.now();
     let after: Outcome;
@@ -55,7 +64,7 @@ async function hold(): Promise<void> {
     } catch (err) {
       after = err instanceof BridgeError ? { ok: false, code: String(err.code), message: err.message, data: err.data, ms: Date.now() - s0 } : { ok: false, code: "SCRIPT", message: String(err), ms: Date.now() - s0 };
     }
-    say(rowLine10("RET-1", "old-tab", after));
+    say(rowLine10(id, "old-tab", after));
     writeFileSync(join(OUT, "ret1-after.json"), JSON.stringify(after));
   } finally {
     c.close();
@@ -63,6 +72,7 @@ async function hold(): Promise<void> {
 }
 
 async function judge(): Promise<void> {
+  const id = rowId();
   const since = option("--since");
   const found = option("--found");
   if (!since || !found) throw new Error("judge --since <iso> --found <the found safety tuple line>");
@@ -80,10 +90,10 @@ async function judge(): Promise<void> {
   } finally {
     c.close();
   }
-  say(`ROW RET-1 daemon.log since ${since}: ${retired === null ? "no session-change line" : `extension session changed: ${retired} handles retired`}`);
-  say(`ROW RET-1 safety read back ${now} (found ${found})`);
+  say(`ROW ${id} daemon.log since ${since}: ${retired === null ? "no session-change line" : `extension session changed: ${retired} handles retired`}`);
+  say(`ROW ${id} safety read back ${now} (found ${found})`);
   const v = ret1Verdict({ retired, gone, handle: held.handle, url: held.url, after, safetyEqual: now === found });
-  say(checkLine10("RET-1", "retire", v));
+  say(checkLine10(id, "retire", v));
   if (!v.pass) process.exitCode = 1;
 }
 

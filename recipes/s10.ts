@@ -19,6 +19,8 @@
 //                                   focus question, RECORD); press prints the attempt's tally and the 3of3 check
 //   mcpf-off-prep | mcpf-off --actor <n> | mcpf-off-judge     MCPF-1's disarmed leg (prep armed, the call disarmed, the judge re-armed)
 //   cap1-sdk | cap1-mcp --actor <n> CAP-1's two legs
+//   mcpf … --row MCPF-1R | cap1-mcp … --row CAP-1R   the re-measurements (S7 wave fixer 3): the same legs under the new row ID
+//   r3r-check --file <json> --step <s>              R15-3R's placement guard (s10-rules r3rPlacementVerdict; s10-win.ps1 writes the JSON)
 //   sw1 [--row SW-1R]               SW-1 (or its re-measurement SW-1R), three trials of (i) background capture, (ii) front capture
 //   pop2 --leg a|b                  R15-POP-2: the opener (a) in front, (b) behind; its popup's opener class; leaseGranted
 //   save-build <key> [--tab t]      the page builds one value (s10-save.html) and prints its own digest
@@ -52,7 +54,7 @@ import { saveEvaluateToFile } from "@bridge/sdk/download";
 import { chunkRanges, SDK_CHUNK_CHARS, verifyTransfer } from "./blackboard/export-file.js";
 import { chunkExpression } from "./blackboard/readonly.js";
 import { heldKey } from "./blackboard/held.js";
-import { extensionIdFromPath, logLinesSince, type Outcome } from "./s9-rules.js";
+import { extensionIdFromPath, logLinesSince, placementDiagnostics, placementLine, type Outcome, type Placement } from "./s9-rules.js";
 import {
   answerIs,
   answerVerdict,
@@ -102,6 +104,10 @@ import {
   swOutcome,
   swPre,
   SW_ROWS,
+  MCPF_ROWS,
+  CAP_ROWS,
+  r3rPlacementVerdict,
+  type ReadRect,
   tabGoneMessage,
   tabHeldRe,
   toolLine,
@@ -174,6 +180,7 @@ interface State {
   at: string;
   mcpfOff?: { since: number };
   mcpfTally?: Partial<Record<McpfKind, number>>;
+  mcpfTallyR?: Partial<Record<McpfKind, number>>;
 }
 
 function loadState(): State {
@@ -393,7 +400,10 @@ async function mcpfBehind(c: BridgeClient, id: string, step: string): Promise<vo
  * to state.json, and the press call prints the attempt's tally line and the 3of3 check (`mcpfTally`).
  */
 async function cmdMcpf(): Promise<void> {
-  const id = "MCPF-1";
+  // S7 wave fixer 3: `--row MCPF-1R` runs the same legs under the re-measurement's ID, with its own tally in state.json.
+  const id = option("--row") ?? "MCPF-1";
+  if (!MCPF_ROWS.includes(id)) throw new SetUp(`SET-UP: mcpf --row takes ${MCPF_ROWS.join(" or ")} only`);
+  const tallyKey = id === "MCPF-1" ? "mcpfTally" : "mcpfTallyR";
   const actor = option("--actor");
   const only = option("--kind");
   if (!actor || (only !== "click" && only !== "type" && only !== "press")) throw new SetUp("SET-UP: mcpf --kind click|type|press --actor <name>");
@@ -428,11 +438,11 @@ async function cmdMcpf(): Promise<void> {
       if (check(id, step, v)) tally[kind]++;
     }
     const s = loadState();
-    s.mcpfTally = { ...(s.mcpfTally ?? {}), [only]: tally[only] };
+    s[tallyKey] = { ...(s[tallyKey] ?? {}), [only]: tally[only] };
     saveState(s);
     say(`ROW ${id} ${only} passed ${tally[only]}/3 (kept for the tally)`);
     if (only === "press") {
-      const t = mcpfTally(s.mcpfTally);
+      const t = mcpfTally(s[tallyKey] ?? {});
       say(`ROW ${id} ${t.line}`);
       check(id, "3of3", t.check);
     }
@@ -531,7 +541,10 @@ async function cmdCap1Sdk(): Promise<void> {
 }
 
 async function cmdCap1Mcp(): Promise<void> {
-  const id = "CAP-1-mcp";
+  // S7 wave fixer 3: `--row CAP-1R` runs the MCP leg under the re-measurement's ID (`CAP-1R-mcp`).
+  const row = option("--row") ?? "CAP-1";
+  if (!CAP_ROWS.includes(row)) throw new SetUp(`SET-UP: cap1-mcp --row takes ${CAP_ROWS.join(" or ")} only`);
+  const id = `${row}-mcp`;
   const actor = option("--actor");
   if (!actor) throw new SetUp("SET-UP: cap1-mcp --actor <name>");
   const c = await client("s10-cap1-mcp");
@@ -1327,6 +1340,25 @@ async function cmdPp1Plan(): Promise<void> {
   console.log(PROMPTS.saveTo(tab, expression, p).replace(p.replace(/\\/g, "/"), "<saveTo: %TEMP%/bridge-e2e/s15/sv/s15v-pp1-mcp.txt>"));
 }
 
+/**
+ * R15-3R (S7 wave fixer 3, 2026-10-25; §4.22 R15-3R): the placement guard with its one extra rule — an occluder above O
+ * is exempt only when owned (owner and root owner) by a driver window and over none of the rects of the elements R15-3R
+ * reads on O, measured at guard time (s10-rules.ts r3rPlacementVerdict). The JSON is the one s10-win.ps1
+ * Test-S10Placement -ExemptOwned writes: rect-check's fields plus `readRects`. Lines: rect-check's, READ / EXEMPT, CHECK.
+ */
+async function cmdR3rCheck(): Promise<void> {
+  const row = option("--row") ?? "R15-3R";
+  const step = option("--step") ?? "placement";
+  const file = option("--file");
+  if (!file || !existsSync(file)) throw new SetUp("SET-UP: r3r-check --file <json>");
+  const p = JSON.parse(readFileSync(file, "utf8").replace(/^﻿/, "")) as Placement & { readRects?: ReadRect[] | null };
+  say(`ROW ${row} ${step} ${placementLine(p)}`);
+  for (const l of placementDiagnostics(p)) say(l);
+  const r = r3rPlacementVerdict(p);
+  for (const l of r.lines) say(l);
+  check(row, step, r.verdict);
+}
+
 const HELP = "recipes/s10.ts — Step 10 S7 rows (docs/e2e-test-plan.md §4.22); see the header for every command.";
 
 const commands: Record<string, () => Promise<unknown>> = {
@@ -1365,6 +1397,7 @@ const commands: Record<string, () => Promise<unknown>> = {
   "scan-log": cmdScanLog,
   "values-clean": cmdValuesClean,
   "pp1-plan": cmdPp1Plan,
+  "r3r-check": cmdR3rCheck,
 };
 
 const run = commands[command];

@@ -1,0 +1,465 @@
+RESUME attempt 3: bbl1, bbl2, mcpf-click, mcpf-type, mcpf-press, cap, sw1, sw1r, pop2, save-a, savefix, save-64, save-64-mcp, prim, idonly, save-ttl, r3 observed in an earlier attempt or stopped in one, not re-run
+RESUME attempt 3: blocks preflight, build, servers, window, daemon, reload, setup, safe0, console, found, rep0, savedis, savejs, saveblk, jsd, off, restore, logs, teardown; daemon.log mark 2026-10-25T09:57:04.349Z (the first attempt's)
+2026-10-25T10:40:36.122Z s9-win: BLOCK preflight begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:40:36.140Z s9-win: R15 preflight (read-only) at 2026-10-25T10:40:36.138Z
+2026-10-25T10:40:36.260Z s9-win: HEAD 8acde66 contains the prep commit b55048d
+2026-10-25T10:40:36.326Z s9-win: tracked files: clean outside the steps dir (the ledger and the record may change there)
+2026-10-25T10:40:36.385Z s9-win: dist before the build: daemon/dist/index.js 021286ab5f321207... (record)
+2026-10-25T10:40:36.389Z s9-win: dist before the build: mcp/dist/index.js 403ee0b1bb425716... (record)
+2026-10-25T10:40:36.393Z s9-win: dist before the build: extension/dist/sw.js 1403f37f21aba1cf... (record)
+2026-10-25T10:40:36.397Z s9-win: dist before the build: extension/dist/content.js c7142b6544dde129... (record)
+2026-10-25T10:40:36.399Z s9-win: dist before the build: extension/dist/offscreen.js a8beec6cfa8abbf2... (record)
+2026-10-25T10:40:36.403Z s9-win: dist before the build: extension/dist/options.js fd68d5d03d18926d... (record)
+2026-10-25T10:40:36.605Z s9-win: bridge MCP processes: 0
+2026-10-25T10:40:36.771Z s9-win: port 9234: free
+2026-10-25T10:40:36.867Z s9-win: ports 8080, 8081, 8083, 8085: free
+2026-10-25T10:40:37.131Z s9-win: Chrome 156.0.8078.48; node v25.2.1
+2026-10-25T10:40:37.217Z s9-win: node processes (pid<-parent): 22152<-16936 (22152 is an unrelated host: never touched)
+2026-10-25T10:40:37.225Z s9-win: claude.exe found (the actors' S9_CLAUDE)
+2026-10-25T10:40:37.278Z s9-win: Chrome windows 1; Chrome start 2026-10-25T09:33:08.530Z
+2026-10-25T10:40:37.286Z s9-win: keyboard layouts installed: 3 (0x04090409, 0x04190419, 0x042c042c)
+2026-10-25T10:40:37.290Z s9-win: bridge.token present: True; BRIDGE_TOKEN set in this shell: False (never read or printed here)
+2026-10-25T10:40:37.292Z s9-win: note: r15-raw.txt already existed and is appended to
+2026-10-25T10:40:37.310Z s9-win: BLOCK preflight done
+2026-10-25T10:40:41.107Z s9-win: BLOCK build begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:40:41.192Z s9-win: tracked changes outside the steps dir before the build: 0
+2026-10-25T10:40:41.193Z s9-win: npm run build of the committed code (main tree)
+
+built daemon → dist/index.js
+
+> @bridge/mcp@0.1.0 build
+> node build.mjs
+
+built mcp → dist/index.js
+
+> @bridge/extension@0.1.0 build
+> node build.mjs
+
+built extension → dist/
+2026-10-25T10:40:42.709Z s9-win: npm run build exit 0 (19 lines; the last 12 shown)
+2026-10-25T10:40:42.773Z s9-win: git status: no tracked change after the build
+2026-10-25T10:40:42.775Z s9-win: (the tracked status outside the steps dir is equal before and after the build; the steps dir holds the ledger)
+2026-10-25T10:40:42.860Z s9-win: dist after the build: daemon/dist/index.js 021286ab5f321207... (record)
+2026-10-25T10:40:42.864Z s9-win: dist after the build: mcp/dist/index.js 403ee0b1bb425716... (record)
+2026-10-25T10:40:42.866Z s9-win: dist after the build: extension/dist/sw.js 1403f37f21aba1cf... (record)
+2026-10-25T10:40:42.870Z s9-win: dist after the build: extension/dist/content.js c7142b6544dde129... (record)
+2026-10-25T10:40:42.872Z s9-win: dist after the build: extension/dist/offscreen.js a8beec6cfa8abbf2... (record)
+2026-10-25T10:40:42.874Z s9-win: dist after the build: extension/dist/options.js fd68d5d03d18926d... (record)
+2026-10-25T10:40:42.892Z s9-win: BLOCK build done
+2026-10-25T10:40:47.103Z s9-win: BLOCK servers begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:40:47.536Z s9-win: servers listening on 127.0.0.1: http8080 (test-fixtures) PID 13224, http8085 (recipes/fixtures) PID 22880
+2026-10-25T10:40:47.574Z s9-win: BLOCK servers done
+2026-10-25T10:40:48.428Z s9-win: BLOCK window begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:40:48.912Z s9-win: opened window 788742 on http://localhost:8080/e2e-playground.html?s9=w ('Agent Bridge E2E Playground - Google Chrome')
+2026-10-25T10:40:48.955Z s9-win: W = 788742, keyboard layout 0x04090409
+2026-10-25T10:40:49.126Z s9-win: toolbar buttons named 'Chrome Agent Bridge…': 1 after 131 ms (window 1936 px) -> pinned=true
+2026-10-25T10:40:49.185Z s9-win: ACTION name "Chrome Agent Bridge — armed (click to turn off)
+Has access to this site" class 'ToolbarActionView'
+2026-10-25T10:40:49.189Z s9-win: pin state found: pinned=true
+2026-10-25T10:40:49.195Z s9-win: BLOCK window done
+2026-10-25T10:40:53.367Z s9-win: BLOCK daemon begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:40:53.400Z s9-win: wave start 2026-10-25T09:57:04.349Z (the daemon-log mark of S7.6)
+2026-10-25T10:40:55.344Z daemon up: build 021286ab5f32… · disk daemon/dist/index.js 021286ab5f32… · equal yes · extension connected yes
+2026-10-25T10:40:55.596Z s9-win: daemon PID 29408
+2026-10-25T10:40:55.872Z ROW R15-CLIENTS-START wait-alone reached clients=1 after 0 ms
+2026-10-25T10:40:55.911Z s9-win: BLOCK daemon done
+2026-10-25T10:40:56.758Z s9-win: BLOCK reload begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:40:57.254Z reload-extension: extension Chrome Agent Bridge, ID cpnemjbgecfbeicldpaaegbhjgjgjfep (from C:\Users\aliev\Projects\chrome-remote-extention\extension)
+2026-10-25T10:40:57.432Z reload-extension: daemon running: yes (pid 29408)
+2026-10-25T10:40:57.859Z reload-extension: own window 1378660 opened
+2026-10-25T10:40:58.759Z reload-extension: card found: ID cpnemjbgecfbeicldpaaegbhjgjgjfep, 1 reload button ('Reload', AutomationId dev-reload-button); inspect views: service worker, |  1 more…
+2026-10-25T10:40:58.769Z reload-extension: pressed the reload button of the card
+2026-10-25T10:41:02.367Z reload-extension: UIA: the card's service worker restart seen: yes; inspect views now: service worker, |  1 more…
+2026-10-25T10:41:02.698Z reload-extension: daemon.log: new line '2026-10-25T10:41:00Z extension resync: 3 tabs, 0 gone'
+2026-10-25T10:41:02.702Z reload-extension: RELOAD OK - the extension reconnected to the daemon after the press at 10:40:58.759Z; now run the stale-extension check
+2026-10-25T10:41:02.921Z reload-extension: own window 1378660 closed
+2026-10-25T10:41:02.952Z s9-win: reload-extension.ps1 exit 0 (attempt 1)
+2026-10-25T10:40:55Z client - "s10-daemon-up" (0 clients)
+2026-10-25T10:40:55Z client + "s9-wait-alone" (1 client)
+2026-10-25T10:40:55Z client - "s9-wait-alone" (0 clients)
+2026-10-25T10:40:58Z safety state: not reported (extension disconnected)
+2026-10-25T10:41:00Z safety state: armed=true evaluate=true blocked=0
+2026-10-25T10:41:00Z extension resync: 3 tabs, 0 gone
+2026-10-25T10:41:03.031Z s9-win: BLOCK reload done
+2026-10-25T10:41:07.082Z s9-win: BLOCK setup begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:41:07.457Z driver tab w = T1154 (current), title set to "S9 W human tab"
+2026-10-25T10:41:07.560Z opened a = T1156 (background, window W) at http://localhost:8080/e2e-playground.html?s9=a
+2026-10-25T10:41:07.614Z opened mcpf = T1157 (background, window W) at http://localhost:8080/s10-mcpf.html?s15=mcpf
+2026-10-25T10:41:07.664Z opened sw = T1158 (background, window W) at http://localhost:8080/s10-mcpf.html?s15=sw
+2026-10-25T10:41:07.723Z opened cap = T1159 (background, window W) at http://localhost:8080/s10-cap.html?s15=cap
+2026-10-25T10:41:07.767Z opened save = T1160 (background, window W) at http://localhost:8080/s10-save.html?s15=save
+2026-10-25T10:41:07.814Z opened close = T1161 (background, window W) at http://localhost:8080/s10-save.html?s15=close
+2026-10-25T10:41:07.859Z opened blk = T1162 (background, window W) at <blocked-fixture url>
+2026-10-25T10:41:07.932Z opened pop = T1163 (background, window W) at http://localhost:8080/e2e-playground.html?s15=pop
+2026-10-25T10:41:08.007Z opened jsd = T1164 (background, window W) at http://localhost:8080/e2e-playground.html?s15=jsd
+2026-10-25T10:41:08.007Z state written to C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s15\state.json
+2026-10-25T10:41:08.347Z ROW R15-SETUP wait-alone reached clients=1 after 1 ms
+2026-10-25T10:41:08.388Z s9-win: BLOCK setup done
+2026-10-25T10:41:28.969Z s9-win: BLOCK safe0 begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:41:29.289Z ROW SAFE-0 safety safety armed=true evaluate=true blockedCount=0 (reported after 1 ms of polling)
+2026-10-25T10:41:29.291Z CHECK SAFE-0 safety PASS — daemon.status.safety reported (only a Step 9 extension sends safetyState)
+2026-10-25T10:41:29.296Z ROW SAFE-0 navigate-own-options DOMAIN_BLOCKED The bridge never opens extension pages. (2 ms)
+2026-10-25T10:41:29.297Z CHECK SAFE-0 navigate-own-options PASS — DOMAIN_BLOCKED, exact message, no data
+2026-10-25T10:41:29.300Z ROW SAFE-0 url-after T1156 url http://localhost:8080/e2e-playground.html?s9=a
+2026-10-25T10:41:29.301Z CHECK SAFE-0 url-after PASS — tab a still on its fixture URL
+2026-10-25T10:41:29.350Z s9-win: SAFE-0 tuple: safety armed=true evaluate=true blockedCount=0 (expected default: safety armed=true evaluate=true blockedCount=0)
+2026-10-25T10:41:29.639Z ROW SAFE-0-S10 build daemon.status 021286ab5f321207… disk 021286ab5f321207… equal yes
+2026-10-25T10:41:29.645Z ROW SAFE-0-S10 evaluateSaveStart BAD_PARAMS evaluateSaveStart requires a non-empty "expression" string (3 ms)
+2026-10-25T10:41:29.646Z CHECK SAFE-0-S10 step10-build PASS — daemon build = sha256 of daemon/dist/index.js; evaluateSaveStart answered the Step 10 handler's BAD_PARAMS (a Step 9 extension answers UNKNOWN_METHOD)
+2026-10-25T10:41:29.719Z s9-win: BLOCK safe0 done
+2026-10-25T10:41:33.912Z s9-win: BLOCK console begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:41:34.264Z PARK point (1924,125) in page [1920,121,3840,1078]
+2026-10-25T10:41:34.293Z s9-win: PARK cursor at (1924,125) in W's page area (before the one-new-window guard)
+2026-10-25T10:41:34.813Z s9-win: PARK cursor at (1924,125) in W's page area (before the omnibox foreground/focus guard)
+2026-10-25T10:41:35.515Z s9-win: window 592452 now shows chrome://extensions
+2026-10-25T10:41:35.623Z s9-win: PARK cursor at (1924,125) in W's page area (before the one-new-window guard)
+2026-10-25T10:41:35.966Z s9-win: worker console window 1509908 '<DevTools window>'
+2026-10-25T10:41:36.287Z s9-win: BLOCK console done
+2026-10-25T10:41:37.152Z s9-win: BLOCK found begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:41:37.465Z ROW R15-FOUND status safety armed=true evaluate=true blockedCount=0 extensionConnected=true rows=12 rowsWithUrl=12 rowsWith8081=0
+2026-10-25T10:41:37.843Z PARK point (1924,125) in page [1920,121,3840,1078]
+2026-10-25T10:41:37.909Z s9-win: PARK cursor at (1924,125) in W's page area (before the one-new-window guard)
+2026-10-25T10:41:38.382Z s9-win: PARK cursor at (1924,125) in W's page area (before the omnibox foreground/focus guard)
+2026-10-25T10:41:39.080Z s9-win: window 1182402 now shows chrome-extension://cpnemjbgecfbeicldpaaegbhjgjgjfep/options.html
+2026-10-25T10:41:39.099Z s9-win: PARK cursor at (1924,125) in W's page area (before the omnibox foreground/focus guard)
+2026-10-25T10:41:39.769Z s9-win: window 1182402 now shows about:blank
+2026-10-25T10:41:39.789Z s9-win: STORED read: the old options page in window 1182402 is gone after 18 ms
+2026-10-25T10:41:39.791Z s9-win: PARK cursor at (1924,125) in W's page area (before the omnibox foreground/focus guard)
+2026-10-25T10:41:40.453Z s9-win: window 1182402 now shows chrome-extension://cpnemjbgecfbeicldpaaegbhjgjgjfep/options.html
+2026-10-25T10:41:40.467Z s9-win: STORED read: window 1182402 reloaded onto a fresh options page
+2026-10-25T10:41:40.569Z s9-win: STATE armed=true evaluate=true count=0 lines=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 status "Bridge armed." summary "0 blocked sites."
+2026-10-25T10:41:40.828Z ROW R15-FOUND-guard wait-safety reached safety armed=true evaluate=true blockedCount=0 after 1 ms (wanted {"armed":true,"evaluate":true,"blockedCount":0})
+2026-10-25T10:41:40.852Z s9-win: FOUND STATE = the expected default (armed, JavaScript on, empty list; O and daemon.status agree): the toggles may run
+2026-10-25T10:41:40.860Z s9-win: FOUND STATE recorded: armed=true evaluate=true count=0 lines=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-25T10:41:41.185Z s9-win: BLOCK found done
+2026-10-25T10:41:45.163Z s9-win: BLOCK rep0 begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:41:45.679Z s9-win: opened window 3017556 on http://localhost:8080/e2e-playground.html?t5=s6-human ('Agent Bridge E2E Playground - Google Chrome')
+2026-10-25T10:41:46.042Z PARK point (1924,125) in page [1920,121,3840,1078]
+2026-10-25T10:41:46.068Z s9-win: PARK cursor at (1924,125) in W's page area (before REP-0)
+2026-10-25T10:41:46.369Z s6-rep0: connected — daemon build 021286ab5f321207d3933d2030c725c3869627b76e224bbfeffbeb7e51477210, extension connected; failure reports on, BRIDGE_FAILURES_DIR = C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s15\s6out\rep0-failures-1792924906355
+2026-10-25T10:41:46.433Z s6-rep0: opened T1168 (background) at http://localhost:8080/e2e-playground.html?s6=rep0
+2026-10-25T10:41:46.444Z s6-rep0: human T1167 (?t5=s6-human, current); probe T1168 (background, same window, leased to s6-rep0)
+2026-10-25T10:41:46.570Z s6-rep0: bars: human T1167 blue (visibilityState visible); probe T1168 magenta (visibilityState hidden)
+2026-10-25T10:41:46.688Z s6-rep0: control A (the human tab T1167, on screen): 34828 bytes, 1920x901, bar probes (960,24) #3300f8 (1440,24) #3300f8 (1900,24) #3300f8 → blue (hue rule) (expected blue; kept in memory only)
+2026-10-25T10:41:49.497Z s6-rep0: click {role:"button", name:"No such button"} → LOCATOR_NOT_FOUND: no button named "No such button". Nearest: button "Shadow button", button "Iframe button", button "Trusted-only button", button "Fetch JSON", button "Disabled action". (1284 ms, report included)
+2026-10-25T10:41:49.497Z s6-rep0: screenshotPath: C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s15\s6out\rep0-failures-1792924906355\2026-10-25T10-41-48-225Z-T1168.png; attachErrors: []
+2026-10-25T10:41:52.040Z s6-rep0: report PNG: 34527 bytes, 1920x901, bar probes (960,24) #dd00fa (1440,24) #dd00fa (1900,24) #dd00fa → magenta (hue rule) (expected magenta); deleted: yes
+2026-10-25T10:41:52.041Z s6-rep0: report call: probe T1168 visible +23 ms, hidden again +1270 ms; human T1167 hidden +19 ms, visible again +1272 ms → flash 1253 ms (informational; call 1284 ms)
+2026-10-25T10:41:52.044Z s6-rep0: after the report: human active, current; probe background (informational)
+2026-10-25T10:41:54.625Z s6-rep0: control B (tab.screenshot() of the background probe T1168): 34527 bytes, 1920x901, bar probes (960,24) #dd00fa (1440,24) #dd00fa (1900,24) #dd00fa → magenta (hue rule) (expected magenta; kept in memory only)
+2026-10-25T10:41:57.317Z s6-rep0: control B call: 1563 ms; probe visible +9 ms; human hidden +6 ms, visible again +1527 ms (informational)
+2026-10-25T10:41:57.317Z s6-rep0: REP-0 PASS — the report's capture switched to the failed tab (visible +23 ms inside the 1284 ms call) and its PNG shows the probe's magenta bar; controls: the explicit screenshot switched and read magenta, the human tab read blue
+2026-10-25T10:41:57.334Z s6-rep0: closed T1168 (the probe tab)
+2026-10-25T10:41:57.335Z s6-rep0: failures directory: 0 file(s) deleted, directory removed
+2026-10-25T10:41:57.394Z s9-win: REP-0 exit 0 (0 PASS, 1 FAIL, 3 NOT DISCRIMINATING - each recorded; 2 a set-up refusal)
+2026-10-25T10:41:57.608Z s9-win: window 3017556 closed
+2026-10-25T10:41:57.628Z s9-win: BLOCK rep0 done
+2026-10-25T10:42:19.857Z s9-win: RESUME attempt 3: bbl1, bbl2, mcpf-click, mcpf-type, mcpf-press, cap, sw1, sw1r, pop2, save-a, savefix, save-64, save-64-mcp, prim, idonly, save-ttl, r3 observed in an earlier attempt or stopped in one, not re-run
+2026-10-25T10:42:19.873Z s9-win: BLOCK savedis begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:42:20.383Z ROW SAVE-BUILD 4m page digest kind string length 4206649 bytes 4206649 sha256 f91f24a8f11c64bb217f90025c9d3e6518a08580addc376d67c6e7d68e2fd50f (built in 187 ms, on T1160)
+2026-10-25T10:42:20.796Z PARK point (1924,181) in page [1920,177,3840,1078]
+2026-10-25T10:42:20.826Z s9-win: PARK cursor at (1924,181) in W's page area (before SAVE-DISARM)
+2026-10-25T10:42:20.940Z s9-win: background s10.ts save-disarm PID 7596 (tracked; the stop procedure ends it before any restore)
+2026-10-25T10:42:21.271Z s9-win: READY seen for SAVE-DISARM
+2026-10-25T10:42:21.353Z s9-win: PARK cursor at (1924,181) in W's page area (before the click guards)
+2026-10-25T10:42:21.446Z s9-win: CLICK 'Chrome Agent Bridge — armed (click to turn off)
+Has access to this site' at (3691,63)
+2026-10-25T10:42:21.448Z s9-win: PARK cursor at (1924,181) in W's page area (after the click)
+2026-10-25T10:42:21.457Z s9-win: PRESS button 1/1 at 2026-10-25T10:42:21.452Z
+2026-10-25T10:42:21.468Z s9-win: PRESSED SAVE-DISARM (off) at 2026-10-25T10:42:21.452Z
+2026-10-25T10:42:21.537Z s9-win: TITLE ok after 63 ms: "Chrome Agent Bridge — OFF: agents are refused (click to turn on)
+Has access to this site"
+2026-10-25T10:42:21.542Z s9-win: READY seen for SAVE-DISARM-rearm
+2026-10-25T10:42:23.106Z s9-win: PARK cursor at (1924,181) in W's page area (before the click guards)
+2026-10-25T10:42:23.188Z s9-win: CLICK 'Chrome Agent Bridge — OFF: agents are refused (click to turn on)
+Has access to this site' at (3691,63)
+2026-10-25T10:42:23.190Z s9-win: PARK cursor at (1924,181) in W's page area (after the click)
+2026-10-25T10:42:23.193Z s9-win: PRESS button 1/1 at 2026-10-25T10:42:23.192Z
+2026-10-25T10:42:23.198Z s9-win: ACTION done for SAVE-DISARM-rearm at 2026-10-25T10:42:23.196Z
+2026-10-25T10:42:23.257Z s9-win: TITLE ok after 57 ms: "Chrome Agent Bridge — armed (click to turn off)
+Has access to this site"
+2026-10-25T10:42:21.243Z READY SAVE-DISARM
+2026-10-25T10:42:21.503Z ROW SAVE-DISARM driver pressed at 2026-10-25T10:42:21.452Z
+2026-10-25T10:42:21.516Z ROW SAVE-DISARM pull-2 DISARMED The user has turned the bridge off in Chrome, so every page call is refused. Stop and ask the user to turn it back on; do not retry. data {"scope":"all"} (397 ms)
+2026-10-25T10:42:21.518Z ROW SAVE-DISARM store id es1-mvnp7ukd · pulls sent 2
+2026-10-25T10:42:21.519Z ROW SAVE-DISARM pull-2-file exists=no part=no
+2026-10-25T10:42:21.520Z CHECK SAVE-DISARM pull-2-file PASS — no file, no .part
+2026-10-25T10:42:21.522Z CHECK SAVE-DISARM pull-2 PASS — DISARMED, exact message, data {"scope":"all"}
+2026-10-25T10:42:21.523Z READY SAVE-DISARM-rearm
+2026-10-25T10:42:23.243Z ROW SAVE-DISARM driver re-armed at 2026-10-25T10:42:23.196Z
+2026-10-25T10:42:23.248Z ROW SAVE-DISARM old-id INTERNAL Unknown or expired evaluateSave id: es1-mvnp7ukd (3 ms)
+2026-10-25T10:42:23.248Z CHECK SAVE-DISARM old-id PASS — INTERNAL, exact message, no data
+2026-10-25T10:42:23.294Z s9-win: background s10.ts save-disarm exit 0
+2026-10-25T10:42:23.577Z ROW SAVE-DISARM-end wait-safety reached safety armed=true evaluate=true blockedCount=0 after 1 ms (wanted {"armed":true,"evaluate":true,"blockedCount":0})
+2026-10-25T10:42:23.619Z s9-win: BLOCK savedis done
+2026-10-25T10:42:27.914Z s9-win: BLOCK savejs begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:42:28.423Z ROW SAVE-BUILD 4m page digest kind string length 4206649 bytes 4206649 sha256 f91f24a8f11c64bb217f90025c9d3e6518a08580addc376d67c6e7d68e2fd50f (built in 187 ms, on T1160)
+2026-10-25T10:42:28.619Z s9-win: background s10.ts save-jsoff PID 4280 (tracked; the stop procedure ends it before any restore)
+2026-10-25T10:42:28.908Z s9-win: READY seen for SAVE-JSOFF
+2026-10-25T10:42:29.386Z s9-win: SWITCH evaluate -> false at 2026-10-25T10:42:29.072Z (now false)
+2026-10-25T10:42:29.392Z s9-win: ACTION done for SAVE-JSOFF at 2026-10-25T10:42:29.388Z
+2026-10-25T10:42:29.466Z s9-win: TITLE ok after 67 ms: "Chrome Agent Bridge — armed, JavaScript off (click to turn off)
+Has access to this site"
+2026-10-25T10:42:29.468Z s9-win: READY seen for SAVE-JSOFF-on
+2026-10-25T10:42:29.816Z s9-win: SWITCH evaluate -> true at 2026-10-25T10:42:29.510Z (now true)
+2026-10-25T10:42:29.818Z s9-win: ACTION done for SAVE-JSOFF-on at 2026-10-25T10:42:29.816Z
+2026-10-25T10:42:29.869Z s9-win: TITLE ok after 51 ms: "Chrome Agent Bridge — armed (click to turn off)
+Has access to this site"
+2026-10-25T10:42:28.894Z READY SAVE-JSOFF
+2026-10-25T10:42:29.424Z ROW SAVE-JSOFF driver turned JavaScript off at 2026-10-25T10:42:29.388Z
+2026-10-25T10:42:29.432Z ROW SAVE-JSOFF pull-2 JS_DISABLED The user has turned JavaScript off for the bridge in Chrome (browser_evaluate and script URLs are refused). Every other tool still works; ask the user before relying on browser_evaluate. (658 ms)
+2026-10-25T10:42:29.434Z ROW SAVE-JSOFF store id es2-mvnp80gx · pulls sent 2
+2026-10-25T10:42:29.435Z ROW SAVE-JSOFF pull-2-file exists=no part=no
+2026-10-25T10:42:29.436Z CHECK SAVE-JSOFF pull-2-file PASS — no file, no .part
+2026-10-25T10:42:29.437Z CHECK SAVE-JSOFF pull-2 PASS — JS_DISABLED, exact message, no data
+2026-10-25T10:42:29.440Z ROW SAVE-JSOFF evaluate JS_DISABLED The user has turned JavaScript off for the bridge in Chrome (browser_evaluate and script URLs are refused). Every other tool still works; ask the user before relying on browser_evaluate. (3 ms)
+2026-10-25T10:42:29.443Z ROW SAVE-JSOFF start JS_DISABLED The user has turned JavaScript off for the bridge in Chrome (browser_evaluate and script URLs are refused). Every other tool still works; ask the user before relying on browser_evaluate. (3 ms)
+2026-10-25T10:42:29.443Z CHECK SAVE-JSOFF evaluate PASS — JS_DISABLED, exact message, no data
+2026-10-25T10:42:29.443Z CHECK SAVE-JSOFF start-equals-evaluate PASS — evaluateSaveStart's refusal equals evaluate's (code, message, data)
+2026-10-25T10:42:29.444Z READY SAVE-JSOFF-on
+2026-10-25T10:42:29.875Z ROW SAVE-JSOFF driver turned JavaScript on at 2026-10-25T10:42:29.816Z
+2026-10-25T10:42:29.879Z ROW SAVE-JSOFF old-id INTERNAL Unknown or expired evaluateSave id: es2-mvnp80gx (3 ms)
+2026-10-25T10:42:29.880Z CHECK SAVE-JSOFF old-id PASS — INTERNAL, exact message, no data
+2026-10-25T10:42:29.922Z s9-win: background s10.ts save-jsoff exit 0
+2026-10-25T10:42:30.197Z ROW SAVE-JSOFF-end wait-safety reached safety armed=true evaluate=true blockedCount=0 after 0 ms (wanted {"armed":true,"evaluate":true,"blockedCount":0})
+2026-10-25T10:42:30.236Z s9-win: BLOCK savejs done
+2026-10-25T10:42:35.660Z s9-win: BLOCK saveblk begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:42:36.178Z ROW SAVE-BUILD 4m page digest kind string length 4206649 bytes 4206649 sha256 f91f24a8f11c64bb217f90025c9d3e6518a08580addc376d67c6e7d68e2fd50f (built in 191 ms, on T1162)
+2026-10-25T10:42:36.377Z s9-win: background s10.ts save-block PID 28004 (tracked; the stop procedure ends it before any restore)
+2026-10-25T10:42:36.672Z s9-win: READY seen for SAVE-BLOCK
+2026-10-25T10:42:37.551Z s9-win: BLOCKLIST set to 1 line(s) of the wave's own, sha256 3ce8823b4abac73c73a57805caec805b1bf2c492e5b8526b26bd4de459f9d3bd, saved at 2026-10-25T10:42:37.028Z
+2026-10-25T10:42:37.557Z s9-win: ACTION done for SAVE-BLOCK at 2026-10-25T10:42:37.553Z
+2026-10-25T10:42:37.652Z s9-win: READY seen for SAVE-BLOCK-unblock
+2026-10-25T10:42:38.408Z s9-win: BLOCKLIST set to 0 line(s) of the wave's own, sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855, saved at 2026-10-25T10:42:37.898Z
+2026-10-25T10:42:38.412Z s9-win: ACTION done for SAVE-BLOCK-unblock at 2026-10-25T10:42:38.410Z
+2026-10-25T10:42:36.647Z READY SAVE-BLOCK
+2026-10-25T10:42:37.619Z ROW SAVE-BLOCK driver saved the block list at 2026-10-25T10:42:37.553Z
+2026-10-25T10:42:37.627Z ROW SAVE-BLOCK pull-2 DOMAIN_BLOCKED This tab shows a site on the user's block list in Chrome; the bridge will not read or act on it. Ask the user. (1101 ms)
+2026-10-25T10:42:37.628Z ROW SAVE-BLOCK store id es3-mvnp86g9 · pulls sent 2
+2026-10-25T10:42:37.629Z ROW SAVE-BLOCK pull-2-file exists=no part=no
+2026-10-25T10:42:37.630Z CHECK SAVE-BLOCK pull-2-file PASS — no file, no .part
+2026-10-25T10:42:37.631Z CHECK SAVE-BLOCK pull-2 PASS — DOMAIN_BLOCKED, exact message, no data
+2026-10-25T10:42:37.634Z ROW SAVE-BLOCK start DOMAIN_BLOCKED This tab shows a site on the user's block list in Chrome; the bridge will not read or act on it. Ask the user. (2 ms)
+2026-10-25T10:42:37.634Z CHECK SAVE-BLOCK start PASS — DOMAIN_BLOCKED, exact message, no data
+2026-10-25T10:42:37.635Z READY SAVE-BLOCK-unblock
+2026-10-25T10:42:38.423Z ROW SAVE-BLOCK driver emptied the block list at 2026-10-25T10:42:38.410Z
+2026-10-25T10:42:38.478Z ROW SAVE-BLOCK old-id ok 1398104 base64 characters (RECORD) (54 ms)
+2026-10-25T10:42:38.481Z ROW SAVE-BLOCK end ok {"released":true} (RECORD) (3 ms)
+2026-10-25T10:42:38.525Z s9-win: background s10.ts save-block exit 0
+2026-10-25T10:42:38.802Z ROW SAVE-BLOCK-end wait-safety reached safety armed=true evaluate=true blockedCount=0 after 1 ms (wanted {"armed":true,"evaluate":true,"blockedCount":0})
+2026-10-25T10:42:38.841Z s9-win: BLOCK saveblk done
+2026-10-25T10:42:43.083Z s9-win: BLOCK jsd begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:42:43.732Z ROW MCPF-1-off prep reset: w in front; mcpf active=false
+2026-10-25T10:42:43.786Z ROW MCPF-1-off prep page log length 0 (the baseline; the bridge is still armed)
+2026-10-25T10:42:44.376Z s9-win: SWITCH evaluate -> false at 2026-10-25T10:42:44.043Z (now false)
+2026-10-25T10:42:44.444Z s9-win: TITLE ok after 60 ms: "Chrome Agent Bridge — armed, JavaScript off (click to turn off)
+Has access to this site"
+2026-10-25T10:42:44.725Z ROW JSD-jsoff wait-safety reached safety armed=true evaluate=false blockedCount=0 after 0 ms (wanted {"armed":true,"evaluate":false,"blockedCount":0})
+2026-10-25T10:42:45.047Z ROW JSD-jsoff evaluate JS_DISABLED The user has turned JavaScript off for the bridge in Chrome (browser_evaluate and script URLs are refused). Every other tool still works; ask the user before relying on browser_evaluate. (3 ms) · report no · screenshotPath none
+2026-10-25T10:42:45.049Z CHECK JSD-jsoff evaluate PASS — JS_DISABLED, exact message, no data
+2026-10-25T10:42:45.050Z CHECK JSD-jsoff evaluate-no-report PASS — no report, no screenshot, no snapshot
+2026-10-25T10:42:45.054Z ROW JSD-jsoff evaluate-asref JS_DISABLED The user has turned JavaScript off for the bridge in Chrome (browser_evaluate and script URLs are refused). Every other tool still works; ask the user before relying on browser_evaluate. (3 ms) · report no · screenshotPath none
+2026-10-25T10:42:45.054Z CHECK JSD-jsoff evaluate-asref PASS — JS_DISABLED, exact message, no data
+2026-10-25T10:42:45.054Z CHECK JSD-jsoff evaluate-asref-no-report PASS — no report, no screenshot, no snapshot
+2026-10-25T10:42:45.058Z ROW JSD-jsoff evaluate-saveto JS_DISABLED The user has turned JavaScript off for the bridge in Chrome (browser_evaluate and script URLs are refused). Every other tool still works; ask the user before relying on browser_evaluate. (4 ms) · report no · screenshotPath none
+2026-10-25T10:42:45.059Z CHECK JSD-jsoff evaluate-saveto PASS — JS_DISABLED, exact message, no data
+2026-10-25T10:42:45.059Z CHECK JSD-jsoff evaluate-saveto-no-report PASS — no report, no screenshot, no snapshot
+2026-10-25T10:42:45.061Z ROW JSD-jsoff navigate-javascript JS_DISABLED The user has turned JavaScript off for the bridge in Chrome (browser_evaluate and script URLs are refused). Every other tool still works; ask the user before relying on browser_evaluate. (2 ms) · report no · screenshotPath none
+2026-10-25T10:42:45.061Z CHECK JSD-jsoff navigate-javascript PASS — JS_DISABLED, exact message, no data
+2026-10-25T10:42:45.061Z CHECK JSD-jsoff navigate-javascript-no-report PASS — no report, no screenshot, no snapshot
+2026-10-25T10:42:45.063Z ROW JSD-jsoff navigate-data JS_DISABLED The user has turned JavaScript off for the bridge in Chrome (browser_evaluate and script URLs are refused). Every other tool still works; ask the user before relying on browser_evaluate. (1 ms) · report no · screenshotPath none
+2026-10-25T10:42:45.064Z CHECK JSD-jsoff navigate-data PASS — JS_DISABLED, exact message, no data
+2026-10-25T10:42:45.064Z CHECK JSD-jsoff navigate-data-no-report PASS — no report, no screenshot, no snapshot
+2026-10-25T10:42:45.064Z ROW JSD-jsoff evaluate-saveto-file exists=no part=no
+2026-10-25T10:42:45.064Z CHECK JSD-jsoff saveto-file PASS — no file, no .part
+2026-10-25T10:42:45.065Z ROW JSD-jsoff failures folder: 0 new PNG(s)
+2026-10-25T10:42:45.065Z CHECK JSD-jsoff no-png PASS — no PNG written
+2026-10-25T10:42:45.504Z actor jsd: started — host pid 30360, claude pid 21592, model sonnet, MCP config C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s15\actors\jsd\mcp.json (chrome-agent-bridge only) · tool search off (ENABLE_TOOL_SEARCH=false)
+2026-10-25T10:43:06.425Z ROW JSD-jsoff-mcp five TOOL browser_evaluate {"expression":"<expr>","tab":"T1164"}
+2026-10-25T10:43:06.427Z ROW JSD-jsoff-mcp five OUTPUT (isError) 1 item(s)
+2026-10-25T10:43:06.428Z ROW JSD-jsoff-mcp five   [1/1] JS_DISABLED: the user has turned JavaScript off for the bridge in Chrome, so evaluate (browser_evaluate) is refused; every other call still works. Ask the user before relying on it; do not retry it.
+2026-10-25T10:43:06.429Z ROW JSD-jsoff-mcp five TOOL browser_evaluate {"expression":"<expr>","asRef":true,"tab":"T1164"}
+2026-10-25T10:43:06.430Z ROW JSD-jsoff-mcp five OUTPUT (isError) 1 item(s)
+2026-10-25T10:43:06.431Z ROW JSD-jsoff-mcp five   [1/1] JS_DISABLED: the user has turned JavaScript off for the bridge in Chrome, so evaluate (browser_evaluate) is refused; every other call still works. Ask the user before relying on it; do not retry it.
+2026-10-25T10:43:06.431Z ROW JSD-jsoff-mcp five TOOL browser_evaluate {"expression":"<expr>","saveTo":"<saveTo>","tab":"T1164"}
+2026-10-25T10:43:06.431Z ROW JSD-jsoff-mcp five OUTPUT (isError) 1 item(s)
+2026-10-25T10:43:06.432Z ROW JSD-jsoff-mcp five   [1/1] JS_DISABLED: the user has turned JavaScript off for the bridge in Chrome, so evaluate (browser_evaluate) is refused; every other call still works. Ask the user before relying on it; do not retry it.
+2026-10-25T10:43:06.432Z ROW JSD-jsoff-mcp five TOOL browser_navigate {"url":"javascript:void(0)","tab":"T1164"}
+2026-10-25T10:43:06.432Z ROW JSD-jsoff-mcp five OUTPUT (isError) 1 item(s)
+2026-10-25T10:43:06.432Z ROW JSD-jsoff-mcp five   [1/1] JS_DISABLED: the user has turned JavaScript off for the bridge in Chrome, so evaluate (browser_evaluate) is refused; every other call still works. Ask the user before relying on it; do not retry it.
+2026-10-25T10:43:06.433Z ROW JSD-jsoff-mcp five TOOL browser_navigate {"url":"data:text/html,S15","tab":"T1164"}
+2026-10-25T10:43:06.433Z ROW JSD-jsoff-mcp five OUTPUT (isError) 1 item(s)
+2026-10-25T10:43:06.433Z ROW JSD-jsoff-mcp five   [1/1] JS_DISABLED: the user has turned JavaScript off for the bridge in Chrome, so evaluate (browser_evaluate) is refused; every other call still works. Ask the user before relying on it; do not retry it.
+2026-10-25T10:43:06.433Z CHECK JSD-jsoff-mcp calls PASS — the actor called exactly [browser_evaluate, browser_evaluate, browser_evaluate, browser_navigate, browser_navigate]
+2026-10-25T10:43:06.434Z CHECK JSD-jsoff-mcp evaluate PASS — the exact answer (isError)
+2026-10-25T10:43:06.434Z CHECK JSD-jsoff-mcp evaluate-asref PASS — the exact answer (isError)
+2026-10-25T10:43:06.434Z CHECK JSD-jsoff-mcp evaluate-saveto PASS — the exact answer (isError)
+2026-10-25T10:43:06.434Z CHECK JSD-jsoff-mcp navigate-javascript PASS — the exact answer (isError)
+2026-10-25T10:43:06.435Z CHECK JSD-jsoff-mcp navigate-data PASS — the exact answer (isError)
+2026-10-25T10:43:06.435Z ROW JSD-jsoff-mcp evaluate-saveto-file exists=no part=no
+2026-10-25T10:43:06.435Z CHECK JSD-jsoff-mcp saveto-file PASS — no file, no .part
+2026-10-25T10:43:07.200Z actor jsd ended after 512 ms: 2026-10-25T10:43:07.070Z exit code 0
+2026-10-25T10:43:07.512Z ROW JSD-jsoff-end wait-alone reached clients=1 after 1 ms
+2026-10-25T10:43:07.552Z s9-win: BLOCK jsd done
+2026-10-25T10:43:11.897Z s9-win: BLOCK off begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:43:11.909Z s9-win: OFF set-up: block jsd ran in this attempt - JavaScript is off and the MCPF-1-off baseline is taken
+2026-10-25T10:43:12.233Z ROW OFF-start wait-safety reached safety armed=true evaluate=false blockedCount=0 after 1 ms (wanted {"armed":true,"evaluate":false,"blockedCount":0})
+2026-10-25T10:43:13.051Z PARK point (1924,125) in page [1920,121,3840,1078]
+2026-10-25T10:43:13.078Z s9-win: PARK cursor at (1924,125) in W's page area (before the click guards)
+2026-10-25T10:43:13.172Z s9-win: CLICK 'Chrome Agent Bridge — armed, JavaScript off (click to turn off)
+Has access to this site' at (3691,63)
+2026-10-25T10:43:13.176Z s9-win: PARK cursor at (1924,125) in W's page area (after the click)
+2026-10-25T10:43:13.182Z s9-win: PRESS button 1/1 at 2026-10-25T10:43:13.179Z
+2026-10-25T10:43:13.251Z s9-win: TITLE ok after 59 ms: "Chrome Agent Bridge — OFF: agents are refused (click to turn on)
+Has access to this site"
+2026-10-25T10:43:13.532Z ROW OFF-disarmed wait-safety reached safety armed=false evaluate=false blockedCount=0 after 1 ms (wanted {"armed":false})
+2026-10-25T10:43:13.870Z ROW JSD-off evaluate DISARMED The user has turned the bridge off in Chrome, so every page call is refused. Stop and ask the user to turn it back on; do not retry. data {"scope":"all"} (3 ms) · report no · screenshotPath none
+2026-10-25T10:43:13.872Z CHECK JSD-off evaluate PASS — DISARMED, exact message, data {"scope":"all"}
+2026-10-25T10:43:13.873Z CHECK JSD-off evaluate-no-report PASS — no report, no screenshot, no snapshot
+2026-10-25T10:43:13.876Z ROW JSD-off evaluate-asref DISARMED The user has turned the bridge off in Chrome, so every page call is refused. Stop and ask the user to turn it back on; do not retry. data {"scope":"all"} (2 ms) · report no · screenshotPath none
+2026-10-25T10:43:13.877Z CHECK JSD-off evaluate-asref PASS — DISARMED, exact message, data {"scope":"all"}
+2026-10-25T10:43:13.877Z CHECK JSD-off evaluate-asref-no-report PASS — no report, no screenshot, no snapshot
+2026-10-25T10:43:13.881Z ROW JSD-off evaluate-saveto DISARMED The user has turned the bridge off in Chrome, so every page call is refused. Stop and ask the user to turn it back on; do not retry. data {"scope":"all"} (4 ms) · report no · screenshotPath none
+2026-10-25T10:43:13.881Z CHECK JSD-off evaluate-saveto PASS — DISARMED, exact message, data {"scope":"all"}
+2026-10-25T10:43:13.881Z CHECK JSD-off evaluate-saveto-no-report PASS — no report, no screenshot, no snapshot
+2026-10-25T10:43:13.884Z ROW JSD-off navigate-javascript DISARMED The user has turned the bridge off in Chrome, so every page call is refused. Stop and ask the user to turn it back on; do not retry. data {"scope":"all"} (2 ms) · report no · screenshotPath none
+2026-10-25T10:43:13.884Z CHECK JSD-off navigate-javascript PASS — DISARMED, exact message, data {"scope":"all"}
+2026-10-25T10:43:13.884Z CHECK JSD-off navigate-javascript-no-report PASS — no report, no screenshot, no snapshot
+2026-10-25T10:43:13.886Z ROW JSD-off navigate-data DISARMED The user has turned the bridge off in Chrome, so every page call is refused. Stop and ask the user to turn it back on; do not retry. data {"scope":"all"} (1 ms) · report no · screenshotPath none
+2026-10-25T10:43:13.887Z CHECK JSD-off navigate-data PASS — DISARMED, exact message, data {"scope":"all"}
+2026-10-25T10:43:13.887Z CHECK JSD-off navigate-data-no-report PASS — no report, no screenshot, no snapshot
+2026-10-25T10:43:13.887Z ROW JSD-off evaluate-saveto-file exists=no part=no
+2026-10-25T10:43:13.887Z CHECK JSD-off saveto-file PASS — no file, no .part
+2026-10-25T10:43:13.888Z ROW JSD-off failures folder: 0 new PNG(s)
+2026-10-25T10:43:13.888Z CHECK JSD-off no-png PASS — no PNG written
+2026-10-25T10:43:14.329Z actor off: started — host pid 24616, claude pid 17680, model sonnet, MCP config C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s15\actors\off\mcp.json (chrome-agent-bridge only) · tool search off (ENABLE_TOOL_SEARCH=false)
+2026-10-25T10:43:33.734Z ROW JSD-off-mcp five TOOL browser_evaluate {"expression":"<expr>","tab":"T1164"}
+2026-10-25T10:43:33.737Z ROW JSD-off-mcp five OUTPUT (isError) 1 item(s)
+2026-10-25T10:43:33.738Z ROW JSD-off-mcp five   [1/1] DISARMED: the user has turned the bridge off in Chrome. Stop and ask the user to turn it back on; do not retry.
+2026-10-25T10:43:33.739Z ROW JSD-off-mcp five TOOL browser_evaluate {"expression":"<expr>","asRef":true,"tab":"T1164"}
+2026-10-25T10:43:33.740Z ROW JSD-off-mcp five OUTPUT (isError) 1 item(s)
+2026-10-25T10:43:33.741Z ROW JSD-off-mcp five   [1/1] DISARMED: the user has turned the bridge off in Chrome. Stop and ask the user to turn it back on; do not retry.
+2026-10-25T10:43:33.742Z ROW JSD-off-mcp five TOOL browser_evaluate {"expression":"<expr>","saveTo":"<saveTo>","tab":"T1164"}
+2026-10-25T10:43:33.742Z ROW JSD-off-mcp five OUTPUT (isError) 1 item(s)
+2026-10-25T10:43:33.742Z ROW JSD-off-mcp five   [1/1] DISARMED: the user has turned the bridge off in Chrome. Stop and ask the user to turn it back on; do not retry.
+2026-10-25T10:43:33.742Z ROW JSD-off-mcp five TOOL browser_navigate {"url":"javascript:void(0)","tab":"T1164"}
+2026-10-25T10:43:33.743Z ROW JSD-off-mcp five OUTPUT (isError) 1 item(s)
+2026-10-25T10:43:33.743Z ROW JSD-off-mcp five   [1/1] DISARMED: the user has turned the bridge off in Chrome. Stop and ask the user to turn it back on; do not retry.
+2026-10-25T10:43:33.743Z ROW JSD-off-mcp five TOOL browser_navigate {"url":"data:text/html,S15","tab":"T1164"}
+2026-10-25T10:43:33.743Z ROW JSD-off-mcp five OUTPUT (isError) 1 item(s)
+2026-10-25T10:43:33.743Z ROW JSD-off-mcp five   [1/1] DISARMED: the user has turned the bridge off in Chrome. Stop and ask the user to turn it back on; do not retry.
+2026-10-25T10:43:33.744Z CHECK JSD-off-mcp calls PASS — the actor called exactly [browser_evaluate, browser_evaluate, browser_evaluate, browser_navigate, browser_navigate]
+2026-10-25T10:43:33.744Z CHECK JSD-off-mcp evaluate PASS — the exact answer (isError)
+2026-10-25T10:43:33.744Z CHECK JSD-off-mcp evaluate-asref PASS — the exact answer (isError)
+2026-10-25T10:43:33.744Z CHECK JSD-off-mcp evaluate-saveto PASS — the exact answer (isError)
+2026-10-25T10:43:33.744Z CHECK JSD-off-mcp navigate-javascript PASS — the exact answer (isError)
+2026-10-25T10:43:33.744Z CHECK JSD-off-mcp navigate-data PASS — the exact answer (isError)
+2026-10-25T10:43:33.745Z ROW JSD-off-mcp evaluate-saveto-file exists=no part=no
+2026-10-25T10:43:33.745Z CHECK JSD-off-mcp saveto-file PASS — no file, no .part
+2026-10-25T10:43:39.615Z ROW MCPF-1-off click TOOL browser_click {"tab":"T1157","locator":{"role":"button","name":"MCPF target"},"trusted":true}
+2026-10-25T10:43:39.617Z ROW MCPF-1-off click OUTPUT (isError) 1 item(s)
+2026-10-25T10:43:39.619Z ROW MCPF-1-off click   [1/1] DISARMED: the user has turned the bridge off in Chrome. Stop and ask the user to turn it back on; do not retry.
+2026-10-25T10:43:39.620Z CHECK MCPF-1-off calls PASS — the actor called exactly [browser_click]
+2026-10-25T10:43:39.621Z CHECK MCPF-1-off answer PASS — the exact answer (isError)
+2026-10-25T10:43:40.339Z actor off ended after 506 ms: 2026-10-25T10:43:40.299Z exit code 0
+2026-10-25T10:43:40.655Z ROW OFF-actor-end wait-alone reached clients=1 after 0 ms
+2026-10-25T10:43:42.242Z s9-win: PARK cursor at (1924,125) in W's page area (before the click guards)
+2026-10-25T10:43:42.306Z s9-win: CLICK 'Chrome Agent Bridge — OFF: agents are refused (click to turn on)
+Has access to this site' at (3691,63)
+2026-10-25T10:43:42.308Z s9-win: PARK cursor at (1924,125) in W's page area (after the click)
+2026-10-25T10:43:42.312Z s9-win: PRESS button 1/1 at 2026-10-25T10:43:42.310Z
+2026-10-25T10:43:42.378Z s9-win: TITLE ok after 64 ms: "Chrome Agent Bridge — armed, JavaScript off (click to turn off)
+Has access to this site"
+2026-10-25T10:43:42.661Z ROW OFF-rearmed wait-safety reached safety armed=true evaluate=false blockedCount=0 after 1 ms (wanted {"armed":true,"evaluate":false,"blockedCount":0})
+2026-10-25T10:43:43.100Z s9-win: SWITCH evaluate -> true at 2026-10-25T10:43:42.770Z (now true)
+2026-10-25T10:43:43.146Z s9-win: TITLE ok after 44 ms: "Chrome Agent Bridge — armed (click to turn off)
+Has access to this site"
+2026-10-25T10:43:43.425Z ROW OFF-end wait-safety reached safety armed=true evaluate=true blockedCount=0 after 0 ms (wanted {"armed":true,"evaluate":true,"blockedCount":0})
+2026-10-25T10:43:43.837Z ROW MCPF-1-off judge page events since the baseline: 0 · tab active=false
+2026-10-25T10:43:43.839Z CHECK MCPF-1-off page PASS — no input reached the page and the tab was not brought to the front
+2026-10-25T10:43:44.173Z ROW JSD-on evaluate ok value 2 (7 ms)
+2026-10-25T10:43:44.175Z CHECK JSD-on evaluate PASS — evaluate works unchanged (value 2)
+2026-10-25T10:43:44.609Z actor on: started — host pid 24828, claude pid 26004, model sonnet, MCP config C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s15\actors\on\mcp.json (chrome-agent-bridge only) · tool search off (ENABLE_TOOL_SEARCH=false)
+2026-10-25T10:44:00.957Z ROW JSD-on-mcp evaluate TOOL browser_evaluate {"tab":"T1164","expression":"<expr>"}
+2026-10-25T10:44:00.959Z ROW JSD-on-mcp evaluate OUTPUT 1 item(s)
+2026-10-25T10:44:00.961Z ROW JSD-on-mcp evaluate   [1/1] 2
+2026-10-25T10:44:00.962Z CHECK JSD-on-mcp calls PASS — the actor called exactly [browser_evaluate]
+2026-10-25T10:44:00.963Z CHECK JSD-on-mcp evaluate PASS — the exact answer
+2026-10-25T10:44:01.693Z actor on ended after 512 ms: 2026-10-25T10:44:01.671Z exit code 0
+2026-10-25T10:44:02.005Z ROW JSD-on-end wait-alone reached clients=1 after 1 ms
+2026-10-25T10:44:02.039Z s9-win: OFF block: the disarm press was at 2026-10-25T10:43:13.179Z (record)
+2026-10-25T10:44:02.046Z s9-win: BLOCK off done
+2026-10-25T10:44:06.283Z s9-win: BLOCK restore begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:44:06.699Z PARK point (1924,125) in page [1920,121,3840,1078]
+2026-10-25T10:44:06.727Z s9-win: PARK cursor at (1924,125) in W's page area (before the omnibox foreground/focus guard)
+2026-10-25T10:44:07.461Z s9-win: window 1182402 now shows about:blank
+2026-10-25T10:44:07.481Z s9-win: STORED read: the old options page in window 1182402 is gone after 20 ms
+2026-10-25T10:44:07.483Z s9-win: PARK cursor at (1924,125) in W's page area (before the omnibox foreground/focus guard)
+2026-10-25T10:44:08.154Z s9-win: window 1182402 now shows chrome-extension://cpnemjbgecfbeicldpaaegbhjgjgjfep/options.html
+2026-10-25T10:44:08.167Z s9-win: STORED read: window 1182402 reloaded onto a fresh options page
+2026-10-25T10:44:08.259Z s9-win: STATE armed=true evaluate=true count=0 lines=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 status "Bridge armed." summary "0 blocked sites."
+2026-10-25T10:44:09.810Z s9-win: SWITCH armed already true - nothing pressed
+2026-10-25T10:44:09.838Z s9-win: SWITCH evaluate already true - nothing pressed
+2026-10-25T10:44:09.840Z s9-win: RESTORE safety: the stored list is already empty - not saved again
+2026-10-25T10:44:09.842Z s9-win: PARK cursor at (1924,125) in W's page area (before the omnibox foreground/focus guard)
+2026-10-25T10:44:10.511Z s9-win: window 1182402 now shows about:blank
+2026-10-25T10:44:10.529Z s9-win: STORED read: the old options page in window 1182402 is gone after 18 ms
+2026-10-25T10:44:10.531Z s9-win: PARK cursor at (1924,125) in W's page area (before the omnibox foreground/focus guard)
+2026-10-25T10:44:11.187Z s9-win: window 1182402 now shows chrome-extension://cpnemjbgecfbeicldpaaegbhjgjgjfep/options.html
+2026-10-25T10:44:11.202Z s9-win: STORED read: window 1182402 reloaded onto a fresh options page
+2026-10-25T10:44:11.242Z s9-win: STATE armed=true evaluate=true count=0 lines=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 status "Bridge armed." summary "0 blocked sites."
+2026-10-25T10:44:11.501Z ROW R15-END wait-safety reached safety armed=true evaluate=true blockedCount=0 after 1 ms (wanted {"armed":true,"evaluate":true,"blockedCount":0})
+2026-10-25T10:44:11.583Z s9-win: ACTION name "Chrome Agent Bridge — armed (click to turn off)
+Has access to this site" class 'ToolbarActionView'
+2026-10-25T10:44:11.585Z s9-win: RESTORE safety read-back: stored page equal true, daemon.status equal true, title armed true, block-list sha256 vs found equal
+2026-10-25T10:44:11.876Z ROW R15-END status safety armed=true evaluate=true blockedCount=0 extensionConnected=true rows=13 rowsWithUrl=12 rowsWith8081=0
+2026-10-25T10:44:11.923Z s9-win: RESTORED: armed, JavaScript and the block-list sha256 read back equal to the found state (stored page, daemon.status, title)
+2026-10-25T10:44:11.935Z s9-win: BLOCK restore done
+2026-10-25T10:44:16.517Z s9-win: BLOCK logs begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:44:17.294Z s9-win: worker console: 229 texts written to C:\Users\aliev\AppData\Local\Temp\bridge-e2e\s15\r15-console.txt (not printed; Console tab found: True)
+2026-10-25T10:44:26.031Z SCAN console file: urls=0 (fixture 0, other 0) token=0 pattern=0 expr-marker=0 path-marker=0 value-runs32=0
+2026-10-25T10:44:26.033Z SCAN console file: value-runs32 by value 1m-mcp:0 1m-sdk:0 4m-sdk:0 64m-mcp:0 64m-sdk-bare:0 64m-sdk:0 fix-mcp:0 fix-sdk:0 json-sdk:0 surr-sdk:0
+2026-10-25T10:44:26.035Z CHECK SCAN-console console-file PASS — no token, no non-fixture URL, no pattern, no marker, no value run
+2026-10-25T10:44:38.235Z SCAN daemon.log since 2026-10-25T09:57:04.349Z (270 lines): urls=0 (fixture 0, other 0) token=0 pattern=0 expr-marker=0 path-marker=0 value-runs32=0
+2026-10-25T10:44:38.238Z SCAN daemon.log since 2026-10-25T09:57:04.349Z (270 lines): value-runs32 by value 1m-mcp:0 1m-sdk:0 4m-sdk:0 64m-mcp:0 64m-sdk-bare:0 64m-sdk:0 fix-mcp:0 fix-sdk:0 json-sdk:0 surr-sdk:0
+2026-10-25T10:44:38.240Z CHECK SCAN-daemon daemon.log-since-2026-10-25T09:57:04.349 PASS — all counts 0
+2026-10-25T10:44:38.242Z SCAN daemon.log since 2026-10-25T09:57:04.349Z (270 lines): copied (270 lines)
+2026-10-25T10:44:38.523Z s9-win: actor jsd: transcript extracted (1 line(s) of output; path not printed)
+2026-10-25T10:44:46.046Z SCAN transcript jsd.transcript.txt: urls=0 (fixture 0, other 0) token=0 pattern=0 expr-marker=0 path-marker=1 value-runs32=0
+2026-10-25T10:44:46.049Z SCAN transcript jsd.transcript.txt: value-runs32 by value 1m-mcp:0 1m-sdk:0 4m-sdk:0 64m-mcp:0 64m-sdk-bare:0 64m-sdk:0 fix-mcp:0 fix-sdk:0 json-sdk:0 surr-sdk:0
+2026-10-25T10:44:46.050Z CHECK SCAN-transcript transcript-jsd.transcript.txt PASS — no token, no non-fixture URL, no pattern, no value run
+2026-10-25T10:44:46.310Z s9-win: actor off: transcript extracted (1 line(s) of output; path not printed)
+2026-10-25T10:44:54.300Z SCAN transcript off.transcript.txt: urls=0 (fixture 0, other 0) token=0 pattern=0 expr-marker=0 path-marker=1 value-runs32=0
+2026-10-25T10:44:54.303Z SCAN transcript off.transcript.txt: value-runs32 by value 1m-mcp:0 1m-sdk:0 4m-sdk:0 64m-mcp:0 64m-sdk-bare:0 64m-sdk:0 fix-mcp:0 fix-sdk:0 json-sdk:0 surr-sdk:0
+2026-10-25T10:44:54.304Z CHECK SCAN-transcript transcript-off.transcript.txt PASS — no token, no non-fixture URL, no pattern, no value run
+2026-10-25T10:44:54.567Z s9-win: actor on: transcript extracted (1 line(s) of output; path not printed)
+2026-10-25T10:45:05.296Z SCAN transcript on.transcript.txt: urls=0 (fixture 0, other 0) token=0 pattern=0 expr-marker=0 path-marker=0 value-runs32=0
+2026-10-25T10:45:05.299Z SCAN transcript on.transcript.txt: value-runs32 by value 1m-mcp:0 1m-sdk:0 4m-sdk:0 64m-mcp:0 64m-sdk-bare:0 64m-sdk:0 fix-mcp:0 fix-sdk:0 json-sdk:0 surr-sdk:0
+2026-10-25T10:45:05.300Z CHECK SCAN-transcript transcript-on.transcript.txt PASS — no token, no non-fixture URL, no pattern, no value run
+2026-10-25T10:45:05.361Z s9-win: BLOCK logs done
+2026-10-25T10:45:10.758Z s9-win: BLOCK teardown begins (attempt 3; budget 330 s, then the block stops itself)
+2026-10-25T10:45:11.089Z ROW CLEANUP close-T1156 ok (16 ms)
+2026-10-25T10:45:11.108Z ROW CLEANUP close-T1157 ok (16 ms)
+2026-10-25T10:45:11.127Z ROW CLEANUP close-T1158 ok (17 ms)
+2026-10-25T10:45:11.147Z ROW CLEANUP close-T1159 ok (18 ms)
+2026-10-25T10:45:11.170Z ROW CLEANUP close-T1160 ok (19 ms)
+2026-10-25T10:45:11.188Z ROW CLEANUP close-T1161 ok (17 ms)
+2026-10-25T10:45:11.208Z ROW CLEANUP close-T1162 ok (18 ms)
+2026-10-25T10:45:11.228Z ROW CLEANUP close-T1163 ok (19 ms)
+2026-10-25T10:45:11.244Z ROW CLEANUP close-T1164 ok (15 ms)
+2026-10-25T10:45:11.248Z cleanup: 9 of 9 opened tabs closed, 0 already gone, 0 still listed
+2026-10-25T10:45:11.249Z cleanup: still listed none
+2026-10-25T10:45:11.408Z s9-win: LAYOUT restored: 0x04090409 (wanted 0x04090409)
+2026-10-25T10:45:11.641Z s9-win: window 1509908 closed
+2026-10-25T10:45:11.850Z s9-win: window 1182402 closed
+2026-10-25T10:45:12.070Z s9-win: window 592452 closed
+2026-10-25T10:45:12.288Z s9-win: window 788742 closed
+2026-10-25T10:45:12.294Z s9-win: PARK skipped (before the window-count guard): no driver window W
+2026-10-25T10:45:12.328Z s9-win: RESTORE desk: Chrome windows now 1 (found 1)
+2026-10-25T10:45:12.703Z cleanup: 0 of 9 opened tabs closed, 9 already gone, 0 still listed
+2026-10-25T10:45:12.705Z cleanup: still listed none
+2026-10-25T10:45:13.116Z daemon.shutdown sent
+2026-10-25T10:45:14.295Z s9-win: server web (PID 13224): safe: the tree of 13224 does not contain the driver
+2026-10-25T10:45:15.540Z s9-win: server bbl (PID 22880): safe: the tree of 22880 does not contain the driver
+2026-10-25T10:45:16.182Z s9-win: bridge MCP processes: 0
+2026-10-25T10:45:16.182Z s9-win: ports 9234, 8080, 8081, 8083, 8085 free; Chrome windows 1 (found 1); bridge MCP processes 0; headless Chrome 0

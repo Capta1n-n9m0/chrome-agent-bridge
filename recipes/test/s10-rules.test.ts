@@ -13,7 +13,7 @@ import { CAP_WARNING_LINE } from "../../mcp/src/tools/registry.js";
 import { collectSaveText, primitiveSaveText, STRINGIFY_FAILED_MESSAGE } from "../../extension/src/evaluate/save.js";
 import { EvaluateSaveStore } from "../../extension/src/evaluate-save-store.js";
 import { evaluateSaveStart } from "../../extension/src/handlers/evaluate-save.js";
-import { actorEnv, mcpConfig, W_TITLE as S9_W_TITLE, s9Url } from "../s9-rules.js";
+import { actorEnv, mcpConfig, placementVerdict, W_TITLE as S9_W_TITLE, s9Url, type Placement } from "../s9-rules.js";
 import { RETURN_RE, wrapExpression } from "../../extension/src/evaluate/wrap.js";
 import {
   answerBound,
@@ -103,6 +103,25 @@ import {
   harnessExpression,
   SW_ROWS,
   valueExpr,
+  RET_ROWS,
+  MCPF_ROWS,
+  CAP_ROWS,
+  R3R_READ_ELEMENTS,
+  r3rOccluderExempt,
+  r3rPlacementVerdict,
+  r3rReadMeasured,
+  type ReadRect,
+  LEG_BOUND_MS,
+  LEG_MARK_WAIT_MS,
+  LEG_MARKER_PREFIX,
+  LEG_POLL_MS,
+  LEG_QUIET_MS,
+  LEG_SETTLE_MS,
+  legMarkerUrl,
+  legWinRun,
+  legWinStep,
+  markedVerdict,
+  closeMarkedVerdict,
 } from "../s10-rules.js";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -988,5 +1007,510 @@ describe("the resume after Return 2 (wave fixer 2, item 4)", () => {
     expect(upToSw1).not.toContain("sw1r");
     expect(src("docs/plans/2026-10-24-step10-step8-follow-ups-steps/S7-wave-sheet.md")).toContain(CALL);
     expect(src("docs/plans/2026-10-24-step10-step8-follow-ups-steps/briefs/S7-runner.md")).toContain(CALL);
+  });
+});
+
+// ── S7 wave fixer 3 (after Return 4): RET-1R, MCPF-1R, CAP-1R's MCP leg, R15-3R, the logs gap, the attempt-4 resume ──
+
+const STEPS = "docs/plans/2026-10-24-step10-step8-follow-ups-steps";
+const planLines = (): string[] => src("docs/e2e-test-plan.md").split(/\r?\n/);
+const rowOfPlan = (l: string[], start: string): string => l.find((x) => x.startsWith(start)) ?? "";
+const codeOnly = (t: string): string =>
+  t
+    .split(/\r?\n/)
+    .filter((l) => !l.trimStart().startsWith("#"))
+    .join("\n");
+const DIFF =
+  "the actor starts with tool search off (`--no-tool-search` → `ENABLE_TOOL_SEARCH=false`, S7 wave fixer 2; its start line must confirm it, else STOP), so its first call is a bridge tool; no check is relaxed.";
+
+describe("RET-1R: the relaunch passes no empty argument, and the driver runs under a row ID (wave fixer 3, item 1)", () => {
+  it("the bgf-launch.ps1 call has no -ArgLine and no empty argument (Return 4: PS 5.1 dropped `-ArgLine ''`)", () => {
+    const launch = codeOnly(src("recipes/s10-ret1.ps1"))
+      .split("\n")
+      .filter((l) => l.includes("-File .\\recipes\\bgf-launch.ps1"));
+    expect(launch).toHaveLength(1);
+    expect(launch[0]).toContain("-File .\\recipes\\bgf-launch.ps1 -Exe (Get-S9Chrome))");
+    expect(launch[0]).not.toContain("-ArgLine");
+    expect(launch[0]).not.toMatch(/''|""/);
+    // the launcher's default is the plain launch: '' after the quoted exe
+    const bgf = src("recipes/bgf-launch.ps1");
+    expect(bgf).toContain("param([Parameter(Mandatory = $true)][string]$Exe, [string]$ArgLine = '')");
+    expect(bgf).toContain('CreateProcess(exe, "\\"" + exe + "\\" " + args,');
+  });
+  it("-Row takes RET-1 or RET-1R only; every line, signal and the holder/judge carry it; -Granted G10-2 stays required", () => {
+    const code = codeOnly(src("recipes/s10-ret1.ps1"));
+    expect(code).toContain("param([string]$Granted = '', [string]$Row = 'RET-1')");
+    expect(code).toContain("if (@('RET-1', 'RET-1R') -cnotcontains $Row) {");
+    expect(code).toContain("if ($Granted -ne 'G10-2') { Quit 3");
+    expect(code).toContain("'recipes/s10-ret1.ts', 'hold', '--row', $Row");
+    expect(code).toContain("recipes/s10-ret1.ts judge --since $mark --found $Default --row $Row)");
+    expect(code).toContain("Wait-S9Ready $Row 60");
+    expect(code).toContain('(Join-Path $env:S10_OUT "$Row.pressed")');
+    // no row ID is hard-coded in the code lines but the default and the allowed list
+    const left = code.replace("[string]$Row = 'RET-1'", "").replace("@('RET-1', 'RET-1R')", "").replace("-Row takes RET-1 or RET-1R", "");
+    expect(left).not.toMatch(/RET-1/);
+    expect(code).toContain("Chrome is NOT running; the step agent tells the user at once"); // the STOP rule unchanged
+    expect(RET_ROWS).toEqual(["RET-1", "RET-1R"]);
+    const ts = src("recipes/s10-ret1.ts");
+    expect(ts).toContain('const r = option("--row") ?? "RET-1";');
+    expect(ts).toContain("if (!RET_ROWS.includes(r))");
+    expect(ts.match(/"RET-1/g)?.length).toBe(1); // only the default
+    expect(src("recipes/s10-win.ps1")).toContain("function Test-S10LegState([ValidateSet('PP1', 'RET-1', 'RET-1R')][string]$Leg,");
+  });
+  it("§4.22: RET-1R = RET-1's row with only the ID (and -Row RET-1R) changed, right after it, and the dated note", () => {
+    const l = planLines();
+    const ret = rowOfPlan(l, "| RET-1 (G10-2) |");
+    const retR = rowOfPlan(l, "| RET-1R (G10-2) |");
+    expect(ret).not.toBe("");
+    const want = ret
+      .replace("| RET-1 (G10-2) |", "| RET-1R (G10-2) |")
+      .replace("`recipes/s10-ret1.ps1 -Granted G10-2`", "`recipes/s10-ret1.ps1 -Granted G10-2 -Row RET-1R`")
+      .replace("`RET-1 not run - disarmed as found …`", "`RET-1R not run - disarmed as found …`")
+      .split("`ROW RET-1 ")
+      .join("`ROW RET-1R ")
+      .split("`CHECK RET-1 ")
+      .join("`CHECK RET-1R ");
+    expect(retR).toBe(want);
+    expect(l.indexOf(retR)).toBe(l.indexOf(ret) + 1);
+    expect(l).toContain("*Added 2026-10-25 (S7 Return 4, #222): RET-1's relaunch failed by our bug (`-ArgLine ''` dropped by PS 5.1); RET-1 is NOT MEASURED and re-measured once as RET-1R.*");
+  });
+});
+
+describe("MCPF-1R and CAP-1R's MCP leg: tool search off, no check relaxed (wave fixer 3, item 2)", () => {
+  it("§4.22: MCPF-1R = MCPF-1 with the ID, blocks, actors and --row changed and the one stated difference", () => {
+    const l = planLines();
+    const m = rowOfPlan(l, "| MCPF-1 ★ |");
+    const mr = rowOfPlan(l, "| MCPF-1R ★ |");
+    const c = m.replace("| MCPF-1 ★ | ", "| MCPF-1R ★ | ").split(" | ");
+    c[2] = `**The one stated difference from MCPF-1:** ${DIFF} ${c[2]}`;
+    const want = c
+      .join(" | ")
+      .replace("`-Block mcpf-click`, `-Block mcpf-type`, `-Block mcpf-press`", "`-Block mcpf1r-click`, `-Block mcpf1r-type`, `-Block mcpf1r-press`")
+      .replace("actors `mcpf-click` / `mcpf-type` / `mcpf-press`", "actors `mcpf1r-click` / `mcpf1r-type` / `mcpf1r-press`")
+      .replace("`s10.ts mcpf --kind <kind>`", "`s10.ts mcpf --kind <kind> --row MCPF-1R`")
+      .split("`ROW MCPF-1 ")
+      .join("`ROW MCPF-1R ")
+      .split("`CHECK MCPF-1 ")
+      .join("`CHECK MCPF-1R ");
+    expect(mr).toBe(want);
+    expect(mr).toContain("`CHECK MCPF-1R <kind>-<n>-calls PASS — the actor called exactly [browser_<tool>]`"); // the check that failed stays
+    expect(mr).toContain("**Rule** (`mcpfVerdict`)");
+    expect(l.indexOf(mr)).toBe(l.indexOf(m) + 1);
+  });
+  it("§4.22: CAP-1R = CAP-1's MCP leg (the Stage S7 text, the MCP expected text) with CAP-1R-mcp, the difference and why the SDK half is not re-run", () => {
+    const l = planLines();
+    const cap = rowOfPlan(l, "| CAP-1 ★ |");
+    const capR = rowOfPlan(l, "| CAP-1R ★ |");
+    const k = cap.split(" | ");
+    const stage = k[2].slice(0, k[2].indexOf(" `-Block cap`:"));
+    const mcp = k[3].slice(k[3].indexOf("MCP: "));
+    expect(stage.length).toBeGreaterThan(100);
+    expect(mcp).toContain("`CHECK CAP-1-mcp answer-0900 PASS — the exact answer`");
+    const r = capR.split(" | ");
+    expect(r[0]).toBe("| CAP-1R ★");
+    expect(r[2].startsWith(`**The one stated difference from CAP-1's MCP leg:** ${DIFF} **MCP leg only:**`)).toBe(true);
+    expect(r[2].endsWith(`${stage} \`-Block cap1r\`: actor \`cap1r\`: \`s10.ts cap1-mcp --row CAP-1R\``)).toBe(true);
+    expect(r[3]).toBe(mcp.split("`CHECK CAP-1-mcp ").join("`CHECK CAP-1R-mcp "));
+    expect(r[4]).toBe(k[4]);
+    expect(l.indexOf(capR)).toBe(l.indexOf(cap) + 1);
+    expect(l).toContain("*Added 2026-10-25 (S7 Return 2/4, #222): MCPF-1 and CAP-1 FAIL stand as recorded (first call ToolSearch); re-measured as MCPF-1R / CAP-1R with tool search off.*");
+  });
+  it("the runner: mcpf1r-* run MCPF-1's helper under MCPF-1R with actors mcpf1r-<kind>; cap1r runs only the MCP leg; MCPF-1's blocks unchanged", () => {
+    const ps1 = src("recipes/s10-r15.ps1");
+    const b = runnerBlocks(ps1);
+    for (const k of ["click", "type", "press"]) {
+      expect(b.get(`mcpf-${k}`)?.trim()).toBe(`Invoke-S15Mcpf '${k}'`);
+      expect(b.get(`mcpf1r-${k}`)?.trim()).toBe(`Invoke-S15Mcpf '${k}' 'MCPF-1R'`);
+    }
+    const inv = /function Invoke-S15Mcpf[\s\S]*?\n\}/.exec(ps1)?.[0] ?? "";
+    expect(inv).toContain("$actor = if ($Row -eq 'MCPF-1') { \"mcpf-$Kind\" } else { \"mcpf1r-$Kind\" }");
+    expect(inv).toContain("S10 mcpf --kind $Kind --actor $actor --row $Row");
+    expect(inv).toContain('S9 wait-alone --row "$Row-$Kind-end" --timeout 15000');
+    expect(runnerCalls(b.get("cap1r") ?? "").map((c) => c.text)).toEqual(["cap1-mcp --actor cap1r --row CAP-1R"]);
+    expect(b.get("cap1r")).toContain("Start-Actor 'cap1r'"); // Start-Actor STOPs without `tool search off`
+    expect(ps1).toContain("if (-not ($out -match 'tool search off')) { Fail-S15");
+    const s10 = src("recipes/s10.ts");
+    expect(s10).toContain('const id = option("--row") ?? "MCPF-1";');
+    expect(s10).toContain('const tallyKey = id === "MCPF-1" ? "mcpfTally" : "mcpfTallyR";');
+    expect(s10).toContain('const row = option("--row") ?? "CAP-1";');
+    expect(s10).toContain("const id = `${row}-mcp`;");
+    expect(MCPF_ROWS).toEqual(["MCPF-1", "MCPF-1R"]);
+    expect(CAP_ROWS).toEqual(["CAP-1", "CAP-1R"]);
+  });
+  it("the new blocks are row blocks after off and before restore (the default budget: the m2 rule above covers them)", () => {
+    const { order, rowBlocks } = runnerLists(src("recipes/s10-r15.ps1"));
+    const nu = ["mcpf1r-click", "mcpf1r-type", "mcpf1r-press", "cap1r", "r3r"];
+    expect(order.slice(order.indexOf("off") + 1, order.indexOf("restore"))).toEqual(nu);
+    expect(rowBlocks.slice(-5)).toEqual(nu);
+  });
+});
+
+// Run 15 attempt 2's guard input at placement-before-click (r15-raw.txt, 10:36:00.247Z), with O's read elements laid out
+// below O's top strip (the page from y 121, as W's page area measured in the same run).
+const O_RECT = { left: 3072, top: 0, right: 3840, bottom: 1078 };
+const POPUP = {
+  cls: "Chrome_WidgetWin_1",
+  process: "chrome",
+  rect: { left: 3617, top: 80, right: 3840, bottom: 105 },
+  owner: "O" as const,
+  rootOwner: "O" as const,
+  styles: { topmost: true, popup: true, toolwindow: false, noactivate: true },
+};
+const READ: ReadRect[] = [
+  { name: "page", rect: { left: 3072, top: 121, right: 3840, bottom: 1078 } },
+  { name: "armed", rect: { left: 3100, top: 200, right: 3300, bottom: 220 } },
+  { name: "evaluate", rect: { left: 3100, top: 230, right: 3300, bottom: 250 } },
+  { name: "safety-status", rect: { left: 3100, top: 260, right: 3500, bottom: 280 } },
+  { name: "blocklist-summary", rect: { left: 3100, top: 600, right: 3400, bottom: 620 } },
+];
+const RETURN3: Placement & { readRects?: ReadRect[] | null } = {
+  w: { rect: { left: 1920, top: 0, right: 3072, bottom: 1078 }, minimized: false, visible: true },
+  o: { rect: O_RECT, minimized: false, visible: true },
+  work: [
+    { left: 0, top: 0, right: 1920, bottom: 1080 },
+    { left: 1920, top: 0, right: 3840, bottom: 1080 },
+  ],
+  occluders: 1,
+  occluderIds: [POPUP],
+};
+
+describe("R15-3R's guard rule: a driver-owned window over none of the read elements is exempt (wave fixer 3, item 3)", () => {
+  it("fails without the rule: R15-3's placementVerdict stops on Return 3's occluder; R15-3R's passes it only with the read rects measured", () => {
+    expect(placementVerdict(RETURN3).pass).toBe(false);
+    expect(r3rPlacementVerdict({ ...RETURN3 }).verdict.pass).toBe(false); // no read rects → nothing exempt
+    const v = r3rPlacementVerdict({ ...RETURN3, readRects: READ });
+    expect(v.verdict).toEqual({
+      pass: true,
+      why: "W and O do not overlap, both lie on a monitor's work area, neither is minimized, no window above O overlaps it except 1 exempt window(s) (owned by a driver window, over none of the read elements)",
+    });
+    expect(v.lines[1]).toBe("EXEMPT 1 yes — owner and root owner driver:O/driver:O; over none of page, armed, evaluate, safety-status, blocklist-summary");
+    expect(v.lines[0]).toContain("READ rects page [3072,121,3840,1078] · armed");
+  });
+  it("the owner chain: owner and root owner must both be driver windows; a driver window itself is never exempt", () => {
+    expect(r3rOccluderExempt({ ...POPUP, owner: "other" }, READ, O_RECT).exempt).toBe(false);
+    expect(r3rOccluderExempt({ ...POPUP, rootOwner: "none" }, READ, O_RECT).exempt).toBe(false);
+    expect(r3rOccluderExempt({ ...POPUP, owner: undefined }, READ, O_RECT).exempt).toBe(false);
+    expect(r3rOccluderExempt({ driver: "W", rect: POPUP.rect, owner: "O", rootOwner: "O" }, READ, O_RECT).exempt).toBe(false);
+    expect(r3rOccluderExempt({ ...POPUP, owner: "W", rootOwner: "W" }, READ, O_RECT).exempt).toBe(true);
+    expect(r3rPlacementVerdict({ ...RETURN3, readRects: READ, occluderIds: [{ ...POPUP, owner: "other", rootOwner: "other" }] }).verdict.pass).toBe(false);
+  });
+  it("the rect: overlapping any read element (the page area included) is not exempt; touching edges are not an overlap", () => {
+    const at = (top: number, bottom: number) => ({ ...POPUP, rect: { left: 3617, top, right: 3840, bottom } });
+    expect(r3rOccluderExempt(at(110, 130), READ, O_RECT)).toEqual({ exempt: false, why: "it overlaps page" });
+    expect(r3rOccluderExempt({ ...POPUP, rect: { left: 3200, top: 205, right: 3250, bottom: 215 } }, READ, O_RECT).why).toBe("it overlaps page, armed");
+    expect(r3rOccluderExempt(at(96, 121), READ, O_RECT).exempt).toBe(true); // its bottom edge = the page's top edge
+    expect(r3rOccluderExempt({ ...POPUP, rect: undefined }, READ, O_RECT).exempt).toBe(false);
+  });
+  it("measured, not assumed: every read element once, non-empty, inside O's window rect", () => {
+    expect(r3rReadMeasured(READ, O_RECT).measured).toBe(true);
+    expect(r3rReadMeasured(null, O_RECT).measured).toBe(false);
+    expect(r3rReadMeasured(READ.filter((x) => x.name !== "safety-status"), O_RECT)).toEqual({ measured: false, why: "element safety-status not found" });
+    expect(r3rReadMeasured(READ.map((x) => (x.name === "armed" ? { ...x, rect: null } : x)), O_RECT).why).toBe("element armed has no on-screen rect");
+    expect(r3rReadMeasured([...READ, READ[1]], O_RECT).why).toBe("element armed measured twice");
+    const scaled = READ.map((x) => (x.name === "page" ? { ...x, rect: { left: 3072, top: 121, right: 4200, bottom: 1300 } } : x)); // e.g. a DPI mismatch
+    expect(r3rReadMeasured(scaled, O_RECT).why).toBe("element page's rect lies outside O's window rect");
+    expect(r3rOccluderExempt(POPUP, scaled, O_RECT).exempt).toBe(false);
+    expect(R3R_READ_ELEMENTS).toEqual(["page", "armed", "evaluate", "safety-status", "blocklist-summary"]);
+  });
+  it("an unidentified occluder is never excused; a second, non-exempt occluder still fails", () => {
+    expect(r3rPlacementVerdict({ ...RETURN3, readRects: READ, occluders: 2 }).verdict.pass).toBe(false);
+    const other = { cls: "X", process: "y", rect: { left: 3100, top: 300, right: 3200, bottom: 400 }, owner: "none" as const, rootOwner: "none" as const };
+    const v = r3rPlacementVerdict({ ...RETURN3, readRects: READ, occluders: 2, occluderIds: [POPUP, other] });
+    expect(v.verdict).toEqual({ pass: false, why: "1 window(s) above O overlap it (O is covered)" });
+  });
+  it("the runner: B-r3r is B-r3 with the row R15-3R and -ExemptOwned on the two guards only; the PowerShell side measures the same elements", () => {
+    const b = runnerBlocks(src("recipes/s10-r15.ps1"));
+    const r3r = b.get("r3r") ?? "";
+    const norm = (s: string): string =>
+      codeOnly(s)
+        .replace(/Fail-S15 '[^']*'/g, "Fail-S15 X")
+        .replace(/ -ExemptOwned/g, "")
+        .replace(/R15-3R/g, "R15-3");
+    expect(norm(r3r)).toBe(norm(b.get("r3") ?? ""));
+    expect(r3r.match(/-ExemptOwned/g)?.length).toBe(2);
+    expect(r3r).toContain("Test-S10Placement $global:W $global:O 'placement-before-switch' -Row 'R15-3R' -ExemptOwned");
+    expect(r3r).toContain("Test-S10Placement $global:W $global:O 'placement-before-click' -Row 'R15-3R' -ExemptOwned");
+    expect(r3r).toContain("Find-S10FreePlacement $global:W $global:O 'R15-3R')");
+    const win = src("recipes/s10-win.ps1");
+    expect(win).toContain("if ($ExemptOwned) { $p | Add-Member -NotePropertyName readRects -NotePropertyValue @(Get-S10OptionsReadRects $O) }");
+    expect(win).toContain("recipes/s10.ts r3r-check --file $f --row $Row --step $Step");
+    const names = /\$els = \[ordered\]@\{([^\n]*)\}/.exec(win)?.[1] ?? "";
+    expect([...names.matchAll(/'([a-z-]+)' = /g)].map((m) => m[1])).toEqual([...R3R_READ_ELEMENTS]);
+  });
+  it("§4.22: R15-3R = R15-3 with the ID, the block, -ExemptOwned on the two guards and the one guard rule, right after it, and the dated note", () => {
+    const l = planLines();
+    const r3 = rowOfPlan(l, "| R15-3 ★ |");
+    const r3r = rowOfPlan(l, "| R15-3R ★ |");
+    const OLD = "**Guard:** any occluder above O (a driver window or not) → `STOP: R15-3 placement guard …`; exempting a non-driver window is the user's call (#212's Revisit-if).";
+    const TAIL = "The placement tries (`Find-S10FreePlacement`) keep R15-3's rule.";
+    expect(r3).toContain(OLD);
+    const at = r3r.indexOf("**Guard (R15-3R's one added rule, written before it runs):**");
+    const end = r3r.indexOf(TAIL) + TAIL.length;
+    expect(at).toBeGreaterThan(0);
+    const back = (r3r.slice(0, at) + "\u0000" + r3r.slice(end))
+      .replace(" -ExemptOwned`", "`")
+      .replace(" -ExemptOwned`", "`")
+      .replace("`-Block r3r`", "`-Block r3`")
+      .split("R15-3R")
+      .join("R15-3");
+    expect(back).toBe(r3.replace(OLD, "\u0000"));
+    const rule = r3r.slice(at, end);
+    for (const s of ["owner AND its root owner are driver windows", "overlaps none of the rects of the elements R15-3R reads on O", "measured by UI Automation at that guard", "any other occluder → `STOP: R15-3R placement guard …`"]) expect(rule).toContain(s);
+    expect(l.indexOf(r3r)).toBe(l.indexOf(r3) + 1);
+    const note = l.find((x) => x.startsWith("*Added 2026-10-25 (S7 Return 3/4; decisions.md · 2026-10-25 · S1: R14-3 (the options page's view of a re-arm) is re-measured in Run 15 (#212), whose Revisit-if is met"));
+    expect(note).toContain("owner=driver:O rootOwner=driver:O");
+    expect(note).toContain("the session agent's order to the S7 wave fixer 3");
+  });
+});
+
+describe("SAVE-REFUSE: a dated note only (wave fixer 3, item 4)", () => {
+  it("the note is in §4.22; the row's expected text is unchanged (no prefix); the prefix's product source", () => {
+    const l = planLines();
+    expect(l).toContain(
+      "**SAVE-REFUSE** — *Note 2026-10-25 (Run 15): observed codes, data and no-file as expected, but each message carried a `[chrome.debugger] ` prefix this row's expected text lacks; recorded FAIL as observed; see S7.md's proposed decision.*",
+    );
+    const row = rowOfPlan(l, "| SAVE-REFUSE ★ |");
+    expect(row).toContain("`ROW SAVE-REFUSE undefined BAD_PARAMS The value is undefined — nothing to save (<ms> ms)`");
+    expect(row).not.toContain("[chrome.debugger]");
+    // read only: describeRaw's fallback, reached for an own coded error through withDebugger's mapError
+    expect(src("extension/src/debugger-errors.ts")).toContain('return { code: "DEBUGGER_ATTACH", message: `[chrome.debugger] ${raw}` };');
+  });
+});
+
+describe("R15-LOGS scans every Run 15 actor transcript, earlier attempts' too (wave fixer 3, item 5)", () => {
+  it("block logs scans this attempt's actors plus every earlier attempt's whose folder exists; PP1's is its own leg's", () => {
+    const ps1 = src("recipes/s10-r15.ps1");
+    expect(ps1).toContain("$EarlierActors = @('mcpf-click', 'mcpf-type', 'mcpf-press', 'cap', 'save', 'fix', 'big', 'jsd', 'off', 'on')");
+    const logs = runnerBlocks(ps1).get("logs") ?? "";
+    expect(logs).toContain("$scanActors = @(@($global:S15Actors.Keys) + @($EarlierActors | Where-Object { Test-Path -LiteralPath (Join-Path $env:S9_ACTORS $_) }) | Sort-Object -Unique)");
+    expect(logs).toContain("foreach ($n in $scanActors) {");
+    expect(logs).not.toContain("foreach ($n in @($global:S15Actors.Keys | Sort-Object))");
+    expect(ps1).not.toMatch(/\$EarlierActors = @\([^)]*'pp1'/);
+  });
+});
+
+describe("the resume after Return 4 (attempt 4, wave fixer 3, item 5)", () => {
+  const OBSERVED = "bbl1,bbl2,mcpf-click,mcpf-type,mcpf-press,cap,sw1,sw1r,pop2,save-a,savefix,save-64,save-64-mcp,prim,idonly,save-ttl,r3,savedis,savejs,saveblk,jsd,off";
+  const CALL = `-Block reset -Attempt 4 -Skip ${OBSERVED}`;
+  it("the skip set = every row block observed or stopped in attempts 1–3 = every row block but the five new ones; sheet and brief carry it", () => {
+    const { rowBlocks } = runnerLists(src("recipes/s10-r15.ps1"));
+    const nu = ["mcpf1r-click", "mcpf1r-type", "mcpf1r-press", "cap1r", "r3r"];
+    expect(OBSERVED.split(",")).toEqual(rowBlocks.filter((b) => !nu.includes(b)));
+    for (const f of [`${STEPS}/S7-wave-sheet.md`, `${STEPS}/briefs/S7-runner.md`]) expect(src(f), f).toContain(CALL);
+  });
+  it("B-reset resumes from a torn-down attempt as from a stopped one (attempt 3 ended at its teardown; the stop came at RET-1)", () => {
+    const reset = runnerBlocks(src("recipes/s10-r15.ps1")).get("reset") ?? "";
+    expect(reset).toContain("$tornDown = @($h['S15Done']) -contains 'teardown'");
+    expect(reset).toContain("if (-not $h['S15Stopped'] -and -not $tornDown) {");
+    expect(reset).toContain("$stopAt = if ($h['S15Stopped']) {");
+  });
+  it("the STOP sentence is byte-identical in the sheet and the runner brief", () => {
+    const stop = /\*\*STOP RULE \(#193\):[\s\S]*?never past a STOP line\.\*\*/;
+    const a = stop.exec(src(`${STEPS}/S7-wave-sheet.md`))?.[0];
+    const b = stop.exec(src(`${STEPS}/briefs/S7-runner.md`))?.[0];
+    expect(a).toBeTruthy();
+    expect(a).toBe(b);
+  });
+});
+
+// ── S7 fixer #223 (after Return 5): the leg read-back's own window, picked by a marker after the window set settles ──
+// Return 5: after RET-1's relaunch, session restore brought back two Chrome windows (the user's) while the read-back's
+// helper waited for "exactly one new window"; it rightly touched neither, the read threw, and the state was printed
+// "NOT equal" without being compared. decisions.md #223: wait until Chrome's set of windows stops changing, open the
+// check window with a unique marker in its title, read only that window; zero or two marked windows is a STOP.
+
+const fnOf = (text: string, head: string): string => {
+  const body = text.slice(text.indexOf(head));
+  return body.slice(0, body.search(/\r?\n\}\r?\n/) + 3);
+};
+
+describe("#223: the stable-window-set decision (s10-win.ps1 Wait-S10StableWindows mirrors legWinStep)", () => {
+  it("one poll: Chrome not running first, then stable after the quiet period, then the bound, else wait", () => {
+    expect(LEG_QUIET_MS).toBe(5000);
+    expect(LEG_BOUND_MS).toBe(60000);
+    expect(legWinStep({ chrome: 0, sameForMs: 9000, elapsedMs: 9000 })).toBe("no-chrome"); // never open a window then: it would start Chrome
+    expect(legWinStep({ chrome: 12, sameForMs: LEG_QUIET_MS, elapsedMs: LEG_QUIET_MS })).toBe("stable");
+    expect(legWinStep({ chrome: 12, sameForMs: LEG_QUIET_MS - 1, elapsedMs: LEG_QUIET_MS - 1 })).toBe("wait");
+    expect(legWinStep({ chrome: 12, sameForMs: 4000, elapsedMs: LEG_BOUND_MS })).toBe("timeout");
+    expect(legWinStep({ chrome: 12, sameForMs: LEG_QUIET_MS, elapsedMs: LEG_BOUND_MS + 1 })).toBe("stable"); // settled at the last poll
+  });
+  it("a sequence: Return 5's restore (a second window appears 2 s in) waits for it, then settles with both", () => {
+    const s = (atMs: number, windows: number[], chrome = 12) => ({ atMs, chrome, windows });
+    const ret5 = [s(0, [101]), s(500, [101]), s(2000, [101, 202]), s(2500, [202, 101]), s(4000, [101, 202]), s(6500, [101, 202]), s(7000, [101, 202])];
+    expect(legWinRun(ret5)).toEqual({ step: "stable", atMs: 7000, sameForMs: 5000, changes: 1, windows: 2 });
+    // the order of the handles is not a change
+    expect(legWinRun([s(0, [1, 2]), s(5000, [2, 1])]).step).toBe("stable");
+    // a set that keeps changing ends at the bound
+    const churn = Array.from({ length: 31 }, (_, i) => s(i * 2000, [1, 100 + i]));
+    expect(legWinRun(churn)).toMatchObject({ step: "timeout", atMs: 60000, changes: 30 });
+    // Chrome gone at any poll: no-chrome at once
+    expect(legWinRun([s(0, [1]), s(500, [], 0)])).toMatchObject({ step: "no-chrome", atMs: 500 });
+    // not enough polls yet: wait
+    expect(legWinRun([s(0, [1]), s(1000, [1])]).step).toBe("wait");
+    expect(legWinRun([]).step).toBe("wait");
+  });
+  it("the PowerShell mirror: the same constants and the same decision line, every visible Chrome window (-AnyTitle)", () => {
+    const win = src("recipes/s10-win.ps1");
+    expect(win).toContain(`$S10LegQuietMs = ${LEG_QUIET_MS}`);
+    expect(win).toContain(`$S10LegBoundMs = ${LEG_BOUND_MS}`);
+    expect(win).toContain(`$S10LegPollMs = ${LEG_POLL_MS}`);
+    expect(win).toContain(`$S10LegMarkWaitMs = ${LEG_MARK_WAIT_MS}`);
+    expect(win).toContain(`$S10LegSettleMs = ${LEG_SETTLE_MS}`);
+    const fn = fnOf(win, "function Wait-S10StableWindows(");
+    expect(fn).toContain(
+      "$step = if ($chrome -eq 0) { 'no-chrome' } elseif ($same -ge $S10LegQuietMs) { 'stable' } elseif ($el -ge $S10LegBoundMs) { 'timeout' } else { 'wait' }",
+    );
+    expect(fn).toContain("$set = @(Get-S9ChromeWindows -AnyTitle | Sort-Object)");
+    expect(fn).not.toMatch(/Start-Process|Close-S9Window|Set-S9Omnibox|keybd|MoveWindow/);
+    expect(fn).toContain("Stop9 \"LEG $Leg ${Phase}: not read - Chrome's set of windows did not stay unchanged for $S10LegQuietMs ms within $S10LegBoundMs ms");
+    expect(fn).toContain("Stop9 \"LEG $Leg ${Phase}: not read - Chrome is NOT running (0 chrome processes)");
+  });
+});
+
+describe("#223: the marked check window (s10-win.ps1 Open-S10MarkedWindow mirrors markedVerdict)", () => {
+  it("exactly one marked window is mine; zero or two or more is a STOP", () => {
+    expect(markedVerdict(1)).toBe("one");
+    expect(markedVerdict(0)).toBe("none");
+    expect(markedVerdict(2)).toBe("several");
+    expect(markedVerdict(5)).toBe("several");
+  });
+  it("the marker is s15leg- + a GUID's 32 hex digits, carried as the page's <title> of a data: URL", () => {
+    const m = `${LEG_MARKER_PREFIX}${"0123456789abcdef".repeat(2)}`;
+    expect(legMarkerUrl(m)).toBe(`data:text/html,<title>${m}</title>`);
+    expect(() => legMarkerUrl("s15leg-xyz")).toThrow();
+    expect(() => legMarkerUrl(`${LEG_MARKER_PREFIX}${"0".repeat(32)}<`)).toThrow();
+    const fn = fnOf(src("recipes/s10-win.ps1"), "function Open-S10MarkedWindow(");
+    expect(fn).toContain(`$marker = '${LEG_MARKER_PREFIX}' + [guid]::NewGuid().ToString('N')`);
+    expect(fn).toContain('$url = "data:text/html,<title>$marker</title>"');
+    expect(fn).toContain("$v = if ($m.Count -eq 1) { 'one' } elseif ($m.Count -eq 0) { 'none' } else { 'several' }");
+  });
+  it("Open-S10MarkedWindow: a distinct STOP with the count on 0 or 2+, touching no window; the omnibox checked; it types nothing", () => {
+    const fn = fnOf(src("recipes/s10-win.ps1"), "function Open-S10MarkedWindow(");
+    expect(fn).toContain("Start-Process -FilePath (Get-S9Chrome) -ArgumentList '--new-window', $url");
+    const branch = fn.slice(fn.indexOf("if ($v -ne 'one') {")).split(/\r?\n/)[0];
+    expect(branch).toContain("Stop9 \"LEG $Leg ${Phase}: not read - $($m.Count) Chrome window(s) carry this call's marker (need exactly 1)");
+    expect(branch).toContain("return $null");
+    expect(branch).not.toMatch(/Close|Move|keybd|SetValue|Set-S9Omnibox/);
+    expect(fn).toContain("if ($u -cne $url) {");
+    expect(fn).not.toMatch(/Set-S9Omnibox|keybd|SetValue|MoveWindow/);
+    // the marked windows are counted over every titled Chrome window, by a plain (not wildcard) match
+    expect(fn).toContain("$m = @(Get-S10MarkedWindows $marker)");
+    expect(fnOf(src("recipes/s10-win.ps1"), "function Get-S10MarkedWindows(")).toContain(
+      "@(Get-S9ChromeWindows | Where-Object { [S9Win]::Text([IntPtr]$_).Contains($Marker) })",
+    );
+  });
+  it("Test-S10LegState: the stable wait, then the marked window, then the read; never the one-new-window path", () => {
+    const fn = fnOf(src("recipes/s10-win.ps1"), "function Test-S10LegState(");
+    expect(fn).not.toContain("Open-S9ChromePage");
+    expect(fn).not.toContain("Close-S9Window");
+    const iStable = fn.indexOf("Wait-S10StableWindows $Leg $Phase");
+    const iMarked = fn.indexOf("Open-S10MarkedWindow $Leg $Phase");
+    const iType = fn.indexOf("Set-S9Omnibox $mw.h $S9OptionsUrl");
+    const iRead = fn.indexOf("Read-S9SafetyState $mw.h -PassThru");
+    expect(iStable).toBeGreaterThan(0);
+    expect(iMarked).toBeGreaterThan(iStable);
+    expect(iType).toBeGreaterThan(iMarked);
+    expect(iRead).toBeGreaterThan(iType);
+    expect(fn).toContain("Close-S10MarkedWindow $mw");
+    // a window STOP returns before the try: never folded into "the read threw -> NOT equal"
+    expect(fn).toContain("if (-not (Wait-S10StableWindows $Leg $Phase)) { return $false }");
+    expect(fn).toContain("if (-not $mw) { return $false }");
+    expect(fn.indexOf("if (-not $mw) { return $false }")).toBeLessThan(fn.indexOf("try {"));
+    // the equal / NOT equal line and its STOP are unchanged
+    expect(fn).toContain(
+      "Say9 \"LEG $Leg ${Phase}: stored armed+JavaScript on+0 sites $(\"$page\".ToLower()), block-list sha256 vs found $shaEq, daemon.status equal $(\"$d\".ToLower()) -> $(if ($ok) { 'equal' } else { 'NOT equal' })\"",
+    );
+    expect(fn).toContain("Stop9 \"LEG $Leg ${Phase}: the safety state is not the found state (armed, JavaScript on, an empty list)");
+  });
+  it("Close-S10MarkedWindow closes by handle only, and only while the handle is still that window (same pid and class)", () => {
+    // round 2 (2026-10-25): the pid/class checks moved into the mirrored $v line (closeMarkedVerdict), with a proof added
+    const fn = fnOf(src("recipes/s10-win.ps1"), "function Close-S10MarkedWindow(");
+    expect(fn).toContain("[int]$wpid -ne [int]$Mw.pid");
+    expect(fn).toContain("$cls = [S9Win]::Cls([IntPtr]$h)");
+    expect(fn).toContain("$cls -ne 'Chrome_WidgetWin_1'");
+    expect(fn).toContain("Close-S9Window $h");
+  });
+});
+
+// ── S7 fixer #223 round 2 (verifier MINOR): every Chrome window shares the browser pid, so pid + class cannot tell the
+// check window from another Chrome window that reused its handle. The close now also needs a proof the window is still
+// mine: its title as recorded when it was picked (it carries the per-call marker), or its address bar / document URL
+// exactly the marker URL or this extension's options URL. No proof -> a "not closed" line, nothing touched.
+describe("#223 round 2: the check window is closed only while it can be proved to be mine (closeMarkedVerdict)", () => {
+  const M = `${LEG_MARKER_PREFIX}${"0123456789abcdef".repeat(2)}`;
+  const OPT = "chrome-extension://cpnemjbgecfbeicldpaaegbhjgjgjfep/options.html";
+  const base = {
+    live: true, pid: 6448, recordedPid: 6448, cls: "Chrome_WidgetWin_1",
+    title: `${M} - Google Chrome`, recordedTitle: `${M} - Google Chrome`,
+    urls: [legMarkerUrl(M)], markerUrl: legMarkerUrl(M), optionsUrl: OPT,
+  };
+  it("closes on the recorded marker title, or an exact marker / options URL, and only for a live window of the same pid and class", () => {
+    expect(closeMarkedVerdict(base)).toBe("close");
+    expect(closeMarkedVerdict({ ...base, title: "Chrome Agent Bridge Options - Google Chrome", urls: ["", OPT] })).toBe("close");
+    expect(closeMarkedVerdict({ ...base, title: "x", urls: [OPT, ""] })).toBe("close");
+    expect(closeMarkedVerdict({ ...base, title: "x", urls: [legMarkerUrl(M)] })).toBe("close");
+    expect(closeMarkedVerdict({ ...base, urls: [] })).toBe("close"); // the title alone proves it
+  });
+  it("a user's Chrome window that reused the handle (same pid, same class) is NOT closed", () => {
+    expect(closeMarkedVerdict({ ...base, title: "Inbox - Google Chrome", urls: ["https://mail.example/"] })).toBe("not-mine");
+    expect(closeMarkedVerdict({ ...base, title: "", urls: ["", ""] })).toBe("not-mine"); // the reads failed: no proof
+    expect(closeMarkedVerdict({ ...base, title: "", recordedTitle: "", urls: [] })).toBe("not-mine"); // empty never matches
+    expect(closeMarkedVerdict({ ...base, title: "x", urls: [`${OPT}#x`, OPT.toUpperCase(), `${legMarkerUrl(M)}x`] })).toBe("not-mine"); // exact only
+    expect(closeMarkedVerdict({ ...base, title: `${M} - Google Chrome x`, urls: [] })).toBe("not-mine");
+  });
+  it("gone, another pid or another class: not closed, whatever the title or URL says", () => {
+    expect(closeMarkedVerdict({ ...base, live: false })).toBe("gone");
+    expect(closeMarkedVerdict({ ...base, pid: 1 })).toBe("not-mine");
+    expect(closeMarkedVerdict({ ...base, cls: "Other" })).toBe("not-mine");
+  });
+  it("the PowerShell mirror: Close-S10MarkedWindow reads title + URLs with short bounds, decides by the same line, closes only on 'close'", () => {
+    const win = src("recipes/s10-win.ps1");
+    const fn = fnOf(win, "function Close-S10MarkedWindow(");
+    expect(fn).toContain(
+      "$v = if (-not $live) { 'gone' } elseif ([int]$wpid -ne [int]$Mw.pid -or $cls -ne 'Chrome_WidgetWin_1') { 'not-mine' } elseif (($title -and $title -ceq $Mw.title) -or ($Mw.url -and $urls -ccontains $Mw.url) -or ($urls -ccontains $S9OptionsUrl)) { 'close' } else { 'not-mine' }",
+    );
+    expect(fn).toContain("$urls = @(Get-S10WindowUrls $h)");
+    expect(fn).toContain("if ($v -eq 'close') { Close-S9Window $h }");
+    expect(fn).toContain("- not closed");
+    // exactly one close call, inside the 'close' branch; no key, move or omnibox write
+    expect(fn.split("Close-S9Window").length - 1).toBe(1);
+    expect(fn).not.toMatch(/keybd|SetValue|Set-S9Omnibox|MoveWindow|Get-S9Omnibox/);
+    // the short-bound reader: one FindFirst each, no 15 s wait loop (Get-S9Omnibox polls up to 15 s)
+    const rd = fnOf(win, "function Get-S10WindowUrls(");
+    expect(rd).toContain("'OmniboxViewViews'");
+    expect(rd).toContain("Get-S9DocUrl $Hwnd");
+    expect(rd).not.toMatch(/Get-S9Omnibox|while|until|Start-Sleep/);
+    // the recorded identity: the marker URL and the title read when the window was picked
+    const op = fnOf(win, "function Open-S10MarkedWindow(");
+    expect(op).toContain("$mw = @{ h = $h; pid = [int]$wpid; marker = $marker; url = $url; title = [S9Win]::Text([IntPtr]$h) }");
+  });
+});
+
+describe("#223: RET-1R's reconnect wait failing is a STOP, not a judge FAIL", () => {
+  it("s10-ret1.ps1 checks wait-safety's exit and Quits 2 with Chrome's process count, before the pressed signal and the judge", () => {
+    const code = codeOnly(src("recipes/s10-ret1.ps1"));
+    const lines = code.split("\n");
+    const i = lines.findIndex((l) => l.includes('wait-safety --row "$Row-reconnect"'));
+    expect(i).toBeGreaterThan(0);
+    const next = lines.slice(i + 1, i + 3).join("\n");
+    expect(next).toContain('if ($LASTEXITCODE -ne 0) { Quit 2 "${Row}: Chrome did not reconnect to the bridge within 90 s');
+    expect(next).toContain("@(Get-Process chrome -ErrorAction SilentlyContinue).Count");
+    expect(code.indexOf("did not reconnect")).toBeLessThan(code.indexOf('"$Row.pressed"'));
+    expect(code.indexOf("did not reconnect")).toBeLessThan(code.indexOf("s10-ret1.ts judge"));
+  });
+});
+
+describe("#223: the sheet and the runner brief carry the new behaviour and the RET-1 end read-back redo", () => {
+  const REDO = "## RET-1 end read-back (redone under #223)";
+  const CMD = 'powershell -NoProfile -ExecutionPolicy Bypass -Command ". .\\recipes\\s10-win.ps1; if (Test-S10LegState -Leg RET-1 -Phase end) { exit 0 } else { exit 2 }"';
+  it("both name the redo, its exact command and record heading, before attempt 4; the old 'a repeat is a STOP as written' is superseded", () => {
+    for (const f of [`${STEPS}/S7-wave-sheet.md`, `${STEPS}/briefs/S7-runner.md`]) {
+      const t = src(f);
+      expect(t, f).toContain(REDO);
+      expect(t, f).toContain(CMD);
+      expect(t, f).toContain("*Amended 2026-10-25 (#223):");
+      expect(t.indexOf(REDO), f).toBeLessThan(t.indexOf("-Block reset -Attempt 4 -Skip"));
+    }
+    expect(src(`${STEPS}/S7-wave-sheet.md`)).not.toMatch(/it is not changed here \(outside this fixer's brief\) — until the step\s+agent rules on it, a repeat is a STOP as written\.\*/);
   });
 });

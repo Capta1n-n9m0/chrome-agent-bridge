@@ -33,22 +33,52 @@ function Write-S10Cursor([string]$Why) {
 
 # R14-3's guard with the row as a parameter (s9-win.ps1 Test-S9Placement hard-codes R14-3): both rects, the flags, every
 # work area, the occluders above O with their ids and diagnostics, the cursor -> s9.ts rect-check (placementVerdict).
-function Test-S10Placement([long]$W, [long]$O, [string]$Step = 'placement', [int]$Attempt = 0, $Area = $null, [string]$Row = 'R15-3') {
+#
+# S7 wave fixer 3 (2026-10-25; R15-3R, #212 and the session agent's order after Return 3): -ExemptOwned adds the rects of
+# the elements R15-3R reads on O (Get-S10OptionsReadRects, measured now) and is judged by `s10.ts r3r-check`
+# (s10-rules.ts r3rPlacementVerdict: an occluder owned - owner and root owner - by a driver window and over none of those
+# rects is exempt; any other occluder still fails). Without the switch nothing changes (R15-3's guard, s9.ts rect-check).
+function Test-S10Placement([long]$W, [long]$O, [string]$Step = 'placement', [int]$Attempt = 0, $Area = $null, [string]$Row = 'R15-3', [switch]$ExemptOwned) {
   $work = @([S9Geo]::WorkAreas() | ForEach-Object { [pscustomobject]@{ left = $_.Left; top = $_.Top; right = $_.Right; bottom = $_.Bottom } })
   $ids = @(Get-S9OccluderIds $O)
   $cur = "$([S9Geo]::Cursor())".Split(' ')
   $p = [pscustomobject]@{ w = (Get-S9WinPlace $W); o = (Get-S9WinPlace $O); work = $work; occluders = $ids.Count; occluderIds = $ids; cursor = $(if ($cur.Count -eq 2) { [pscustomobject]@{ x = [int]$cur[0]; y = [int]$cur[1] } } else { $null }) }
   if ($Attempt -gt 0) { $p | Add-Member -NotePropertyName area -NotePropertyValue ([pscustomobject]@{ left = $Area.Left; top = $Area.Top; right = $Area.Right; bottom = $Area.Bottom }) }
+  if ($ExemptOwned) { $p | Add-Member -NotePropertyName readRects -NotePropertyValue @(Get-S10OptionsReadRects $O) }
   $f = Join-Path $env:S9_OUT 'r15-placement.json'
   [IO.File]::WriteAllText($f, ($p | ConvertTo-Json -Depth 5 -Compress), (New-Object Text.UTF8Encoding $false))
   Push-Location $S9Repo
   try {
     $extra = if ($Attempt -gt 0) { @('--attempt', "$Attempt") } else { @() }
-    $out = @(node --import tsx recipes/s9.ts rect-check --file $f --row $Row --step $Step @extra)
+    $out = if ($ExemptOwned) { @(node --import tsx recipes/s10.ts r3r-check --file $f --row $Row --step $Step) } else { @(node --import tsx recipes/s9.ts rect-check --file $f --row $Row --step $Step @extra) }
     $code = $LASTEXITCODE
     foreach ($l in $out) { Write-Host $l }; Write-S9Raw $out
     $code -eq 0
   } finally { Pop-Location }
+}
+
+# R15-3R (S7 wave fixer 3): the screen rects, by UI Automation now, of what R15-3R reads on O - its page area
+# (RootWebArea), the two checkboxes, the status and the block-list summary (s10-rules.ts R3R_READ_ELEMENTS, same order).
+# A missing element or an empty / infinite rect gives rect $null (r3rReadMeasured then says not measured: nothing exempt).
+# Never a text or a title: names and rects only.
+function Get-S10OptionsReadRects([long]$O) {
+  $box = { param($e)
+    if (-not $e) { return $null }
+    $r = $e.Current.BoundingRectangle
+    if ($r.IsEmpty -or [double]::IsInfinity($r.Width) -or [double]::IsInfinity($r.Height) -or $r.Width -le 0 -or $r.Height -le 0) { return $null }
+    [pscustomobject]@{ left = [int][Math]::Floor($r.Left); top = [int][Math]::Floor($r.Top); right = [int][Math]::Ceiling($r.Right); bottom = [int][Math]::Ceiling($r.Bottom) } }
+  $doc = $null
+  try { $doc = Get-S9Options $O } catch { $doc = $null }
+  $summary = $null
+  if ($doc) {
+    $summary = Get-S9ById $doc 'blocklist-summary'
+    if (-not $summary) {
+      $t = @($doc.FindAll([Windows.Automation.TreeScope]::Descendants, (New-Object Windows.Automation.PropertyCondition($S9UIA::ControlTypeProperty, [Windows.Automation.ControlType]::Text))) | Where-Object { $_.Current.Name -match '^\d+ blocked sites?\.' })
+      if ($t.Count -eq 1) { $summary = $t[0] }
+    }
+  }
+  $els = [ordered]@{ 'page' = $doc; 'armed' = $(if ($doc) { Get-S9ById $doc 'armed' }); 'evaluate' = $(if ($doc) { Get-S9ById $doc 'evaluate' }); 'safety-status' = $(if ($doc) { Get-S9ById $doc 'safety-status' }); 'blocklist-summary' = $summary }
+  foreach ($k in $els.Keys) { [pscustomobject]@{ name = $k; rect = (& $box $els[$k]) } }
 }
 
 # s9-win.ps1 Find-S9FreePlacement with the row as a parameter: W's monitor work area first, then the others, each cut at
@@ -254,14 +284,138 @@ function Get-S9PinState([long]$Hwnd) { Get-S10PinState $Hwnd }
 # sha256 - the only found state the wave runs from, R15-FOUND), and daemon.status (s9.ts wait-safety). Prints the
 # STATE line (the sha256 only when it is the empty text's) and one `LEG <leg> <phase>: …` line; on a mismatch a STOP
 # line. The window is closed. Returns $true when equal. It presses nothing.
-function Test-S10LegState([ValidateSet('PP1', 'RET-1')][string]$Leg, [ValidateSet('start', 'end')][string]$Phase) {
-  $h = $null; $s = $null; $d = $false
+#
+# S7 fixer #223 (2026-10-25; decisions.md #223, after Return 5): Return 5's read after RET-1's relaunch threw `expected
+# exactly 1 new Chrome window, found 2` - session restore was bringing the user's windows back while the helper waited for
+# its own - and so printed "NOT equal" for a state it never compared. Now, before the check window is opened:
+#   1. Wait-S10StableWindows: every visible Chrome window (-AnyTitle, so a restore window still untitled or a bubble
+#      counts too) is polled every $S10LegPollMs; the set (handles, order ignored) must stay unchanged for
+#      $S10LegQuietMs, within $S10LegBoundMs. Past the bound -> a STOP, no window opened. No chrome.exe at all -> a STOP
+#      (opening a window would START Chrome).
+#   2. Open-S10MarkedWindow: `chrome.exe --new-window "data:text/html,<title>s15leg-<guid>"` - a per-call marker in the
+#      window title (Chrome 156 measured: the title is `<marker> - Google Chrome`, the omnibox shows the data: URL; probe
+#      in S7-fix223.md). Exactly one titled Chrome window carrying the marker is mine; 0 or >= 2 -> a STOP saying how many,
+#      and nothing is typed into, moved or closed in any window. The omnibox must show the marker URL before the
+#      options URL is typed into that window (Set-S9Omnibox); the window is closed by its handle only, and only while the
+#      handle still names it (Close-S10MarkedWindow: same pid and class, AND the title recorded at pick time or the
+#      marker / options URL exactly in its address bar - #223 round 2; else "not closed", nothing touched).
+# A window STOP returns $false before any read: it is never folded into "the read threw -> NOT equal". The rules are
+# recipes/s10-rules.ts legWinStep / markedVerdict, mirrored here and tied by recipes/test/s10-rules.test.ts.
+$S10LegQuietMs = 5000
+$S10LegBoundMs = 60000
+$S10LegPollMs = 500
+$S10LegMarkWaitMs = 15000
+$S10LegSettleMs = 700
+
+# $true = the set of visible Chrome windows did not change for $S10LegQuietMs; $false = a STOP line was printed (the
+# bound passed, or Chrome is not running). It opens, types into, moves and closes nothing; it prints counts only.
+function Wait-S10StableWindows([string]$Leg, [string]$Phase) {
+  $t0 = Get-Date; $prev = $null; $since = $t0; $changes = 0; $set = @(); $same = 0; $el = 0; $chrome = 0
+  while ($true) {
+    $chrome = @(Get-Process chrome -ErrorAction SilentlyContinue).Count
+    $set = @(Get-S9ChromeWindows -AnyTitle | Sort-Object)
+    $now = Get-Date
+    $key = $set -join ','
+    if ($null -eq $prev -or $key -ne $prev) { if ($null -ne $prev) { $changes++ }; $prev = $key; $since = $now }
+    $same = [int]($now - $since).TotalMilliseconds; $el = [int]($now - $t0).TotalMilliseconds
+    # s10-rules.ts legWinStep (mirrored)
+    $step = if ($chrome -eq 0) { 'no-chrome' } elseif ($same -ge $S10LegQuietMs) { 'stable' } elseif ($el -ge $S10LegBoundMs) { 'timeout' } else { 'wait' }
+    if ($step -ne 'wait') { break }
+    Start-Sleep -Milliseconds $S10LegPollMs
+  }
+  if ($step -eq 'no-chrome') { Stop9 "LEG $Leg ${Phase}: not read - Chrome is NOT running (0 chrome processes); no window opened (it would start Chrome); RETURN to the step agent"; return $false }
+  if ($step -eq 'timeout') { Stop9 "LEG $Leg ${Phase}: not read - Chrome's set of windows did not stay unchanged for $S10LegQuietMs ms within $S10LegBoundMs ms ($changes change(s), $($set.Count) window(s) at the end); no window opened, nothing typed, moved or closed; RETURN to the step agent"; return $false }
+  Say9 "LEG $Leg ${Phase}: Chrome's window set stable - $($set.Count) visible window(s) unchanged for $same ms (after $el ms, $changes change(s)); $chrome chrome process(es)"
+  $true
+}
+
+# The titled Chrome windows whose title contains $Marker (a plain substring match, no wildcard). Handles only.
+function Get-S10MarkedWindows([string]$Marker) {
+  @(Get-S9ChromeWindows | Where-Object { [S9Win]::Text([IntPtr]$_).Contains($Marker) })
+}
+
+# Opens the check window on a fresh per-call marker and returns @{ h; pid; marker } for the ONE window carrying it, or
+# $null after a STOP line (0 or >= 2 marked windows: none is touched; or the marked window's omnibox not on the marker
+# URL: that window - mine by its marker - is closed by its handle). It types nothing (the caller types the options URL).
+function Open-S10MarkedWindow([string]$Leg, [string]$Phase) {
+  $marker = 's15leg-' + [guid]::NewGuid().ToString('N')
+  $url = "data:text/html,<title>$marker</title>"
+  Start-Process -FilePath (Get-S9Chrome) -ArgumentList '--new-window', $url
+  $t0 = Get-Date; $m = @()
+  do { Start-Sleep -Milliseconds 300; $m = @(Get-S10MarkedWindows $marker) } until ($m.Count -ge 1 -or ((Get-Date) - $t0).TotalMilliseconds -ge $S10LegMarkWaitMs)
+  Start-Sleep -Milliseconds $S10LegSettleMs
+  $m = @(Get-S10MarkedWindows $marker)
+  $ms = [int]((Get-Date) - $t0).TotalMilliseconds
+  # s10-rules.ts markedVerdict (mirrored)
+  $v = if ($m.Count -eq 1) { 'one' } elseif ($m.Count -eq 0) { 'none' } else { 'several' }
+  if ($v -ne 'one') { Stop9 "LEG $Leg ${Phase}: not read - $($m.Count) Chrome window(s) carry this call's marker (need exactly 1) after $ms ms; nothing typed, moved or closed in any window; RETURN to the step agent"; return $null }
+  $h = [long]$m[0]
+  $wpid = [uint32]0; [void][S9Win]::GetWindowThreadProcessId([IntPtr]$h, [ref]$wpid)
+  if (-not $global:S9WinIds) { $global:S9WinIds = @{} }
+  $global:S9WinIds[[string]$h] = [int]$wpid
+  $mw = @{ h = $h; pid = [int]$wpid; marker = $marker; url = $url; title = [S9Win]::Text([IntPtr]$h) }
+  $u = ''
   try {
-    $h = Open-S9ChromePage $S9OptionsUrl
-    $s = Read-S9SafetyState $h -PassThru
+    $omni = Get-S9Omnibox $h
+    $t1 = Get-Date
+    do { $u = "$($omni.GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).Current.Value)"; if ($u -cne $url) { Start-Sleep -Milliseconds 200 } } until ($u -ceq $url -or ((Get-Date) - $t1).TotalSeconds -gt 5)
+  } catch { $u = '' }
+  if ($u -cne $url) {
+    Stop9 "LEG $Leg ${Phase}: not read - the one marked window $h does not show the marker URL in its address bar; nothing typed; it is closed by its handle; RETURN to the step agent"
+    Close-S10MarkedWindow $mw
+    return $null
+  }
+  Say9 "LEG $Leg ${Phase}: my check window $h - the only window carrying this call's marker (after $ms ms), its address bar on the marker URL"
+  $mw
+}
+
+# The address bar's text and the document URL of window $Hwnd, each read ONCE (no wait loop: Get-S9Omnibox polls up to
+# 15 s); a failed read gives ''. Read-only: nothing focused, typed or moved. Not printed (URLs are never logged).
+function Get-S10WindowUrls([long]$Hwnd) {
+  $o = ''; $d = ''
+  try {
+    $c = New-Object Windows.Automation.PropertyCondition($S9UIA::ClassNameProperty, 'OmniboxViewViews')
+    $e = $S9UIA::FromHandle([IntPtr]$Hwnd).FindFirst([Windows.Automation.TreeScope]::Descendants, $c)
+    if ($e) { $o = "$($e.GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).Current.Value)" }
+  } catch { $o = '' }
+  try { $d = "$(Get-S9DocUrl $Hwnd)" } catch { $d = '' }
+  @($o, $d)
+}
+
+# Closes the marked window by its handle, only while it can still be PROVED to be the check window (#223 round 2,
+# verifier MINOR: every Chrome window shares the browser pid, so pid + class alone cannot tell it from another Chrome
+# window that reused the handle): a live window of the recorded pid and class Chrome_WidgetWin_1 AND either its title
+# exactly the one recorded when it was picked (it carries the per-call marker) or its address bar / document URL exactly
+# the marker URL or this extension's options URL. Otherwise a "not closed" line and nothing touched. The rule is
+# recipes/s10-rules.ts closeMarkedVerdict, mirrored by the $v line (tied by recipes/test/s10-rules.test.ts).
+function Close-S10MarkedWindow($Mw) {
+  $h = [long]$Mw.h
+  $wpid = [uint32]0; $cls = ''; $title = ''; $urls = @()
+  $live = [S9Win]::IsWindow([IntPtr]$h)
+  if ($live) {
+    [void][S9Win]::GetWindowThreadProcessId([IntPtr]$h, [ref]$wpid)
+    $cls = [S9Win]::Cls([IntPtr]$h)
+    $title = [S9Win]::Text([IntPtr]$h)
+    $urls = @(Get-S10WindowUrls $h)
+  }
+  # s10-rules.ts closeMarkedVerdict (mirrored)
+  $v = if (-not $live) { 'gone' } elseif ([int]$wpid -ne [int]$Mw.pid -or $cls -ne 'Chrome_WidgetWin_1') { 'not-mine' } elseif (($title -and $title -ceq $Mw.title) -or ($Mw.url -and $urls -ccontains $Mw.url) -or ($urls -ccontains $S9OptionsUrl)) { 'close' } else { 'not-mine' }
+  if ($v -eq 'close') { Close-S9Window $h }
+  elseif ($v -eq 'gone') { Say9 "window $h is gone - not closed" }
+  else { Say9 "window $h cannot be proved to be my check window (pid, class, title or address no longer match) - not closed" }
+}
+
+function Test-S10LegState([ValidateSet('PP1', 'RET-1', 'RET-1R')][string]$Leg, [ValidateSet('start', 'end')][string]$Phase) {
+  $s = $null; $d = $false; $mw = $null
+  if (-not (Wait-S10StableWindows $Leg $Phase)) { return $false }
+  $mw = Open-S10MarkedWindow $Leg $Phase
+  if (-not $mw) { return $false }
+  try {
+    Set-S9Omnibox $mw.h $S9OptionsUrl
+    $s = Read-S9SafetyState $mw.h -PassThru
     $d = Test-S9DaemonSafety $true $true 0 "$Leg-$Phase" 5000
   } catch { Say9 "LEG $Leg ${Phase}: the read threw: $($_.Exception.Message)" }
-  finally { if ($h) { Close-S9Window $h } }
+  finally { Close-S10MarkedWindow $mw }
   $page = $s -and ($s.armed -eq $true) -and ($s.evaluate -eq $true) -and ($s.count -eq '0') -and ($s.lines -eq 0)
   $shaEq = if ($s -and $s.sha256 -eq $S9EmptySha) { 'equal' } else { 'DIFFERENT' }
   $ok = $page -and $d -and ($shaEq -eq 'equal')

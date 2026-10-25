@@ -111,7 +111,58 @@ throwaway headless Chrome with its own temporary profile (SAVE-IDONLY; never the
   occluder (a popup owned by the driver's own options window O) from the placement guard is the user's call (#212). **SAVE-REFUSE's
   FAIL stands** as recorded. After block 35 (teardown): PP1, then RET-1, exactly as sheet §7 and §6 say. The 10
   leftover `s15v-*` files in `%TEMP%\bridge-e2e\s15\sv` (attempt 2's `saveTo` rows; teardown not reached) are deleted
-  by block 35's teardown — never earlier, never by hand.
+  by block 35's teardown — never earlier, never by hand. *(Superseded 2026-10-25 by the S7 wave fixer 3: runner 4's
+  attempt 3 ran to its teardown and PP1, and RET-1 stopped after its kill (Return 4); the next runner runs attempt 4,
+  below.)*
+- **Before attempt 4: the RET-1 end read-back redo (#223)** (sheet §1, "Re-measurements after Return 4", *added
+  2026-10-25 by the S7 fixer #223*). Return 5's end read-back threw before it compared anything, so the next runner's
+  first act — before the reset call below — is the same command as sheet §6 step 3 (with `$env:S9_RAW` as §6 step 1;
+  Chrome is running; nothing is pressed; RET-1 stays NOT MEASURED):
+  `powershell -NoProfile -ExecutionPolicy Bypass -Command ". .\recipes\s10-win.ps1; if (Test-S10LegState -Leg RET-1 -Phase end) { exit 0 } else { exit 2 }"`.
+  Its output goes verbatim into the record under `## RET-1 end read-back (redone under #223)`. Exit 0 with `LEG RET-1
+  end: … -> equal` → go on to attempt 4. `-> NOT equal`, any `STOP: LEG RET-1 end: not read - …` line (a marker STOP
+  among them), or any other exit → **STOP: write the ledger and RETURN at once** (the step agent escalates to the
+  session agent); attempt 4 does not start.
+- **Re-measurements after Return 4 (attempt 4, the next runner)** (sheet §1, "Re-measurements after Return 4 (attempt
+  4)"; §4.22 MCPF-1R, CAP-1R, R15-3R, RET-1R, added before any of them ran):
+
+  **STOP RULE (#193): on any STOP line — a restore that fails, a guard that prints STOP, a human gate (pinning, a
+grant), any throw — run the restore first if the safety state was touched since the found-state record, record its
+read-back, write the ledger, and RETURN to the step agent. A helper may be fixed only between rows, before any
+observation of the next row, and never past a STOP line.**
+
+  The first call is exactly
+  `powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\s10-r15.ps1 -Block reset -Attempt 4 -Skip bbl1,bbl2,mcpf-click,mcpf-type,mcpf-press,cap,sw1,sw1r,pop2,save-a,savefix,save-64,save-64-mcp,prim,idonly,save-ttl,r3,savedis,savejs,saveblk,jsd,off`
+  (never a plain `-Block reset`; attempt 3 is stored as torn down, not stopped, and the reset accepts that). It must
+  print `RESUME attempt 4: …` and the run order `preflight, build, servers, window, daemon, reload, setup, safe0,
+  console, found, rep0, mcpf1r-click, mcpf1r-type, mcpf1r-press, cap1r, r3r, restore, logs, teardown`; `USAGE: …` (exit
+  3) means nothing changed — RETURN, do not adjust the skip set. Then those blocks in that order (`-Block preflight
+  -Prep b55048d`). Every actor starts with tool search off (the runner STOPs if a start line lacks `tool search off`).
+  R15-3R's guards exempt only an occluder whose owner and root owner are driver windows and whose rect overlaps none of
+  the elements read on O, measured at the guard; any other occluder is a STOP, as for R15-3. Block `logs` counts every
+  Run 15 actor transcript (this attempt's and attempts 1–3's). The record gets the heading `## Attempt 4 (runner 5) —
+  re-measurements after Return 4` and continues from its SAFE-0 line. PP1 is not re-run. **After block 35: RET-1R** as
+  the sheet's attempt-4 section says (the fixture server started first and stopped after; `Test-S10LegState -Leg RET-1R`;
+  `recipes\s10-ret1.ps1 -Granted G10-2 -Row RET-1R`, whose relaunch passes no `-ArgLine`). If the script ends with
+  Chrome not running, that is a STOP — return at once, and the first line of your return says "Chrome is NOT running".
+  *Amended 2026-10-25 (#223): was "The end read-back's helper met Return 5 (`expected exactly 1 new Chrome window,
+  found 2`); it is unchanged, so a repeat is a STOP as written", because decisions.md · 2026-10-25 · RET-1's end
+  safety read-back reads only a window the wave opens and marks (#223) changed the helper.* `Test-S10LegState` (every
+  leg, both phases) now waits until Chrome's set of visible windows has not changed for 5 s (bounded at 60 s), opens
+  its check window on a `data:` page titled with a per-call marker (`s15leg-<guid>`), acts only on the one window
+  carrying it, and closes it by its handle. Its new STOP lines — each a RETURN, printed instead of the `-> equal / NOT
+  equal` line — begin `STOP: LEG <leg> <phase>: not read - ` (the window set not stable within 60 s; Chrome NOT running;
+  `<n> Chrome window(s) carry this call's marker (need exactly 1)` — nothing typed, moved or closed in any window; the
+  marked window's address bar not on the marker URL). `-> NOT equal` stays a STOP. `s10-ret1.ps1` now stops with
+  `STOP: RET-1R: Chrome did not reconnect to the bridge within 90 s (… chrome processes now: <n>) …` (exit 2, a RETURN)
+  when the reconnect wait fails, instead of judging.
+  *Amended 2026-10-25 (#223 round 2, verifier MINOR): was "closes it by its handle" while the handle had the
+  recorded pid and class only; every Chrome window shares the browser pid, so it now closes the window only with a
+  proof it is still the check window (its title as recorded when picked, or the marker URL / this extension's options
+  URL exactly in its address bar or document); otherwise it prints `window <h> cannot be proved to be my check window
+  … - not closed` (or `window <h> is gone - not closed`) and touches nothing. Such a line is not a STOP; the runner
+  names the left-over window's handle in its ledger and return (`S7-fix223.md` § Round 2).*
+  MCPF-1, CAP-1, R15-3, SAVE-REFUSE and RET-1 stand as recorded.
 - Long blocks: the PowerShell tool caps a call at 10 min; the longest block (save-ttl) takes about 6 min — call every
   block with the tool's timeout at its maximum (600 000 ms). Every block stops itself within its budget (sheet §1:
   budget + stop procedure ≤ 570 s). **A block that the tool still ends at its cap is a STOP:** run `-Block stop -Why
