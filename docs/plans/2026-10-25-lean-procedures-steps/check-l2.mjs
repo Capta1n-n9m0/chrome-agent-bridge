@@ -29,16 +29,60 @@ const CLAUDE_FILES = git("ls-files --cached --others --exclude-standard").split(
 const newText = Object.fromEntries(CLAUDE_FILES.map((f) => [f, readFileSync(f, "utf8")]));
 
 console.log(`L.1  old gotcha items: ${items.length}; CLAUDE.md files now: ${CLAUDE_FILES.length}`);
+// Cleanup follow-up G (2026-10-25, "gotchas follow the code"): bullets whose text was split between two files get one
+// new headline per part; a bullet folded into another has no headline of its own any more. Every other old headline
+// is found as it was, exactly once.
+const SPLIT = {
+  "The daemon's bind is the lock; the MCP never crashes when there is no daemon.":
+    ["The daemon's bind is the lock.", "The MCP never crashes when there is no daemon"],
+  "The `saveTo` store is worker memory; the file finish uses `link`.":
+    ["The `saveTo` store is worker memory.", "The `saveTo` file finish hard-links `.part` to the target"],
+};
+const MERGED = {
+  "Never log a URL from the service worker": "Never log a pattern, URL or title from the safety code.",
+};
+// Where each bullet moved by follow-up G now lives (headline, file); it must be there once and in no other CLAUDE.md.
+const PLACED = [
+  ["On Windows `spawn(…, {detached: true})` keeps the child in the parent's process tree", "sdk/CLAUDE.md"],
+  ["A pre-Step-6 server on 9234 takes a v2 hello as the extension.", "sdk/CLAUDE.md"],
+  ["Every client must agree on `BRIDGE_PORT`.", "sdk/CLAUDE.md"],
+  ["A daemon spawned through `Start-Process -NoNewWindow` held the caller's output pipe open", "sdk/CLAUDE.md"],
+  ["`ws` emits several frames from one TCP read synchronously", "sdk/CLAUDE.md"],
+  ["The MCP never crashes when there is no daemon", "mcp/CLAUDE.md"],
+  ["The daemon's bind is the lock.", "daemon/CLAUDE.md"],
+  ["`browser_new_tab`'s `active` flag", "mcp/CLAUDE.md"],
+  ["The MCP's trusted tools focus first.", "mcp/CLAUDE.md"],
+  ["Trusted input is `focusFirst`", "sdk/CLAUDE.md"],
+  ["The SDK rewrites a failure report's `candidates` refs", "sdk/CLAUDE.md"],
+  ["The `saveTo` file finish hard-links `.part` to the target", "sdk/CLAUDE.md"],
+  ["The `saveTo` store is worker memory.", "extension/CLAUDE.md"],
+  ["The block list is not a network firewall.", "extension/CLAUDE.md"],
+];
+const countOf = (needle) => CLAUDE_FILES.reduce((n, f) => n + norm(newText[f]).split(needle).length - 1, 0);
+const filesOf = (needle) => CLAUDE_FILES.filter((f) => norm(newText[f]).includes(needle));
 const where = {};
+const homeOf = {}; // old headline -> the files whose text holds it now (for the fidelity check)
 let pairs = 0;
 for (const it of items) {
-  const needle = "**" + it.headline + "**";
-  const hits = CLAUDE_FILES.filter((f) => norm(newText[f]).includes(needle));
-  const count = CLAUDE_FILES.reduce((n, f) => n + norm(newText[f]).split(needle).length - 1, 0);
-  (where[hits.join(",") || "(none)"] ??= []).push(it.headline);
-  if (hits.length !== 1 || count !== 1) bad(`headline in ${hits.length} files / ${count} places: ${it.headline.slice(0, 80)} -> [${hits.join(", ")}]`);
+  const parts = SPLIT[it.headline] ?? null;
+  if (MERGED[it.headline]) {
+    const own = "**" + it.headline + "**", home = "**" + MERGED[it.headline] + "**";
+    if (countOf(own) !== 0 || countOf(home) !== 1) bad(`merged bullet: own headline x${countOf(own)}, home x${countOf(home)}: ${it.headline.slice(0, 70)}`);
+    else { pairs++; homeOf[it.headline] = filesOf(home); (where[filesOf(home)[0]] ??= []).push(it.headline); }
+    continue;
+  }
+  const needles = (parts ?? [it.headline]).map((h) => "**" + h + "**");
+  const ok = needles.every((n) => filesOf(n).length === 1 && countOf(n) === 1) && countOf("**" + it.headline + "**") === (parts ? 0 : 1);
+  homeOf[it.headline] = needles.flatMap((n) => filesOf(n));
+  (where[homeOf[it.headline].join(",") || "(none)"] ??= []).push(it.headline);
+  if (!ok) bad(`headline in ${homeOf[it.headline].length} files: ${it.headline.slice(0, 80)} -> [${homeOf[it.headline].join(", ")}]`);
   else pairs++;
 }
+for (const [h, f] of PLACED) {
+  const n = "**" + h + "**";
+  if (countOf(n) !== 1 || filesOf(n)[0] !== f) bad(`moved bullet not only in ${f}: ${h.slice(0, 70)} -> [${filesOf(n).join(", ")}] x${countOf(n)}`);
+}
+console.log(`  moved bullets (follow-up G) each in its one expected file: ${PLACED.length}`);
 console.log(`  headlines found in exactly one file, once: ${pairs}/${items.length}`);
 for (const [f, hs] of Object.entries(where)) console.log(`    ${f}: ${hs.length}`);
 
@@ -48,9 +92,9 @@ const stripNotes = (s) => s.replace(/\*(?:Superseded|Corrected|Updated)\b[\s\S]*
 const shingles = (s, k = 6) => { const w = norm(s).split(" "); const out = []; for (let i = 0; i + k <= w.length; i++) out.push(w.slice(i, i + k).join(" ")); return out; };
 const lowFidelity = [];
 for (const it of items) {
-  const f = CLAUDE_FILES.find((f) => norm(newText[f]).includes("**" + it.headline + "**"));
-  if (!f) continue;
-  const hay = norm(newText[f]);
+  const fs = [...new Set(homeOf[it.headline] ?? [])];
+  if (!fs.length) continue;
+  const hay = norm(fs.map((f) => newText[f]).join("\n"));
   const sh = shingles(stripNotes(it.body).replace(/^- /, ""));
   const miss = sh.filter((s) => !hay.includes(s)).length;
   if (sh.length && miss / sh.length > 0.02) lowFidelity.push(`${(100 * miss / sh.length).toFixed(1)}% of ${sh.length} six-word runs changed: ${it.headline.slice(0, 70)}`);
@@ -109,7 +153,9 @@ for (const e of oldEntries) {
   if (got.length === 1) ok++; else bad(`entry ${got.length}x: ${e.split("\n")[0].slice(0, 90)}`);
 }
 console.log(`  entries present once, text identical: ${ok}/${oldEntries.length}`);
-if (newEntries.length !== oldEntries.length) bad("entry counts differ");
+// Entries recorded after the baseline (e.g. #231, 2026-10-25) are new, not lost: only fewer entries than the baseline is a failure.
+if (newEntries.length < oldEntries.length) bad("entry counts differ");
+else if (newEntries.length > oldEntries.length) console.log(`  (${newEntries.length - oldEntries.length} entry/entries recorded since the baseline, not compared)`);
 
 
 // Standing decisions: every line must name an entry that exists in the file it points to.

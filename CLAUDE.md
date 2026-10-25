@@ -14,8 +14,7 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
 ## Current state (2026-10-25, Step 10 closed; lean procedures in place)
 
 - **Shipped:** Steps 1–9 (Step 9 — Phase E safety — closed 2026-10-24, #202; Step 8 closed 2026-10-24, wave W2,
-  #106–#127). Public on GitHub (MIT). **23 tools, 26 codes (25 on the wire), 26 router methods, 3273 tests in 132
-  files** (`npm test` 2026-10-25 at `025bdef`).
+  #106–#127). Public on GitHub (MIT). **23 tools, 26 codes (25 on the wire), 26 router methods** (the test count: Commands).
 - **Step 10 — the Step 8 follow-ups — built and E2E-run 2026-10-25** (Runs 14–15), as-built
   `docs/plans/2026-10-24-step10-step8-follow-ups-asbuilt.md`: the MCP's trusted tools focus first (#106, #214); the
   800-cap warning (`pastSnapshotCap`, the SDK `warning` event, the MCP line; #117, #206, #216); `browser_evaluate
@@ -75,9 +74,7 @@ opened, claimed, or a popup of a held tab), and a call on another client's tab f
 each handler acts on `targetTab(p)`, in the background. Only a default-mode viewport screenshot and
 `focusTab` need the screen; they run under the daemon's one FIFO **visibility lock**. A tab call
 with no `tab` is refused `BAD_PARAMS "tab is required"` (network calls excepted: no `tab` means the
-human's tab). The MCP keeps a **cursor**: its first untargeted tool claims the human's tab and keeps
-it, and only `browser_select_tab`, `browser_new_tab` and `browser_use_active_tab` move it
-(`mcp/src/cursor.ts`). A script uses the SDK's typed `Tab` (`client.newTab()` / `claim()`; the
+human's tab). The MCP keeps a **cursor** (`mcp/src/cursor.ts`; its rule: `mcp/CLAUDE.md`). A script uses the SDK's typed `Tab` (`client.newTab()` / `claim()`; the
 client's own cursor is `client.tab()`): its actions take a ref or a **locator** (`{role, name}`,
 `{text}`, `{css}`), resolved in the content script by the snapshot's own walk, and a failure on the
 page carries a **failure report** (snapshot, screenshot, network). Network capture is separate and always on: six top-level
@@ -120,7 +117,7 @@ Details and measured facts are in the package file named; the integrity floor is
 npm install
 npm run build        # daemon/dist/index.js + mcp/dist/index.js + extension/dist/{sw,options,offscreen,content}.js
 npm test             # vitest — 3273 passed, 132 files (`npm test` 2026-10-25 at 025bdef; recipes/test included)
-npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension (chained with &&: the first failure hides the rest)
+npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension (chained with `&&`; see the cross-package gotchas below)
 npm run recipe -- recipes/<file>.ts [args]   # a script against the SDK, run with tsx (= npx tsx recipes/<file>.ts)
 npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10 cover the others; all five exit 0 since Step 10 S8)
 ```

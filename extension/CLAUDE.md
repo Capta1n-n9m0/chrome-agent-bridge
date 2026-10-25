@@ -3,8 +3,8 @@
 The root `CLAUDE.md` and `docs/agent-rules.md` also apply. Three sub-folders have their own `CLAUDE.md`, loaded only when
 you open a file there; read the one whose topic you touch from elsewhere in `extension/`:
 - `src/content/` — IIFE build, snapshot rules, `centerOf`, content-script failures, locators and `a11y.ts`, `locate` vs RefMap, marks.
-- `src/evaluate/` — `returnByValue` flattening, `replMode` levels, primitive values over CDP, the `saveTo` store.
-- `src/handlers/` — `browser_download` from the worker, `tabId` and `targetTab`, `newTab` in the background, the CDP screenshot refusal, redirects onto blocked hosts.
+- `src/evaluate/` — `returnByValue` flattening, `replMode` levels, primitive values over CDP.
+- `src/handlers/` — `browser_download` from the worker, `tabId` and `targetTab`, `newTab` in the background, the CDP screenshot refusal.
 
 ## Key files
 - `extension/src/`: `sw.ts` (the `GatedRouter` + offscreen orchestration; the top-level `chrome.tabs.on*`,
@@ -100,6 +100,14 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
 - **`describeDebuggerError(err, what)` / `withDebugger(tabId, fn, what)` take a caller name** —
   it's interpolated into the restricted-URL and timeout messages ("Trusted input" by default,
   `"browser_evaluate"`, `"Full-page screenshot"`).
+- **The `saveTo` store is worker memory.** The value waits in `EvaluateSaveStore`
+  (`extension/src/evaluate-save-store.ts`: 5 min TTL refreshed per pull, 8 entries, 256 MiB per value and in
+  total), dropped at a worker restart, a disarm, JavaScript off, the tab's close or replace, or the TTL; a later
+  pull answers `INTERNAL Unknown or expired evaluateSave id: <id>` and the SDK removes `.part` (S4.md §6 candidate
+  2; unit + cross-package tests; Run 15 SAVE-TTL, SAVE-CLOSE, SAVE-DISARM, SAVE-JSOFF). The extension never sees the path; the SDK's file finish is in `sdk/CLAUDE.md`. A refusal thrown inside
+  `withDebugger` reaches the wire prefixed `[chrome.debugger] ` (`describeDebuggerError`; Run 15 SAVE-REFUSE;
+  decisions.md · 2026-10-25 · S7: SAVE-REFUSE's `[chrome.debugger] ` prefix — the product stays for now; a fix is
+  offered (#227)).
 - **A module service worker must not use top-level `await`** — Chrome fails the worker with
   `TypeError: Top-level await is disallowed in service workers`, since the script must finish
   evaluating synchronously for its listeners to be known. The network log therefore ingests into
@@ -121,15 +129,13 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   `evictOldest(0.5)` and retries once (writing the union of both dirty sets). The 25 s keepalive
   alarm means the worker rarely idles out, so the write-through is really insurance against a forced
   stop or a crash.
-- **Never log a URL from the service worker** — URLs carry tokens. The network code prints counts
-  only (`[bridge] network: rehydrated N entries`). Same rule for header values and bodies.
 - **Build fact: esbuild keeps comments placed inside array literals** in the bundle (S0 bundle diff, S0.md
   §6 item 3) — keep comments out of literals where a bounded bundle diff is checked.
 
 ### Tabs, trusted input and capture
 - **Only `captureVisibleTab` needs the tab on screen** — the default (`switch`) viewport screenshot,
   the one call the daemon locks besides `focusTab` (`daemon/src/methods.ts`; `selectTab` was removed
-  in Step 8 S2b, and the daemon answers it `UNKNOWN_METHOD` itself — #94 item 1). Everything
+  in Step 8 S2b, and the daemon answers it `UNKNOWN_METHOD` itself — decisions.md · 2026-10-23 · S2b's details: the `selectTab` refusal grep, the marker's edge cases, the handle mark (#94) item 1). Everything
   else runs on a background tab by design; measured there: `waitFor {text}` and `networkIdle` work
   (Run 8 BG-4: text after 3746 ms, idle after 552 ms, the tab hidden throughout).
   Trusted input does not (next bullet); `fullPage` (CDP) on a hidden or minimized tab is unmeasured
@@ -146,18 +152,7 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   reached the page 0/3, typing 2/3 (trial 3 got `ped`: the first five characters lost) and a key press
   0/3 (FE-1…FE-3); the control without it 0/12 (FE-5); nothing the human sees changed (FE-4 9/9). While
   it is on, the **target page reads `visible`** (3–7 ms into the call, `hidden` again 14–39 ms in), so
-  a page-side visibility check is no proof of what the human saw. Hence the policy `"focusFirst"`
-  (`sdk/src/policy.ts`): the SDK's `Tab.click/type/pressKey({trusted:true})` call `focusTab` first — the
-  tab comes to the front of its window, the window is focused, and it stays there; the SDK never sends
-  `focusEmulation` (decisions.md · 2026-10-23 · The background-input policy (#89); · FE's rows and outcome
-  table, amended before anything is measured (#78)). Since Step 10 S2 the MCP's trusted `browser_click`/
-  `browser_type`/`browser_press_key` do the same: `focusTab {tab}` on the resolved handle, then the input on the
-  same handle; a `focusTab` error is the answer and the input is not sent; untrusted actions never focus; the
-  cursor does not move (`mcp/src/tools/registry.ts`; decisions.md · 2026-10-24 · FE and `focusFirst` are ratified;
-  the MCP's trusted tools focus first too (#106); · 2026-10-25 · S2: the MCP schema baseline, a failed focus's
-  answer, and the focus sentence (#214)). Measured: 9/9 trusted inputs reached a background fixture tab, the tab
-  in front after (Run 15 MCPF-1R). Focus and input are two calls, so another actor's capture in the same window
-  can come between them (phase doc 0.2, Stage 0 F19; not seen live). An untrusted action whose content path fails is escalated to CDP by the extension itself, out
+  a page-side visibility check is no proof of what the human saw. Hence the policy `"focusFirst"`: the SDK's and the MCP's trusted input call `focusTab` first (`sdk/CLAUDE.md`, `mcp/CLAUDE.md`). An untrusted action whose content path fails is escalated to CDP by the extension itself, out
   of the SDK's sight, so on a background tab it can still answer `ok` and do nothing; pass `trusted`
   or call `focus()` when it must land. A clipboard write in `evaluate` likewise needs `focusTab` (BG-3:
   `NotAllowedError … Document is not focused`).
@@ -230,7 +225,16 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   not allowed in API based extension navigations. …`, page unchanged (Run 13 SAFE-6c, JavaScript on,
   record). With JavaScript off the gate refuses first (Run 13: `DISARMED`, scope `evaluate`, SAFE-6; since Step 10
   S4b `JS_DISABLED` with no `data`, measured live in Run 15 JSD; #202, #219).
-- **Never log a pattern, URL or title from the safety code.** The gate, matcher and state modules have no
+- **The block list is not a network firewall.** A redirect hop of a bridge `navigate` or `downloadStart`
+  onto a blocked host is still requested; the post-check refuses the reply and a download drops its bytes
+  (`downloadStart` checks its own URL, then `res.url`, #140, #154). The post-redirect download check is
+  measured live: a download redirected onto a blocked host was refused `DOMAIN_BLOCKED` in 76 ms with no file, and
+  the server saw the hop and the target each requested once (Run 14 R14-5c, on the threaded `s9-redirect.py`;
+  S1.md Findings 4).
+  A cross-origin frame of a blocked host shows in screenshots (stage0-audit F16, by reading).
+- **Never log a pattern, URL or title from the safety code.** Nor a URL from anywhere else in the service worker: URLs
+  carry tokens, the network code prints counts only (`[bridge] network: rehydrated N entries`), and the same rule holds for
+  header values and bodies. The gate, matcher and state modules have no
   log call; a press logs one fixed line (`badge.ts` `toggleLogLine`); the daemon logs booleans and the
   count (`intercept.ts` `safetyLogLine`). `log-scan.test.ts` allowlists every log site (54 at S2b — extension
   15, daemon 33, sdk 0, mcp 6) and `log-sentinel.test.ts` runs the real daemon on port 0 (#187). Run 13:

@@ -60,7 +60,46 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   PNGs go to `BRIDGE_FAILURES_DIR`, else `~/.chrome-agent-bridge/failures/` — outside the repo; a
   script on a real site's private pages passes `connect({failureReports: false})`, as
   `recipes/blackboard/boot-bb.ts` and `export-grades.ts` do.
+- **On Windows `spawn(…, {detached: true})` keeps the child in the parent's process tree** — Windows
+  keeps `ParentProcessId`, so `taskkill /T` on a *live* parent kills the "detached" daemon too; a child
+  whose spawner had already exited survived the same tree kill (measured with test processes, Stage 0
+  audit F3, 2026-10-22). Whether Claude Code ends MCP servers that way is not established; the D6 wave
+  (MUX-7) measures it (decisions.md · 2026-10-22 · The detached daemon's survival depends on how the
+  session's MCP is killed).
+- **A pre-Step-6 server on 9234 takes a v2 hello as the extension.** The old host accepts any hello
+  with the right token as the extension, so a Step 6 client replaces the real extension's slot, gets
+  no welcome, and leaves that old session broken (measured on port 0, Stage 0 audit F1, 2026-10-22).
+  The SDK waits 2 s for the welcome, then gives up with `VERSION` and never spawns or hands over
+  (`WELCOME_TIMEOUT_MS`, `sdk/src/knock.ts`). End every pre-Step-6 session before starting a Step 6 one.
+- **Every client must agree on `BRIDGE_PORT`.** A client spawns its daemon on its own port, so an MCP
+  on 9235 and a script on 9234 start two daemons and the extension (one port in its Options) reaches
+  only one; the other client waits and blames Chrome (Stage 0 audit F24, by reading the code, 2026-10-22).
+  `BRIDGE_DAEMON` (a dev override of the daemon path) must be a native Windows path on Windows: Node
+  resolves `/c/Users/…` to `C:\c\Users\…` (F24); `paths.ts` names that in its error.
+- **A daemon spawned through `Start-Process -NoNewWindow` held the caller's output pipe open** — a
+  PowerShell call that ran recipes that way returned only when that daemon was stopped (W1 MUX-6,
+  2026-10-22, by correlation); a plain foreground `npx tsx recipes/hello.ts` returned at once. Run
+  wave blocks with their output to a file, or stop the daemon after. Measured since: `spawnDaemon`
+  inherits no pipe — node parent, `sdk/test/spawn-inherit.test.ts`: end-of-file 3–6 ms before the
+  child's exit with the stand-in daemon alive in 6 runs, while the `stdio:"inherit"` control held the
+  pipe every run; npx parent one ad-hoc trial. The MUX-6 cause remains unmeasured (decisions.md ·
+  2026-10-23 · S3.5's outcome and the Step 6 revisit items (#91)).
+- **`ws` emits several frames from one TCP read synchronously**, before any promise continuation
+  runs. A one-shot listener that settles a promise and unsubscribes later swallows the frames behind
+  the one it waited for: the knock lost an `extensionStatus` sent in the same read as the `welcome`, so
+  `connect()` waited 15 s and blamed Chrome (D4 verifier, measured, 2026-10-22). Unsubscribe inside the
+  listener's own callback.
+- **The `saveTo` file finish hard-links `.part` to the target** (`sdk/src/evaluate-save.ts`). `fs.rename` replaces an existing target on Windows and POSIX alike, so the no-overwrite finish
+  hard-links `.part` to the target (fails `EEXIST` → `BAD_PARAMS`) and falls back to re-check + rename only where
+  links are unsupported (S4.md §6 candidate 3, measured on NTFS by the S4 verifier; decisions.md · 2026-10-25 · S4:
+  `saveTo`'s wire methods, refusals, store caps, SDK form and file finish (#218)).
+- **The SDK rewrites a failure report's `candidates` refs** (`sdk/src/error.ts`). The SDK
+  rewrites the `candidates` refs in a report's `error.data` to the attached snapshot's (unique role +
+  name hit) or drops them (decisions.md · 2026-10-23 · S4's failure-report details, and how the MCP
+  reaches them (#93)). A snapshot, the report's own included, renumbers the tab's refs (`extension/src/content/CLAUDE.md`, the `locate` bullet).
+- **Trusted input is `focusFirst`** (`sdk/src/policy.ts`). Trusted CDP input into a background tab answers `ok` and does nothing, and focus emulation does not fix it (measured: `extension/CLAUDE.md`, Tabs, trusted input and capture). The SDK's `Tab.click/type/pressKey({trusted:true})` call `focusTab` first — the
+  tab comes to the front of its window, the window is focused, and it stays there; the SDK never sends
+  `focusEmulation` (decisions.md · 2026-10-23 · The background-input policy (#89); · FE's rows and outcome
+  table, amended before anything is measured (#78)).
 
-`saveTo`'s file finish (`.part`, the hard link) is in `extension/src/evaluate/CLAUDE.md`, beside the extension's store.
-
-The rules that shape this package's knock, spawn and handover are in `daemon/CLAUDE.md`: the daemon outliving its session, a pre-Step-6 server on the port, `BRIDGE_PORT` and `BRIDGE_DAEMON` agreement, the `Start-Process` pipe fact, `spawn(…, {detached:true})` keeping the child in the parent's process tree on Windows, and several `ws` frames emitted from one TCP read (the knock once lost an `extensionStatus` to it).
+The daemon's own lifecycle (outliving its session, the bind being the lock) is in `daemon/CLAUDE.md`; the `saveTo` store is in `extension/CLAUDE.md`; the MCP's trusted tools focus first too (`mcp/CLAUDE.md`).

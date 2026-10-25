@@ -69,10 +69,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   and the toolbar's Reload is also named "Reload" (AutomationId `view_1003`), so never match by name.
   An unpacked extension's id is sha256(absolute path as UTF-16LE), first 16 bytes as letters a–p.
   Proof of a reload: a new `extension resync` line in `daemon.log` in the same second (5 of 5).
-  (RELOAD-AUTO F1–F6.) Since Step 8 S2b a reload's hello waits up to 2 s for the
-  session marker, so the line can come later: pressed 16:53:10.415Z, resync stamped 16:53:12Z, and the
-  script still found it and exited 0 (Run 12 SM-0, one reload; decisions.md · 2026-10-23 · S2b's
-  details … (#94), whose Revisit-if names this).
+  (RELOAD-AUTO F1–F6.) Since Step 8 S2b a reload's hello waits up to 2 s for the session marker, so the `extension resync` line can come later than the press and the script still finds it (the timings and the decision: `daemon/CLAUDE.md`, the session-marker bullet).
 - **UIA `TabItem` is not a tab count**: a page element with `role="tab"` is a `TabItem` too (empty
   ClassName); the tab strip's tabs have ClassName `Tab` (BG-FLAGS finding 3).
 - **The driver's shell runs inside a job object** (limit flags `0x800`, breakaway allowed), and a

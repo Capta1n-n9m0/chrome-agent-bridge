@@ -52,15 +52,11 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply. `extension/CLAUDE.md`
   `refs.add` and never calls `buildSnapshot` (S1.4: `grep -rn "reset"` and `grep -rn buildSnapshot`
   on `extension/src/content/locate.ts` both empty). A `snapshot` — including the one a failure report takes —
   renumbers the tab's refs, so a ref held from before it silently names another element once the page
-  changed (measured by the S4 verifier with the real content-script code in jsdom; S4.md §6). The SDK
-  rewrites the `candidates` refs in a report's `error.data` to the attached snapshot's (unique role +
-  name hit) or drops them (decisions.md · 2026-10-23 · S4's failure-report details, and how the MCP
-  reaches them (#93)).
+  changed (measured by the S4 verifier with the real content-script code in jsdom; S4.md §6). The SDK rewrites a failure report's `candidates` refs (`sdk/CLAUDE.md`).
 - **node → ref crosses worlds through a `data-__bridge-mark` attribute.** `evaluate {asRef}` runs in the
   page's main world (CDP); the RefMap lives in the content script's isolated world. The serialiser's
   own `Runtime.callFunctionOn` sets a fresh unique mark (`evaluate/mark.ts` `newMark`) on a connected
   Element, then `refOfMarked` (`content/marked.ts`) finds it by `getAttribute`, mints the ref through the
   RefMap and removes the attribute from every carrier on every path; a lost reply or failed content call
   sweeps it; none found → `REF_STALE`, several → `INTERNAL`; a non-Element value → `BAD_PARAMS` (`asRef
-  needs an Element; the value is not one`, Run 12 ASREF-1) (decisions.md · 2026-10-23 · #87 item 6;
-  #92 item 1; #99 item 6). Never leave the mark on the element or use a non-unique one.
+  needs an Element; the value is not one`, Run 12 ASREF-1) (decisions.md · 2026-10-23 · S1's locator details (#87) item 6; · S2's handler details: the mark rides the serialiser, `pressKey` takes a target, `waitFor {locator}` rules (#92) item 1; · S6's findings ruled: the user's answers, stage S6b for REP-1, re-registered rows (#99) item 6). Never leave the mark on the element or use a non-unique one.

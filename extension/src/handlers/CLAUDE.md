@@ -13,11 +13,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply. `extension/CLAUDE.md`
   non-integer → `BAD_PARAMS`, a string `tab` (a handle an old daemon forwarded) → `BAD_PARAMS`, absent →
   `BAD_PARAMS "<method> requires tabId"`; `grep -rn "targetTab({}" extension/src` is empty. Don't
   restore the fallback (a Step 8 forbidden fix), and don't make the daemon omit `tabId`.
-- **`newTab` opens in the background unless `active: true` is passed** (`handlers/tabs.ts`; T3.4). The
-  MCP's `browser_new_tab` sends `active: true` only when the cursor is set and `listTabs` shows its tab
-  as `current` (the human is watching this session's tab); otherwise — a session's first tab, a lost
-  cursor, a failed listing — it opens in the background and says ` (in the background —
-  browser_focus_tab shows it)`. Don't change the extension's default back.
+- **`newTab` opens in the background unless `active: true` is passed** (`handlers/tabs.ts`; T3.4). The MCP's rule for `browser_new_tab` is in `mcp/CLAUDE.md`. Don't change the extension's default back.
 - **`screenshot {mode:"cdp"}` hung on a hidden or minimized tab, so it now refuses.** Run 8: a
   background tab → `TIMEOUT` after 35 s with the banner up, and the next `evaluate` on another tab got
   a transient `DEBUGGER_DEVTOOLS` (SCREEN-2); a minimized window → `TIMEOUT` after 25 s (SCREEN-4).
@@ -25,10 +21,5 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply. `extension/CLAUDE.md`
   window, `WINDOW_MINIMIZED` for a minimized window, both in 3 ms with no banner (Run 9 R9-SCREEN-2,
   R9-SCREEN-4; decisions.md · 2026-10-23 · T5b's three fixes). `cdp` mode is useful only for a tab
   already in front of a visible window.
-- **The block list is not a network firewall.** A redirect hop of a bridge `navigate` or `downloadStart`
-  onto a blocked host is still requested; the post-check refuses the reply and a download drops its bytes
-  (`downloadStart` checks its own URL, then `res.url`, #140, #154). The post-redirect download check is
-  measured live: a download redirected onto a blocked host was refused `DOMAIN_BLOCKED` in 76 ms with no file, and
-  the server saw the hop and the target each requested once (Run 14 R14-5c, on the threaded `s9-redirect.py`;
-  S1.md Findings 4).
-  A cross-origin frame of a blocked host shows in screenshots (stage0-audit F16, by reading).
+
+Redirects onto blocked hosts (the block list is not a network firewall) are in `extension/CLAUDE.md`, Safety gate.
