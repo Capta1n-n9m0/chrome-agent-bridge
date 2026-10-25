@@ -39,6 +39,16 @@ the kickoff and the phase doc's pre-registered rules disagree, the pre-registere
 - Role prompts for builder / verifier / fixer: `.claude/skills/step-agent/role-prompts.md` (common preamble + role
   block + stage inputs). Report schema: `.claude/skills/step-agent/SKILL.md`.
 
+## Lessons learned during Step 10 (session agent, binding on every later brief)
+
+- **Scratch worktrees:** run `npm ci` in the worktree, or remove a `node_modules` junction only with `cmd /c rmdir
+  <link>` before removing the worktree — never `rm -rf` / `Remove-Item -Recurse` across it (it emptied the main
+  tree's `node_modules/.bin` in S4b; decisions.md · 2026-10-25 · Scratch worktrees never share `node_modules` through
+  a junction a recursive delete can follow (#220)).
+- **Live waves:** every brief fill-in and bookkeeping edit is committed before a runner starts (Run 14 Return 1, #213).
+- **Codes since S4b:** 26 codes (25 on the wire); JavaScript-off refusals answer `JS_DISABLED` (no `data`), bridge off
+  `DISARMED {scope:"all"}` (#219).
+
 ## Agent contract, STEP BRIEF template, ESCALATION list, LESSONS (kickoff §2, lines 100–248, verbatim)
 
 ## 2. Agent contract
@@ -325,3 +335,4 @@ decisions on wording and layout; an audit finding resolved plan-side with a date
 - 2026-10-24: Stage 0 dispatched alone. Nothing running; port 9234 free.
 - 2026-10-25: Stage 0 closed (9f91e5f; rulings b016712, #205–#209). S1 (Run 14, live) dispatched alone at b016712.
 - 2026-10-25: S1 closed (f717682; #210–#213). S2 ∥ S6 dispatched.
+- 2026-10-25: S2 (8ae1a95), S3 (89d6de7), S4 (6ba2d10), S4b (da16277), S5 (34adfdc), S6 (09fa604) closed. S7 (Run 15, live) dispatched alone.

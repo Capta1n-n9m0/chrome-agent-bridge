@@ -110,12 +110,35 @@ Step 10 (2026-10-24 on), for the user at the gate:
 6. "S3: the cap warning's edges as built" (#216), item 2 (a text match inside the 800th element is flagged).
 7. "S4: a primitive completion value crosses the CDP leg whole; S7 measures it" (#217).
 8. "S4: `saveTo`'s wire methods, refusals, store caps, SDK form and file finish" (#218).
+9. "S4b: `JS_DISABLED`'s wire shape and the SDK line for an old extension" (#219), item 1.
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-25 · Scratch worktrees never share `node_modules` through a junction a recursive delete can follow (#220)
+**Decided:** every brief that makes a scratch worktree says: run `npm ci` in the worktree, or remove a `node_modules`
+junction only with `cmd /c rmdir <link>` before removing the worktree — never `rm -rf` / `Remove-Item -Recurse`
+across it. **Why:** during S4b's builder cleanup the main tree's `node_modules/.bin` and `node_modules/@asamuzakjp`
+were emptied (S4b verifier F1; cause inferred: a recursive delete through the junction), breaking jsdom tests and
+`npx vitest`; repaired by `npm ci` before the stage commit. **Instead of:** junctions with ad-hoc cleanup.
+**Revisit if:** a worktree must avoid a full install for time. **By:** Claude (S4b report)
+
+### 2026-10-25 · S4b: `JS_DISABLED`'s wire shape and the SDK line for an old extension (#219)
+**Decided:** (1) `JS_DISABLED` carries no `data`; its message is Step 9's JavaScript-off text byte for byte; (2)
+`safetyRefusalLine` renders `JS_DISABLED` as `JS_DISABLED: <body>` and an old Step 9 extension's `DISARMED
+{scope:"evaluate"}` as `DISARMED: <body>`, the body shared byte for byte; (3) `DISARMED_EVALUATE_MESSAGE` stays
+exported as an alias of `JS_DISABLED_MESSAGE` (a Run 13 history test imports it). With the bridge off the same calls
+answer `DISARMED {scope:"all"}`; `"evaluate"` is no longer produced; which methods are gated is unchanged.
+**Why:** the code now names the switch, so a scope is redundant; every safety line starts with the code the caller
+received; setup.md and Run 13 pins stay stable. Tests 3145/130 → 3165/130; the changed expected texts are listed per
+file in `…step10…-steps/S4b.md`, each ordered by #202.
+**Instead of:** `data: {scope:"evaluate"}` on the new code; one `JS_DISABLED: …` line for both codes.
+**Revisit if:** a client must tell an `evaluate` refusal from a script-URL refusal (a `data.kind` would be a contract
+change); the user wants one line regardless of code.
+**By:** Claude (S4b report; item 1 is a code's wire shape — open for the user)
 
 ### 2026-10-25 · S4: `saveTo`'s wire methods, refusals, store caps, SDK form and file finish (#218)
 **Decided:** as built in S4 (`6ba2d10`; full texts in `…step10…-steps/S4.md` §5): (1) three tab methods

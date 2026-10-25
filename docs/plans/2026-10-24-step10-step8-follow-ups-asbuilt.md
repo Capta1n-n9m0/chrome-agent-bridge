@@ -166,3 +166,24 @@ session agent; one block per stage, appended at each stage close.
 
 ### Open decisions for the user
 - #205, #207, #217, #218.
+
+## S4b — The `JS_DISABLED` code · 2026-10-25 · verifier: PASS-with-notes · commits `2866c43` (spec §10), `da16277`
+
+### Contracts (binding forward)
+- 26 codes (25 on the wire). While JavaScript is off: `evaluate` (± `asRef`), `evaluateSaveStart/Chunk/End` and a
+  `navigate`/`newTab` to `javascript:`/`data:`/`blob:` → `JS_DISABLED` (no `data`, Step 9's message text). Bridge off
+  → `DISARMED {scope:"all"}` wins. `"evaluate"` scope no longer produced. Not in `ATTACH_CODES`; the MCP renders one
+  line. Gating unchanged. Spec §10's note committed before the code.
+
+### Decisions taken
+- #219, #220.
+
+### Deviations from the phase doc
+- Tests 3145/130 → 3165/130; changed expected texts listed per file in `S4b.md`, each ordered by #202. The main tree's
+  `node_modules` was damaged by a worktree cleanup and repaired by `npm ci` (#220).
+
+### Estimates vs actuals
+- 1.5 h estimated; ~27 min.
+
+### Open decisions for the user
+- #219 item 1.
