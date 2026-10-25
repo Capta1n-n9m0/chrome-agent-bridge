@@ -41,6 +41,7 @@ import {
   saveSdkVerdict,
   saveControlVerdict,
   scanText,
+  isFixture11,
   stateLine,
   sw2,
   sw2TrialLine,
@@ -447,13 +448,32 @@ describe("UP-RESTORE: read-back by count and hash", () => {
   });
 });
 
+describe("isFixture11 (#277 (b))", () => {
+  it("counts only http on 127.0.0.1 / *.localhost at 8081 and 8084, chrome://extensions, and the own extension id", () => {
+    for (const u of ["http://127.0.0.1:8081/s11-upload.html", "http://127.0.0.1:8084/x", "http://localhost:8084/s11-upload.html", "http://s11-ab12.localhost:8081/x", "chrome://extensions", "chrome://extensions/?id=abc"]) expect(isFixture11(u), u).toBe(true);
+    expect(isFixture11("chrome-extension://ownid/options.html", "ownid")).toBe(true);
+    expect(isFixture11("chrome-extension://OWNID/options.html", "ownid")).toBe(true);
+  });
+  it("everything else counts as other, another loopback port included", () => {
+    for (const u of ["http://127.0.0.1:8080/", "http://127.0.0.1:9234/", "http://localhost:8083/", "http://127.0.0.1/", "http://127.0.0.1:80811/", "ws://127.0.0.1:8081/", "https://127.0.0.1:8081/", "https://example.com/", "http://evil.com:8081/", "http://x@evil.com:8081/", "http://127.0.0.1.evil.com:8081/", "chrome://settings", "chrome-extension://other/x"]) expect(isFixture11(u, "ownid"), u).toBe(false);
+    expect(isFixture11("chrome-extension://ownid/x")).toBe(false);
+    expect(isFixture11("not a url")).toBe(false);
+  });
+  it("scanText applies it, with the own id", () => {
+    const base = { sentinel: "sd", profile: [] as string[] };
+    expect(scanText("http://127.0.0.1:8080/a http://127.0.0.1:8081/b", base)).toMatchObject({ urls: 2, fixture: 1, other: 1 });
+    expect(scanText("chrome-extension://ownid/options.html", { ...base, ownId: "ownid" })).toMatchObject({ fixture: 1, other: 0 });
+    expect(scanText("chrome-extension://ownid/options.html", base)).toMatchObject({ fixture: 0, other: 1 });
+  });
+});
+
 describe("UP-LOGS", () => {
   const ctx = { token: "tok-SECRET-123", sentinel: "sentinelDir", profile: ["C:\\Users\\someone"] };
   it("counts and the SCAN line", () => {
-    const clean = "GET http://127.0.0.1:8081/s11-upload.html and ws://localhost:9234 and http://upblk.localhost:8081/x";
+    const clean = "GET http://127.0.0.1:8081/s11-upload.html and http://localhost:8084/x and http://upblk.localhost:8081/x and chrome://extensions/";
     const s = scanText(clean, ctx);
-    expect(s).toMatchObject({ urls: 3, fixture: 3, other: 0, token: 0, sentinel: 0, profile: 0, tokenKnown: true });
-    expect(logsLine("daemon.log", s)).toBe("SCAN daemon.log: ://=3 (fixture 3, other 0) token=0 sentinel=0 profile=0");
+    expect(s).toMatchObject({ urls: 4, fixture: 4, other: 0, token: 0, sentinel: 0, profile: 0, tokenKnown: true });
+    expect(logsLine("daemon.log", s)).toBe("SCAN daemon.log: ://=4 (fixture 4, other 0) token=0 sentinel=0 profile=0");
     expect(logsVerdict(s, {}).pass).toBe(true);
   });
   it("each leak is counted and is a STOP", () => {

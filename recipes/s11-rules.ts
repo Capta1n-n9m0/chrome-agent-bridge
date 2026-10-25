@@ -474,6 +474,8 @@ export interface ScanCtx {
   token?: string;
   sentinel: string;
   profile: readonly string[];
+  /** This extension's id: its own `chrome-extension://<id>/` pages count as fixture. */
+  ownId?: string;
 }
 export interface Scan {
   urls: number;
@@ -485,14 +487,22 @@ export interface Scan {
   tokenKnown: boolean;
 }
 const count = (hay: string, needle: string): number => (needle === "" ? 0 : hay.split(needle).length - 1);
-/** Counts only; a fixture URL is http/https/ws/wss on 127.0.0.1, localhost or *.localhost. */
+const FIXTURE_HTTP_HOST = /^(?:127\.0\.0\.1|(?:[a-z0-9-]+\.)*localhost):(?:8081|8084)$/;
+/** #277 (b), as s10-rules' isFixture10: http on 127.0.0.1 / localhost / *.localhost at 8081 or 8084, chrome://extensions, own extension pages. */
+export function isFixture11(url: string, ownId = ""): boolean {
+  const m = /^([a-z][a-z0-9+.-]*):\/\/([^\s/"'`)<>\\?#,;\]]+)/i.exec(url);
+  if (!m) return false;
+  const scheme = m[1]!.toLowerCase();
+  const host = m[2]!.toLowerCase();
+  if (scheme === "http") return FIXTURE_HTTP_HOST.test(host);
+  if (scheme === "chrome") return host === "extensions";
+  return scheme === "chrome-extension" && ownId !== "" && host === ownId.toLowerCase();
+}
+/** Counts only; fixture means isFixture11. */
 export function scanText(text: string, ctx: ScanCtx): Scan {
   const urls = count(text, "://");
   let fixture = 0;
-  for (const m of text.matchAll(/([a-z][a-z0-9+.-]*):\/\/([^\s/'"`<>)\]\\,;]*)/gi)) {
-    const host = m[2]!.replace(/^.*@/, "").replace(/:\d*$/, "").toLowerCase();
-    if (/^(https?|wss?)$/i.test(m[1]!) && (host === "127.0.0.1" || host === "localhost" || host.endsWith(".localhost"))) fixture++;
-  }
+  for (const m of text.matchAll(/[a-z][a-z0-9+.-]*:\/\/[^\s/'"`<>)\]\\,;]*/gi)) if (isFixture11(m[0], ctx.ownId)) fixture++;
   const low = text.toLowerCase();
   const forms = new Set<string>();
   for (const p of ctx.profile) {
