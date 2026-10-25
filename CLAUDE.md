@@ -9,7 +9,7 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-25, Step 10 built; its gate waits on the user)
+## Current state (2026-10-25, Step 10 closed)
 
 - **Shipped:** Steps 1–9 (Step 9 — Phase E safety — closed 2026-10-24, #202; Step 8 closed 2026-10-24, wave W2,
   #106–#127). Public on GitHub (MIT). **23 tools, 26 codes (25 on the wire), 26 router methods, 3273 tests in 132
@@ -22,22 +22,22 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
   {saveTo}` + `Tab.evaluateToFile` through an extension-side store (#127, #205, #207, #217, #218); `JS_DISABLED`
   (#202, #219); `bb-login.ps1`'s condition wait (#215); the local branch `release/step8` (Variant C, #208); a live
   retire row on a killed Chrome (RET-1R, 3 handles retired); the chunked MCP recipe retired (#228). Run 15: 27 PASS /
-  3 FAIL / 3 NOT MEASURED / 4 RECORD, none a product defect (#226). **Gate open for the user:** #204 (contract-level
-  parts), #205–#208, #216 item 2, #217, #218, #219 item 1, #227 (decisions.md → Open decisions → Step 10); G10-1 — the
-  annotated `step8` tag and any push.
+  3 FAIL / 3 NOT MEASURED / 4 RECORD, none a product defect (#226). **Closed 2026-10-25:** the user ruled every open decision
+  (decisions.md · 2026-10-25 · The user rules on Step 10's open decisions; Step 10 closes (#229)) — all as built,
+  except #227 option (b) and the `saveTo` `kind` description, both in Step 11's first code stage; the `step8` tag and
+  `release/step8` are pushed (G10-1).
 - **Reloads need no human:** `recipes/reload-extension.ps1` reloads the extension by UI automation
   and proves it (#65); an exit-2 reload may be re-run during waves (#99).
-- **Resume:** Step 10's close (the user's rulings above; G10-1), then Step 11 — kickoff
-  `docs/plans/next-session-prompt.md`. Interactive sessions using the bridge need `/mcp` or a fresh session (the MCP
+- **Resume:** Step 11 — D3 file upload: kickoff `docs/plans/next-session-prompt.md`, phase doc
+  `docs/plans/2026-10-25-step11-file-upload.md`. Interactive sessions using the bridge need `/mcp` or a fresh session (the MCP
   and daemon builds changed in Step 10); the loaded extension is already the Step 10 build (Run 15).
 - **Next** (decisions.md · 2026-10-24 · The roadmap after Step 8 (#129), order open for veto): **Step 11** — D3 file
-  upload (`browser_upload_file` / `Tab.upload` via `DOM.setFileInputFiles`); **Step 12** — Phase F (`args` for
-  `browser_evaluate`, console capture, keep-attached debugger). Carried from Step 10: the ~1.5 s capture switch
-  re-measured with a warm-up trial (#226 item 1); #227's option (b) if the user picks it; the `saveTo` parameter
-  description's missing `kind` (a schema re-baseline); a popup lease for a background opener only as a design change
-  (#226 item 3); the focus/input race of the MCP's trusted tools as a known limit (Stage 0 F19); the network rule
-  against redirects onto blocked sites (#140), its place in the order still to be set. Live waves run autonomously
-  (#33).
+  upload (`browser_upload_file` / `Tab.upload` via `DOM.setFileInputFiles`), with a first code stage for #227 (b) and
+  the `saveTo` `kind` text, and row SW-2 (the ~1.5 s capture switch with a warm-up trial) in its live wave; then a
+  small step for the network rule against redirects onto blocked sites (#140, placed by #229); **Step 12** — Phase F
+  (`args` for `browser_evaluate`, console capture, keep-attached debugger). Known limits carried: a popup of a
+  background opener gets no lease (#226 item 3); the focus/input race of the MCP's trusted tools (Stage 0 F19). Live
+  waves run autonomously (#33).
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
 

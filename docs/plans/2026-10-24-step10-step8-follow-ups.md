@@ -1,8 +1,10 @@
 # Step 10 — the Step 8 follow-ups (MCP focus-first, the 800-cap warning, `saveTo`, the release tag, a live retire row, Step 9's live re-measurements)
 
-**Date:** 2026-10-24 · **Status:** Complete 2026-10-25 — Stage 0 and S1–S8 built and run (Runs 14–15); the gate
+**Date:** 2026-10-24 · **Status:** **Closed 2026-10-25** — the user ruled every open decision and granted G10-1 (decisions.md ·
+2026-10-25 · The user rules on Step 10's open decisions; Step 10 closes (#229)). *Superseded 2026-10-25: was
+"Complete 2026-10-25 — Stage 0 and S1–S8 built and run (Runs 14–15); the gate
 waits on the user's open decisions (#204 contract parts, #205–#208, #216 item 2, #217, #218, #219 item 1, #227) and
-G10-1. *Superseded 2026-10-25: was "Stage 0 closed 2026-10-25 (`9f91e5f`); next S1", because every stage closed
+G10-1", because the user ruled (#229).* *Superseded 2026-10-25: was "Stage 0 closed 2026-10-25 (`9f91e5f`); next S1", because every stage closed
 (as-built register).* *Superseded 2026-10-25: was
 "Planned (kickoff `docs/plans/next-session-prompt.md`, written 2026-10-24)", because Stage 0 closed and its
 amendments are applied below as dated notes (`…-steps/stage0.md` §6).*

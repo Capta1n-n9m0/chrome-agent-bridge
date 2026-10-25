@@ -257,3 +257,6 @@ session agent; one block per stage, appended at each stage close.
 
 **Not closed until the user rules:** #204 (contract-level parts), #205, #206, #207, #208, #216 item 2, #217, #218,
 #219 item 1, #227; G10-1 (the `step8` tag, any push).
+
+**Closed 2026-10-25:** the user ruled all of the above (decisions.md · 2026-10-25 · The user rules on Step 10's open
+decisions; Step 10 closes (#229)); the `step8` tag (`e571f42`) and `release/step8` (`db72e9a`) are pushed to `origin`.

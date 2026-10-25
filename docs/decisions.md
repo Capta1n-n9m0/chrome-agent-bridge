@@ -100,24 +100,42 @@ Step 9 (2026-10-24 on), for the user at the gate:
 None open now. *Updated 2026-10-24: all 32 Step 9 open decisions are ruled (#202).*
 
 Step 10 (2026-10-24 on), for the user at the gate:
-1. "The Step 10 phase doc's proposals, recorded before Stage 0 so the audit can attack them" (#204) — the
-   contract-level parts: 0.3's wire field `pastSnapshotCap` and its SDK form, 0.4's `saveTo` transport and the SDK
-   method `evaluateToFile`, 0.12's `DISARMED` keeping `scope: "all"` — as amended by Stage 0.
-2. "Stage 0: `saveTo` uses transport (B), with tab-carrying pulls" (#205).
-3. "Stage 0: the cap warning reaches SDK actions as a client event" (#206).
-4. "Stage 0: `saveTo`'s file rules are stricter than `browser_download`'s" (#207).
-5. "Stage 0: `release/step8` from `70aa754` to `a1932a8`, Variant C" (#208) — a third layout beyond 0.6's two.
-6. "S3: the cap warning's edges as built" (#216), item 2 (a text match inside the 800th element is flagged).
-7. "S4: a primitive completion value crosses the CDP leg whole; S7 measures it" (#217).
-8. "S4: `saveTo`'s wire methods, refusals, store caps, SDK form and file finish" (#218).
-9. "S4b: `JS_DISABLED`'s wire shape and the SDK line for an old extension" (#219), item 1.
-10. "S7: SAVE-REFUSE's `[chrome.debugger] ` prefix — the product stays for now; a fix is offered" (#227).
+1. ~~"The Step 10 phase doc's proposals, recorded before Stage 0 so the audit can attack them" (#204), contract parts~~ — *ruled by the user 2026-10-25 (#229).*
+2. ~~"Stage 0: `saveTo` uses transport (B), with tab-carrying pulls" (#205)~~ — *ruled (#229).*
+3. ~~"Stage 0: the cap warning reaches SDK actions as a client event" (#206)~~ — *ruled (#229).*
+4. ~~"Stage 0: `saveTo`'s file rules are stricter than `browser_download`'s" (#207)~~ — *ruled (#229).*
+5. ~~"Stage 0: `release/step8` from `70aa754` to `a1932a8`, Variant C" (#208)~~ — *ruled (#229).*
+6. ~~"S3: the cap warning's edges as built" (#216), item 2~~ — *ruled (#229).*
+7. ~~"S4: a primitive completion value crosses the CDP leg whole; S7 measures it" (#217)~~ — *ruled (#229).*
+8. ~~"S4: `saveTo`'s wire methods, refusals, store caps, SDK form and file finish" (#218)~~ — *ruled (#229).*
+9. ~~"S4b: `JS_DISABLED`'s wire shape and the SDK line for an old extension" (#219), item 1~~ — *ruled (#229).*
+10. ~~"S7: SAVE-REFUSE's `[chrome.debugger] ` prefix — the product stays for now; a fix is offered" (#227)~~ — *ruled (#229): option (b), in Step 11.*
 
-*Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
-#15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
-decisions" below.*
+None open now. *Updated 2026-10-25: all Step 10 open decisions are ruled (#229).*
 
 ## Log
+
+### 2026-10-25 · The user rules on Step 10's open decisions; Step 10 closes (#229)
+**Decided:** after reading `docs/plans/2026-10-25-step10-open-decisions-review.md`, the user ruled in four groups:
+- **saveTo (A1–A4): accepted as built** — #205 (store + 1 MiB pulls), #207 (strict file rules), #218 (method names,
+  `INTERNAL` for a lost id, store limits and cross-client eviction, `Tab.evaluateToFile`), #217 (a plain-string last
+  value crosses in one message; advise `return …`). A5: the `saveTo` parameter's description gains `kind` in Step
+  11's first code stage (a dated schema re-baseline under #214's rule).
+- **Texts (B1–B4):** #206 (the warning event and the `BridgeWarning` type), #216 item 2 and #219 item 1 accepted as
+  built; **#227 option (b)**: the bridge's own coded refusals inside `withDebugger` lose the `[chrome.debugger] `
+  prefix (raw Chrome and page errors keep it), built in Step 11's first code stage with a new live row SAVE-REFUSE-R.
+- **Release (C1–C2):** #208's layout accepted; **G10-1 granted** — create the annotated tag `step8` on
+  `release/step8` and push the branch and the tag.
+- **Order (D1–D3):** the network rule against redirects onto blocked sites (#140) becomes **its own small step after
+  Step 11**, before Step 12; the ~1.5 s capture switch is re-measured with a warm-up trial in Step 11's live wave
+  (row SW-2), no code change before; a popup of a background opener stays without a lease.
+#204's contract parts are covered by the above. With this, **Step 10 is closed**.
+**Why:** the user's answers (2026-10-25): "Accept all as built (Recommended)"; "Accept B1–B3; fix B4
+(Recommended)"; "Accept, tag and push (Recommended)"; "Own small step after Step 11 (Recommended)".
+**Instead of:** a size refusal for plain strings; keeping the prefix; one squashed release commit or no push; the
+redirect rule inside Step 11 or after Step 12.
+**Revisit if:** a later wave contradicts a Run 15 row.
+**By:** user
 
 ### 2026-10-25 · S8: the retirement as done, the s6 typecheck fix, and where the pointers go (#228)
 **Decided:** (1) retired `recipes/blackboard/assemble-mcp.ts`, `transcript.ts`, `export-file.ts`'s `assemble()` and
