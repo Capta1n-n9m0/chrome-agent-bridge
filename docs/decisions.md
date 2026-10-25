@@ -176,6 +176,18 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
 
+### 2026-10-26 · S5-sheet: Run 16's sheet choices; UP-9 stays behind G11-3 (#272)
+**Decided:** as committed in §4.23 (`36cfc43`): UP-0, UP-RESTORE and UP-LOGS run in both live slices; UP-L1 opens
+with a `FOUNDCHECK` that records only true/false (the found folders allow neither `<ROOT>` nor `<OUTSIDE>`); the
+control for SAVE-REFUSE-R is judged by the `[chrome.debugger] ` prefix plus `boom`; the MCP leg is judged by
+containment; the options-page texts are fixed now. UP-9 (a junction out of `<ROOT>`) stays in liveB, behind G11-3, as
+0.12 places it, although the gate alone decides its refusal.
+**Why:** the S5-sheet verifier endorsed the four choices (three rounds; two MAJORs fixed before the commit). Keeping
+UP-9 where 0.12 put it changes no committed row.
+**Instead of:** moving UP-9 to liveA by a 0.12 amendment (16 rows waiting instead of 17).
+**Revisit if:** G11-3 stays open at S5-record — then UP-9 is re-registered in liveA as a new row.
+**By:** Claude (S5-sheet's proposals)
+
 ### 2026-10-25 · S5 is split into seven slices; the stopped prep is salvaged per slice (#271)
 **Decided:** S5 runs as slices, one Opus step agent each, in order: **S5-sheet** (§4.23 rows with expected text,
 SAVE-REFUSE-R and SW-2 included) → **S5-fixtures** (the fixture pages and the CSP server) → **S5-helpers** (the
