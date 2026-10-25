@@ -13,7 +13,7 @@ import { CAP_WARNING_LINE } from "../../mcp/src/tools/registry.js";
 import { collectSaveText, primitiveSaveText, STRINGIFY_FAILED_MESSAGE } from "../../extension/src/evaluate/save.js";
 import { EvaluateSaveStore } from "../../extension/src/evaluate-save-store.js";
 import { evaluateSaveStart } from "../../extension/src/handlers/evaluate-save.js";
-import { W_TITLE as S9_W_TITLE, s9Url } from "../s9-rules.js";
+import { mcpConfig, W_TITLE as S9_W_TITLE, s9Url } from "../s9-rules.js";
 import {
   answerBound,
   answerIs,
@@ -72,6 +72,13 @@ import {
   descendants,
   lateChildren,
   headlessKillable,
+  PIN_NAME,
+  PIN_NARROW_PX,
+  PIN_WAIT_MS,
+  PIN_WIDEN_AFTER_MS,
+  PIN_WIDEN_TO_PX,
+  pinNameMatches,
+  pinStep,
   sameProcess,
   TREE_KILL_NAMES,
   treeKillable,
@@ -794,5 +801,85 @@ describe("which processes the wave may kill (S7 prep fixer 2, W1)", () => {
     expect(hl).not.toContain("Get-S10HeadlessPids");
     // every Stop-S15Pid call passes the creation time recorded when the wave identified the process
     for (const m of runner.matchAll(/Stop-S15Pid \(?[^\r\n]*/g)) if (!m[0].startsWith("Stop-S15Pid([int]")) expect(m[0], m[0]).toMatch(/-Born /);
+  });
+});
+
+// S7 wave fixer 1 (after Run 15's Return 1, #221): the pin reader took an overflowed action (a narrow window) or a
+// not-yet-built toolbar for "unpinned". These fail on the pre-fix code: no pinStep/pinNameMatches, B-window read
+// Get-S9PinState once with no wait, and nothing overrode it for the restore's re-read.
+describe("the toolbar pin reader (wave fixer 1)", () => {
+  it("matches the action by its Name's first line, as a ToolbarActionView or a Button", () => {
+    const armed = "Chrome Agent Bridge — armed (click to turn off)";
+    expect(pinNameMatches(`${armed}\nHas access to this site`, "Button", "ToolbarActionView")).toBe(true);
+    expect(pinNameMatches(`${armed}\r\nHas access to this site`, "ControlType.Button", "")).toBe(true);
+    expect(pinNameMatches("Chrome Agent Bridge", "MenuItem", "ToolbarActionView")).toBe(true); // the manifest's default title, any type
+    expect(pinNameMatches("Chrome Agent Bridge", "Pane", "")).toBe(false); // neither an action view nor a button
+    expect(pinNameMatches("Agent Bridge E2E Playground", "Document", "")).toBe(false); // the fixture page
+    expect(pinNameMatches("Other extension\nChrome Agent Bridge", "Button", "ToolbarActionView")).toBe(false); // not the first line
+    expect(pinNameMatches("", "Button", "ToolbarActionView")).toBe(false);
+  });
+  it("waits, widens a narrow window once, and says unpinned only after the bound", () => {
+    expect(PIN_WAIT_MS).toBeLessThanOrEqual(5000); // the brief's bound
+    expect(pinStep({ found: 0, elapsedMs: 0, widthPx: 1936, widened: false })).toBe("wait"); // the old reader said unpinned here
+    expect(pinStep({ found: 1, elapsedMs: 0, widthPx: 516, widened: false })).toBe("pinned");
+    expect(pinStep({ found: 0, elapsedMs: PIN_WIDEN_AFTER_MS - 1, widthPx: 516, widened: false })).toBe("wait");
+    expect(pinStep({ found: 0, elapsedMs: PIN_WIDEN_AFTER_MS, widthPx: 516, widened: false })).toBe("widen"); // measured: overflowed at 516 px
+    expect(pinStep({ found: 0, elapsedMs: PIN_WIDEN_AFTER_MS, widthPx: 516, widened: true })).toBe("wait");
+    expect(pinStep({ found: 0, elapsedMs: PIN_WAIT_MS, widthPx: 516, widened: true })).toBe("unpinned"); // still narrow after widening
+    expect(pinStep({ found: 0, elapsedMs: PIN_WIDEN_AFTER_MS, widthPx: PIN_NARROW_PX, widened: false })).toBe("wait"); // wide: no widen
+    expect(pinStep({ found: 0, elapsedMs: PIN_WAIT_MS, widthPx: 1936, widened: false })).toBe("unpinned"); // the human gate stays
+    expect(PIN_WIDEN_TO_PX).toBeGreaterThanOrEqual(PIN_NARROW_PX);
+  });
+  it("the PowerShell side mirrors it, B-window and the s9 re-reads use it, and it never clicks", () => {
+    const win = src("recipes/s10-win.ps1");
+    const runner = src("recipes/s10-r15.ps1");
+    const s9 = src("recipes/s9-win.ps1");
+    const manifest = JSON.parse(src("extension/manifest.json")) as { name: string; action: { default_title: string } };
+    expect(PIN_NAME).toBe(manifest.name);
+    expect(manifest.action.default_title.startsWith(PIN_NAME)).toBe(true);
+    expect(s9).toContain(`$S9Name = '${PIN_NAME}'`);
+    expect(win).toContain(`$S10PinWaitMs = ${PIN_WAIT_MS}`);
+    expect(win).toContain(`$S10PinWidenAfterMs = ${PIN_WIDEN_AFTER_MS}`);
+    expect(win).toContain(`$S10PinNarrowPx = ${PIN_NARROW_PX}`);
+    expect(win).toContain(`$S10PinWidenToPx = ${PIN_WIDEN_TO_PX}`);
+    expect(win).toContain("$first.StartsWith($S9Name) -and (($_.Current.ClassName -eq 'ToolbarActionView') -or ($_.Current.ControlType -eq [Windows.Automation.ControlType]::Button))");
+    expect(win).toContain("$step = if ($n -ge 1) { 'pinned' } elseif ((-not $widened) -and $width -lt $S10PinNarrowPx -and $ms -ge $S10PinWidenAfterMs -and $WaitMs -gt 0) { 'widen' } elseif ($ms -ge $WaitMs) { 'unpinned' } else { 'wait' }");
+    expect(win).toMatch(/\nfunction Get-S9PinState\(\[long\]\$Hwnd\) \{ Get-S10PinState \$Hwnd \}/);
+    // the override comes after the dot-source of s9-win.ps1, so it wins
+    expect(win.indexOf('. "$PSScriptRoot\\s9-win.ps1"')).toBeGreaterThanOrEqual(0);
+    expect(win.indexOf('. "$PSScriptRoot\\s9-win.ps1"')).toBeLessThan(win.indexOf("function Get-S9PinState"));
+    const reader = /function Get-S10PinState[\s\S]*?\n\}/.exec(win)?.[0] ?? "";
+    expect(reader).not.toBe("");
+    for (const bad of ["Click-S9Element", "mouse_event", "SetCursorPos", "Invoke()", "Set-S9Pin", "keybd_event"]) expect(reader).not.toContain(bad);
+    // verifier N1: the window identity is checked before any MoveWindow, and a mismatch moves nothing
+    expect(reader).toContain("if (-not (Test-S9Live $Hwnd))");
+    expect(reader.indexOf("if (-not (Test-S9Live $Hwnd))")).toBeLessThan(reader.indexOf("MoveWindow"));
+    const bw = runnerBlocks(runner).get("window") ?? "";
+    expect(bw).toContain("$global:PinnedBefore = Get-S10PinState $global:W");
+    expect(bw).not.toContain("Get-S9PinState");
+    // the human gate is unchanged
+    expect(bw).toContain("Fail-S15 'HUMAN GATE (pinning): the toolbar button is not pinned and UI Automation cannot pin it; pinning by mouse click is not pre-approved (#192, #202) - the step agent asks the user once'");
+  });
+});
+
+// Verifier N3 (wave fixer 1): PP1's MCP actor writes failure-report PNGs into a folder of the leg's own.
+describe("PP1's actor failures folder (wave fixer 1, N3)", () => {
+  it("mcpConfig puts BRIDGE_FAILURES_DIR into the server's env only when asked; the default config is unchanged", () => {
+    const plain = mcpConfig("C:\\node\\node.exe", "C:\\repo\\mcp\\dist\\index.js");
+    expect(plain).toEqual({ mcpServers: { "chrome-agent-bridge": { command: "C:\\node\\node.exe", args: ["C:\\repo\\mcp\\dist\\index.js"] } } });
+    const dir = "C:\\Users\\u\\AppData\\Local\\Temp\\bridge-e2e\\s15\\pp1-failures\\leg";
+    const withDir = mcpConfig("C:\\node\\node.exe", "C:\\repo\\mcp\\dist\\index.js", dir);
+    expect(withDir.mcpServers["chrome-agent-bridge"].env).toEqual({ BRIDGE_FAILURES_DIR: dir });
+    expect(Object.keys(withDir.mcpServers)).toEqual(["chrome-agent-bridge"]);
+  });
+  it("s9-actor.ts start takes --failures-dir (absolute), and the SDK and the MCP read BRIDGE_FAILURES_DIR", () => {
+    const actor = src("recipes/s9-actor.ts");
+    expect(actor).toContain('option("--failures-dir", "")');
+    expect(actor).toContain("!isAbsolute(failuresDir)");
+    expect(src("sdk/src/error.ts")).toContain("env.BRIDGE_FAILURES_DIR");
+    expect(src("mcp/src/tools/registry.ts")).toContain("env: process.env,");
+    const sheet = src("docs/plans/2026-10-24-step10-step8-follow-ups-steps/S7-wave-sheet.md");
+    expect(sheet).toContain("--failures-dir");
+    expect(sheet).toContain("pp1-failures");
   });
 });

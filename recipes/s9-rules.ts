@@ -562,8 +562,14 @@ export function logLinesSince(lines: string[], sinceIso: string): string[] {
 
 // ── MCP actors (recipes/s9-actor.ts) ──────────────────────────────────────────────────────────────────────
 
-/** The MCP config an actor gets: only `chrome-agent-bridge` (with `--strict-mcp-config`). No token in it. */
-export function mcpConfig(nodePath: string, mcpEntry: string): { mcpServers: Record<string, { command: string; args: string[] }> } {
+/**
+ * The MCP config an actor gets: only `chrome-agent-bridge` (with `--strict-mcp-config`). No token in it.
+ * S7 wave fixer 1 (Run 15's PP1 leg, N3): an optional `failuresDir` sets the server's `BRIDGE_FAILURES_DIR` in the
+ * config's `env`, so the actor's failure-report PNGs land in a folder of the leg's own; without it the config is
+ * unchanged.
+ */
+export function mcpConfig(nodePath: string, mcpEntry: string, failuresDir?: string): { mcpServers: Record<string, { command: string; args: string[]; env?: Record<string, string> }> } {
+  if (failuresDir) return { mcpServers: { "chrome-agent-bridge": { command: nodePath, args: [mcpEntry], env: { BRIDGE_FAILURES_DIR: failuresDir } } } };
   return { mcpServers: { "chrome-agent-bridge": { command: nodePath, args: [mcpEntry] } } };
 }
 

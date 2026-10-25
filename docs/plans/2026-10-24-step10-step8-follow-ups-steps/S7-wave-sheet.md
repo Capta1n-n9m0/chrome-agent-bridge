@@ -28,8 +28,20 @@ RETURN; otherwise you called a block out of order — call the right one).
 **Gates.** Before any state change: the pinning gate (R15-PIN) and the found-state guard (SAFE-0's tuple in block 8,
 R15-FOUND in block 10: anything but armed, JavaScript on, an empty list → STOP, nothing changed — #213). Human gates
 that are a STOP: the toolbar button not pinned and UI Automation unable to pin it (no mouse-click pinning); any Chrome
-restart or kill (RET-1 is prepared only — G10-2); a reload whose script exits non-zero after one re-run on exit 2;
-anything that would touch a real site or a real login (BBL-1 is dry runs only; the pp1 leg is prepared only — G10-3).
+restart or kill other than RET-1's (§6); a reload whose script exits non-zero after one re-run on exit 2;
+anything that would touch a real site or a real login other than the PP1 leg's (§7; BBL-1 is dry runs only).
+*Amended 2026-10-25 (S7 wave fixer 1): was "RET-1 is prepared only — G10-2" and "the pp1 leg is prepared only —
+G10-3", because the user granted both for Run 15 (decisions.md · 2026-10-25 · The user grants RET-1's Chrome kill
+(G10-2) and the pp1 leg (G10-3) once for Run 15; the button is already pinned (#221)), widened by decisions.md ·
+2026-10-25 · The user widens Step 10's grants: unlimited Chrome restarts, repeated pp1 reads, hidden pp1 writes (#222).
+They run after block 35 (teardown), PP1 first, then RET-1 (§6, §7).*
+
+**Run 15 restarts from block 1** (S7 wave fixer 1, 2026-10-25): attempt 1 stopped at block 4 (the pin reader, Return
+1) before block 5's daemon-log mark, so no row was observed; the next runner calls a plain `-Block reset` (it archives
+attempt 1) and starts again at block 1. The pin reader is now `Get-S10PinState` (`recipes/s10-win.ps1`): a bounded wait
+(≤ 5 s) and one widening of the driver's own window W when W is narrower than 1000 px (Chrome overflows a pinned action
+into the Extensions menu in a narrow window — measured: none at 516 px, present at 600 px and wider); it never clicks.
+If it still finds no button, the pinning gate's STOP stands exactly as written.
 Also a STOP: a port-9234 holder that is not a daemon; a bridge MCP process running at pre-flight; a tracked file changed
 outside the steps dir before or after the build (M1: the ledger and the record live in the steps dir); the Step 10 check failing (block 8); a restore that does not read back equal; any non-zero
 count in R15-LOGS or the raw-output scan; an occluder above O at R15-3. Kill only PIDs `Test-SafeToKill` calls safe or
@@ -172,6 +184,9 @@ stamp block 25 records, whose command line carries `--user-data-dir=` the throwa
 Block 35 (teardown). Then, outside the script: `git status --short` (no tracked change by the wave except the files
 below), `netstat -ano | findstr ":9234 :8080 :8081 :8083 :8085"` (no LISTENING line), `-Block status`, and that
 `%TEMP%\bridge-e2e\s15\sv` is gone (the saveTo files) and no `s15v-*` file is left anywhere under `%TEMP%\bridge-e2e\s15`.
+Then the two granted legs, in this order: **PP1 (§7), then RET-1 (§6)** — each starts with its found-state check and
+ends with its read-back by hash (`Test-S10LegState`); every STOP line in them is a return (#193). *(Added 2026-10-25,
+S7 wave fixer 1, #221/#222.)*
 
 Files for the commit after the live verifier (the step agent commits): `S7-run-record.md`, `S7-daemon-log.txt`
 (written only at 0 counts), `S7-run-raw.txt` (written only after its scan). Never the console capture, the server logs,
@@ -206,10 +221,57 @@ other files.
   member's PID is reused and the reuser starts a child and exits within seconds between kill passes, that child could be
   killed; limited to node/claude/cmd/conhost/esbuild and `Test-SafeToKill`; recorded, no change.
 
-## 6. RET-1 (G10-2) — prepared, NOT run
+## 6. RET-1 (G10-2) — granted once for Run 15 (#221, widened by #222)
 
-The runner never runs it; the record says `RET-1: not run — waits for the user (G10-2)`. **Ready-to-ask package**
-(plain words, for the step agent to put to the user):
+*Amended 2026-10-25 (S7 wave fixer 1): was "prepared, NOT run … The runner never runs it; the record says `RET-1: not
+run — waits for the user (G10-2)`", because the user granted it (decisions.md · 2026-10-25 · The user grants RET-1's
+Chrome kill (G10-2) and the pp1 leg (G10-3) once for Run 15; the button is already pinned (#221)), widened by
+decisions.md · 2026-10-25 · The user widens Step 10's grants: unlimited Chrome restarts, repeated pp1 reads, hidden pp1
+writes (#222). The ready-to-ask package the user answered is kept below as asked.*
+
+**Order.** After block 35 (teardown) and after PP1 (§7) — RET-1 is the most disruptive leg and runs **last**: if
+Chrome does not come back, nothing else is left to run. Never before the teardown, never twice in one attempt.
+
+**Re-run rule (#222).** RET-1 may be re-run only when a run failed on **tooling before any observation** (the script
+stopped before its `KILLED Chrome's browser process …` line, e.g. the holder never got READY, or a `SKIP … reused`
+before the kill) — and then only when the step agent orders it, under a new attempt, recorded as such. A run that
+produced an observation (any line from `KILLED …` on) is **never** re-run to pass; a re-measurement is a new row ID.
+`Test-SafeToKill` and "never the user's own tabs or windows" still bind.
+
+Steps (the PowerShell tool, repo root; output pasted verbatim into the record under `## RET-1`):
+
+1. Found-state check (else STOP — return; nothing killed):
+   ```powershell
+   [Console]::OutputEncoding = [Text.Encoding]::UTF8
+   $env:S9_RAW = Join-Path $env:TEMP 'bridge-e2e\s15\legs-raw.txt'
+   powershell -NoProfile -ExecutionPolicy Bypass -Command ". .\recipes\s10-win.ps1; if (Test-S10LegState -Leg RET-1 -Phase start) { exit 0 } else { exit 2 }"
+   "exit $LASTEXITCODE"
+   ```
+   Exit 0 → step 2; anything else → STOP (the `STOP: LEG RET-1 start: …` line) → write the ledger, RETURN.
+2. The leg:
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\s10-ret1.ps1 -Granted G10-2
+   "exit $LASTEXITCODE"
+   ```
+   Exit 0 → step 3. Exit 3 (`RET-1 not run - disarmed as found …`, F16) → STOP, RETURN. Exit 2 (a `STOP:` line:
+   several browser processes, Test-SafeToKill refusing, the relaunch failing, the holder not ending) → RETURN. **If the
+   script ends with Chrome not running** (check: `@(Get-Process chrome -ErrorAction SilentlyContinue).Count` = 0, or
+   the relaunch's STOP line) **that is a STOP: RETURN at once, and the first line of your return says "Chrome is NOT
+   running"** — the step agent tells the user.
+3. Read-back (after the relaunch; Chrome is running again):
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -Command ". .\recipes\s10-win.ps1; if (Test-S10LegState -Leg RET-1 -Phase end) { exit 0 } else { exit 2 }"
+   "exit $LASTEXITCODE"
+   ```
+   `LEG RET-1 end: … block-list sha256 vs found equal … -> equal` is the leg's restore read-back (Chrome's restart
+   never re-arms or changes `storage.local`: the state is read back, nothing is pressed). Not equal → STOP, RETURN.
+4. Record the daemon serving after the leg (`netstat -ano | findstr ":9234"`: its PID; it idles out by itself and is
+   never killed by hand) and `@(Get-Process chrome).Count` ≥ 1 (a count only).
+
+Expected text and pass rule: §4.22 RET-1 (unchanged). Session restore and "Restore pages?" are not judged and never
+pressed; the user's own tabs and windows are never touched.
+
+Ready-to-ask package (as put to the user; answered "G10-2 granted", #221):
 
 > **What:** to see the bridge retire held tabs when Chrome dies without an orderly quit (row RET-1), I would kill your
 > Chrome's main process once and start it again. **What is lost:** anything not saved in your open tabs — a half-filled
@@ -220,21 +282,75 @@ The runner never runs it; the record says `RET-1: not run — waits for the user
 > fixture tab only, and the bridge's on/off, JavaScript and blocked-sites state (it must be exactly as before). **What I
 > never touch:** your own tabs and windows. Reply "G10-2 granted" to allow it once.
 
-Commands (after the grant, after Run 15's teardown, the found state armed; a fresh daemon/console as in blocks 1–10 is
-not needed — the script guards the state itself):
+## 7. PP1 (G10-3) — granted once for Run 15 (#221, widened by #222)
 
-```powershell
-[Console]::OutputEncoding = [Text.Encoding]::UTF8
-powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\s10-ret1.ps1 -Granted G10-2
-"exit $LASTEXITCODE"
-```
+*Amended 2026-10-25 (S7 wave fixer 1): was "prepared, NOT run … The runner never runs it; the record says `PP1: not run
+— waits for the user (G10-3)`", because the user granted it (#221: "G10-3 granted for pp1"), widened by #222 (pp1 may
+be read as many times as Step 10 needs; writes only if hidden from students — **this leg plans no write and adds
+none**). The ready-to-ask package is kept below.*
 
-Expected text and pass rule: §4.22 RET-1. A `STOP:` line (several browser processes, Test-SafeToKill refusing, the
-relaunch failing — then Chrome is NOT running and the step agent tells the user at once) → RETURN.
+**Order.** After block 35 (teardown), **before** RET-1 (§6). REP-0's failure-report probe (#97) has already run in this
+attempt (block 11, a framing block that runs in every attempt) — the precondition for any row that could attach a
+non-fixture tab; this leg also runs every SDK call with `failureReports: false`, so no report is taken.
 
-## 7. PP1 (G10-3) — prepared, NOT run
+**Rules.** Read-only (`recipes/blackboard/readonly.ts`; nothing is written to Blackboard). A login only through
+`recipes/bb-login.ps1`'s one press — a real run, never `-DryRunBase`; exit 0 → continue; any other exit → STOP (leave
+the window as the script leaves it; RETURN). The SDK leg is `export-grades.ts`, which already connects with
+`failureReports: false`. Into the record go only sizes, sha256s, counts, handles and exit codes — never data, a course
+name beyond "pp1", a title, a URL, a grade or any student data (the repo is public). The actor's transcript is scanned
+by count (`value-runs32`) and stays outside the repo. Every STOP line is a return (#193): run the clean-up of step 6
+first (it changes nothing in the safety state), then the end check (step 7), write the ledger, RETURN.
 
-The runner never runs it; the record says `PP1: not run — waits for the user (G10-3)`. **Ready-to-ask package:**
+Steps (the PowerShell tool, repo root, unless Git Bash is named; `$env:S9_OUT`, `$env:S9_ACTORS` as the wave sets them:
+`%TEMP%\bridge-e2e\s15`, `…\s15\actors`):
+
+0. `$legStart = [DateTime]::UtcNow` (kept; the leg's window starts here); the leg's own failures folder
+   `$pf = Join-Path $env:TEMP "bridge-e2e\s15\pp1-failures\$($legStart.ToString('yyyyMMddTHHmmss'))"` (new, empty); the
+   shared folder **counted only**: `$f0 = @(Get-ChildItem "$HOME\.chrome-agent-bridge\failures" -Filter *.png
+   -ErrorAction SilentlyContinue).Count`.
+1. Found-state check (else STOP — the leg does not run):
+   ```powershell
+   [Console]::OutputEncoding = [Text.Encoding]::UTF8
+   $env:S9_RAW = Join-Path $env:TEMP 'bridge-e2e\s15\legs-raw.txt'
+   powershell -NoProfile -ExecutionPolicy Bypass -Command ". .\recipes\s10-win.ps1; if (Test-S10LegState -Leg PP1 -Phase start) { exit 0 } else { exit 2 }"
+   "exit $LASTEXITCODE"
+   ```
+2. Login: `powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\bb-login.ps1; "exit $LASTEXITCODE"` — exit 0
+   (`LOGGED IN …` or `SIGNED IN …`, its window closed) → step 3; any other exit → STOP, RETURN (a press is never
+   retried).
+3. SDK leg: `npm run recipe -- recipes/blackboard/export-grades.ts pp1 --hold` (prints the page's length `<L>`, bytes,
+   sha256 `<H>`, the held tab `<T#>`, and `written exports\pp1-<date>.json — <b> bytes, sha256 <H>`).
+4. MCP leg: `New-Item -ItemType Directory -Force "$env:TEMP\bridge-e2e\s15\sv" | Out-Null` (the teardown removed it);
+   `node --import tsx recipes/s9-actor.ts start pp1 --failures-dir $pf` (the actor's MCP config then carries
+   `env: {BRIDGE_FAILURES_DIR: <$pf>}`, which the MCP's failure reports read — `sdk/src/error.ts` `failuresDir`, the
+   MCP passes `process.env`; the SDK leg takes no report at all, `failureReports: false`);
+   `node --import tsx recipes/s10.ts pp1-plan --length <L>
+   --tab <T#>` prints the actor's prompt (the path shown as `<saveTo: …>`; send it with the real path
+   `%TEMP%/bridge-e2e/s15/sv/s15v-pp1-mcp.txt` through `s9-actor.ts send pp1 "<prompt>"` from Git Bash);
+   `s9-actor.ts end pp1`; `s9-actor.ts extract pp1 --out <file outside the repo>`.
+5. Compare: sha256 of the SDK file = of the MCP file = `<H>` (`Get-FileHash … -Algorithm SHA256`; sizes too);
+   `node --import tsx recipes/s10.ts scan --mode transcript --file <transcript>` — it reads the `sv` folder's
+   `s15v-*.txt` files as the values, so the MCP file (the same bytes as the SDK file when the hashes agree) is the value
+   it counts → `value-runs32=0` is PP1's transcript criterion; the scan's other counts (e.g. `scheme://host` of the
+   real site) are recorded as counts, not judged as PP1's pass rule.
+6. Clean-up: `npm run recipe -- recipes/blackboard/export-grades.ts pp1 --drop-held <T#>`; `npm run recipe --
+   recipes/s6.ts close-bb-tab <T#>`. **PP1 never deletes a file it did not write:** delete the one
+   `exports\pp1-<date>.json` that step 3 printed as `written …` (and only if its LastWriteTimeUtc ≥ `$legStart`) and the
+   `sv` file `s15v-pp1-mcp.txt`; the contents of `$pf` (the leg's own failures folder), then `$pf`; and the PNGs in **this
+   actor's own** Claude Code `tool-results\` directory
+   (`$HOME\.claude\projects\C--Users-aliev-Projects-chrome-remote-extention\<session_id>\tool-results\`, the
+   `session_id` read from the pp1 actor's own `out.jsonl` init line — never another session's directory; only PNGs with
+   CreationTimeUtc ≥ `$legStart`). All of them **counted, deleted by full path, never opened, attached, copied or
+   printed by name**. The shared `$HOME\.chrome-agent-bridge\failures\` is **only counted** again (`$f1`): a rise
+   `$f1 − $f0` is recorded as a finding and **nothing is deleted there**. Record the counts (0 expected each).
+   *(Amended 2026-10-25, wave fixer 1 after the verifier's N3: was "delete … any PNG created inside the leg's window in
+   `failures\` …", because that folder is shared with other clients.)*
+7. End check: as step 1 with `-Phase end` → `LEG PP1 end: … block-list sha256 vs found equal … -> equal`; not equal →
+   STOP, RETURN.
+
+Expected text and pass rule: §4.22 PP1 (unchanged).
+
+Ready-to-ask package (as put to the user; answered "G10-3 granted for pp1", #221):
 
 > **What:** redo the Step 8 check S6.3 on your real course "pp1" through the new `saveTo`: read the gradebook export
 > once in your logged-in Chrome tab and save it twice — by the SDK and by a headless Claude session using
@@ -244,18 +360,6 @@ The runner never runs it; the record says `PP1: not run — waits for the user (
 > Blackboard). **What is written, where:** `exports/pp1-<date>.json` (gitignored) and one file under
 > `%TEMP%\bridge-e2e\s15\sv\`, both deleted after the comparison unless you want them kept; only sizes and hashes go
 > into the record. **How long:** ~5 minutes. Reply "G10-3 granted for pp1" to allow it once.
-
-Commands (after the grant):
-
-1. `npm run recipe -- recipes/blackboard/export-grades.ts pp1 --hold` (the SDK leg; prints the page's length, bytes,
-   sha256 and the held tab `T#`).
-2. `node --import tsx recipes/s9-actor.ts start pp1`; `node --import tsx recipes/s10.ts pp1-plan --length <length> --tab
-   <T#>` prints the actor's prompt (the path shown as `<saveTo: …>`; send it with the real path
-   `%TEMP%/bridge-e2e/s15/sv/s15v-pp1-mcp.txt` through `s9-actor.ts send pp1 "<prompt>"` from Git Bash);
-   `s9-actor.ts end pp1`; `s9-actor.ts extract pp1 --out <file>`.
-3. Compare: sha256 of the SDK file = of the MCP file = the page's; `s10.ts scan --mode transcript --file <transcript>`
-   with the SDK file in the `sv` folder → `value-runs32=0`.
-4. `npm run recipe -- recipes/blackboard/export-grades.ts pp1 --drop-held <T#>`; close the tab; delete the two files.
 
 ## 8. Record template (`S7-run-record.md`)
 
@@ -280,8 +384,9 @@ SW-1: d = [<d1>, <d2>, <d3>] ms → <runs to its bound | the event ends the wait
 SAVE-PRIM (#217): <not met | MET | corrupt> · SAVE-IDONLY (#217): <not met | MET | not measured>
 R15-POP-2 (#211): (a) <class> / <grant> → <reading> · (b) <class> / <grant> → <reading>
 
-## Not run (S7.5)
-RET-1: not run — waits for the user (G10-2) · PP1: not run — waits for the user (G10-3)
+## PP1 and RET-1 (granted once for Run 15, #221, widened by #222; after the teardown: PP1, then RET-1)
+PP1: `LEG PP1 start: … -> equal` · bb-login exit <c> · SDK leg <L> characters, <b> bytes, sha256 <H> · MCP file <b'> bytes, sha256 <H'> · transcript value-runs32=<n> · PNGs: leg folder <n> (deleted), actor tool-results <n> (deleted), shared failures/ rise <n> (counted only) · exports/sv files deleted <n> · `LEG PP1 end: … -> equal` · <PASS | FAIL | NOT MEASURED> vs §4.22 PP1
+RET-1: `LEG RET-1 start: … -> equal` · the script's ROW/CHECK lines verbatim · Chrome running after: <yes | NO> · `LEG RET-1 end: … -> equal` · <PASS | FAIL | NOT MEASURED> vs §4.22 RET-1
 
 ## Found state and restore (S7.4)
 start (block 10): `FOUND STATE recorded: armed=… evaluate=… count=… lines=… sha256=…`

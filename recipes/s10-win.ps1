@@ -187,3 +187,85 @@ function Test-S10HeadlessKillable($Row, [long]$LaunchBorn, [string]$ProfileDir) 
   $cmd = "$($Row.Cmd)".ToLower() + ' '   # the value must end at the directory (idonly-profile2 is not idonly-profile)
   $cmd.Contains("--user-data-dir=$d ") -or $cmd.Contains("--user-data-dir=`"$d`"")
 }
+
+# ---- The toolbar pin reader (S7 wave fixer 1, after Run 15's Return 1 and #221). Runner 1 read 0 buttons in its fresh
+# window W while the user says the button is pinned. Measured read-only in the fixer's own window (Chrome 156): the
+# pinned action is a Button of class ToolbarActionView, present 149-285 ms after the window appeared; at 516 px width
+# Chrome overflows it into the Extensions menu and no ToolbarActionView exists (present at 600 px and wider). So no
+# button is not "unpinned": this reader polls up to $S10PinWaitMs, widens ITS OWN window once (never a click), and only
+# then says unpinned. The rules (name match, the poll's decision) are recipes/s10-rules.ts pinNameMatches / pinStep,
+# mirrored here and tied by recipes/test/s10-rules.test.ts.
+$S10PinWaitMs = 5000
+$S10PinWidenAfterMs = 1000
+$S10PinNarrowPx = 1000
+$S10PinWidenToPx = 1200
+
+# The extension's toolbar action(s) in window $Hwnd: first line of the Name starts with the extension's name, and class
+# ToolbarActionView or type Button (s10-rules.ts pinNameMatches).
+function Find-S10ActionButtons([long]$Hwnd) {
+  $root = $S9UIA::FromHandle([IntPtr]$Hwnd)
+  $c = New-Object Windows.Automation.OrCondition(
+    (New-Object Windows.Automation.PropertyCondition($S9UIA::ControlTypeProperty, [Windows.Automation.ControlType]::Button)),
+    (New-Object Windows.Automation.PropertyCondition($S9UIA::ClassNameProperty, 'ToolbarActionView')))
+  @($root.FindAll([Windows.Automation.TreeScope]::Descendants, $c) | Where-Object {
+      $first = ("$($_.Current.Name)" -split "`r?`n")[0]
+      $first.StartsWith($S9Name) -and (($_.Current.ClassName -eq 'ToolbarActionView') -or ($_.Current.ControlType -eq [Windows.Automation.ControlType]::Button)) })
+}
+
+# $true = pinned (a button found), $false = not found after the bounded wait and one widening of a narrow window.
+# -WaitMs 0 reads once. Prints one line per decision; only counts, widths and the verdict (no title or URL).
+function Get-S10PinState([long]$Hwnd, [int]$WaitMs = $S10PinWaitMs, [switch]$Quiet) {
+  $t0 = Get-Date; $widened = $false; $n = 0; $width = 0
+  while ($true) {
+    $n = @(Find-S10ActionButtons $Hwnd).Count
+    $r = [S9Geo]::Rect([IntPtr]$Hwnd); $width = $r.Right - $r.Left
+    $ms = [int]((Get-Date) - $t0).TotalMilliseconds
+    # s10-rules.ts pinStep (mirrored): found -> pinned; narrow, not widened, past the widen point -> widen; past the bound -> unpinned
+    $step = if ($n -ge 1) { 'pinned' } elseif ((-not $widened) -and $width -lt $S10PinNarrowPx -and $ms -ge $S10PinWidenAfterMs -and $WaitMs -gt 0) { 'widen' } elseif ($ms -ge $WaitMs) { 'unpinned' } else { 'wait' }
+    if ($step -eq 'pinned' -or $step -eq 'unpinned') { break }
+    if ($step -eq 'widen') {
+      # Verifier N1: only the wave's own recorded window is ever moved (Test-S9Live: recorded at open time, same owner
+      # pid, Chrome_WidgetWin_1, one of the wave's titles); otherwise nothing moves and the answer is not-pinned (the
+      # caller's existing STOP path).
+      if (-not (Test-S9Live $Hwnd)) { if (-not $Quiet) { Say9 "PIN read: no button after $ms ms in a $width px window, and window $Hwnd is not the wave's own - not moved -> pinned=false" }; return $false }
+      $wa = [S9Geo]::WorkOf([IntPtr]$Hwnd)
+      $to = [Math]::Min($S10PinWidenToPx, $wa.Right - $wa.Left)
+      $left = [Math]::Max($wa.Left, [Math]::Min($r.Left, $wa.Right - $to))
+      $top = [Math]::Max($wa.Top, $r.Top); $h = [Math]::Min($r.Bottom - $r.Top, $wa.Bottom - $top)
+      if ([S9Win]::IsIconic([IntPtr]$Hwnd)) { [void][S9Win]::ShowWindow([IntPtr]$Hwnd, 9) }
+      [void][S9Geo]::MoveWindow([IntPtr]$Hwnd, $left, $top, $to, $h, $true)
+      $widened = $true
+      if (-not $Quiet) { Say9 "PIN read: no button after $ms ms in a $width px window - widened my own window $Hwnd to $to px (nothing clicked)" }
+    }
+    Start-Sleep -Milliseconds 200
+  }
+  if (-not $Quiet) { Say9 "toolbar buttons named '$S9Name…': $n after $ms ms (window $width px$(if ($widened) { ', widened' })) -> pinned=$(if ($n -ge 1) { 'true' } else { 'false' })" }
+  $n -ge 1
+}
+
+# s9-win.ps1's Get-S9PinState read once, with no wait, and took an overflowed (narrow-window) action for "unpinned".
+# Every s9 helper that re-reads the pin (Restore-S9Desk's unpin check, Set-S9Pin's final check) calls Get-S9PinState, so
+# it is overridden here (as Format-S9Title is) - s9-win.ps1 itself is unchanged.
+function Get-S9PinState([long]$Hwnd) { Get-S10PinState $Hwnd }
+
+# ---- PP1 and RET-1 after the teardown (S7 wave fixer 1; decisions.md #221, widened by #222). Each leg starts and ends
+# with this check: a window of its own on this extension's options page (a fresh page, so the stored state), the
+# stored tuple and the block list's sha256 compared with the found state (armed, JavaScript on, the empty text's
+# sha256 - the only found state the wave runs from, R15-FOUND), and daemon.status (s9.ts wait-safety). Prints the
+# STATE line (the sha256 only when it is the empty text's) and one `LEG <leg> <phase>: …` line; on a mismatch a STOP
+# line. The window is closed. Returns $true when equal. It presses nothing.
+function Test-S10LegState([ValidateSet('PP1', 'RET-1')][string]$Leg, [ValidateSet('start', 'end')][string]$Phase) {
+  $h = $null; $s = $null; $d = $false
+  try {
+    $h = Open-S9ChromePage $S9OptionsUrl
+    $s = Read-S9SafetyState $h -PassThru
+    $d = Test-S9DaemonSafety $true $true 0 "$Leg-$Phase" 5000
+  } catch { Say9 "LEG $Leg ${Phase}: the read threw: $($_.Exception.Message)" }
+  finally { if ($h) { Close-S9Window $h } }
+  $page = $s -and ($s.armed -eq $true) -and ($s.evaluate -eq $true) -and ($s.count -eq '0') -and ($s.lines -eq 0)
+  $shaEq = if ($s -and $s.sha256 -eq $S9EmptySha) { 'equal' } else { 'DIFFERENT' }
+  $ok = $page -and $d -and ($shaEq -eq 'equal')
+  Say9 "LEG $Leg ${Phase}: stored armed+JavaScript on+0 sites $("$page".ToLower()), block-list sha256 vs found $shaEq, daemon.status equal $("$d".ToLower()) -> $(if ($ok) { 'equal' } else { 'NOT equal' })"
+  if (-not $ok) { Stop9 "LEG $Leg ${Phase}: the safety state is not the found state (armed, JavaScript on, an empty list) - $(if ($Phase -eq 'start') { 'the leg does not run; nothing was changed' } else { 'nothing more is pressed in Chrome' }); RETURN to the step agent" }
+  $ok
+}

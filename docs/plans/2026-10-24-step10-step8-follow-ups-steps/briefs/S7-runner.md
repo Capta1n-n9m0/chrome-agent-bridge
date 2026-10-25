@@ -32,8 +32,9 @@ in BBL-1's dry runs), the toolbar button pressed by a `FromPoint`-verified mouse
 PINNING by mouse is not), the options page by UIA patterns, SDK scripts, headless MCP actors on fixture tabs, and one
 throwaway headless Chrome with its own temporary profile (SAVE-IDONLY; never the user's profile). Binding:
 - Never use the user's own tabs or windows; every UIA action targets the driver's own HWNDs (the helpers check
-  identity). Never restart or kill the user's Chrome (RET-1 is prepared only: G10-2) → that is a STOP. No real site and
-  no real login (BBL-1 is dry runs on 127.0.0.1:8085 only; the pp1 leg is prepared only: G10-3).
+  identity). Never restart or kill the user's Chrome except in RET-1 (sheet §6; G10-2 granted, #221/#222) → any other
+  is a STOP. No real site and no real login except the PP1 leg (sheet §7; G10-3 granted, #221/#222; BBL-1 is dry runs
+  on 127.0.0.1:8085 only).
 - **Pre-flight before any state change** (block 1, read-only): git clean (tracked files outside the steps dir —
   the ledger and the record live in the steps dir and may change) and HEAD includes the S7 prep commit `b55048d`; no `mcp/dist/index.js` process (none descending from your session, none from another); port 9234
   free or held only by a bridge daemon; 8080/8081/8083/8085 free. **PINNING RULE** (block 4): if the button is already
@@ -60,8 +61,34 @@ throwaway headless Chrome with its own temporary profile (SAVE-IDONLY; never the
   STOP). Never re-run a row to make it pass; never edit a row's expected text; never change product code; never exempt
   anything from the gate; never choose a bound after seeing a measurement (SAVE-64's time and memory, SW-1's outcome,
   R15-POP-2's class and SAVE-IDONLY are records or pre-written outcome tables).
-- RET-1 and PP1 are recorded `not run — waits for the user (G10-2 / G10-3)`; you never run `recipes/s10-ret1.ps1` or
-  any `recipes/blackboard/` script.
+- **PP1 and RET-1 — granted once for Run 15** (decisions.md · 2026-10-25 · The user grants RET-1's Chrome kill (G10-2)
+  and the pp1 leg (G10-3) once for Run 15; the button is already pinned (#221), widened by decisions.md · 2026-10-25 ·
+  The user widens Step 10's grants: unlimited Chrome restarts, repeated pp1 reads, hidden pp1 writes (#222)). They run
+  **after block 35 (teardown), PP1 first, then RET-1** (RET-1 is the most disruptive: if Chrome does not come back,
+  nothing else is left to run), each exactly as the wave sheet §7 (PP1) and §6 (RET-1) say. Each starts with the
+  found-state check (`Test-S10LegState -Phase start`: armed, JavaScript on, an empty list — else STOP) and ends with the
+  safety-state read-back equal by hash (`-Phase end`). PP1: read-only; no write to Blackboard (none is planned, none is
+  added); a login only through `recipes/bb-login.ps1`'s one press (a real run, no `-DryRunBase`; exit 0 → continue; any
+  other exit → STOP); the SDK leg with `failureReports: false` (`export-grades.ts` does it); REP-0's probe (#97) ran in
+  block 11 of this attempt; the MCP actor starts with `--failures-dir` = a leg-own folder under
+  `%TEMP%\bridge-e2e\s15\pp1-failures\` (its MCP config's `BRIDGE_FAILURES_DIR`); **PP1 never deletes a file it did not
+  write**: after the comparison it deletes only the `exports/pp1-<date>.json` it wrote, the `sv` file, that leg-own
+  folder's contents, and PNGs in the pp1 actor's own Claude Code session `tool-results/` directory (that actor's
+  `session_id`, never another session's; by creation time inside the leg's window) — counted, never opened or printed;
+  the shared `~/.chrome-agent-bridge/failures/` is only counted before and after (a rise is recorded, nothing deleted
+  there); only sizes and sha256s enter the record
+  — never data, a course name beyond "pp1", or student data; the actor's transcript is scanned by count
+  (`value-runs32`) and stays outside the repo. RET-1: if the script ends with Chrome not running, that is a STOP —
+  return at once, and the first line of your return says "Chrome is NOT running". **RET-1 re-run rule (#222):** a run
+  that failed on tooling before any observation (before its `KILLED Chrome's browser process …` line) may be re-run
+  only when the step agent orders it, under a new attempt; a run that produced an observation is never re-run to pass
+  (a re-measurement is a new row ID). Every STOP line in either leg is a return (#193). You run no other
+  `recipes/blackboard/` script and `recipes/s10-ret1.ps1` nowhere else. *(Amended 2026-10-25 by the S7 wave fixer 1:
+  was "RET-1 and PP1 are recorded `not run — waits for the user (G10-2 / G10-3)`; you never run
+  `recipes/s10-ret1.ps1` or any `recipes/blackboard/` script", because of #221 and #222.)*
+- **Run 15 restarts from block 1:** attempt 1 stopped at block 4 before any row (Return 1); call a plain `-Block reset`
+  first (it archives attempt 1), then block 1. Block 4's pin reader is `Get-S10PinState` (bounded wait, widens only the
+  driver's own window W; never a click); if it still reads unpinned, the PINNING RULE's STOP stands.
 - Long blocks: the PowerShell tool caps a call at 10 min; the longest block (save-ttl) takes about 6 min — call every
   block with the tool's timeout at its maximum (600 000 ms). Every block stops itself within its budget (sheet §1:
   budget + stop procedure ≤ 570 s). **A block that the tool still ends at its cap is a STOP:** run `-Block stop -Why
@@ -73,7 +100,7 @@ Write `docs/plans/2026-10-24-step10-step8-follow-ups-steps/S7-run-record.md` AS 
 header, then **L1 = SAFE-0** as the record's first recorded line (S7.2), then every observation — the lines of blocks
 1–7 go to `S7.ledger.md` ("Found state" / "Live PIDs"), not into the record before L1: UTC time · row ID · block ·
 observed text verbatim · PASS / FAIL / NOT MEASURED / RECORD against §4.22; the outcome tables (SW-1, SAVE-PRIM,
-SAVE-IDONLY, R15-POP-2) filled from the lines; RET-1 and PP1 recorded not run. The found state and the final read-back
+SAVE-IDONLY, R15-POP-2) filled from the lines; PP1 and RET-1 under their own heading (template, sheet §8). The found state and the final read-back
 by armed, JavaScript, count and sha256 only. Keep `S7.ledger.md`'s "Live PIDs", "Found state" and "STOP lines met /
 returns" sections current (`-Block status` prints the PIDs and handles). Every STOP line you meet goes into the ledger
 as a return, quoted verbatim (the live verifier matches each `STOP:` line in `%TEMP%\bridge-e2e\s15\r15-raw.txt` and

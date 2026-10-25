@@ -282,3 +282,94 @@ W1 is closed.
 process Y. If Y starts a child Z and exits, all between two passes (seconds apart), Z passes the check: its parent PID is
 the member's, it was created later, and it has no live holder. It is still limited to node, claude, cmd, conhost and
 esbuild and to `Test-SafeToKill`. It is negligible; record it as a known limit, no change.
+
+## Wave fixer 1 check (after Return 1; `S7-wave-fixer1.md`, uncommitted on `23db872`)
+
+Read-only file checks only: no Chrome, no daemon, no 9234. My only changes were three temporary mutations, each
+restored from a copy. The sha256 before and after: `s10-rules.ts` `7b77460a…d8a2`, `s10-r15.ps1` `043e2fb6…c27e`,
+`s10-win.ps1` `d721da22…b713`.
+
+### Verdict: **PASS-with-notes**
+
+### Checks
+
+| Check | Result |
+|---|---|
+| Typechecks | `s10 exit 0` · `s9 exit 0` · `typecheck exit 0` |
+| `npx vitest run` | `Test Files 132 passed (132)` · `Tests 3236 passed (3236)` = 3233 + 3 |
+| `git diff --word-diff b55048d -- docs/e2e-test-plan.md` | exactly two additions, `{+*Granted 2026-10-25 (#221, widened by #222): run once in Run 15 after the other rows (PP1, then RET-1).*+}`, at the end of the RET-1 and PP1 rows; nothing else changed |
+| STOP sentence (CR stripped, whitespace normalised) | sheet and runner brief both `06b34a38…07ae` |
+| `git status` | no `s9*` file changed (`s9-win.ps1`, `s9-r14.ps1` untouched) |
+
+### The six items
+
+**(1) The pin fix: PASS, with N1 and N2.**
+- `Get-S10PinState` only reads (UIA `FindAll`) and polls every 200 ms for up to 5 s. It may call `MoveWindow` once, only
+  when the window is narrower than 1000 px, and only inside its monitor's work area. There is no Invoke, click or key
+  press; a test asserts this.
+- The UIA-only `Set-S9Pin` attempt and the `HUMAN GATE (pinning)` STOP in `B-window` are unchanged, so a button that
+  is really missing still STOPs after the bound.
+- The override of `Get-S9PinState` is defined only in `s10-win.ps1`. `s9-r14.ps1` dot-sources `s9-win.ps1` directly
+  (line 80), so Run 14's scripts run alone with their behaviour unchanged.
+- Callers: `B-window` passes the window W it just opened. `Restore-S9Desk` passes `$any[0]` from
+  `Test-S9Live`-checked W/O/E. `Set-S9Pin` gets the same handles.
+
+**(2) The new tests fail without the fix: PASS.** I ran three mutants, each restored:
+
+| Mutant | Result |
+|---|---|
+| P1: `B-window` back to `Get-S9PinState` | `1 failed` ("the PowerShell side mirrors it, B-window and the s9 re-reads use it, and it never clicks") |
+| P2: `pinStep` answers "unpinned" at once (the old reader) | `1 failed` ("waits, widens a narrow window once, and says unpinned only after the bound") |
+| P3: the override removed | `1 failed` (the mirror test) |
+
+**(3) Handle 1400: not provable from the logs, nothing indicates harm.**
+- What survives: only the fixed probe (`pinprobe2.ps1`, loop variable `$wid`) and its output `pinprobe2-fixed.txt`.
+  The faulty first run's output was not kept.
+- By reading, the faulty run did this: `foreach ($w in 1400, …)` overwrote `$W` (PowerShell variable names ignore
+  case), `MoveWindow(1400, …)` was sent, `Count $W` (UIA `FromHandle(1400)`) threw, and the `finally` posted `WM_CLOSE`
+  to 1400 through `Close-S9Window`, which checks no identity.
+- Why harm is unlikely: an HWND of 1400 (0x578) is far below the values top-level windows get on Windows 11. The fixer
+  reports `IsWindow(1400)=False` and that the user's Chrome window was still there (window count 1 afterwards).
+- I cannot confirm it independently.
+
+**(4) Part B matches #221 and #222: PASS, with N3.**
+
+| Requirement | Where it is met |
+|---|---|
+| PP1 read-only, and no write is planned or added (#222 allows hidden writes; none is used) | sheet §7 "Rules", runner brief |
+| Login only by `bb-login.ps1`'s one press; a non-zero exit is a STOP, never retried | sheet §7 step 2 |
+| `failureReports: false` | sheet §7 |
+| REP-0 ran first in the attempt | sheet §7 (block 11) |
+| Only sizes, sha256s, counts and exit codes in the record; no course or student data | sheet §7 "Rules", record template |
+| The transcript is counted (`value-runs32`) and stays outside the repo | sheet §7 step 5 |
+| Clean-up: the leg's exports/`sv` files, and PNGs created in the leg's time window, counted and never opened | sheet §7 step 6 |
+| RET-1 runs last, after teardown | sheet §6 "Order" |
+| `Test-SafeToKill` | inside `s10-ret1.ps1` |
+| Re-run only after a tooling failure before `KILLED …`, on the step agent's order, as a new attempt | sheet §6 "Re-run rule" |
+| Chrome not running → STOP, and "Chrome is NOT running" first in the return | sheet §6 step 2 |
+| Both legs start with `Test-S10LegState -Phase start` and end with `-Phase end` (the block-list sha256 against the found state) | sheet §6 and §7 |
+
+**(5) `Test-S10LegState`: sound by reading.**
+- It opens its own options page through `Open-S9ChromePage` (which accepts only this extension's pages), reads the
+  stored state with `Read-S9SafetyState -PassThru`, and calls `Test-S9DaemonSafety` (`s9.ts wait-safety`).
+- It requires armed, JavaScript on, count `0`, 0 lines and the empty text's sha256, plus `daemon.status` equal.
+  Otherwise it prints a `STOP:` line and returns `$false`.
+- It always closes its own window and presses nothing.
+- Records: after the teardown, `wait-safety` starts a fresh daemon, which idles out by itself (sheet §6 step 4). The
+  helper was not run live.
+
+**(6) Checks:** all pass (table above).
+
+### Notes
+
+- **N1 (MINOR):** `Get-S10PinState` does not check the handle's identity itself before its one `MoveWindow`. Today
+  every caller passes a just-opened or `Test-S9Live`-checked wave window, so this is defence in depth.
+  **Fix:** `if (-not (Test-S9Live $Hwnd)) { … no move }` before the widen.
+- **N2 (NIT):** `Find-S10ActionButtons` searches every descendant, so page content is included (the old reader's
+  comment said "outside the page"). A fixture-page button whose name starts with "Chrome Agent Bridge" would read as
+  "pinned". The later press then fails and STOPs, which is the safe direction. W shows only fixture pages.
+- **N3 (MINOR):** PP1's clean-up deletes any PNG created in `~/.chrome-agent-bridge/failures/` during the leg's time
+  window. That folder is shared by every bridge client, so a PNG written by another client (another session of the
+  user's) in that window would also be deleted. With `failureReports: false` the expected count is 0.
+  **Fix:** delete only when the count is above 0 *and* the file was written by this leg (e.g. its name carries the
+  leg's tab handle); otherwise record the count and leave the files.

@@ -23,7 +23,7 @@
 import { spawn } from "node:child_process";
 import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { actorArgs, mcpConfig, safetyDelivery, toolResultItems } from "./s9-rules.js";
 
@@ -103,7 +103,11 @@ function start(): void {
   if (existsSync(join(d, "pids.json")) && !existsSync(join(d, "exit.txt"))) throw new Error(`actor ${n} is already running (${d})`);
   mkdirSync(d, { recursive: true });
   for (const f of ["in.txt", "out.jsonl", "end", "exit.txt", "pids.json", "err.txt", "mcp.json"]) rmSync(join(d, f), { force: true });
-  writeFileSync(join(d, "mcp.json"), JSON.stringify(mcpConfig(process.execPath, join(ROOT, "mcp", "dist", "index.js")), null, 2));
+  // S7 wave fixer 1 (N3): `start <name> --failures-dir <absolute dir>` puts BRIDGE_FAILURES_DIR into the actor's MCP config.
+  const failuresDir = option("--failures-dir", "");
+  if (failuresDir && !isAbsolute(failuresDir)) throw new Error("--failures-dir needs an absolute path");
+  if (failuresDir) mkdirSync(failuresDir, { recursive: true });
+  writeFileSync(join(d, "mcp.json"), JSON.stringify(mcpConfig(process.execPath, join(ROOT, "mcp", "dist", "index.js"), failuresDir || undefined), null, 2));
   const h = spawn(process.execPath, ["--import", "tsx", fileURLToPath(import.meta.url), "host", n, "--model", option("--model", "sonnet")], {
     cwd: ROOT,
     detached: true,

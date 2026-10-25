@@ -1189,3 +1189,44 @@ export function headlessKillable(row: ProcRow, launchBorn: number, profileDir: s
 export function sameProcess(recordedBorn: number, nowBorn: number): boolean {
   return recordedBorn > 0 && nowBorn === recordedBorn;
 }
+
+// ---- The toolbar pin reader (S7 wave fixer 1, after Run 15's Return 1 and #221). Run 15's runner read 0 buttons in its
+// fresh window W while the user says the button is pinned. Measured read-only in a window of the fixer's own (Chrome
+// 156): the pinned action is a Button of class `ToolbarActionView` named "<title>\n Has access to this site", present
+// 149-285 ms after the window appeared; at a window width of 516 px (Chrome's minimum here) it is OVERFLOWED into the
+// Extensions menu and no `ToolbarActionView` exists at all (it was present at 600 px and wider). So "no button in the
+// toolbar" is not "unpinned": the reader waits (bounded) and widens its own window before it says unpinned. It never
+// clicks anything.
+
+/** The extension's name: the action's UIA Name's first line starts with it (the second line is Chrome's access note). */
+export const PIN_NAME = "Chrome Agent Bridge";
+/** The reader's whole bound (ms), the widen point (ms), and the width (px) under which a window may overflow its actions. */
+export const PIN_WAIT_MS = 5000;
+export const PIN_WIDEN_AFTER_MS = 1000;
+export const PIN_NARROW_PX = 1000;
+/** The width the reader widens its own window to (capped by the monitor's work area). */
+export const PIN_WIDEN_TO_PX = 1200;
+
+/**
+ * Is this UIA element the extension's toolbar action? Its Name's first line starts with the extension's name, and it is
+ * a toolbar action view (class `ToolbarActionView`) or, as s9-win.ps1 always matched, a Button.
+ */
+export function pinNameMatches(name: string, controlType: string, className: string): boolean {
+  const first = (name ?? "").split(/\r?\n/)[0] ?? "";
+  if (!first.startsWith(PIN_NAME)) return false;
+  return className === "ToolbarActionView" || controlType === "Button" || controlType === "ControlType.Button";
+}
+
+export type PinStep = "pinned" | "wait" | "widen" | "unpinned";
+
+/**
+ * One poll of the reader: `found` buttons now, `elapsedMs` since it began, the window's width, whether it already
+ * widened. Found -> pinned. Not found: a narrow window that has not been widened is widened once after
+ * PIN_WIDEN_AFTER_MS; otherwise it waits until PIN_WAIT_MS, then says unpinned (the caller's human gate).
+ */
+export function pinStep(p: { found: number; elapsedMs: number; widthPx: number; widened: boolean }): PinStep {
+  if (p.found >= 1) return "pinned";
+  if (!p.widened && p.widthPx < PIN_NARROW_PX && p.elapsedMs >= PIN_WIDEN_AFTER_MS) return "widen";
+  if (p.elapsedMs >= PIN_WAIT_MS) return "unpinned";
+  return "wait";
+}

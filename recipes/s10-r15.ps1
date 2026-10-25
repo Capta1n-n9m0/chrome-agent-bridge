@@ -406,7 +406,7 @@ function B-window {
   $global:L0 = Get-S9Layout $global:W
   Say9 "W = $($global:W), keyboard layout $($global:L0)"
   Save-S15
-  $global:PinnedBefore = Get-S9PinState $global:W
+  $global:PinnedBefore = Get-S10PinState $global:W     # S7 wave fixer 1 (#221): bounded wait + own-window widen; never a click
   Save-S15
   if (-not $global:PinnedBefore) {
     Say9 'the toolbar button is not pinned: one UIA-only pin attempt (no mouse)'
