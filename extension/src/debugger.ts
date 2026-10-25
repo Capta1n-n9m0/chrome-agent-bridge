@@ -6,6 +6,7 @@ import { DebuggerSessions, runWithDebugger, type EffectGuard } from "./safety-de
 import { SERIALIZER_SRC, type SerializeLimits } from "./evaluate/serialize.js";
 import { shapeEvaluateResult, pendingPromiseId, type CdpEvaluateResponse } from "./evaluate/result.js";
 import { collectSaveText, type SaveText } from "./evaluate/save.js";
+import { UPLOAD_CDP_TIMEOUT_MS, setFilesByMark, uploadTimeoutMessage } from "./upload-files.js";
 
 const PROTOCOL = "1.3";
 
@@ -266,4 +267,19 @@ export async function evaluateToSave(tabId: number, expression: string, timeoutM
     if (isExecutionTerminated(err)) throw new BridgeError(ErrorCodes.TIMEOUT, timeoutMessage(timeoutMs));
     throw err;
   }
+}
+
+/**
+ * Step 11 S3 (phase doc 0.7; #248): `uploadFiles`'s CDP leg — `setFilesByMark` (`upload-files.ts`: the isolated-world
+ * finder → `DOM.setFileInputFiles {files, objectId}` → release) in ONE debugger session, `guard` (the gated call's
+ * effect check) before the attach, the whole leg bounded by `UPLOAD_CDP_TIMEOUT_MS`. The finder's refusals are
+ * marked own refusals (unprefixed); the timeout and breakdowns keep `[chrome.debugger] ` (#246, #254).
+ */
+export async function uploadByMark(tabId: number, mark: string, paths: readonly string[], guard?: EffectGuard): Promise<number> {
+  return withDebugger(
+    tabId,
+    () => raceTimeout(setFilesByMark((method, params) => send(tabId, method, params), mark, paths), UPLOAD_CDP_TIMEOUT_MS, uploadTimeoutMessage()),
+    "File upload",
+    guard,
+  );
 }

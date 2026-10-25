@@ -1,5 +1,4 @@
 import { GatedRouter } from "./router.js";
-import { BridgeError, ErrorCodes } from "./errors.js";
 import { navigate } from "./handlers/navigate.js";
 import { snapshot, screenshot } from "./handlers/perceive.js";
 import { click, type as typeText, scroll, hover, selectOption, pressKey } from "./handlers/actions.js";
@@ -11,6 +10,7 @@ import { locate } from "./handlers/locate.js";
 import { networkRequests, networkClear } from "./handlers/network.js";
 import { downloadStart, downloadChunk, downloadEnd, clearDownloads } from "./handlers/download.js";
 import { evaluateSaveStart, evaluateSaveChunk, evaluateSaveEnd, clearEvaluateSaves, dropEvaluateSavesForTab } from "./handlers/evaluate-save.js";
+import { uploadFiles } from "./handlers/upload.js";
 import { javaScriptOff } from "./evaluate-save-store.js";
 import { log as networkLog, ownPort, scheduleFlush, setOwnPort } from "./network-state.js";
 import { isOwnTraffic } from "./network-log.js";
@@ -83,11 +83,9 @@ router.on("downloadEnd", downloadEnd);
 router.on("evaluateSaveStart", evaluateSaveStart);
 router.on("evaluateSaveChunk", evaluateSaveChunk);
 router.on("evaluateSaveEnd", evaluateSaveEnd);
-// Step 11 S2 (#256): `uploadFiles` is in the safety table (class "upload"), so it needs a registration; S3 replaces
-// this stub with the real handler. Unreachable while the folder list is empty: the gate answers UPLOAD_REFUSED first.
-router.on("uploadFiles", async () => {
-  throw new BridgeError(ErrorCodes.INTERNAL, "uploadFiles is not built in this extension build.");
-});
+// Step 11 (#256, S3): `uploadFiles` — class "upload" in the safety table (the folder rule on every path, so the handler
+// is never reached with a refused path), a tab method in the daemon's, no lock.
+router.on("uploadFiles", uploadFiles);
 
 // --- Network capture -------------------------------------------------------------------------
 // MV3 requires every webRequest listener to be registered synchronously while the worker script

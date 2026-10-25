@@ -11,9 +11,8 @@
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ErrorCodes } from "@bridge/shared";
-import { BridgeError } from "../src/errors.js";
 import {
   METHOD_CLASSES,
   TARGETS_BY_CLASS,
@@ -47,6 +46,8 @@ import {
 } from "../src/safety-state.js";
 import { CallSafety, type CallSafetyDeps } from "../src/safety-call.js";
 import { GatedRouter } from "../src/router.js";
+import { uploadFiles } from "../src/handlers/upload.js";
+import { NO_FILE_ACCESS_MESSAGE } from "../src/upload-files.js";
 
 const OWN_ID = "abcdefghijklmnopabcdefghijklmnop";
 const ALLOWED = "http://localhost:8080/e2e-playground.html";
@@ -526,20 +527,39 @@ describe("#256 — S2.2 through CallSafety (a real tab read) and the gated route
   });
 });
 
-describe("#256 — the sw.ts stub is unreachable while the folder list is empty", () => {
-  const STUB_RE =
-    /router\.on\(\s*"uploadFiles"\s*,\s*async\s*\(\)\s*=>\s*\{\s*throw new BridgeError\(\s*ErrorCodes\.INTERNAL\s*,\s*"([^"]+)"\s*\);\s*\}\s*\);/;
+// Step 11 S3 (2026-10-25; decisions.md #256's contract): S2's three stub tests are rewritten for the real handler —
+// "the handler is unreachable with a refused path". The stub's static shape test becomes the handler's registration
+// test; the stub-never-runs test runs the real `uploadFiles` behind the gate over a recording `chrome`; the control
+// (the stub's fixed INTERNAL) becomes the handler reached with an allowed path and refused by #245 (b) before any page
+// call or attach. Same three tests, same rows.
+describe("#256, S3 — the uploadFiles handler is unreachable with a refused path", () => {
+  const chromeCalls: string[] = [];
+  let fileAccess = false;
+  beforeEach(() => {
+    chromeCalls.length = 0;
+    fileAccess = false;
+    const rec = (name: string, value?: unknown) =>
+      vi.fn(async () => {
+        chromeCalls.push(name);
+        return value;
+      });
+    vi.stubGlobal("chrome", {
+      tabs: { get: vi.fn(async (id: number) => (chromeCalls.push("tabs.get"), { id, url: ALLOWED, discarded: false })) },
+      extension: { isAllowedFileSchemeAccess: vi.fn(async () => (chromeCalls.push("isAllowedFileSchemeAccess"), fileAccess)) },
+      scripting: { executeScript: rec("scripting.executeScript", [{ result: { ok: true } }]) },
+      debugger: { attach: rec("debugger.attach"), detach: rec("debugger.detach"), sendCommand: rec("debugger.sendCommand") },
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
 
-  it("sw.ts registers uploadFiles, at the top level, as a stub that throws one fixed INTERNAL", () => {
-    const m = STUB_RE.exec(SW_SOURCE);
-    expect(m, "the stub registration").not.toBeNull();
+  it("sw.ts registers the real handler, at the top level, from ./handlers/upload.js (no stub)", () => {
     const line = SW_SOURCE.split(/\r?\n/).find((l) => l.includes('router.on("uploadFiles"'))!;
-    expect(line.startsWith("router.on(")).toBe(true); // column 1: the top level
-    expect(m![1]).not.toMatch(/[\\/:]/); // names no path
+    expect(line).toBe('router.on("uploadFiles", uploadFiles);'); // column 1: the top level
+    expect(SW_SOURCE).toMatch(/import \{ uploadFiles \} from "\.\/handlers\/upload\.js";/);
+    expect(SW_SOURCE).not.toMatch(/uploadFiles is not built/);
   });
 
-  it("with no folder (absent, empty, comments only, invalid lines) the gate answers UPLOAD_REFUSED for every paths form; the stub never runs", async () => {
-    const message = STUB_RE.exec(SW_SOURCE)![1]!;
+  it("with no folder (absent, empty, comments only, invalid lines) the gate answers UPLOAD_REFUSED for every paths form; the handler never runs (no chrome call)", async () => {
     const forms: Record<string, unknown>[] = [
       UP_OK,
       { ...UP_OK, paths: [IN, IN2] },
@@ -558,28 +578,25 @@ describe("#256 — the sw.ts stub is unreachable while the folder list is empty"
       for (const evaluate of [true, false]) {
         for (const tabs of [{ 7: { url: ALLOWED } }, {}] as Record<number, { url?: string }>[]) {
           const h = uploadHarness({ ...stored, "safety.evaluate": evaluate }, tabs);
-          const stub = vi.fn(async () => {
-            throw new BridgeError(ErrorCodes.INTERNAL, message);
-          });
-          h.router.on("uploadFiles", stub);
+          const handler = vi.fn(uploadFiles);
+          h.router.on("uploadFiles", handler);
           for (const params of forms) {
             expect((await h.call(params)).error, JSON.stringify([stored, params])).toEqual({
               code: ErrorCodes.UPLOAD_REFUSED,
               message: UPLOAD_REFUSED_MESSAGE,
             });
           }
-          expect(stub).not.toHaveBeenCalled();
+          expect(handler).not.toHaveBeenCalled();
         }
       }
     }
+    expect(chromeCalls).toEqual([]);
   });
 
-  it("control: with a folder and a path inside it, the stub is reached and answers its fixed INTERNAL", async () => {
-    const message = STUB_RE.exec(SW_SOURCE)![1]!;
+  it("control: with a folder and a path inside it the handler is reached, and file access off refuses before any page call or attach (#245 (b))", async () => {
     const h = uploadHarness({ "safety.uploadFolders": FOLDERS }, { 7: { url: ALLOWED } });
-    h.router.on("uploadFiles", async () => {
-      throw new BridgeError(ErrorCodes.INTERNAL, message);
-    });
-    expect((await h.call(UP_OK)).error).toEqual({ code: ErrorCodes.INTERNAL, message });
+    h.router.on("uploadFiles", uploadFiles);
+    expect((await h.call(UP_OK)).error).toEqual({ code: ErrorCodes.UPLOAD_REFUSED, message: NO_FILE_ACCESS_MESSAGE });
+    expect(chromeCalls).toEqual(["tabs.get", "isAllowedFileSchemeAccess"]);
   });
 });

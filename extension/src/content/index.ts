@@ -13,6 +13,7 @@ import {
 import { guard } from "./guard.js";
 import { locate } from "./locate.js";
 import { refOfMarked } from "./marked.js";
+import { markUploadTarget, unmarkUpload } from "./upload-target.js";
 // Type-only (erased): the content script is an IIFE and must contain no import/export at runtime.
 import type { LocateResult, SnapshotResult } from "@bridge/shared";
 
@@ -33,6 +34,9 @@ declare global {
       centerForInput: (ref: string) => { x: number; y: number };
       locate: (locator: unknown) => LocateResult;
       refOfMarked: (mark: string) => LocateResult;
+      // Step 11 S3: the upload target rule + its one-off mark, and the failure-path sweep (content/upload-target.ts).
+      markUpload: (ref: string, count: number, mark: string) => { ok: true };
+      unmarkUpload: (mark: string) => { removed: number };
     };
   }
 }
@@ -52,5 +56,7 @@ if (!window.__agentBridge) {
     centerForInput: guard((ref: string) => centerForInputRef(refs, ref)),
     locate: guard((locator: unknown) => locate(document, refs, locator)),
     refOfMarked: guard((mark: string) => refOfMarked(document, refs, mark)),
+    markUpload: guard((ref: string, count: number, mark: string) => markUploadTarget(document, refs, ref, count, mark)),
+    unmarkUpload: guard((mark: string) => unmarkUpload(document, mark)),
   };
 }

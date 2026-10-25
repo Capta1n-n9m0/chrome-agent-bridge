@@ -52,7 +52,8 @@ const IDENT_ALLOWED: Readonly<Record<string, readonly string[]>> = {
   writeSafety: ["safety-state.ts", "options.ts"],
   SafetyStore: ["safety-state.ts", "sw.ts"],
 };
-const KEY_STRING = /safety\.(armed|evaluate|blockList)\b/;
+// Step 11 S3 (2026-10-25): `uploadFolders` added — S2's fourth key (#236) is named in a string in safety-state.ts only.
+const KEY_STRING = /safety\.(armed|evaluate|blockList|uploadFolders)\b/;
 /**
  * Files where `chrome` may appear other than as the object of a property access (S2b fixer r1, F3). Empty:
  * no such site exists in `extension/src` today; one added later must be listed here with a note.
@@ -163,6 +164,33 @@ export function writerViolations(files: Map<string, string>): string[] {
   return out;
 }
 
+/**
+ * Step 11 S3 (S3.4): every object literal with an `uploadFolders` member passed straight to a call (a change handed
+ * to `save`/`writeSafety`/`toStorageItems`/a setter), one entry per site, as the file's name. `Object.freeze` (the
+ * defaults) is not a write. Only the options page's Save of the Upload folders box may appear.
+ */
+export function uploadFoldersWriters(files: Map<string, string>): string[] {
+  const out: string[] = [];
+  for (const [rel, text] of files) {
+    const sf = ts.createSourceFile(rel, text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+    const visit = (n: ts.Node): void => {
+      if (ts.isCallExpression(n) && flat(sf, n.expression) !== "Object.freeze") {
+        for (const a of n.arguments) {
+          if (
+            ts.isObjectLiteralExpression(a) &&
+            a.properties.some((p) => (ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)) && p.name.getText(sf) === "uploadFolders")
+          ) {
+            out.push(rel);
+          }
+        }
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(sf);
+  }
+  return out;
+}
+
 describe("S3.3 — the safety keys are written only by the toggle module and the options page", () => {
   const files = sources();
 
@@ -214,6 +242,32 @@ describe("S3.3 — the safety keys are written only by the toggle module and the
       expect(v.some((x) => re.test(x)), v.join("\n")).toBe(true);
     });
   }
+
+  // Step 11 S3 (S3.4; phase doc 0.4 Writers): only the options page writes `safety.uploadFolders`.
+  it("S3.4: an `uploadFolders` member reaches writeSafety/toStorageItems only from options.ts (one site, the box's Save)", () => {
+    expect(uploadFoldersWriters(files)).toEqual(["options.ts"]);
+  });
+
+  const folderMutations: Array<[string, string, string, string]> = [
+    ["the toggle writes the folders", "safety-state.ts", "toStorageItems({ armed: true })", "toStorageItems({ armed: true, uploadFolders: \"\" })"],
+    ["options.ts's switch also writes the folders", "options.ts", "{ armed: armedEl.checked }", "{ armed: armedEl.checked, uploadFolders: \"\" }"],
+  ];
+  for (const [name, rel, from, to] of folderMutations) {
+    it(`S3.4 mutation caught: ${name}`, () => {
+      const src = files.get(rel)!;
+      const mutated = src.replace(from, to);
+      expect(mutated, from).not.toBe(src);
+      const m = new Map(files);
+      m.set(rel, mutated);
+      const w = uploadFoldersWriters(m);
+      expect(w.filter((x) => x === "options.ts").length > 1 || w.some((x) => x !== "options.ts")).toBe(true);
+    });
+  }
+
+  it("S3.4 mutation caught: a handler writes safety.uploadFolders directly", () => {
+    const v = writerViolations(mutate("handlers/tabs.ts", 'void chrome.storage.local.set({ "safety.uploadFolders": "" });'));
+    expect(v.some((x) => /undocumented site|key name in a string/.test(x)), v.join("\n")).toBe(true);
+  });
 
   it("mutation caught: the store's injection replaced by a wrapper that writes more", () => {
     const sw = files.get("sw.ts")!;

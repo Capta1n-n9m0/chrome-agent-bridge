@@ -1,5 +1,13 @@
 import { SAFETY_KEY_NAMES, parseStoredSafety, touchesSafety, writeSafety, type StoredSafety } from "./safety-state.js";
-import { analyzeBlockList, blockListAfterStoredChange, optionsStatus, writeFailedMessage, type SafetyControl } from "./options-model.js";
+import {
+  UPLOAD_FOLDERS_WARNING,
+  analyzeBlockList,
+  analyzeUploadFolders,
+  blockListAfterStoredChange,
+  optionsStatus,
+  writeFailedMessage,
+  type SafetyControl,
+} from "./options-model.js";
 
 const portEl = document.getElementById("port") as HTMLInputElement;
 const tokenEl = document.getElementById("token") as HTMLInputElement;
@@ -37,6 +45,56 @@ const invalidEl = document.getElementById("invalid-lines") as HTMLUListElement;
 
 /** The stored block-list text the textarea was last filled from (or saved as). */
 let loadedList: string | null = null;
+
+// Step 11 S3: the Upload folders box (phase doc 0.4; #250, #257). The only writer of `safety.uploadFolders` (through
+// `writeSafety`, as the block list); saved with its button; invalid lines marked, risky folders warned.
+const foldersEl = document.getElementById("uploadfolders") as HTMLTextAreaElement;
+const foldersSummaryEl = document.getElementById("uploadfolders-summary") as HTMLParagraphElement;
+const foldersConflictEl = document.getElementById("uploadfolders-conflict") as HTMLParagraphElement;
+const foldersErrorEl = document.getElementById("uploadfolders-error") as HTMLParagraphElement;
+const foldersSavedEl = document.getElementById("uploadfolders-saved") as HTMLSpanElement;
+const foldersInvalidEl = document.getElementById("uploadfolders-invalid") as HTMLUListElement;
+const foldersWarnedEl = document.getElementById("uploadfolders-warned") as HTMLUListElement;
+(document.getElementById("uploadfolders-warning") as HTMLParagraphElement).textContent = UPLOAD_FOLDERS_WARNING;
+
+/** The stored upload-folders text the textarea was last filled from (or saved as). */
+let loadedFolders: string | null = null;
+
+function renderFolders(): void {
+  const a = analyzeUploadFolders(foldersEl.value);
+  foldersSummaryEl.textContent = a.summary;
+  foldersEl.setAttribute("aria-invalid", a.invalidCount > 0 ? "true" : "false");
+  foldersInvalidEl.replaceChildren(
+    ...a.invalid.map((l) => {
+      const li = document.createElement("li");
+      li.textContent = `Line ${l.line}: “${l.text}” — ${l.reason}`;
+      return li;
+    }),
+  );
+  foldersWarnedEl.replaceChildren(
+    ...a.warned.map((l) => {
+      const li = document.createElement("li");
+      li.textContent = `Line ${l.line}: “${l.text}” — warning: ${l.warning}`;
+      return li;
+    }),
+  );
+}
+
+function renderFoldersState(stored: string): void {
+  if (loadedFolders === null) {
+    foldersEl.value = stored;
+    loadedFolders = stored;
+    foldersConflictEl.textContent = "";
+  } else {
+    const next = blockListAfterStoredChange({ current: foldersEl.value, loaded: loadedFolders, stored });
+    foldersEl.value = next.text;
+    loadedFolders = next.loaded;
+    foldersConflictEl.textContent = next.conflict
+      ? "The saved folders were changed elsewhere while you were editing; Save replaces them with the text shown here."
+      : "";
+  }
+  renderFolders();
+}
 
 async function readStored(): Promise<StoredSafety | "unreadable"> {
   try {
@@ -81,6 +139,7 @@ function render(state: StoredSafety | "unreadable"): void {
       : "";
   }
   renderAnalysis();
+  renderFoldersState(state.uploadFolders ?? "");
 }
 
 async function refreshSafety(): Promise<void> {
@@ -111,6 +170,18 @@ document.getElementById("save-blocklist")!.addEventListener("click", async () =>
     listConflictEl.textContent = "";
     listSavedEl.textContent = "Saved.";
     setTimeout(() => (listSavedEl.textContent = ""), 1500);
+  }
+});
+
+foldersEl.addEventListener("input", () => renderFolders());
+document.getElementById("save-uploadfolders")!.addEventListener("click", async () => {
+  const text = foldersEl.value;
+  foldersSavedEl.textContent = "";
+  if (await save("uploadFolders", { uploadFolders: text }, foldersErrorEl)) {
+    loadedFolders = text;
+    foldersConflictEl.textContent = "";
+    foldersSavedEl.textContent = "Saved.";
+    setTimeout(() => (foldersSavedEl.textContent = ""), 1500);
   }
 });
 

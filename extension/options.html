@@ -8,8 +8,10 @@
       fieldset { margin: 1rem 0; }
       textarea { width: 100%; box-sizing: border-box; font-family: monospace; }
       textarea[aria-invalid="true"] { outline: 2px solid #d93025; }
-      #invalid-lines li { color: #d93025; }
+      #invalid-lines li, #uploadfolders-invalid li { color: #d93025; }
       #safety-error, #blocklist-error, #blocklist-conflict { color: #d93025; }
+      #uploadfolders-error, #uploadfolders-conflict { color: #d93025; }
+      .warning, #uploadfolders-warned li { color: #b06000; }
     </style>
   </head>
   <body>
@@ -41,6 +43,20 @@
       <p id="blocklist-conflict" role="alert"></p>
       <p id="blocklist-error" role="alert"></p>
       <ul id="invalid-lines"></ul>
+    </fieldset>
+
+    <fieldset id="uploadfolders-section">
+      <legend>Upload folders</legend>
+      <p id="uploadfolders-warning" class="warning"></p>
+      <label for="uploadfolders">Folders agents may upload files from, one absolute path per line (empty: no uploads)</label>
+      <textarea id="uploadfolders" rows="5" spellcheck="false"></textarea>
+      <button id="save-uploadfolders" type="button">Save upload folders</button>
+      <span id="uploadfolders-saved" role="status"></span>
+      <p id="uploadfolders-summary"></p>
+      <p id="uploadfolders-conflict" role="alert"></p>
+      <p id="uploadfolders-error" role="alert"></p>
+      <ul id="uploadfolders-invalid"></ul>
+      <ul id="uploadfolders-warned"></ul>
     </fieldset>
     <script type="module" src="dist/options.js"></script>
   </body>

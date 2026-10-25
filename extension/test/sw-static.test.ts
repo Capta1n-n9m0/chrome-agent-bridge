@@ -89,19 +89,21 @@ describe("sw.ts constructs only the gated router", () => {
     expect(src).not.toMatch(/router\s*\[/);
     expect(src).not.toMatch(/\.on\.(call|apply|bind)\s*\(/);
     // 23 → 26: Step 10 S4 (2026-10-25; decisions.md #205): the three `evaluateSave*` methods added by design.
-    // 26 → 27: Step 11 S2 (2026-10-25; decisions.md #256): the `uploadFiles` stub, which S3 replaces.
+    // 26 → 27: Step 11 S2 (2026-10-25; decisions.md #256): the `uploadFiles` stub; since S3 the real handler.
     expect(src.match(/\brouter\.on\(\s*"[A-Za-z]+"\s*,/g)).toHaveLength(27);
   });
 
   it("the handlers it registers come from ./handlers/ only", () => {
     const names = [...src.matchAll(/\brouter\.on\(\s*"[A-Za-z]+"\s*,\s*([A-Za-z_$][\w$]*)\s*\)/g)].map((m) => m[1]!);
-    expect(names).toHaveLength(26); // 23 → 26: Step 10 S4 (#205)
-    // Step 11 S2 (2026-10-25; decisions.md #256): the one registration not of the `router.on("name", handler)` form
-    // is the inline `uploadFiles` stub (a fixed INTERNAL throw, no handler code) until S3 registers its handler here.
+    // 23 → 26: Step 10 S4 (#205). 26 → 27: Step 11 S3 (2026-10-25; decisions.md #256): S2's inline `uploadFiles`
+    // stub is replaced by the handler `uploadFiles` from ./handlers/upload.js, so every registration is of the
+    // `router.on("name", handler)` form again (S2's "the one exception is the stub" assertions are removed with it).
+    expect(names).toHaveLength(27);
     const all = [...src.matchAll(/\brouter\.on\(\s*"([A-Za-z]+)"\s*,/g)].map((m) => m[1]!);
     const named = new Set([...src.matchAll(/\brouter\.on\(\s*"([A-Za-z]+)"\s*,\s*[A-Za-z_$][\w$]*\s*\)/g)].map((m) => m[1]!));
-    expect(all.filter((n) => !named.has(n))).toEqual(["uploadFiles"]);
-    expect(src).toMatch(/\nrouter\.on\("uploadFiles", async \(\) => \{\r?\n  throw new BridgeError\(ErrorCodes\.INTERNAL, "[^"\n]+"\);\r?\n\}\);/);
+    expect(all.filter((n) => !named.has(n))).toEqual([]);
+    expect(src).toMatch(/\nrouter\.on\("uploadFiles", uploadFiles\);/); // column 1: the top level
+    expect(src).toMatch(/import \{ uploadFiles \} from "\.\/handlers\/upload\.js";/);
     const imports = [...src.matchAll(/import\s*\{([^}]*)\}\s*from\s*"([^"]+)"/g)];
     for (const n of names) {
       const from = imports.find(([, list]) => list!.split(",").some((x) => x.trim().split(/\s+as\s+/).pop() === n));
