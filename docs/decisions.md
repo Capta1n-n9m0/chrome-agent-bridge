@@ -19,18 +19,12 @@ its full entry lives. "(check)" marks a line the cleanup pass or the user should
 settled a build detail of one stage, or that a later entry replaced, are not listed; they stay in the archive.
 
 **How we work**
-- 2026-10-21 · Steps 6–8 run under the long-run contract (#1) — `decisions-archive/step6.md` (check)
 - 2026-10-22 · W1's set-up: the driver has no bridge MCP, the token moves from the MCP config into `bridge.token` (#32) — `decisions-archive/step6.md` (check)
 - 2026-10-22 · Live E2E waves are run by Claude end to end (#33) — `decisions-archive/step6.md`
-- 2026-10-23 · The driver may reload the extension by UI automation, and restart Chrome with flags for the background-input test (#64) — `decisions-archive/step7.md` (check)
 - 2026-10-23 · Later extension reloads use `recipes/reload-extension.ps1` (#65) — `decisions-archive/step7.md`
-- 2026-10-23 · A probe of the failure-report screenshot runs before any row that could attach a non-fixture tab (#97) — `decisions-archive/step8.md` (check)
-- 2026-10-23 · The user allows unlimited Chrome restarts and unpublished Blackboard writes (#98) — `decisions-archive/step8.md` (check)
+- 2026-10-24 · The roadmap after Step 8 (#129) — `decisions-archive/step9.md`
 - 2026-10-24 · S4: Live runners return on every stop; one stop rule for sheet and brief (#193) — `decisions-archive/step9.md`
-- 2026-10-25 · S1: Run 14's wave mechanics are kept for Run 15 (#213) — `decisions-archive/step10.md` (check)
 - 2026-10-25 · Scratch worktrees never share `node_modules` through a junction a recursive delete can follow (#220) — `decisions-archive/step10.md`
-- 2026-10-25 · The user widens Step 10's grants: unlimited Chrome restarts, repeated pp1 reads, hidden pp1 writes (#222) — `decisions-archive/step10.md` (check)
-- 2026-10-25 · RET-1's end safety read-back reads only a window the wave opens and marks (#223) — `decisions-archive/step10.md` (check)
 - 2026-10-25 · Fresh agents instead of resumed ones (#225) — `decisions-archive/step10.md`
 - 2026-10-25 · Lean procedures: rules by pointer, package CLAUDE.md files, risk-tiered models (#230) — this file (Log)
 
@@ -39,9 +33,7 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-21 · One daemon handover per connect(), then a VERSION error (#10) — `decisions-archive/step6.md`
 - 2026-10-21 · The SDK clears its cursor when it reconnects after a daemon restart (#11) — `decisions-archive/step6.md`
 - 2026-10-22 · A Step 6 client gives up with VERSION when no welcome arrives (#13) — `decisions-archive/step6.md`
-- 2026-10-22 · The detached daemon's survival depends on how the session's MCP is killed (#14) — `decisions-archive/step6.md` (check)
 - 2026-10-22 · What clients do on a close code other than 4002 (#15) — `decisions-archive/step6.md`
-- 2026-10-22 · D0's protocol shapes: optional wire code, strict v2 hello fields, events without id (#18) — `decisions-archive/step6.md` (check)
 - 2026-10-22 · The SDK reports configuration and connection failures as NOT_CONNECTED (#21) — `decisions-archive/step6.md`
 - 2026-10-22 · A reconnect after 4002 never hands the daemon over (#22) — `decisions-archive/step6.md`
 - 2026-10-22 · The knock's 10 s budget runs per spawn cycle, with a handshake timeout per attempt (#23) — `decisions-archive/step6.md`
@@ -58,7 +50,6 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-22 · "The human's tab" is the active tab of the last-focused normal window (#43) — `decisions-archive/step7.md`
 - 2026-10-22 · One deadline per call covers the lock wait and the forwarded call (#44) — `decisions-archive/step7.md`
 - 2026-10-22 · The formatters reach the MCP through a `@bridge/sdk/format` subpath (#46) — `decisions-archive/step7.md`
-- 2026-10-22 · A bare number in a network `tab` is a legacy Chrome id, not `BAD_PARAMS` (#54) — `decisions-archive/step7.md` (check)
 - 2026-10-22 · T1's extension details (#55) — `decisions-archive/step7.md` (check)
 - 2026-10-22 · T2's daemon details (#57) — `decisions-archive/step7.md` (check)
 - 2026-10-22 · T3's snapshot fields and capture rules (#58) — `decisions-archive/step7.md` (check)
@@ -81,6 +72,7 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-24 · The Step 6 surface names stay, marked experimental (#119) — `decisions-archive/step8.md`
 - 2026-10-24 · Failure reports stay on by default (#120) — `decisions-archive/step8.md`
 - 2026-10-24 · `evaluate {asRef}` on a non-element stays an error (#123) — `decisions-archive/step8.md`
+- 2026-10-25 · S7: Run 15 stands as recorded; its follow-ups (#226) — `decisions-archive/step10.md`
 
 **Product promises: background input, the screen and the MCP result shape**
 - 2026-10-23 · The background-input policy (#89) — `decisions-archive/step8.md`
@@ -105,7 +97,7 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-24 · S1: `downloadStart` checks its own URL against the block list only (#154) — `decisions-archive/step9.md`
 - 2026-10-24 · S1: The network filter treats a tab showing this extension's own page as blocked (#155) — `decisions-archive/step9.md`
 - 2026-10-24 · S1: Matcher details §5 leaves implicit (#156) — `decisions-archive/step9.md`
-- 2026-10-24 · S1: The refusal messages (#158) — `decisions-archive/step9.md` (check)
+- 2026-10-24 · S1: The refusal messages (#158) — `decisions-archive/step9.md`
 - 2026-10-24 · S3: `safetyStatus` is never sent with null (#159) — `decisions-archive/step9.md`
 - 2026-10-24 · S3: The daemon's redaction follows the last state it received, across extension sockets (#160) — `decisions-archive/step9.md`
 - 2026-10-24 · S3: `leaseGranted.url` is `""` while disarmed, whatever the event carried (#161) — `decisions-archive/step9.md`

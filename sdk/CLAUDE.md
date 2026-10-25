@@ -62,3 +62,5 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `recipes/blackboard/boot-bb.ts` and `export-grades.ts` do.
 
 `saveTo`'s file finish (`.part`, the hard link) is in `extension/src/evaluate/CLAUDE.md`, beside the extension's store.
+
+The rules that shape this package's knock, spawn and handover are in `daemon/CLAUDE.md`: the daemon outliving its session, a pre-Step-6 server on the port, `BRIDGE_PORT` and `BRIDGE_DAEMON` agreement, the `Start-Process` pipe fact, and several `ws` frames emitted from one TCP read (the knock once lost an `extensionStatus` to it).

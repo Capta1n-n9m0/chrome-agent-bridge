@@ -51,3 +51,4 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
 
 The MCP's no-crash rule (`link.ts`) is in `daemon/CLAUDE.md`, under "The daemon's bind is the lock"; the rule for
 `browser_new_tab`'s `active` flag is in `extension/src/handlers/CLAUDE.md`.
+The `ws` package stays out of the daemon and MCP bundles (`mcp/build.mjs`): that rule is in `daemon/CLAUDE.md`, beside `daemon/build.mjs`.

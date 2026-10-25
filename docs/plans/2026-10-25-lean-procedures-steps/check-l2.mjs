@@ -76,7 +76,7 @@ lowFidelity.forEach((l) => console.log("    " + l));
 }
 
 // history notes gone from every CLAUDE.md
-const notes = CLAUDE_FILES.flatMap((f) => [...newText[f].matchAll(/\*(?:Superseded|Corrected)\s[0-9]/g)].map(() => f));
+const notes = CLAUDE_FILES.flatMap((f) => [...newText[f].matchAll(/\*(?:Superseded|Corrected|Updated)\s[0-9]/g)].map(() => f));
 console.log(`  history notes left in CLAUDE.md files: ${notes.length}`);
 if (notes.length) bad("history notes remain: " + [...new Set(notes)].join(", "));
 

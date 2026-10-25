@@ -64,11 +64,11 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
 - **A daemon spawned through `Start-Process -NoNewWindow` held the caller's output pipe open** — a
   PowerShell call that ran recipes that way returned only when that daemon was stopped (W1 MUX-6,
   2026-10-22, by correlation); a plain foreground `npx tsx recipes/hello.ts` returned at once. Run
-  wave blocks with their output to a file, or stop the daemon after. *Updated 2026-10-24: `spawnDaemon`
+  wave blocks with their output to a file, or stop the daemon after. Measured since: `spawnDaemon`
   inherits no pipe — node parent, `sdk/test/spawn-inherit.test.ts`: end-of-file 3–6 ms before the
   child's exit with the stand-in daemon alive in 6 runs, while the `stdio:"inherit"` control held the
   pipe every run; npx parent one ad-hoc trial. The MUX-6 cause remains unmeasured (decisions.md ·
-  2026-10-23 · S3.5's outcome and the Step 6 revisit items (#91)).*
+  2026-10-23 · S3.5's outcome and the Step 6 revisit items (#91)).
 - **`ws` emits several frames from one TCP read synchronously**, before any promise continuation
   runs. A one-shot listener that settles a promise and unsubscribes later swallows the frames behind
   the one it waited for: the knock lost an `extensionStatus` sent in the same read as the `welcome`, so
@@ -136,3 +136,5 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `daemon/src/intercept.ts` `onSafetyState` vs the resync; Run 13 SAFE-9, a wrong expected text, #195). A
   reload also closes an open options page (SAFE-9 record), and right after it `daemon.status` shows URLs one
   round trip later than the state (S3.md §6, by reading the code).
+
+The per-call timeout the SDK passes (`client.call(…, { timeoutMs })`) and the bounds `route.ts` applies to it are described in `sdk/CLAUDE.md`.

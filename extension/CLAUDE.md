@@ -4,7 +4,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply. Three sub-folders hav
 you open a file there; read the one whose topic you touch from elsewhere in `extension/`:
 - `src/content/` — IIFE build, snapshot rules, `centerOf`, content-script failures, locators and `a11y.ts`, `locate` vs RefMap, marks.
 - `src/evaluate/` — `returnByValue` flattening, `replMode` levels, primitive values over CDP, the `saveTo` store.
-- `src/handlers/` — `browser_download` from the worker, `tabId` and `targetTab`, `newTab` in the background.
+- `src/handlers/` — `browser_download` from the worker, `tabId` and `targetTab`, `newTab` in the background, the CDP screenshot refusal, the URL gate on `navigate`/`newTab`, redirects onto blocked hosts.
 
 ## Key files
 - `extension/src/`: `sw.ts` (the `GatedRouter` + offscreen orchestration; the top-level `chrome.tabs.on*`,
@@ -185,13 +185,6 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   `TIMEOUT` at 35 119 ms, previous tab active again at +30 026 ms (Run 9 R9-RESTORE). A late restore
   can still spoil the next capture or undo a `focusTab` that lands in its last check (T5b verifier N1,
   residual race).
-- **`screenshot {mode:"cdp"}` hung on a hidden or minimized tab, so it now refuses.** Run 8: a
-  background tab → `TIMEOUT` after 35 s with the banner up, and the next `evaluate` on another tab got
-  a transient `DEBUGGER_DEVTOOLS` (SCREEN-2); a minimized window → `TIMEOUT` after 25 s (SCREEN-4).
-  Since T5b, `cdpCaptureRefusal` answers before attaching: `OFFSCREEN` for a tab not active in its
-  window, `WINDOW_MINIMIZED` for a minimized window, both in 3 ms with no banner (Run 9 R9-SCREEN-2,
-  R9-SCREEN-4; decisions.md · 2026-10-23 · T5b's three fixes). `cdp` mode is useful only for a tab
-  already in front of a visible window.
 - **A Memory-Saver discard changes the tab id; `tabReplaced` keeps the handle.** On Chrome 156 an
   Urgent Discard from `chrome://discards` gave the tab a new id (1108126391 → 1108126396) and the
   handle followed through `tabReplaced` (Run 8 LEASE-6 (b); Stage 0 F7 had expected the id to stay).
@@ -231,12 +224,6 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   15, daemon 33, sdk 0, mcp 6) and `log-sentinel.test.ts` runs the real daemon on port 0 (#187). Run 13:
   `daemon.log` 210 lines and the worker console 0 for the token, non-fixture `://` and the test patterns
   (SAFE-10).
-- **`navigate`/`newTab` are gated on the URL Chrome will open**, so a relative URL that resolves to this
-  extension's `options.html` is refused, not just `chrome-extension://…` written out (S2a round-1
-  CRITICAL, #175; measured in Run 13 SAFE-REL-1, PASS). `view-source:` of a relative own-page path
-  answered `ok` (SAFE-REL-3 `rel`, recorded) — it resolves against the page's origin, not the extension
-  (`wrapper=view-source inner=http own=no`, Run 14 R14-REL-3; #196 answered); every later call on such a tab is
-  refused.
 - **The disarm reaches running work fast, Chrome's banner does not.** A running trusted `type` ended
   `DISARMED` 14 ms after the press (578 of 1000 characters typed), but the "is debugging this browser"
   banner was still shown 3 s later and gone by +14 s (Run 13 SAFE-4 (b), FAIL, Chrome-owned). Re-measured in
@@ -244,10 +231,6 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   +4.7 s and +5.0 s and did not return, and a trusted call after the re-arm worked on the same tab, so the debugger
   session was detached (a record, no bound; S1.md Findings 3; decisions.md · 2026-10-25 · S1: Run 14's results
   stand as recorded (#210)). A running `waitFor` was refused 54–92 ms after the press (SAFE-4 (a), 4c).
-- **Chrome refuses a `javascript:` navigation through the bridge itself**: `NAV_FAILED JavaScript URLs are
-  not allowed in API based extension navigations. …`, page unchanged (Run 13 SAFE-6c, JavaScript on,
-  record). With JavaScript off the gate refuses first (Run 13: `DISARMED`, scope `evaluate`, SAFE-6; since Step 10
-  S4b `JS_DISABLED` with no `data`, measured live in Run 15 JSD; #202, #219).
 - **An options page in a background window did not show a `storage.onChanged` re-arm until brought to
   the front** (Run 13 SAFE-3, FAIL; cause undetermined — UIA staleness or deferred rendering). Re-measured
   with the options window visible beside the driver window, not covered: it showed `Bridge armed.` 31 ms after
@@ -255,12 +238,7 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   R15-3R: the guard ignores a popup owned by the wave's own window that covers nothing the row reads (#224)). After a `write-failed` disarm the options page shows the stored state ("Bridge armed.")
   while the badge says OFF and every call is refused — the memory disarm is not visible to the page (S2b
   verifier F4, by construction, not producible live). The badge is the indicator.
-- **The block list is not a network firewall.** A redirect hop of a bridge `navigate` or `downloadStart`
-  onto a blocked host is still requested; the post-check refuses the reply and a download drops its bytes
-  (`downloadStart` checks its own URL, then `res.url`, #140, #154). The post-redirect download check is
-  measured live: a download redirected onto a blocked host was refused `DOMAIN_BLOCKED` in 76 ms with no file, and
-  the server saw the hop and the target each requested once (Run 14 R14-5c, on the threaded `s9-redirect.py`;
-  S1.md Findings 4).
-  A cross-origin frame of a blocked host shows in screenshots (stage0-audit F16, by reading).
 - **Build fact: esbuild keeps comments placed inside array literals** in the bundle (S0 bundle diff, S0.md
   §6 item 3) — keep comments out of literals where a bounded bundle diff is checked.
+
+The session marker's 2 s bound and the handle retirement on a Chrome restart are in `daemon/CLAUDE.md`.
