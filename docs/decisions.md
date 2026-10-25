@@ -118,6 +118,18 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-25 · The user grants RET-1's Chrome kill (G10-2) and the pp1 leg (G10-3) once for Run 15; the button is already pinned (#221)
+**Decided:** asked once when Run 15's runner stopped at `STOP: HUMAN GATE (pinning)` before its first row, the user
+answered: pinning — "Already pinned" (so no click is granted, and the helper's reading that the button is unpinned is
+a discrepancy to diagnose, not a gate to pass by clicking); RET-1 — "G10-2 granted" (kill and relaunch the user's real
+Chrome once, as the S7 wave sheet §6 package describes, after Run 15's other rows); the pp1 leg — "G10-3 granted for
+pp1" (once, read-only, as the wave sheet §7 package describes; a login only by `recipes/bb-login.ps1`'s one press).
+**Why:** the user's answers to the session agent's question (2026-10-25).
+**Instead of:** recording RET-1 and the pp1 leg "not run — waits for the user"; pinning by mouse click.
+**Revisit if:** the helper still reads "unpinned" after diagnosis (then the runner returns again and the user is asked).
+The grants are for Run 15 only, not standing.
+**By:** user
+
 ### 2026-10-25 · Scratch worktrees never share `node_modules` through a junction a recursive delete can follow (#220)
 **Decided:** every brief that makes a scratch worktree says: run `npm ci` in the worktree, or remove a `node_modules`
 junction only with `cmd /c rmdir <link>` before removing the worktree — never `rm -rf` / `Remove-Item -Recurse`
