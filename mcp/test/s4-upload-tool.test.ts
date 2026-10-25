@@ -170,8 +170,9 @@ describe("S4.3 refusals before any call (no claim either)", () => {
     const res = await tools(f.bridge).run("browser_upload_file", { ref: "e1", paths: [file], tab: "T3" });
     expect(res.isError).toBe(true);
     expect(res.content).toHaveLength(1);
+    // 2026-10-25: wording changed by ruling #263 (was: "UPLOAD_REFUSED: that file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), so the bridge will not upload it. Stop and ask the user; do not retry with another path.").
     expect(textOf(res)).toBe(
-      "UPLOAD_REFUSED: that file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), so the bridge will not upload it. Stop and ask the user; do not retry with another path.",
+      "UPLOAD_REFUSED: the bridge will not upload that file — either it is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), or the user has not turned on \"Allow access to file URLs\" for the extension (chrome://extensions → the extension's Details). Stop and ask the user; do not retry with another path.",
     );
     expect(f.methods()).toEqual(["uploadFiles"]);
   });
@@ -192,6 +193,23 @@ describe("S4.3 the descriptions", () => {
     expect(d).toContain("is debugging this browser");
     expect(d).toContain("Never click a file input");
     expect(d).toContain("not proof that the page received them");
+  });
+
+  // 2026-10-25, ruling #263: the UPLOAD_REFUSED line names the file-URL toggle in the description's own words.
+  it("the UPLOAD_REFUSED line names the folder rule and the file-URL toggle in the description's own words (#263)", async () => {
+    const TOGGLE = '"Allow access to file URLs" for the extension (chrome://extensions → the extension\'s Details)';
+    const FOLDERS = "(extension options → Upload folders)";
+    const t = tools(
+      fakeBridge(() => {
+        throw new BridgeError(ErrorCodes.UPLOAD_REFUSED, "refused by the extension");
+      }).bridge,
+    );
+    const d = t.registered.browser_upload_file.description ?? "";
+    const line = textOf(await t.run("browser_upload_file", { ref: "e1", paths: [fileWith("x", "a.txt")], tab: "T3" }));
+    for (const words of [TOGGLE, FOLDERS]) {
+      expect(d).toContain(words);
+      expect(line).toContain(words);
+    }
   });
 
   it("browser_click points to browser_upload_file in one sentence placed before the focus sentence, which stays last (F12)", () => {

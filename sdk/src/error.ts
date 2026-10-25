@@ -128,10 +128,13 @@ const DOMAIN_BLOCKED_LINE =
   "DOMAIN_BLOCKED: the user has blocked this site for the bridge in Chrome. Stop and ask the user; do not retry, and do not try to reach the site another way.";
 /**
  * Step 11 S2 (2026-10-25; spec §10's Step 11 note; decisions.md #237): `UPLOAD_REFUSED` — out of `ATTACH_CODES`, one
- * plain line naming no path, folder or file (the extension's message names none either; phase doc 0.5, 0.9).
+ * plain line naming no path, folder or file (the extension's message names none either; phase doc 0.5, 0.9). Since
+ * S4b (decisions.md · 2026-10-25 · S4: the client line for `UPLOAD_REFUSED` names both causes (#263)) it names both
+ * causes the extension refuses for — the folder rule, and Chrome's file-URL toggle off (#245 (b)) — in the words of
+ * `browser_upload_file`'s description, so the agent sends the user to the right setting.
  */
 const UPLOAD_REFUSED_LINE =
-  "UPLOAD_REFUSED: that file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), so the bridge will not upload it. Stop and ask the user; do not retry with another path.";
+  "UPLOAD_REFUSED: the bridge will not upload that file — either it is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), or the user has not turned on \"Allow access to file URLs\" for the extension (chrome://extensions → the extension's Details). Stop and ask the user; do not retry with another path.";
 
 /**
  * The one plain line for a safety refusal, or null for any other code. `JS_DISABLED` (Step 10 S4b) is the

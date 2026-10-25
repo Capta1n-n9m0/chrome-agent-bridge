@@ -306,8 +306,9 @@ describe("S4b.3 — JS_DISABLED stays out of the attach set and reads as one pla
 // ── Step 11 S2 (phase doc 0.5; spec §10's Step 11 note; decisions.md #237): UPLOAD_REFUSED ───────────────────
 
 describe("S2.3 — UPLOAD_REFUSED stays out of the attach set and reads as one plain line", () => {
+  // 2026-10-25: wording changed by ruling #263 (was: "UPLOAD_REFUSED: that file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), so the bridge will not upload it. Stop and ask the user; do not retry with another path.").
   const UPLOAD_LINE =
-    "UPLOAD_REFUSED: that file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), so the bridge will not upload it. Stop and ask the user; do not retry with another path.";
+    "UPLOAD_REFUSED: the bridge will not upload that file — either it is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), or the user has not turned on \"Allow access to file URLs\" for the extension (chrome://extensions → the extension's Details). Stop and ask the user; do not retry with another path.";
 
   it("ATTACH_CODES does not hold UPLOAD_REFUSED; the set is unchanged", () => {
     expect(ATTACH_CODES).not.toContain("UPLOAD_REFUSED");
@@ -321,6 +322,15 @@ describe("S2.3 — UPLOAD_REFUSED stays out of the attach set and reads as one p
     }
     expect(UPLOAD_LINE).not.toContain("\n");
     expect(UPLOAD_LINE).not.toMatch(/[A-Za-z]:\\|\/srv|sentinel/);
+  });
+
+  // 2026-10-25, ruling #263: since #245 (b) the extension refuses UPLOAD_REFUSED for the folder rule and for Chrome's
+  // file-URL toggle, so the one line names both, and the stop-and-ask instruction.
+  it("the upload line names both causes — Upload folders and Allow access to file URLs — and says stop and ask (#263)", () => {
+    const line = safetyRefusalLine("UPLOAD_REFUSED", undefined) ?? "";
+    expect(line).toContain("(extension options → Upload folders)");
+    expect(line).toContain('"Allow access to file URLs" for the extension (chrome://extensions → the extension\'s Details)');
+    expect(line).toContain("Stop and ask the user; do not retry with another path.");
   });
 
   it("renderReport gives the upload line for UPLOAD_REFUSED (no report)", () => {

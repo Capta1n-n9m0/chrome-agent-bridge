@@ -315,8 +315,9 @@ describe("S4b.3 — JS_DISABLED becomes one plain error line, never a failure re
 // tool, into the SDK's one plain line, never a failure report.
 
 describe("S2.3 — UPLOAD_REFUSED becomes one plain error line, never a failure report", () => {
+  // 2026-10-25: wording changed by ruling #263 (was: "UPLOAD_REFUSED: that file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), so the bridge will not upload it. Stop and ask the user; do not retry with another path.").
   const UPLOAD_LINE =
-    "UPLOAD_REFUSED: that file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), so the bridge will not upload it. Stop and ask the user; do not retry with another path.";
+    "UPLOAD_REFUSED: the bridge will not upload that file — either it is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), or the user has not turned on \"Allow access to file URLs\" for the extension (chrome://extensions → the extension's Details). Stop and ask the user; do not retry with another path.";
 
   for (const [name, args] of [
     ["browser_click", { ref: "e1", tab: "T5" }],
