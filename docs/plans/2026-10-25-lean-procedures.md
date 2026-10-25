@@ -38,6 +38,11 @@ Explore/Plan agents, which load no `CLAUDE.md` at all. **Repeat on Windows** bef
 
 ## The CLAUDE.md map
 
+*Superseded 2026-10-25: the rows below placed gotchas by the package where they were measured; the user ruled on
+the first cleanup pass that a gotcha follows the code an agent would edit to break it, with a pointer from the other
+package. Current homes: `docs/cleanup/2026-10-25-G-builder.md`; cross-package facts such as the `node_modules`
+junction stay in the root (G7).*
+
 | Current section (old lines) | Goes to |
 |---|---|
 | What this is, Current state (1–45) | root, without history notes |

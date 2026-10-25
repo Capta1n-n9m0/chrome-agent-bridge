@@ -133,6 +133,9 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   §6 item 3) — keep comments out of literals where a bounded bundle diff is checked.
 
 ### Tabs, trusted input and capture
+
+Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind them are in `src/handlers/CLAUDE.md`
+(every handler takes `tabId`; the CDP screenshot refusal).
 - **Only `captureVisibleTab` needs the tab on screen** — the default (`switch`) viewport screenshot,
   the one call the daemon locks besides `focusTab` (`daemon/src/methods.ts`; `selectTab` was removed
   in Step 8 S2b, and the daemon answers it `UNKNOWN_METHOD` itself — decisions.md · 2026-10-23 · S2b's details: the `selectTab` refusal grep, the marker's edge cases, the handle mark (#94) item 1). Everything

@@ -182,5 +182,6 @@ stage and the verdict: `<type>(<scope>): <stage> — <what> (verifier: PASS|PASS
 says why. End with exactly one trailer, `Co-Authored-By: Claude <model> <noreply@anthropic.com>`, for
 the model that wrote the commit, and no `Claude-Session` line. Commit every
 bookkeeping edit before a live runner starts (a clean-tree guard stops the wave otherwise). On
-`git index.lock`, wait and retry. Subagents never push or tag; the session agent pushes only when the
+`git index.lock`, wait and retry. Never `git stash`, `git checkout -- <file>` or `git reset` in the main
+tree: other agents may have uncommitted work there; diff against `HEAD` with `git diff` or `git show` instead. Subagents never push or tag; the session agent pushes only when the
 user asks.
