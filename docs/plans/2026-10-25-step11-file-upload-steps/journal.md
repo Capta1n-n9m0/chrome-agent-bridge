@@ -24,3 +24,7 @@ One line per event, UTC. Agent lines: stage · role · model · start → end.
 - 2026-10-25T17:53Z · S2 (continuation) · step agent · Opus 5.5 · 17:53Z → (running) — from S2.md, by #256
 - 2026-10-25T18:14Z · S2 (continuation) · step agent · Opus 5.5 · 17:53Z → ~18:14Z — DONE. fixer 2 Opus 5.5 17:53–18:06; verifier 2 Opus 5.5 18:07–18:13 PASS-with-notes (CRITICAL 0, MAJOR 0, MINOR 0, NIT 2). Commit 8ab6923. Tests → 3489/137.
 - 2026-10-25T18:15Z · session · S2 accepted; #260 recorded with one spec §10 line; § As built S2. Next: S3 ∥ S4.
+- 2026-10-25T18:16Z · S3 · step agent · Opus 5.5 · 18:16Z → (running)
+- 2026-10-25T18:16Z · S4 · step agent · Opus 5.5 · 18:16Z → (running) — in parallel with S3, file-disjoint
+- 2026-10-25T18:43Z · S4 · step agent · Opus 5.5 · 18:16Z → ~18:43Z — DONE; verifier PASS-with-notes (CRITICAL 0, MAJOR 0, MINOR 2, NIT 4), no fix round; builder, verifier Opus 5.5 (times in S4.md). Commit acbb042. Tests → 3532/140.
+- 2026-10-25T18:43Z · session · S4 accepted; #261–#263 (#261, #263 under Open); counts in root, mcp/, extension/ CLAUDE.md → 24 tools, 27 codes (26 wire), 27 router methods; setup.md/README counts left to S6. S4b (#263) queued after S3.

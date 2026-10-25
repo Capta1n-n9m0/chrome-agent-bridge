@@ -37,7 +37,7 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   `handlers/evaluate-save.ts` (the three `evaluateSave*` handlers; the CDP-leg slices in `debugger.ts`);
   `content/locate.ts` computes `pastSnapshotCap` and `handlers/{target,locate,actions}.ts` carry it (#216).
   Step 9 (Phase E safety): pure, unit-tested, with no log call — `safety.ts` (the gate
-  `safetyDecision`, the method table `METHOD_CLASSES` over all 26 router methods (Step 10 S4 added
+  `safetyDecision`, the method table `METHOD_CLASSES` over all 27 router methods (Step 11 S2 added `uploadFiles`, class `upload`; Step 10 S4 added
   `evaluateSaveStart`/`evaluateSaveChunk`/`evaluateSaveEnd`, class `evaluate`) — `methodClass` throws
   on an unknown name — the refusal messages (since Step 10 S4b `JS_DISABLED_MESSAGE`, with
   `DISARMED_EVALUATE_MESSAGE` kept as its alias, #219), `listTabs`/event redaction, the network predicate),

@@ -32,6 +32,8 @@ conservative rule and they wait for the user at the gate).** Each entry is in th
   prefix (#254) — which wire messages lose the prefix.
 - 2026-10-25 · S2: the `paths` cap, the exact messages, and the folder-line rules (#257) — the refusal texts.
 - 2026-10-25 · S2: the `file:` rule's edges (#259) — `file:` tabs still listed with their URL.
+- 2026-10-25 · S4: `prepareUpload` joins the `@bridge/sdk/download` subpath (#261) — an additive SDK export.
+- 2026-10-25 · S4: the client line for `UPLOAD_REFUSED` names both causes (#263) — with #257's texts.
 
 ## Standing decisions
 
@@ -169,6 +171,36 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
+
+### 2026-10-25 · S4: the client line for `UPLOAD_REFUSED` names both causes (#263)
+**Decided:** the SDK's and the MCP's one-line rendering of `UPLOAD_REFUSED` (`sdk/src/error.ts`, S2's wording, #257)
+names both causes the extension can refuse for — the file is not in a folder the user allows (extension options →
+Upload folders), or the user has not allowed the extension file access in Chrome — and tells the agent to stop and
+ask the user, never retry another path; fixed text, naming no path. Built as stage S4b (one item) after S3's texts
+land.
+**Why:** S4 finding B: since #245 (b) the extension refuses `UPLOAD_REFUSED` for the file-access toggle too, and a
+one-cause line sends the user to the wrong setting.
+**Instead of:** passing the extension's message through (the line is fixed per code since #163); keeping one cause.
+**Revisit if:** the user prefers a separate code for the toggle.
+**By:** Claude (wire wording — for user review with #257)
+
+### 2026-10-25 · S4: the preflight's refusals and the answer's details (#262)
+**Decided:** the SDK preflight's refusals name the entry's index (`paths[i]`), never the path; the MCP answer's `<n>`
+is files sent, `file(s)` literal, each name the real file's basename; the description says the tab is not brought to
+the front and makes no background claim until UP-1 measures it.
+**Why:** no path in a message (#242); no unmeasured promise.
+**Instead of:** echoing the path.
+**Revisit if:** UP-1 measures the background case (the description then gains its sentence).
+**By:** Claude (S4 builder's proposal)
+
+### 2026-10-25 · S4: `prepareUpload` joins the `@bridge/sdk/download` subpath (#261)
+**Decided:** keep the additive export `prepareUpload` on `@bridge/sdk/download` so the MCP shares the SDK's preflight;
+the main entry keeps eight values.
+**Why:** one preflight for both clients; a new `./upload` subpath needed `sdk/package.json`, outside S4's lane.
+Additive and undoable.
+**Instead of:** a new subpath, or a copy of the preflight in `mcp/`.
+**Revisit if:** the user wants the subpaths to stay download-only.
+**By:** Claude (SDK surface — for user review, listed under Open decisions)
 
 ### 2026-10-25 · S2: an upload's folder rule runs even for a tab gone at receipt (#260)
 **Decided:** at receipt a call on a gone tab still reaches its handler (`TAB_UNKNOWN`, #137) except for class

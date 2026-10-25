@@ -14,7 +14,7 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
 ## Current state (2026-10-25, Step 10 closed; lean procedures in place)
 
 - **Shipped:** Steps 1–9 (Step 9 — Phase E safety — closed 2026-10-24, #202; Step 8 closed 2026-10-24, wave W2,
-  #106–#127). Public on GitHub (MIT). **23 tools, 26 codes (25 on the wire), 26 router methods** (the test count: Commands).
+  #106–#127). Public on GitHub (MIT). **24 tools, 27 codes (26 on the wire), 27 router methods** (Step 11 S2–S4; the test count: Commands).
 - **Step 10 — the Step 8 follow-ups — built and E2E-run 2026-10-25** (Runs 14–15), as-built
   `docs/plans/2026-10-24-step10-step8-follow-ups-asbuilt.md`: the MCP's trusted tools focus first (#106, #214); the
   800-cap warning (`pastSnapshotCap`, the SDK `warning` event, the MCP line; #117, #206, #216); `browser_evaluate
@@ -91,7 +91,7 @@ One `CLAUDE.md` per package holds its Key files (file by file) and its Runtime g
 - `shared/` — the wire protocol types and guards, the error codes (`shared/CLAUDE.md`).
 - `daemon/` — the one-per-machine daemon: bind lock, token gate, handles, leases, the visibility lock (`daemon/CLAUDE.md`).
 - `sdk/` — the TypeScript client: `connect`, `BridgeClient`, `Tab`, failure reports, the formatters (`sdk/CLAUDE.md`).
-- `mcp/` — the MCP server as an SDK client: the 23 tools, the cursor, the no-crash link (`mcp/CLAUDE.md`).
+- `mcp/` — the MCP server as an SDK client: the 24 tools, the cursor, the no-crash link (`mcp/CLAUDE.md`).
 - `extension/` — the Chrome MV3 extension: service worker, offscreen socket, content script, handlers, the safety gate
   (`extension/CLAUDE.md`; deeper files in `extension/src/content/`, `extension/src/evaluate/`,
   `extension/src/handlers/`).
@@ -124,7 +124,7 @@ npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsc
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
 token + port `9234` in its Options. The MCP config points at `<repo>/mcp/dist/index.js`; nobody starts
 the daemon by hand (the first client spawns it). The token comes from `BRIDGE_TOKEN`, else `bridge.token`
-at the repo root (gitignored). Full setup + the 23 tools + "Writing a script": `docs/setup.md`. After `npm run build`, reload the extension (on Windows `recipes/reload-extension.ps1` does it by UI Automation; `docs/setup.md` §4).
+at the repo root (gitignored). Full setup + the tools + "Writing a script": `docs/setup.md`. After `npm run build`, reload the extension (on Windows `recipes/reload-extension.ps1` does it by UI Automation; `docs/setup.md` §4).
 E2E: serve `test-fixtures/e2e-playground.html` (`python -m http.server 8080 --directory test-fixtures`)
 and follow `docs/e2e-test-plan.md`.
 

@@ -589,6 +589,16 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   handler is unreachable with a refused path"; the gate's view carries `paths` and the parsed folders; extension
   tests are not type-checked (tsconfig covers `src` only).
 
+### S4 — The SDK and the MCP · 2026-10-25 · verifier: PASS-with-notes · commit `acbb042` (its message says "verifier: pending"; the verdict is this line's) · models: all Opus 5.5
+- **S4.1–S4.4 met** (verifier on a `git archive` copy): preflight refusals make zero calls; `fs.promises.realpath`
+  sent; sha256 equals the file's; eight values; types pinned; baseline +1 tool; no directory in any answer;
+  `browser_click`'s focus sentence still last; over real `ws` on port 0 `uploadFiles` carries a numeric `tabId` and
+  the real paths, `TAB_HELD` on another client's tab, the lock never taken. 10 of 11 verifier mutants red. Tests
+  3489/137 → 3532/140. 24 tools.
+- **Verifier:** CRITICAL 0, MAJOR 0, MINOR 2, NIT 4 (`S4-verifier.md`). Not tested: an unreadable file; a folder on a
+  `subst` or mapped drive (the real path may resolve past the drive letter) — S5/S6 notes.
+- **Decisions:** #261–#263; #263 orders S4b (the client line names both causes), after S3.
+
 ## Open items
 
 - Contract-level, ruled at Stage 0 by the conservative rule and listed for the user at the gate: 0.3 (paths only),

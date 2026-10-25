@@ -6,7 +6,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
 - `mcp/src/`: `index.ts` (entry → `mcp/dist/index.js`), `link.ts` (`BridgeLink`: the no-crash rule
   and the 5 s retry), `config.ts` (actor name, `connectOptions()`), `lifecycle.ts` (exit with the
   session), `cursor.ts` (`TabCursor`: claimed on first untargeted touch, moved only as the cursor gotcha below says, lost with a one-line notice on a
-  4002 reconnect or a new client), `tools/registry.ts` (the 23 MCP tools — `browser_focus_tab` is
+  4002 reconnect or a new client), `tools/registry.ts` (the 24 MCP tools — `browser_focus_tab` is
   Step 7's, `browser_use_active_tab` Step 8's; the `locator` object on the actions and
   `browser_wait_for`; `failureReport`/`failedLine`: an attach-set failure on a handle is rendered as the
   SDK's report plus a PNG; Step 9's `withSafetyRefusals` (a `DISARMED`/`JS_DISABLED`/`DOMAIN_BLOCKED` from any
@@ -47,7 +47,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   is a forbidden fix. The SDK's own cursor (`client.tab()`) changes only on `newTab`/`claim` and a 4002
   reconnect — `release()`, `close()` and `tabGone` leave it (decisions.md · 2026-10-23 · The SDK `Tab`
   surface details and the cursor rule as built (#90) item 7).
-- **The MCP never crashes when there is no daemon** (`mcp/src/link.ts`; the daemon's side, its bind being the lock, is in `daemon/CLAUDE.md`): the 23 tools are registered with no daemon, a failed `connect()` stores its message (every tool error and `browser_status`'s `Problem:` line show it), and the next `connect()` runs 5 s after each attempt settles, never overlapping — also after an established connection closes with a code other than 4002.
+- **The MCP never crashes when there is no daemon** (`mcp/src/link.ts`; the daemon's side, its bind being the lock, is in `daemon/CLAUDE.md`): the 24 tools are registered with no daemon, a failed `connect()` stores its message (every tool error and `browser_status`'s `Problem:` line show it), and the next `connect()` runs 5 s after each attempt settles, never overlapping — also after an established connection closes with a code other than 4002.
 - **`browser_new_tab`'s `active` flag** (`mcp/src/tools/registry.ts`; the extension's default is under `newTab` in `extension/src/handlers/CLAUDE.md`). It sends `active: true` only when the cursor is set and `listTabs` shows its tab as `current` (the human is watching this session's tab); otherwise — a session's first tab, a lost cursor, a failed listing — it opens in the background and says ` (in the background — browser_focus_tab shows it)`.
 - **The MCP's trusted tools focus first.** Since Step 10 S2 the MCP's trusted `browser_click`/`browser_type`/`browser_press_key` focus first, as the SDK does (`sdk/CLAUDE.md`): `focusTab {tab}` on the resolved handle, then the input on the same handle; a `focusTab` error is the answer and the input is not sent; untrusted actions never focus; the cursor does not move (`mcp/src/tools/registry.ts`; decisions.md · 2026-10-24 · FE and `focusFirst` are ratified; the MCP's trusted tools focus first too (#106); · 2026-10-25 · S2: the MCP schema baseline, a failed focus's answer, and the focus sentence (#214)). Measured: 9/9 trusted inputs reached a background fixture tab, the tab in front after (Run 15 MCPF-1R). Focus and input are two calls, so another actor's capture in the same window can come between them (phase doc 0.2, Stage 0 F19; not seen live).
 
