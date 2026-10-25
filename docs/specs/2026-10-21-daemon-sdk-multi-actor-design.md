@@ -693,7 +693,8 @@ The block itself is left as written.*
   - *Its safety class is `upload`: the state and the tab are tested as for class `tab` (disarmed →
     `DISARMED {scope:"all"}`; a blocked tab, this extension's own page or a `file:` page → `DOMAIN_BLOCKED`), then
     every path against the folder list → `UPLOAD_REFUSED`. Order: `DISARMED` > `DOMAIN_BLOCKED` > `UPLOAD_REFUSED` >
-    the handler's own `BAD_PARAMS`. The JavaScript switch does not apply. The folder list lives in
+    the handler's own `BAD_PARAMS`. At receipt the folder rule runs even for a tab already gone, so a refused path
+    answers `UPLOAD_REFUSED` where another class would reach the handler's `TAB_UNKNOWN` (#260). The JavaScript switch does not apply. The folder list lives in
     `chrome.storage.local` (`safety.uploadFolders`), is read per call, and a wrong-typed value refuses every call
     `DISARMED` as Step 9's keys do; no method of any layer reads or changes it. The safety state on the wire
     (`safetyState`, `safetyStatus`, `daemon.status.safety`) is unchanged: no folder count.*

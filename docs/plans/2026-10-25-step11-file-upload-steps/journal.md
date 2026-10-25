@@ -21,3 +21,6 @@ One line per event, UTC. Agent lines: stage · role · model · start → end.
 - 2026-10-25T17:05Z · S2 · step agent · Opus 5.5 · 17:05Z → (running)
 - 2026-10-25T17:52Z · S2 · step agent · Opus 5.5 · 17:05Z → ~17:52Z — ESCALATE (lane): table entry needs sw.ts + safety-call.ts. builder Opus 5.5 17:06–17:29; verifier Opus 5.5 17:30–17:49 FAIL (CRITICAL 0, MAJOR 0, MINOR 2, NIT 1; fail cause = S2.2 partly unmet); fixer Opus 5.5 17:50–17:51 (MINOR 1). Commits 014a98d (spec), ac31655, 5827f32. Tests 3294/133 → 3461/137.
 - 2026-10-25T17:52Z · session · ruled #256 (lane widened: safety-call.ts labels + sw.ts stub); recorded #257–#259 (#257, #259 under Open). S2 continues with a fresh step agent from S2.md (1 fix round left).
+- 2026-10-25T17:53Z · S2 (continuation) · step agent · Opus 5.5 · 17:53Z → (running) — from S2.md, by #256
+- 2026-10-25T18:14Z · S2 (continuation) · step agent · Opus 5.5 · 17:53Z → ~18:14Z — DONE. fixer 2 Opus 5.5 17:53–18:06; verifier 2 Opus 5.5 18:07–18:13 PASS-with-notes (CRITICAL 0, MAJOR 0, MINOR 0, NIT 2). Commit 8ab6923. Tests → 3489/137.
+- 2026-10-25T18:15Z · session · S2 accepted; #260 recorded with one spec §10 line; § As built S2. Next: S3 ∥ S4.

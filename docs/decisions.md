@@ -170,6 +170,18 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
 
+### 2026-10-25 · S2: an upload's folder rule runs even for a tab gone at receipt (#260)
+**Decided:** at receipt a call on a gone tab still reaches its handler (`TAB_UNKNOWN`, #137) except for class
+`upload`, which first runs the folder rule: a path outside the folders, an empty list or a malformed `paths` answers
+`UPLOAD_REFUSED` even when the tab is gone; with every path allowed the handler answers as for any tab class. A gone
+tab whose last URL was blocked, own or `file:` therefore answers `UPLOAD_REFUSED`, not `DOMAIN_BLOCKED`, for a refused
+path; no handler is reached either way. Spec §10's Step 11 note carries one line.
+**Why:** it fails closed: the handler is never reached with a refused path, whatever the tab's state (S2 verifier
+MINOR 2; S2 fixer 2 §4; judged sound by verifier 2).
+**Instead of:** letting a gone tab reach the handler before the folder rule.
+**Revisit if:** S3's handler needs `TAB_UNKNOWN` before `UPLOAD_REFUSED` for a closed tab.
+**By:** Claude
+
 ### 2026-10-25 · S2: the `file:` rule's edges (#259)
 **Decided:** within `DOMAIN_BLOCKED` the order is own page > `file:` > block list; every tab call on a `file:` tab is
 refused, `closeTab` and `focusTab` included; a wrapper nesting deeper than the 4-level unwrap bound counts as

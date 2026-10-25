@@ -575,6 +575,20 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   errors); `keys.ts:40`'s unsupported-key refusal stays prefixed (#227's Revisit-if, not ordered); the loaded
   extension is older than `dist/` from here on (S5's reload).
 
+### S2 — The contract: code, gate, matcher, tables · 2026-10-25 · verifier: PASS-with-notes (second check) · commits `014a98d` (spec §10, first), `ac31655`, `5827f32`, `8ab6923` · models: all Opus 5.5
+- **S2.1–S2.5 met** on the final tree (verifier 2). Matcher: three planned mutants plus 20 of the verifier's red;
+  `uploadFiles` class `upload` with its gate rows through `CallSafety` and a real tab read; 27 codes, 26 on the wire;
+  `TAB_METHODS`, no lock; the log-scan count unchanged; #245 (a) `file:` refusal in force. Tests 3294/133 → 3489/137.
+- **Course:** the first verifier FAILed S2.2 only (the table entry needed `sw.ts` and `safety-call.ts`, outside the
+  lane); escalated, ruled #256 (lane widened, a stub registration); a fresh step agent finished it in the last fix
+  round. Findings over both checks: CRITICAL 0, MAJOR 0, MINOR 2 (fixed), NIT 3 (recorded).
+- **Decisions:** #256–#260. Stage 0's "no test uses `file:`" was wrong: two `safety-gate.test.ts` cases amended with
+  dated notes (#259).
+- **Contracts (binding forward):** `sw.ts` holds a stub `uploadFiles` registration throwing a fixed `INTERNAL`; S3
+  replaces it, and the stub tests in `sw-static.test.ts` and `s2-upload-gate.test.ts` are rewritten by S3 as "the
+  handler is unreachable with a refused path"; the gate's view carries `paths` and the parsed folders; extension
+  tests are not type-checked (tsconfig covers `src` only).
+
 ## Open items
 
 - Contract-level, ruled at Stage 0 by the conservative rule and listed for the user at the gate: 0.3 (paths only),
