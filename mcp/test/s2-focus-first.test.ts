@@ -212,7 +212,18 @@ describe("S2.3 the tool list's names and input schemas equal f45e3bf's; the desc
     overwrite: { type: "boolean", description: "With saveTo: replace an existing file. Default false." },
   };
 
-  it("names and input schemas deep-equal the fixture captured at f45e3bf (browser_evaluate re-baselined by S4)", async () => {
+  // Re-baselined 2026-10-25 (Step 11 S1; decisions.md #229, #244 (b); phase doc 0.14 (b), exit check R.2):
+  // `saveTo`'s description names the answer's `kind` (`string` | `json`, from `evaluateSaveStart`'s result, #218).
+  // Only that one string of `browser_evaluate`'s entry changes; S4's constant above and the f45e3bf fixture are
+  // left untouched, and every other tool still deep-equals the fixture. S4 of Step 11 re-baselines from here.
+  const S1_SAVETO_DESCRIPTION =
+    'Absolute file path: write the value to this file instead of returning it (a string as is, anything else as JSON) and answer only the path, size, kind ("string" for a string saved as is, "json" for anything else) and sha256. The parent directory must exist; an existing file needs overwrite.';
+  const EVALUATE_PROPERTIES = {
+    ...S4_ADDED_EVALUATE_PROPERTIES,
+    saveTo: { ...S4_ADDED_EVALUATE_PROPERTIES.saveTo, description: S1_SAVETO_DESCRIPTION },
+  };
+
+  it("names and input schemas deep-equal the fixture captured at f45e3bf (browser_evaluate re-baselined by Step 10 S4 and Step 11 S1)", async () => {
     const fixture = JSON.parse(
       readFileSync(fileURLToPath(new URL("./fixtures/tool-schemas-f45e3bf.json", import.meta.url)), "utf8"),
     ) as Array<{ name: string; inputSchema: { properties: Record<string, unknown> } }>;
@@ -225,7 +236,7 @@ describe("S2.3 the tool list's names and input schemas equal f45e3bf's; the desc
         expect(t.inputSchema, t.name).toEqual(want);
         continue;
       }
-      expect(t.inputSchema, t.name).toEqual({ ...want, properties: { ...want.properties, ...S4_ADDED_EVALUATE_PROPERTIES } });
+      expect(t.inputSchema, t.name).toEqual({ ...want, properties: { ...want.properties, ...EVALUATE_PROPERTIES } });
     }
   });
 

@@ -18,10 +18,20 @@ export interface DescribedError {
  * thrown by our own code inside `withDebugger`'s `fn` (`PAGE_ERROR`, `TIMEOUT`) keeps its code and
  * data, while its message goes through the same string logic as before (E2E EVAL-5 expects
  * `[chrome.debugger] Error: boom`).
+ *
+ * Step 11 S1 (decisions.md #229, #244 (a) as reworded by #246): a refusal the bridge raises ON PURPOSE inside
+ * `fn` (the `saveTo` value refusals, `evaluate/save.ts`) is marked with `markOwnRefusal` where it is created and
+ * passes through with its code, message and data unchanged — it is not a debugger failure. Page errors
+ * (`pageError`) and `raceTimeout`'s `TIMEOUT` are not marked and keep the prefix (EVAL-5 unchanged).
  */
 export function describeDebuggerError(err: unknown, what = "Trusted input"): DescribedError {
-  const described = describeRaw(messageOf(err), what);
   const own = ownCoded(err);
+  if (own && ownRefusals.has(err as object)) {
+    const passed: DescribedError = { code: own.code, message: messageOf(err) };
+    if (own.data !== undefined) passed.data = own.data;
+    return passed;
+  }
+  const described = describeRaw(messageOf(err), what);
   if (!own) return described;
   const out: DescribedError = { code: own.code, message: described.message };
   if (own.data !== undefined) out.data = own.data;
@@ -56,6 +66,19 @@ function describeRaw(raw: string, what: string): DescribedError {
     };
   }
   return { code: "DEBUGGER_ATTACH", message: `[chrome.debugger] ${raw}` };
+}
+
+/**
+ * The marker of the bridge's own deliberate refusals (Step 11 S1, #246): membership of a module-private
+ * `WeakSet`, so it cannot be copied by shape (a spread or `Object.assign` of a marked error is not marked) and
+ * holds no error alive. Only an own coded `BridgeError` is passed through; a marked plain `Error` is not.
+ */
+const ownRefusals = new WeakSet<object>();
+
+/** Marks `err` as a refusal the bridge raised on purpose; returns the same object. */
+export function markOwnRefusal<E extends Error>(err: E): E {
+  ownRefusals.add(err);
+  return err;
 }
 
 /** Our own coded error: a `BridgeError`, recognised by shape so this module stays import-free. */

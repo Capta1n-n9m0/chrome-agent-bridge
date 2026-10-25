@@ -782,7 +782,7 @@ export function registerTools(
         .min(1)
         .optional()
         .describe(
-          "Absolute file path: write the value to this file instead of returning it (a string as is, anything else as JSON) and answer only the path, size and sha256. The parent directory must exist; an existing file needs overwrite.",
+          'Absolute file path: write the value to this file instead of returning it (a string as is, anything else as JSON) and answer only the path, size, kind ("string" for a string saved as is, "json" for anything else) and sha256. The parent directory must exist; an existing file needs overwrite.',
         ),
       overwrite: z.boolean().optional().describe("With saveTo: replace an existing file. Default false."),
     },

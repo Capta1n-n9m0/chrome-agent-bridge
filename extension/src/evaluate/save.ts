@@ -29,6 +29,7 @@ import type { EvaluateSaveKind } from "@bridge/shared";
 import { BridgeError, ErrorCodes } from "../errors.js";
 import { pageError, type CdpEvaluateResponse, type CdpRemoteObject } from "./result.js";
 import { SAVE_MAX_VALUE_BYTES, tooLargeError } from "../evaluate-save-store.js";
+import { markOwnRefusal } from "../debugger-errors.js";
 
 /** Code units per slice read out of the page (≤ 3 MiB of UTF-8, one CDP reply each). */
 export const SAVE_SLICE_UNITS = 1_048_576;
@@ -120,9 +121,13 @@ const REFUSALS: Record<string, string> = {
 export const STRINGIFY_FAILED_MESSAGE =
   "JSON.stringify threw on the value in the page (a cycle, a BigInt, or a throwing toJSON or getter) — nothing was saved";
 
+/**
+ * A value refusal, marked as the bridge's own (Step 11 S1, #246): thrown inside `withDebugger`, it reaches the
+ * wire with this text, not `[chrome.debugger] `-prefixed. The cap's refusal is marked at its throw sites below.
+ */
 function refusal(reason: string): BridgeError {
-  if (reason === "stringify") return new BridgeError(ErrorCodes.PAGE_ERROR, STRINGIFY_FAILED_MESSAGE, { name: "TypeError" });
-  return new BridgeError(ErrorCodes.BAD_PARAMS, REFUSALS[reason] ?? `The value is not saveable — ${NOTHING}`);
+  if (reason === "stringify") return markOwnRefusal(new BridgeError(ErrorCodes.PAGE_ERROR, STRINGIFY_FAILED_MESSAGE, { name: "TypeError" }));
+  return markOwnRefusal(new BridgeError(ErrorCodes.BAD_PARAMS, REFUSALS[reason] ?? `The value is not saveable — ${NOTHING}`));
 }
 
 export interface SaveText {
@@ -143,7 +148,7 @@ export function primitiveSaveText(r: CdpRemoteObject, maxUnits: number = SAVE_MA
   if (r.type === "undefined") throw refusal("undefined");
   if (r.subtype === "null" || r.value === null) return { text: "null", kind: "json" };
   if (r.type === "string" && typeof r.value === "string") {
-    if (r.value.length > maxUnits) throw tooLargeError(maxUnits);
+    if (r.value.length > maxUnits) throw markOwnRefusal(tooLargeError(maxUnits));
     return { text: r.value, kind: "string" };
   }
   if ((r.type === "number" && typeof r.value === "number") || (r.type === "boolean" && typeof r.value === "boolean")) {
@@ -215,7 +220,7 @@ export async function collectSaveText(expression: string, timeoutMs: number, dep
     }
     const [length, kind, reason] = m as [number, string, string];
     if (reason !== "") throw refusal(reason);
-    if (length > maxUnits) throw tooLargeError(maxUnits);
+    if (length > maxUnits) throw markOwnRefusal(tooLargeError(maxUnits));
 
     const parts: string[] = [];
     let offset = 0;
