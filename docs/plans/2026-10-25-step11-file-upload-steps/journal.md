@@ -18,3 +18,6 @@ One line per event, UTC. Agent lines: stage · role · model · start → end.
 - 2026-10-25T16:47Z · S1 · step agent · Opus 5.5 · 16:47Z → (running)
 - 2026-10-25T17:05Z · S1 · step agent · Opus 5.5 · 16:47Z → ~17:05Z — DONE. builder Opus 5.5 16:48–16:55; verifier Opus 5.5 16:55–17:02 PASS-with-notes (CRITICAL 0, MAJOR 0, MINOR 4, NIT 2); docs-commit agent Opus 5.5 17:03–. Commits eefb4d8, b31ee80. Tests 3273/132 → 3294/133.
 - 2026-10-25T17:05Z · session · S1 accepted; #253–#255 (#254 under Open); `extension/CLAUDE.md` saveTo-prefix gotcha amended; phase doc 0.5 note, S6 addition, § As built S1.
+- 2026-10-25T17:05Z · S2 · step agent · Opus 5.5 · 17:05Z → (running)
+- 2026-10-25T17:52Z · S2 · step agent · Opus 5.5 · 17:05Z → ~17:52Z — ESCALATE (lane): table entry needs sw.ts + safety-call.ts. builder Opus 5.5 17:06–17:29; verifier Opus 5.5 17:30–17:49 FAIL (CRITICAL 0, MAJOR 0, MINOR 2, NIT 1; fail cause = S2.2 partly unmet); fixer Opus 5.5 17:50–17:51 (MINOR 1). Commits 014a98d (spec), ac31655, 5827f32. Tests 3294/133 → 3461/137.
+- 2026-10-25T17:52Z · session · ruled #256 (lane widened: safety-call.ts labels + sw.ts stub); recorded #257–#259 (#257, #259 under Open). S2 continues with a fresh step agent from S2.md (1 fix round left).

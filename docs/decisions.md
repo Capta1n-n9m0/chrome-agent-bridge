@@ -30,6 +30,8 @@ conservative rule and they wait for the user at the gate).** Each entry is in th
   home folder.
 - 2026-10-25 · S1: the marked set is the `saveTo` value refusals and the cap; the save leg's breakdowns keep the
   prefix (#254) — which wire messages lose the prefix.
+- 2026-10-25 · S2: the `paths` cap, the exact messages, and the folder-line rules (#257) — the refusal texts.
+- 2026-10-25 · S2: the `file:` rule's edges (#259) — `file:` tabs still listed with their URL.
 
 ## Standing decisions
 
@@ -167,6 +169,53 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
+
+### 2026-10-25 · S2: the `file:` rule's edges (#259)
+**Decided:** within `DOMAIN_BLOCKED` the order is own page > `file:` > block list; every tab call on a `file:` tab is
+refused, `closeTab` and `focusTab` included; a wrapper nesting deeper than the 4-level unwrap bound counts as
+`file:`; `downloadStart` to a `file:` URL keeps its handler's `BAD_PARAMS`; `listTabs` rows and tab events of a
+`file:` tab are **not** hidden (#245 (a) names calls only). Two `safety-gate.test.ts` cases that asserted `file:` was
+allowed are amended with dated notes (Stage 0's "no test uses `file:`" was wrong; the S2 verifier judged the amendment
+sound).
+**Why:** #245 (a) applied literally, stricter where it was silent, without changing `listTabs`.
+**Instead of:** hiding `file:` rows as blocked rows are hidden (stricter; offered to the user); allowing `closeTab`.
+**Revisit if:** the user wants `file:` rows hidden (their URL names a local path) or `closeTab` allowed.
+**By:** Claude (S2 builder's proposal; for user review with #245)
+
+### 2026-10-25 · S2: the matcher's added refusal classes (#258)
+**Decided:** beyond 0.4 and #249: control characters include DEL and C1; padding is any Unicode whitespace; a Windows
+path with `<>"|?*` is refused; DOS device names (`CON PRN AUX NUL COM0–9 LPT0–9`, superscript `COM`/`LPT` digits,
+`CONIN$`, `CONOUT$`) are refused by a segment's stem in any segment; `//?/` and `//./` are prefixes; a Windows path is
+matched only against Windows folders and a POSIX path only against POSIX folders.
+**Why:** each is ambiguous to Win32 path handling; refusing fails closed.
+**Instead of:** passing such paths to Chrome.
+**Revisit if:** a real file needs one of these names.
+**By:** Claude (S2 builder's proposal)
+
+### 2026-10-25 · S2: the `paths` cap, the exact messages, and the folder-line rules (#257)
+**Decided:** at most 20 paths (`UPLOAD_FILES_MAX_PATHS`, `shared/src/protocol.ts`), each at most 4096 characters;
+`UPLOAD_REFUSED_MESSAGE` is 0.5's wording and a malformed `paths` gets the same message; the SDK/MCP line, `FILE_PAGE_
+MESSAGE` and `FILE_URL_MESSAGE` as in `…-steps/S2-builder.md` §5; folder lines are never trimmed (a line with leading or
+trailing whitespace is invalid), blank and `#` lines are ignored, one trailing separator is allowed, a root and a
+relative line are invalid.
+**Why:** fixed texts naming no path, folder or count (#237); not trimming fails closed, and the options page (S3) can
+mark invalid lines.
+**Instead of:** trimming as the block list does; a separate malformed-`paths` text.
+**Revisit if:** users paste folders with stray spaces.
+**By:** Claude (S2 builder's proposal; the texts are wire-level, for user review with #237)
+
+### 2026-10-25 · S2: `uploadFiles` enters the safety table in S2, with a stub registration S3 replaces (#256)
+**Decided:** S2's lane widens to `extension/src/safety-call.ts` (the two `case "upload":` labels) and
+`extension/src/sw.ts` (a top-level `router.on("uploadFiles", …)` stub that throws a fixed `INTERNAL`), so the safety
+table entry and S2.2's and S2.5's gate rows land in S2. S3 replaces the stub with the real handler. The stub cannot be
+reached while the folder list is empty (the gate answers `UPLOAD_REFUSED` first), and no build carrying it is loaded
+before S5. The new gate rows run through `CallSafety` with a real tab read (S2 verifier MINOR 2: `testsTab`'s
+`default: false` would compile a missing label silently).
+**Why:** the router-scan tests require a registration for every classified method, and the build needs the labels
+(confirmed by the S2 verifier on a scratch copy). Loosening the scan tests is a forbidden fix.
+**Instead of:** moving the table entry and its rows to S3, which leaves S2's gate untested for a stage.
+**Revisit if:** S3 finds the stub's shape in its way.
+**By:** Claude
 
 ### 2026-10-25 · S1: the wording of `kind` in `saveTo`'s description (#255)
 **Decided:** `browser_evaluate`'s `saveTo` description reads `… answer only the path, size, kind ("string" for a string
