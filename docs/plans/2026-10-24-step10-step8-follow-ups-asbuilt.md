@@ -187,3 +187,33 @@ session agent; one block per stage, appended at each stage close.
 
 ### Open decisions for the user
 - #219 item 1.
+
+## S7 — Run 15 (live): Step 10's rows · 2026-10-25 · verifier: PASS-with-notes · commits `b55048d` … `32cb5fc`, `c8169ff`
+
+### Contracts (binding forward)
+- Live on the Step 10 build: MCP trusted tools focus first and land on a background fixture tab (MCPF-1R, 9/9
+  `isTrusted`); the 800-cap warning reaches the MCP (CAP-1R) and the SDK (CAP-1's SDK leg); `saveTo` saved 1 MiB,
+  4 MiB, 2 MiB with surrogates, JSON, a 418 754-byte synthetic export and a 64 MiB primitive by hash, refusing as #207
+  says (wire texts carry `[chrome.debugger] `, #227); `JS_DISABLED` live on SDK and MCP; bb-login's wait (BBL-1).
+- RET-1R: a killed Chrome retired 3 held handles; `tabGone` with the fixture URL; the old `Tab` → `TAB_GONE`; the
+  safety state (in `storage.local`) survived. pp1 leg PASS (G10-3, read-only).
+- A popup of a background opener gets no `leaseGranted`: Chrome names another tab as the opener (R15-POP-2).
+- SW-1R undetermined → no S7b; `activateForCapture` unchanged.
+
+### Decisions taken
+- #221–#227.
+
+### Deviations from the phase doc
+- Five returns (pinning reader, RET-1's relaunch bug left Chrome down — relaunched by the session agent under #222 —,
+  RET-1's read-back meeting the user's restored windows, two helper stops); a hung prep fixer stopped by the session
+  agent; a usage-limit pause; the step agent replaced by a fresh one at Return 5 (#225). Tests 3165/130 → 3280/132
+  (+115, `recipes/test/s10-*`).
+
+### Estimates vs actuals
+- 1.5 h prep + 2 h live estimated; ~13 h wall clock (incl. the pause and the waits on the user).
+
+### Needs the user's keyboard
+- `/mcp` (or a fresh session) in any interactive Claude session using the bridge: the MCP and daemon builds changed.
+
+### Open decisions for the user
+- #227.

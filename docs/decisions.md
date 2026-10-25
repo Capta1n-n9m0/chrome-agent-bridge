@@ -111,12 +111,46 @@ Step 10 (2026-10-24 on), for the user at the gate:
 7. "S4: a primitive completion value crosses the CDP leg whole; S7 measures it" (#217).
 8. "S4: `saveTo`'s wire methods, refusals, store caps, SDK form and file finish" (#218).
 9. "S4b: `JS_DISABLED`'s wire shape and the SDK line for an old extension" (#219), item 1.
+10. "S7: SAVE-REFUSE's `[chrome.debugger] ` prefix — the product stays for now; a fix is offered" (#227).
 
 *Updated 2026-10-22: before W1 this read "None" — the seven Step 6 decisions listed here (#13, #14,
 #15, #21, #22, #24, #27) were ratified by the user, see "The user rules on the seven Step 6 open
 decisions" below.*
 
 ## Log
+
+### 2026-10-25 · S7: SAVE-REFUSE's `[chrome.debugger] ` prefix — the product stays for now; a fix is offered (#227)
+**Decided:** SAVE-REFUSE's FAIL stands as recorded. The product behaved as built: `saveTo`'s own refusals are thrown
+inside `withDebugger`, and `describeDebuggerError` keeps an own `BridgeError`'s code and data but prefixes its message
+`[chrome.debugger] ` (`extension/src/debugger-errors.ts`), so §4.22's expected text (tied to the throwing constants,
+not the wire) was wrong. For now: (a) keep the product; a dated note beside §4.22's row records the wire text; nothing
+re-run. Offered to the user: (b) an own coded `BridgeError` keeps its message unprefixed (raw Chrome and page errors
+keep the prefix; EVAL-5 unchanged), failing test first, then a new row SAVE-REFUSE-R — the S7 step agent recommends
+(b), since the prefix tells an agent "the debugger failed" when the bridge refused a value on purpose.
+**Why:** a refusal's text is a contract item; (a) changes nothing and is undoable, (b) waits for the user.
+**Instead of:** re-judging the row; changing the product without the user.
+**Revisit if:** the user picks (b); another own refusal inside `withDebugger` is found to rely on the prefix.
+**By:** Claude (open for the user)
+
+### 2026-10-25 · S7: Run 15 stands as recorded; its follow-ups (#226)
+**Decided:** Run 15 (S7, `32cb5fc`/`c8169ff`, live verifier PASS-with-notes) stands: 27 PASS, 3 FAIL (MCPF-1 and CAP-1
+on the harness — the actors' first call was `ToolSearch` while the page saw 9/9 trusted inputs; SAVE-REFUSE, #227),
+3 NOT MEASURED (SW-1 helper bug; R15-3 strict guard; RET-1 relaunch bug), 4 RECORD; re-measurements MCPF-1R, CAP-1R
+(MCP leg), R15-3R (under #224) and RET-1R PASS; the pp1 leg PASS (page, SDK file and MCP file equal sha256, 419 015
+bytes; no value run in the transcript). Consequences: (1) SW-1R is undetermined (d = 101, 1276, 1421 ms), so **no
+S7b** and `activateForCapture`'s waits stay; the ~1.5 s switch stays a carried input; (2) #217's Revisit-if is not met
+(SAVE-PRIM saved a 64 MiB primitive), so #217 stands; (3) R14-POP-1 is explained: with the opener in the background,
+Chrome names another tab as the popup's opener (R15-POP-2 (b)), so no `leaseGranted` — not a daemon defect (#211
+closed); (4) RET-1R measured #126's live row: a killed Chrome retired 3 held handles, `tabGone` carried the fixture URL,
+the old `Tab` answered `TAB_GONE`, the safety state survived; (5) #223's three NITs are known limits; (6) later waves'
+worker-console check gets its own positive control and every scan input is archived per attempt. The safety state was
+read back equal after every attempt and leg.
+**Why:** the fresh live verifier re-read every row against the pre-written text and matched all 8 STOP lines to
+Returns 1–5 (`…step10…-steps/S7.md`).
+**Instead of:** re-running failed rows in the wave; an S7b on an undetermined measurement.
+**Revisit if:** a later wave contradicts a Run 15 row; a popup lease for a background opener is wanted (then a design
+change to the opener rule, the user's call).
+**By:** Claude
 
 ### 2026-10-25 · Fresh agents instead of resumed ones (#225)
 **Decided:** from now on, a stage that needs to continue is handed to a **new** step agent that resumes from its

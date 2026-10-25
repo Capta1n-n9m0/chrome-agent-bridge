@@ -48,3 +48,4 @@
 - S3 closed (`89d6de7`, PASS-with-notes, 2989/122); #216. S4 dispatched (transport (B), #205/#207; schema re-baseline per #214).
 - S4 closed (`6ba2d10`, PASS-with-notes, 3145/130); #217 (primitive leg, S7 measures SAVE-PRIM/SAVE-IDONLY), #218. S4b dispatched alone (S5, S6 already done).
 - S4b closed (`2866c43` spec, `da16277`, PASS-with-notes, 3165/130); #219, #220 (node_modules junction lesson added to common.md). All code stages done; S7 (Run 15) next, alone.
+- S7 closed (`c8169ff`, PASS-with-notes, 3280/132); #221–#227. S8 dispatched (retirement, docs, CLAUDE.md proposals).
