@@ -25,6 +25,7 @@ import {
 } from "@bridge/shared";
 import type { LocateResult, Locator, NetworkEntry, SnapshotResult, WaitForParams } from "@bridge/shared";
 import type { DownloadOutcome } from "./download.js";
+import type { EvaluateToFileOptions, EvaluateToFileResult } from "./evaluate-save.js";
 import type { Knocked } from "./knock.js";
 import type { Target } from "./locator.js";
 import {
@@ -455,6 +456,13 @@ export class BridgeClient {
   }
   async evaluateRef(expression: string): Promise<string> {
     return this.tab().evaluateRef(expression);
+  }
+  /**
+   * `Tab.evaluateToFile` on the cursor (Step 10 S4; Stage 0 F21). Produce a very large value with `return …`: it
+   * is then read out of the page in slices, while a bare string expression crosses Chrome's debugger as one piece.
+   */
+  async evaluateToFile(expression: string, options: EvaluateToFileOptions): Promise<EvaluateToFileResult> {
+    return this.tab().evaluateToFile(expression, options);
   }
   async network(options?: NetworkListOptions | { id: string }): Promise<NetworkEntry[]> {
     return this.tab().network(options);

@@ -3,7 +3,11 @@
 // gone from this table and refused by the tab layer itself.
 // Every extension method is in exactly one class; a new extension method must enter this table.
 
-/** Tab-carrying and lease-checked: resolved to a numeric `tabId` before forwarding. */
+/**
+ * Tab-carrying and lease-checked: resolved to a numeric `tabId` before forwarding. Step 10 S4 (decisions.md #205;
+ * Stage 0 F4): `browser_evaluate {saveTo}`'s three `evaluateSave*` methods are here — the start and each pull
+ * carry the tab, so only its holder can pull; no visibility lock.
+ */
 export const TAB_METHODS: ReadonlySet<string> = new Set([
   "navigate",
   "snapshot",
@@ -21,6 +25,9 @@ export const TAB_METHODS: ReadonlySet<string> = new Set([
   "locate",
   "networkClear",
   "focusTab",
+  "evaluateSaveStart",
+  "evaluateSaveChunk",
+  "evaluateSaveEnd",
 ]);
 
 /** Free (no lease check), forwarded. `networkRequests` still has its scope resolved (#40). */

@@ -5,6 +5,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { isHiddenReason, isLocator, isSafetyState, type EvalEnvelope, type Locator, type SnapshotResult } from "@bridge/shared";
 import { BridgeError, ErrorCodes, downloadToFile, type BridgeClient } from "@bridge/sdk";
 import { formatEntry, formatNetwork, formatSnapshot, type FormattableResult } from "@bridge/sdk/format";
+import { checkSaveTarget, saveEvaluateToFile } from "@bridge/sdk/download";
 import { attachContext, isAttachCode, safetyRefusalLine, type FailureReportConfig } from "@bridge/sdk/report";
 import { CONNECTING_REASON } from "../link.js";
 import { TabCursor } from "../cursor.js";
@@ -756,7 +757,7 @@ export function registerTools(
 
   reg.tool(
     "browser_evaluate",
-    "Run JavaScript in the page context of this session's tab (the active tab is claimed on first use) or `tab` and return the result, like the DevTools console: the last expression's value is returned, top-level `await` works, and `return` is allowed. Results are JSON where possible; DOM nodes, functions and errors come back as short descriptions — use browser_snapshot refs to act on elements. Output is capped (~20k chars, 100 items per array, depth 6) — select what you need. Runs with the page's full logged-in authority and shows Chrome's 'is debugging this browser' banner while it runs.",
+    "Run JavaScript in the page context of this session's tab (the active tab is claimed on first use) or `tab` and return the result, like the DevTools console: the last expression's value is returned, top-level `await` works, and `return` is allowed. Results are JSON where possible; DOM nodes, functions and errors come back as short descriptions — use browser_snapshot refs to act on elements. Output is capped (~20k chars, 100 items per array, depth 6) — select what you need. Runs with the page's full logged-in authority and shows Chrome's 'is debugging this browser' banner while it runs. With saveTo the value is written to that file instead (a string as is, anything else as JSON, without the result caps above, up to 256 MiB) and the answer is only the path, size, kind and sha256; produce a very large value with `return …`, so it never crosses as one piece. Paging bulk data through browser_evaluate in chunks is a test device only, never a supported pattern: pass saveTo to write a large value to a file instead.",
     {
       expression: z
         .string()
@@ -774,9 +775,32 @@ export function registerTools(
         .optional()
         .describe("Return a [ref=eN] for a DOM element result, to act on it with the other tools."),
       tab: z.string().optional().describe(TAB_DESCRIPTION),
+      // Step 10 S4 (decisions.md #127, #205, #207; the schema re-baseline is #214 item 1).
+      saveTo: z
+        .string()
+        .min(1)
+        .optional()
+        .describe(
+          "Absolute file path: write the value to this file instead of returning it (a string as is, anything else as JSON) and answer only the path, size and sha256. The parent directory must exist; an existing file needs overwrite.",
+        ),
+      overwrite: z.boolean().optional().describe("With saveTo: replace an existing file. Default false."),
     },
-    async ({ expression, timeoutMs, asRef, tab }) =>
-      onTab(tab, async (t) => {
+    async ({ expression, timeoutMs, asRef, tab, saveTo, overwrite }) => {
+      if (saveTo !== undefined) {
+        // Step 10 S4: checked before any call (no claim either); the answer carries no part of the value.
+        if (asRef === true) {
+          throw new BridgeError(
+            ErrorCodes.BAD_PARAMS,
+            "browser_evaluate takes asRef or saveTo, not both — saveTo writes the value to a file, asRef returns a ref to an element",
+          );
+        }
+        checkSaveTarget(saveTo, overwrite === true);
+        return onTab(tab, async (t) => {
+          const r = await saveEvaluateToFile((m, p, o) => bridge.call(m, p, o), t, expression, { path: saveTo, overwrite, timeoutMs });
+          return text(`Saved ${r.path}\n${r.bytes} bytes · ${r.kind} · sha256 ${r.sha256}`);
+        });
+      }
+      return onTab(tab, async (t) => {
         const pageTimeoutMs = timeoutMs ?? DEFAULT_EVAL_TIMEOUT_MS;
         const envelope = (await bridge.call(
           "evaluate",
@@ -790,7 +814,8 @@ export function registerTools(
         if (envelope.kind === "node") lines.push("(DOM node — use browser_snapshot refs to act on it)");
         if (envelope.truncated) lines.push("(output truncated — narrow the expression, e.g. pick fields or slice the array)");
         return text(lines.join("\n"));
-      }),
+      });
+    },
   );
 
   reg.tool(

@@ -33,6 +33,8 @@ export type {
   WireError,
 } from "@bridge/shared";
 export { downloadToFile } from "./download.js";
+// Step 10 S4 (#205): `Tab.evaluateToFile`'s option and result shapes — types only; the values stay eight.
+export type { EvaluateToFileOptions, EvaluateToFileResult } from "./evaluate-save.js";
 export type { DownloadOutcome } from "./download.js";
 // The formatters are also on the `@bridge/sdk/format` subpath, which the MCP uses (#46, #75).
 export { formatSnapshot, formatNetwork } from "./format/index.js";

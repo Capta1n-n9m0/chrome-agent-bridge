@@ -9,6 +9,8 @@ import { evaluate } from "./handlers/evaluate.js";
 import { locate } from "./handlers/locate.js";
 import { networkRequests, networkClear } from "./handlers/network.js";
 import { downloadStart, downloadChunk, downloadEnd, clearDownloads } from "./handlers/download.js";
+import { evaluateSaveStart, evaluateSaveChunk, evaluateSaveEnd, clearEvaluateSaves, dropEvaluateSavesForTab } from "./handlers/evaluate-save.js";
+import { javaScriptOff } from "./evaluate-save-store.js";
 import { log as networkLog, ownPort, scheduleFlush, setOwnPort } from "./network-state.js";
 import { isOwnTraffic } from "./network-log.js";
 import type { WebRequestDetails, WebRequestEvent } from "./network-log.js";
@@ -40,6 +42,7 @@ const safety = new SafetyStore({
   onDisarm: () => {
     void debuggerSessions.detachAll(DISARMED_ALL, (tabId) => chrome.debugger.detach({ tabId }));
     clearDownloads();
+    clearEvaluateSaves(); // Step 10 S4 (#205): every held saveTo value goes at a disarm
   },
   onArm: () => debuggerSessions.refuse(null),
 });
@@ -75,6 +78,10 @@ router.on("networkClear", networkClear);
 router.on("downloadStart", downloadStart);
 router.on("downloadChunk", downloadChunk);
 router.on("downloadEnd", downloadEnd);
+// Step 10 S4 (#205): `browser_evaluate {saveTo}` — class "evaluate" in the safety table, tab methods in the daemon's.
+router.on("evaluateSaveStart", evaluateSaveStart);
+router.on("evaluateSaveChunk", evaluateSaveChunk);
+router.on("evaluateSaveEnd", evaluateSaveEnd);
 
 // --- Network capture -------------------------------------------------------------------------
 // MV3 requires every webRequest listener to be registered synchronously while the worker script
@@ -136,6 +143,7 @@ chrome.webRequest.onErrorOccurred.addListener(
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   networkLog.forgetTab(tabId);
+  dropEvaluateSavesForTab(tabId); // Step 10 S4 (#205): a closed tab's held saveTo values go
   scheduleFlush();
 });
 
@@ -186,6 +194,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   sendTabEvent((v) => eventFrame("tabRemoved", redactTabRemoved(params, v.switches, v.ctx)));
 });
 chrome.tabs.onReplaced.addListener((addedTabId, removedTabId) => {
+  dropEvaluateSavesForTab(removedTabId); // Step 10 S4 (#205): the old id is gone; its held values go
   tabInfo.noteReplaced(removedTabId, addedTabId);
   tabInfo.move(removedTabId, addedTabId);
   const frame = eventFrame("tabReplaced", tabReplacedParams(addedTabId, removedTabId));
@@ -339,6 +348,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
   // disarm actions on a disarm), decide held network events, report the new state.
   if (area === "local" && touchesSafety(changes)) {
     safety.applyChanges(changes);
+    // Step 10 S4 (#205): JavaScript off (or a state that fails closed) drops every held saveTo value; a disarm
+    // drops them in onDisarm.
+    if (javaScriptOff(safety.memory)) clearEvaluateSaves();
     ingestGate.flush();
     reportSafety();
   }

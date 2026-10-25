@@ -9,6 +9,11 @@ import type { DownloadChunkResult, DownloadStartResult } from "@bridge/shared";
 
 export const CHUNK_BYTES = 1024 * 1024;
 
+// Step 10 S4: the `@bridge/sdk/download` subpath is also the MCP's door to `browser_evaluate {saveTo}`'s client
+// half (the SDK's main entry keeps its eight values; decisions.md #205).
+export { saveEvaluateToFile, checkSaveTarget } from "./evaluate-save.js";
+export type { EvaluateToFileOptions, EvaluateToFileResult } from "./evaluate-save.js";
+
 const WINDOWS_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
 
 /**

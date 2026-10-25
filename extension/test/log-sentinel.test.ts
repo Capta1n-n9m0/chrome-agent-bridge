@@ -316,3 +316,136 @@ describe("0.7 sentinel test — no pattern, URL, title or token in any captured 
     }
   });
 });
+
+// ---------------------------------------------------------------- Step 10 S4.5: a sentinel value and path
+// The save path end to end — the extension's CDP leg (the shipped page functions over a fake CDP), the store and
+// the three handlers (a stubbed `chrome`), then the real daemon (`WsHost` on port 0, its injected logger and a real
+// file logger) with a fake proto:2 extension serving the three methods, and the SDK's `Tab.evaluateToFile` writing
+// to a sentinel path. No captured line may carry the value, a run of it, the expression or the path.
+const SAVE_VALUE = "sentinel-value-V3Q8-" + "é€".repeat(40) + "-tail-H6";
+const SAVE_EXPR = "return 'sentinel-expr-E2N4'";
+const SAVE_NEEDLES = ["sentinel-value-v3q8", "-tail-h6", "é€é€é€", "sentinel-expr-e2n4", "sentinel-path-p5w2"];
+
+function expectSaveClean(lines: readonly string[]): void {
+  for (const line of lines) {
+    const low = line.toLowerCase();
+    for (const n of SAVE_NEEDLES) expect(low.includes(n), `a save sentinel (${n}) in a log line: ${line.length} chars`).toBe(false);
+  }
+}
+
+describe("S4.5 sentinel test — no saveTo value, expression or path in any captured log line", () => {
+  it("extension: the CDP leg, the store and the handlers", async () => {
+    const { FakeCdp } = await import("./s4-fake-cdp.js");
+    const { collectSaveText } = await import("../src/evaluate/save.js");
+    const { EvaluateSaveStore } = await import("../src/evaluate-save-store.js");
+    const handlers = await import("../src/handlers/evaluate-save.js");
+
+    const cdp = new FakeCdp(() => Promise.resolve(SAVE_VALUE));
+    expect((await collectSaveText(SAVE_EXPR, 1000, { send: cdp.send, sliceUnits: 7 })).text).toBe(SAVE_VALUE);
+    const cyc: Record<string, unknown> = { k: SAVE_VALUE };
+    cyc.self = cyc;
+    await collectSaveText(SAVE_EXPR, 1000, { send: new FakeCdp(() => cyc).send }).catch(() => {});
+    const s = new EvaluateSaveStore();
+    const id = s.put(1, new TextEncoder().encode(SAVE_VALUE), "string");
+    s.chunk(id, 1, 0, 5);
+    try {
+      s.chunk(id, 2, 0, 5);
+    } catch {
+      // another tab: refused
+    }
+
+    vi.stubGlobal("chrome", {
+      tabs: { get: async (tabId: number) => ({ id: tabId, url: OTHER_URL, discarded: false }) },
+      debugger: { attach: async () => {}, detach: async () => {}, sendCommand: async (_t: unknown, m: string, p: Record<string, unknown>) => cdp.send(m, p) },
+    });
+    try {
+      const start = await handlers.evaluateSaveStart({ tabId: 4, expression: SAVE_EXPR });
+      await handlers.evaluateSaveChunk({ tabId: 4, id: start.id, offset: 0 });
+      await handlers.evaluateSaveChunk({ tabId: 5, id: start.id, offset: 0 }).catch(() => {});
+      await handlers.evaluateSaveEnd({ tabId: 4, id: start.id });
+      cdp.completion = () => undefined;
+      await handlers.evaluateSaveStart({ tabId: 4, expression: SAVE_EXPR }).catch(() => {});
+    } finally {
+      handlers.clearEvaluateSaves();
+      vi.unstubAllGlobals();
+    }
+    expectSaveClean(captured);
+  });
+
+  it("daemon + SDK over real ws (port 0): the value crosses, nothing of it, the expression or the path is logged", async () => {
+    const { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const { createFileLogger } = await import("../../daemon/src/log.js");
+    const { connect } = await import("../../sdk/src/connect.js");
+
+    const root = mkdtempSync(path.join(os.tmpdir(), "bridge-s45-"));
+    const dir = path.join(root, "sentinel-path-P5W2");
+    mkdirSync(dir);
+    writeFileSync(path.join(root, "daemon.js"), "// not run: the daemon is in process");
+    const logFile = path.join(root, "daemon.log");
+    const fileLogger = createFileLogger({ path: logFile });
+    fileLogger.setSecret(TOKEN);
+    const daemonLog: string[] = [];
+    const host = new WsHost(new Bridge(), {
+      port: 0,
+      token: TOKEN,
+      build: "sentinel-build",
+      heartbeatMs: 60_000,
+      log: (m) => {
+        daemonLog.push(m);
+        fileLogger.log(m);
+      },
+    });
+    const port = await host.listen();
+    const bytes = Buffer.from(new TextEncoder().encode(SAVE_VALUE));
+    const ext = new WebSocket(`ws://127.0.0.1:${port}`);
+    let client: { close(): void } | undefined;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        ext.on("message", (raw) => {
+          const f = JSON.parse(raw.toString()) as { type?: string; id?: string; method?: string; params?: Record<string, unknown> };
+          if (f.type === "welcome") return resolve();
+          if (typeof f.id !== "string" || typeof f.method !== "string") return;
+          const p = f.params ?? {};
+          let result: unknown = { ok: true };
+          if (f.method === "listTabs") result = { tabs: [{ id: 1, windowId: 1, active: true, current: true, title: TITLE, url: OTHER_URL }] };
+          if (f.method === "newTab") result = { id: 2 };
+          if (f.method === "evaluateSaveStart") result = { id: "es1-s", bytes: bytes.length, kind: "string" };
+          if (f.method === "evaluateSaveChunk") result = { data: bytes.subarray(Number(p.offset), Number(p.offset) + Number(p.length)).toString("base64") };
+          if (f.method === "evaluateSaveEnd") result = { released: true };
+          ext.send(JSON.stringify({ id: f.id, result }));
+        });
+        ext.on("open", () => ext.send(JSON.stringify({ type: "hello", token: TOKEN, role: "extension", proto: 2, session: "s45" })));
+        ext.on("error", reject);
+      });
+      const c = await connect({
+        name: "sentinel-s45",
+        port,
+        env: { BRIDGE_TOKEN: TOKEN, BRIDGE_DAEMON: path.join(root, "daemon.js") },
+        io: { hashDaemon: async () => "sentinel-build", spawnDaemon: async () => {} },
+      });
+      client = c;
+      const tab = await c.newTab();
+      const target = path.join(dir, "sentinel-path-P5W2.txt");
+      const out = await tab.evaluateToFile(SAVE_EXPR, { path: target });
+      expect(readFileSync(target).equals(bytes)).toBe(true);
+      expect(JSON.stringify(out)).not.toContain("sentinel-value");
+      // Refused before any call: the path is named only in the thrown message, never in a log.
+      await tab.evaluateToFile(SAVE_EXPR, { path: target }).catch(() => {});
+
+      expect(daemonLog.length).toBeGreaterThan(0); // the capture is live
+      const fileLines = readFileSync(logFile, "utf8").split("\n");
+      expect(fileLines.length).toBeGreaterThan(1);
+      expectSaveClean(daemonLog);
+      expectSaveClean(fileLines);
+      expectSaveClean(captured);
+      expectClean(daemonLog);
+    } finally {
+      client?.close();
+      ext.terminate();
+      await host.close();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});

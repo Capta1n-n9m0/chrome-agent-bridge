@@ -27,7 +27,8 @@ import { isExtensionUrl, isOwnExtensionPage, isUrlBlocked, urlScheme, type Block
 /**
  * - `tab`: reads or acts on one tab (`tabId`): tested by the tab's URLs.
  * - `navigate`: a tab plus its own URL (`params.url`): tested by both.
- * - `evaluate`: a tab plus the JavaScript switch.
+ * - `evaluate`: a tab plus the JavaScript switch (`evaluate`, and Step 10 S4's `evaluateSaveStart`,
+ *   `evaluateSaveChunk`, `evaluateSaveEnd`).
  * - `newTab`: its own URL (optional); the post-check is the state only.
  * - `closeTab`: a tab; the post-check is the state only (the tab is gone by then).
  * - `listTabs`: redacted (rows hidden), never refused.
@@ -47,7 +48,11 @@ export type MethodClass =
   | "downloadStart"
   | "state";
 
-/** Every router method (`extension/src/sw.ts`), classified. A new method must enter here. */
+/**
+ * Every router method (`extension/src/sw.ts`), classified. A new method must enter here. Step 10 S4 (decisions.md
+ * #205; Stage 0 F4): `browser_evaluate {saveTo}`'s three `evaluateSave*` methods carry the tab and are refused as
+ * `evaluate` is — by the kill switch, the JavaScript switch and the block list.
+ */
 export const METHOD_CLASSES: Readonly<Record<string, MethodClass>> = Object.freeze(
   Object.assign(Object.create(null) as Record<string, MethodClass>, {
     navigate: "navigate",
@@ -73,6 +78,9 @@ export const METHOD_CLASSES: Readonly<Record<string, MethodClass>> = Object.free
     downloadStart: "downloadStart",
     downloadChunk: "state",
     downloadEnd: "state",
+    evaluateSaveStart: "evaluate",
+    evaluateSaveChunk: "evaluate",
+    evaluateSaveEnd: "evaluate",
   } satisfies Record<string, MethodClass>),
 );
 

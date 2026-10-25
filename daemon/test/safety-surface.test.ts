@@ -32,9 +32,15 @@ const STEP8 = {
   REMOVED_METHODS: ["selectTab"],
 };
 
+/**
+ * Step 10 S4 (2026-10-25; decisions.md #205): the three `evaluateSave*` methods added by design: tab methods, appended to Step 8's list. Step 8's lists above stay as they were; Step 10 S4's
+ * additions are listed here, so any other added, removed or renamed method still fails.
+ */
+const STEP10_S4_TAB_METHODS = ["evaluateSaveStart", "evaluateSaveChunk", "evaluateSaveEnd"];
+
 describe("S3.3 — the daemon's method tables are Step 8's", () => {
-  it("each table equals Step 8's, element for element", () => {
-    expect([...TAB_METHODS]).toEqual(STEP8.TAB_METHODS);
+  it("each table equals Step 8's, element for element (plus Step 10 S4's three tab methods)", () => {
+    expect([...TAB_METHODS]).toEqual([...STEP8.TAB_METHODS, ...STEP10_S4_TAB_METHODS]);
     expect([...FREE_METHODS]).toEqual(STEP8.FREE_METHODS);
     expect([...DAEMON_METHODS]).toEqual(STEP8.DAEMON_METHODS);
     expect([...NETWORK_METHODS]).toEqual(STEP8.NETWORK_METHODS);

@@ -88,12 +88,13 @@ describe("sw.ts constructs only the gated router", () => {
   it("every registration is the plain `router.on(\"name\", …)` form (S1's scan stays meaningful)", () => {
     expect(src).not.toMatch(/router\s*\[/);
     expect(src).not.toMatch(/\.on\.(call|apply|bind)\s*\(/);
-    expect(src.match(/\brouter\.on\(\s*"[A-Za-z]+"\s*,/g)).toHaveLength(23);
+    // 23 → 26: Step 10 S4 (2026-10-25; decisions.md #205): the three `evaluateSave*` methods added by design.
+    expect(src.match(/\brouter\.on\(\s*"[A-Za-z]+"\s*,/g)).toHaveLength(26);
   });
 
   it("the handlers it registers come from ./handlers/ only", () => {
     const names = [...src.matchAll(/\brouter\.on\(\s*"[A-Za-z]+"\s*,\s*([A-Za-z_$][\w$]*)\s*\)/g)].map((m) => m[1]!);
-    expect(names).toHaveLength(23);
+    expect(names).toHaveLength(26); // 23 → 26: Step 10 S4 (#205)
     const imports = [...src.matchAll(/import\s*\{([^}]*)\}\s*from\s*"([^"]+)"/g)];
     for (const n of names) {
       const from = imports.find(([, list]) => list!.split(",").some((x) => x.trim().split(/\s+as\s+/).pop() === n));

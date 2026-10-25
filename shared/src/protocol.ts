@@ -377,6 +377,49 @@ export interface DownloadChunkResult {
   data: string;
 }
 
+// ── Step 10 S4: `browser_evaluate {saveTo}` (phase doc 0.4, transport (B); decisions.md #127, #205, #207) ──
+// Three tab methods, modelled on `downloadStart`/`downloadChunk`/`downloadEnd`. A client adds `tab`; the
+// daemon forwards a numeric `tabId` (tab methods, lease-checked, no lock). The extension evaluates the
+// expression as `evaluate` does, keeps the value's UTF-8 bytes in a store keyed by `id` AND the tab, and the
+// client pulls them in slices. The value never travels in one message, never in a start result, an error
+// message or a log line; the extension never receives the file path (it lives only in the client).
+
+/** What a saved value was: a string kept as is, or any other value `JSON.stringify`'d in the page. */
+export type EvaluateSaveKind = "string" | "json";
+
+/** `evaluateSaveStart`'s own params (plus `tab` from a client, `tabId` at the extension). */
+export interface EvaluateSaveStartParams {
+  expression: string;
+  /** The page-side bound, as `evaluate`'s (default 10 000, clamped to [100, 60 000]). */
+  timeoutMs?: number;
+}
+
+/**
+ * The value of an `evaluateSaveStart` call: the store holds `bytes` UTF-8 bytes (as `TextEncoder` makes them)
+ * under `id` for this tab until `evaluateSaveEnd` (or its TTL, a disarm, JavaScript turned off, the tab's
+ * close). Never the value, a preview or a description of it.
+ */
+export interface EvaluateSaveStartResult {
+  id: string;
+  bytes: number;
+  kind: EvaluateSaveKind;
+}
+
+/** `evaluateSaveChunk`'s own params: bytes [offset, offset + length), length ≤ 1 MiB (default 1 MiB). */
+export interface EvaluateSaveChunkParams {
+  id: string;
+  offset: number;
+  length?: number;
+}
+
+/** The value of an `evaluateSaveChunk` call: base64 of the slice, as `DownloadChunkResult`. */
+export type EvaluateSaveChunkResult = DownloadChunkResult;
+
+/** `evaluateSaveEnd`'s own params; its value is `{released: boolean}`, as `downloadEnd`'s. */
+export interface EvaluateSaveEndParams {
+  id: string;
+}
+
 /** The value of a `browser_network_requests` call. */
 export interface NetworkRequestsResult {
   /** The selected page, oldest → newest. */

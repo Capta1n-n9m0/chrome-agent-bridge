@@ -26,6 +26,10 @@ describe("method table", () => {
         "locate",
         "networkClear",
         "focusTab",
+        // Step 10 S4 (2026-10-25; decisions.md #205): the three `evaluateSave*` methods added by design.
+        "evaluateSaveStart",
+        "evaluateSaveChunk",
+        "evaluateSaveEnd",
       ].sort(),
     );
     for (const m of TAB_METHODS) expect(classify(m, {})).toBe("tab");

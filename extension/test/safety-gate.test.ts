@@ -65,17 +65,20 @@ describe("S1.1: the method table classifies every router method", () => {
   it("every name passed to router.on( in extension/src/sw.ts is in the table (and only those)", () => {
     const { names, nonLiteral } = routerMethodNames(source);
     expect(nonLiteral).toEqual([]); // a registration through a variable would escape the scan
-    expect(names).toHaveLength(23);
+    // 23 → 26: Step 10 S4 (2026-10-25; decisions.md #205): the three `evaluateSave*` methods added by design.
+    expect(names).toHaveLength(26);
     for (const n of names) expect(() => methodClass(n)).not.toThrow();
     expect([...names].sort()).toEqual([...ALL_METHODS].sort());
   });
 
-  it("the table lists the 23 methods of phase doc 0.1", () => {
+  it("the table lists the 23 methods of phase doc 0.1, plus Step 10 S4's three", () => {
     expect([...ALL_METHODS].sort()).toEqual(
       [
         "navigate", "snapshot", "screenshot", "click", "type", "scroll", "hover", "selectOption", "pressKey",
         "back", "forward", "listTabs", "focusTab", "newTab", "closeTab", "waitFor", "evaluate", "locate",
         "networkRequests", "networkClear", "downloadStart", "downloadChunk", "downloadEnd",
+        // Step 10 S4 (2026-10-25; decisions.md #205): the three `evaluateSave*` methods added by design.
+        "evaluateSaveStart", "evaluateSaveChunk", "evaluateSaveEnd",
       ].sort(),
     );
   });
@@ -132,7 +135,10 @@ function matrixTargets(cls: MethodClass, u: string): SafetyTarget[] {
 /** The expected outcome, written from 0.1/0.3/0.4/0.5 and #133/#134/#137/#138 — not from the code. */
 function expected(cls: MethodClass, method: string, st: SafetySwitches, kind: UrlKind): string {
   if (!st.armed) return cls === "listTabs" ? "redact:disarmed" : "DISARMED";
-  if (!st.evaluate && method === "evaluate") return "DISARMED";
+  // Step 10 S4 (2026-10-25; #205, Stage 0 F4): every method of class `evaluate` (evaluate and the three
+  // `evaluateSave*`) is refused while JavaScript is off; was `method === "evaluate"`, the class's only member.
+  void method;
+  if (!st.evaluate && cls === "evaluate") return "DISARMED";
   if (cls === "state") return "allow";
   if (kind === "allowed") return "allow";
   // Fixer r1, finding 5b: downloadStart's own URL is tested by the block list only; a chrome-extension://
@@ -194,7 +200,8 @@ describe("S1.2: safetyDecision over every class × state × JS × URL kind", () 
 
   it("evaluate with or without asRef is refused while JS is off; other tools keep working", () => {
     expect(scope(safetyDecision("evaluate", { expression: "1", asRef: true }, live(ALLOWED), ARMED_JS_OFF, ctx))).toBe("evaluate");
-    for (const m of ALL_METHODS.filter((m) => m !== "evaluate")) {
+    // Step 10 S4 (2026-10-25; #205): the other methods of class `evaluate` are refused too (s4-save-gate.test.ts).
+    for (const m of ALL_METHODS.filter((m) => methodClass(m) !== "evaluate")) {
       const cls = methodClass(m);
       const t = cls === "state" || cls === "newTab" || cls === "downloadStart" ? (cls === "state" ? none : own(ALLOWED)) : live(ALLOWED);
       expect(code(safetyDecision(m, {}, t, ARMED_JS_OFF, ctx))).toBe("allow");

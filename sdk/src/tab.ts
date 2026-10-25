@@ -17,6 +17,7 @@ import {
   type WaitForParams,
 } from "@bridge/shared";
 import { downloadToFile, type DownloadOutcome } from "./download.js";
+import { saveEvaluateToFile, type EvaluateToFileOptions, type EvaluateToFileResult } from "./evaluate-save.js";
 import { attachContext, type FailureReportConfig } from "./error.js";
 import { normalizeTarget, requireLocator, type Target } from "./locator.js";
 import { TRUSTED_INPUT_POLICY, type TrustedInputPolicy } from "./policy.js";
@@ -312,6 +313,21 @@ export class Tab {
     const t = options.timeoutMs ?? EVALUATE_DEFAULT_MS;
     const envelope = (await this.#send("evaluate", { expression, timeoutMs: t }, t + EVALUATE_CALL_SLACK_MS)) as EvalEnvelope;
     return envelope.value as T;
+  }
+
+  /**
+   * Step 10 S4 (decisions.md #127, #205, #207): runs `expression` as `evaluate` does and writes its value to the
+   * absolute file `options.path` — a string as is, anything else `JSON.stringify`'d in the page — as UTF-8 without
+   * a BOM, through the extension's store in 1 MiB slices; resolves with `{path, bytes, kind, sha256}`, never the
+   * value. `BAD_PARAMS` before any call for a relative path, an existing directory, a missing parent directory, an
+   * existing file without `overwrite: true`, or an existing `<path>.part`; `BAD_PARAMS` from the extension for an
+   * undefined value, a function, a symbol, a Map, a Set or a DOM node; `PAGE_ERROR` when `JSON.stringify` throws.
+   * Any failure leaves no file. The limit is 256 MiB. Produce a very large value with `return …`: it is then read
+   * out of the page in slices, while a bare string expression crosses Chrome's debugger as one piece.
+   */
+  async evaluateToFile(expression: string, options: EvaluateToFileOptions): Promise<EvaluateToFileResult> {
+    this.#guard();
+    return this.#reported(saveEvaluateToFile((m, p, o) => this.#host.call(m, p, o), this.handle, expression, options));
   }
 
   /** A ref (for click/type/…) to the `Element` that `expression` evaluates to; `BAD_PARAMS` otherwise. */

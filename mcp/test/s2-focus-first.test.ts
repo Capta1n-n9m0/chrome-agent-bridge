@@ -198,14 +198,35 @@ describe("S2.3 the tool list's names and input schemas equal f45e3bf's; the desc
   const FOCUS_SENTENCE =
     " With trusted=true the tab is first brought to the front of its window (as browser_focus_tab does) and is left there.";
 
-  it("names and input schemas deep-equal the fixture captured at f45e3bf", async () => {
+  // Re-baselined 2026-10-25 (Step 10 S4; decisions.md #127 `saveTo`, #214 item 1 "the first is S4's `saveTo`
+  // parameter"): `browser_evaluate` gains `saveTo` and `overwrite`, so its expected schema is the f45e3bf entry
+  // plus exactly those two properties (written out below); every other tool still deep-equals the f45e3bf
+  // fixture, which is left untouched.
+  const S4_ADDED_EVALUATE_PROPERTIES = {
+    saveTo: {
+      type: "string",
+      minLength: 1,
+      description:
+        "Absolute file path: write the value to this file instead of returning it (a string as is, anything else as JSON) and answer only the path, size and sha256. The parent directory must exist; an existing file needs overwrite.",
+    },
+    overwrite: { type: "boolean", description: "With saveTo: replace an existing file. Default false." },
+  };
+
+  it("names and input schemas deep-equal the fixture captured at f45e3bf (browser_evaluate re-baselined by S4)", async () => {
     const fixture = JSON.parse(
       readFileSync(fileURLToPath(new URL("./fixtures/tool-schemas-f45e3bf.json", import.meta.url)), "utf8"),
-    ) as Array<{ name: string; inputSchema: unknown }>;
+    ) as Array<{ name: string; inputSchema: { properties: Record<string, unknown> } }>;
     const live = await captureToolSchemas();
     expect(live.map((t) => t.name)).toEqual(fixture.map((t) => t.name));
     expect(fixture).toHaveLength(23);
-    for (const [i, t] of live.entries()) expect(t.inputSchema, t.name).toEqual(fixture[i].inputSchema);
+    for (const [i, t] of live.entries()) {
+      const want = fixture[i].inputSchema;
+      if (t.name !== "browser_evaluate") {
+        expect(t.inputSchema, t.name).toEqual(want);
+        continue;
+      }
+      expect(t.inputSchema, t.name).toEqual({ ...want, properties: { ...want.properties, ...S4_ADDED_EVALUATE_PROPERTIES } });
+    }
   });
 
   it("browser_click, browser_type and browser_press_key end with the focus sentence; no other tool has it", () => {

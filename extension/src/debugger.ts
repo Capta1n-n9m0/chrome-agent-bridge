@@ -5,6 +5,7 @@ import { BridgeError, ErrorCodes } from "./errors.js";
 import { DebuggerSessions, runWithDebugger, type EffectGuard } from "./safety-debugger.js";
 import { SERIALIZER_SRC, type SerializeLimits } from "./evaluate/serialize.js";
 import { shapeEvaluateResult, pendingPromiseId, type CdpEvaluateResponse } from "./evaluate/result.js";
+import { collectSaveText, type SaveText } from "./evaluate/save.js";
 
 const PROTOCOL = "1.3";
 
@@ -230,6 +231,38 @@ export async function evaluateInPage(
     );
   } catch (err) {
     // Whichever branch it came through, a CDP-terminated script reads as a timeout to the agent.
+    if (isExecutionTerminated(err)) throw new BridgeError(ErrorCodes.TIMEOUT, timeoutMessage(timeoutMs));
+    throw err;
+  }
+}
+
+/** Step 10 S4: how long reading a saved value out of the page may take, after the page's own `timeoutMs`. */
+export const SAVE_TRANSFER_MS = 120_000;
+
+/**
+ * Step 10 S4 (phase doc 0.4 (B); Stage 0 F2): `evaluateSaveStart`'s CDP leg — `collectSaveText`
+ * (`evaluate/save.ts`) in ONE debugger session, `guard` (the gated call's effect check) before the attach, as
+ * `evaluateInPage`. The evaluation shares `timeoutMs`'s deadline (`raceTimeout`); reading the holder out in
+ * slices gets `SAVE_TRANSFER_MS` more. A CDP-terminated script reads as a timeout, as for `evaluate`.
+ */
+export async function evaluateToSave(tabId: number, expression: string, timeoutMs: number, guard?: EffectGuard): Promise<SaveText> {
+  const evalDeadline = Date.now() + timeoutMs;
+  const transferDeadline = evalDeadline + SAVE_TRANSFER_MS;
+  const left = (deadline: number) => Math.max(0, deadline - Date.now());
+  const transferMessage = `Timed out after ${SAVE_TRANSFER_MS / 1000}s reading the value out of the page — nothing was saved`;
+  try {
+    return await withDebugger(
+      tabId,
+      () =>
+        collectSaveText(expression, timeoutMs, {
+          send: (method, params) => send(tabId, method, params),
+          evalRace: (p) => raceTimeout(p, left(evalDeadline), timeoutMessage(timeoutMs)),
+          transferRace: (p) => raceTimeout(p, left(transferDeadline), transferMessage),
+        }),
+      "browser_evaluate",
+      guard,
+    );
+  } catch (err) {
     if (isExecutionTerminated(err)) throw new BridgeError(ErrorCodes.TIMEOUT, timeoutMessage(timeoutMs));
     throw err;
   }

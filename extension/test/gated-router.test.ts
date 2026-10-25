@@ -41,7 +41,8 @@ const req = (id: string, method: string, params: Record<string, unknown> = { tab
   JSON.stringify({ id, method, params });
 
 describe("S2.1 — the gate runs before any handler code", () => {
-  it("disarmed: every one of the 23 methods but listTabs is refused, and zero handlers are called", async () => {
+  // 23 → 26: Step 10 S4 (2026-10-25; decisions.md #205) added the three `evaluateSave*` methods by design.
+  it("disarmed: every one of the 26 methods but listTabs is refused, and zero handlers are called", async () => {
     const { router } = harness(() => view({ armed: false }));
     const calls: string[] = [];
     for (const m of Object.keys(METHOD_CLASSES)) {
@@ -56,7 +57,7 @@ describe("S2.1 — the gate runs before any handler code", () => {
       expect(out.error, m).toEqual({ code: ErrorCodes.DISARMED, message: DISARMED_ALL_MESSAGE, data: { scope: "all" } });
     }
     expect(calls).toEqual([]);
-    expect(Object.keys(METHOD_CLASSES)).toHaveLength(23);
+    expect(Object.keys(METHOD_CLASSES)).toHaveLength(26);
   });
 
   it("disarmed: a handler that throws synchronously, before any await, is never entered", async () => {
