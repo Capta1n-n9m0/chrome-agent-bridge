@@ -673,6 +673,36 @@ The block itself is left as written.*
   and an optional `pastSnapshotCap: true` on `locate`'s result and on the reply of an action resolved from a
   locator past the snapshot's 800th listable element, absent otherwise (decisions.md · 2026-10-25 · S3: the cap
   warning's edges as built (#216)). Both are open for the user at Step 10's gate.*
+- *Amended 2026-10-25 (Step 11 S2; phase doc `docs/plans/2026-10-25-step11-file-upload.md` 0.4–0.6 with their
+  Stage 0 notes; decisions.md · 2026-10-25 · Step 11: the safety class `upload` and the code `UPLOAD_REFUSED`
+  (#237); · Step 11: the wire method `uploadFiles`, no visibility lock, no focus (#238); · Step 11: upload folders
+  are a human-held allow-list in the extension, empty by default (#236); · Stage 0: matcher details — a POSIX path
+  with a backslash is refused; ASCII-only case folding (#249); · Stage 0: uploads need Chrome's file access, and the
+  bridge never opens or reads `file:` pages (#245)). All proposed, for the user at Step 11's gate:*
+  - *A new extension code joins, on the wire: `UPLOAD_REFUSED` — a path given to `uploadFiles` is not strictly
+    inside a folder the human allows for uploads in Chrome (the extension's options page, "Upload folders"; none by
+    default, so every upload is refused until the human adds one). The count is 27: 26 on the wire (9 daemon + 17
+    extension) plus the SDK-only `NO_CURSOR`. Its message is fixed and names no path, folder, count or file name; it
+    carries no `data`; it is not in the SDK's failure-report attach set; the SDK and the MCP render it as one plain
+    line. A refusal reveals only that a path is outside the folders, never which folders exist. A malformed `paths`
+    (not an array, empty, more than 20 entries, an entry that is not a string) is refused the same way (#249).*
+  - *A new tab method: `uploadFiles {tab, ref | locator, paths: string[]}` → `{files: number}` (plus
+    `pastSnapshotCap?: true` as every locator-resolved action since Step 10 S3). `paths` holds 1–20 absolute paths
+    that Chrome itself opens (`DOM.setFileInputFiles`); no file bytes cross the wire (#235). `files` is the number of
+    paths Chrome accepted, not proof that the page took them (#247). Lease-checked, no visibility lock, no focus.*
+  - *Its safety class is `upload`: the state and the tab are tested as for class `tab` (disarmed →
+    `DISARMED {scope:"all"}`; a blocked tab, this extension's own page or a `file:` page → `DOMAIN_BLOCKED`), then
+    every path against the folder list → `UPLOAD_REFUSED`. Order: `DISARMED` > `DOMAIN_BLOCKED` > `UPLOAD_REFUSED` >
+    the handler's own `BAD_PARAMS`. The JavaScript switch does not apply. The folder list lives in
+    `chrome.storage.local` (`safety.uploadFolders`), is read per call, and a wrong-typed value refuses every call
+    `DISARMED` as Step 9's keys do; no method of any layer reads or changes it. The safety state on the wire
+    (`safetyState`, `safetyStatus`, `daemon.status.safety`) is unchanged: no folder count.*
+  - *`DOMAIN_BLOCKED` also answers every call on a tab showing a `file:` page (by its `url` or `pendingUrl`, also
+    wrapped in `blob:`/`filesystem:`/`view-source:`, the scheme in any case), and `navigate`/`newTab` to a `file:`
+    URL, with fixed messages that name no path (#245 (a)). `listTabs` rows and tab events of a `file:` tab are not
+    hidden by this rule.*
+  - *With the bridge armed, JavaScript on, an empty block list and no upload folders, every other method answers as
+    before, except calls on or to `file:` pages.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
