@@ -21,6 +21,13 @@ conservative rule and they wait for the user at the gate).** Each entry is in th
 - 2026-10-25 · Step 11: `Tab.upload`'s signature and result (#240).
 - 2026-10-25 · Step 11: the MCP tool `browser_upload_file` (#241).
 - 2026-10-25 · Step 11: Run 16 may edit the Upload folders box in its own window (#243) — a gate if the user prefers.
+- 2026-10-25 · Stage 0: uploads need Chrome's file access, and the bridge never opens or reads `file:` pages (#245) —
+  **the one that matters most**: the gate refuses `file:` pages (a behaviour change for every method), and the new
+  human gate G11-3 (the "Allow access to file URLs" toggle) holds Run 16's upload rows.
+- 2026-10-25 · Stage 0: a `webkitdirectory` input is refused; `files` is the count Chrome accepted (#247) — the
+  meaning of `files`.
+- 2026-10-25 · Stage 0: who the folder rule protects against, and the broad-folder warning (#250) — warn or refuse a
+  home folder.
 
 ## Standing decisions
 
@@ -158,6 +165,98 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
+
+### 2026-10-25 · Stage 0 accepted; the stage split (#252)
+**Decided:** Stage 0's audit is accepted (verifier PASS-with-notes, `…-steps/Stage0.md`). Stages: S1 1.5 h standard ·
+S2 3 h standard · S3 3.5 h standard ∥ S4 2 h standard · S5 prep 2 h low, live 2 h standard · S6 1 h low. The findings
+enter the stages as listed in `journal.md` (the stage-split line) and the phase doc's dated notes.
+**Why:** the audit's split, with F1's rules (#245) in S2 and S3.
+**Instead of:** the phase doc's original budgets.
+**Revisit if:** G11-3 stays open at S5 (then the upload rows wait; the rest of Run 16 runs).
+**By:** Claude
+
+### 2026-10-25 · Stage 0: Run 16's pass rules corrected before S5 (#251)
+**Decided:** UP-6's "no call" is judged by the SDK preflight's message constant and the page reporter, not `daemon.log`
+(it logs no calls); UP-6's `..` row expects `UPLOAD_REFUSED` (the gate returns only safety refusals); UP-LOGS counts
+`daemon.log`, the worker console and the actors' tool *results*, not the actors' own inputs, with `<ROOT>` named in the
+sheet; UP-8's CSP server on port 8084 (S5 re-checks 8080/8081/8084 and stops if one is held by a program not its own);
+UP-CLICK is not run (no proven safe way to close the native dialog in the wave's own window).
+**Why:** Stage 0 F5, F6, F9, F13 and § UP-CLICK: as written, two rows could not fail and one failed by construction.
+**Instead of:** running the rows as first written.
+**Revisit if:** the daemon gains a per-call log line.
+**By:** Claude
+
+### 2026-10-25 · Stage 0: who the folder rule protects against, and the broad-folder warning (#250)
+**Decided:** the folder rule binds an agent whose only reach is the bridge; an agent with a shell can copy or hard-link a
+file into an allowed folder or drive the options page by UI Automation — a known limit, written in 0.4 and in
+`docs/setup.md` (S6). The options page (S3) and `docs/setup.md` warn not to allow a home folder or any folder that holds
+`bridge.token` or `.ssh`; a filesystem root stays refused (0.4); a home folder is warned, not refused.
+**Why:** Stage 0 F3 and verifier M3.
+**Instead of:** refusing a home folder outright (the stricter option, offered to the user).
+**Revisit if:** the user prefers the refusal.
+**By:** Claude (for user review — listed under Open decisions)
+
+### 2026-10-25 · Stage 0: matcher details — a POSIX path with a backslash is refused; ASCII-only case folding (#249)
+**Decided:** S2's matcher starts from Stage 0's 74-row table (`…-steps/stage0-matcher-cases.txt`) plus the verifier's
+rows (M1: `/home/u/Up\x` refused; N2: folder lines with `/` separators, `..`, a UNC or `\\?\` prefix). A POSIX-shaped
+path or folder line holding `\` is refused, never normalised; drive-letter case folding is ASCII-only (U+212A is not
+`k`); doubled/trailing separators, DOS device names, trailing dot or space segments and over-long paths are refusal
+classes; a malformed `paths` (not an array, a non-string, more than 20) fails closed at the gate.
+**Why:** Stage 0 F9, F10 and verifier M1, N2: each is a fail-open the phase doc's list missed.
+**Instead of:** 0.4's "after normalising separators" on POSIX; `toLowerCase`.
+**Revisit if:** a real folder needs a character a refusal class excludes.
+**By:** Claude
+
+### 2026-10-25 · Stage 0: the finder runs in an isolated world (#248)
+**Decided:** S3 resolves the marked input from an isolated world (`Page.createIsolatedWorld` + `Runtime.evaluate
+{contextId}`) or by walking `DOM.getDocument {depth:-1, pierce:true}` in the extension (S3's choice, recorded), never
+the page's main world; then `DOM.setFileInputFiles {objectId | backendNodeId}`. Amends #239.
+**Why:** Stage 0 F11: page-patched prototypes run during main-world code; CSP was already measured not to block CDP
+evaluate (EVAL-12).
+**Instead of:** 0.7's main-world finder.
+**Revisit if:** S3 shows a same-origin frame unreachable from the isolated world.
+**By:** Claude
+
+### 2026-10-25 · Stage 0: a `webkitdirectory` input is refused; `files` is the count Chrome accepted (#247)
+**Decided:** the target rule (#239) refuses an input with `webkitdirectory` (`BAD_PARAMS`). `uploadFiles`'s `files` is
+the number of paths handed to `DOM.setFileInputFiles` after it returned ok, documented as such; success is judged by
+the page (Run 16's reporter), never by the answer.
+**Why:** Stage 0 F4 (a directory input uploads a folder's contents the matcher never saw) and F7, with verifier M2 (a
+read-back is 0 on a page that clears its input on `change`).
+**Instead of:** the audit's read-back of `input.files.length`.
+**Revisit if:** a client needs the page's own count, or directory uploads are wanted.
+**By:** Claude (the meaning of `files` is wire-level — for user review with #238)
+
+### 2026-10-25 · Stage 0: S1 marks the bridge's own refusals explicitly; page errors and timeouts keep the prefix (#246)
+**Decided:** #244 (a) is reworded: a refusal the bridge raises on purpose inside `withDebugger` (the `saveTo` refusals,
+including the `PAGE_ERROR` of the stringify refusal) carries an explicit marker that `describeDebuggerError` passes
+through unchanged; `pageError` and `raceTimeout`'s `TIMEOUT` keep `[chrome.debugger] `. `debugger-errors.test.ts`'s
+existing prefix assertions and the `debugger-errors.ts` line pinned by `recipes/test/s10-rules.test.ts` stay
+byte-identical; a new failing test pins the marker.
+**Why:** Stage 0 F2: as first worded, "an own `BridgeError` whose code is not a debugger code" also unprefixes EVAL-5's
+page error and timeouts — no code tells them apart — which #229 and 0.14 say must not change.
+**Instead of:** #244 (a)'s code-based rule.
+**Revisit if:** the user wants timeouts unprefixed too.
+**By:** Claude (it implements #229's ruling as the user stated it, EVAL-5 unchanged)
+
+### 2026-10-25 · Stage 0: uploads need Chrome's file access, and the bridge never opens or reads `file:` pages (#245)
+**Decided (conservative rule, for user review):** (a) the gate refuses every tab call on a `file:` tab and every
+`navigate`/`newTab` to a `file:` URL (`DOMAIN_BLOCKED`, a fixed message), for every method, in S2 — before anyone is
+asked to turn file access on; (b) the upload handler reads `chrome.extension.isAllowedFileSchemeAccess()` before
+attaching and, when false, refuses `UPLOAD_REFUSED` with a second fixed message (the user has not allowed this
+extension file access in Chrome), in S3; (c) a new human gate **G11-3**: the toggle "Allow access to file URLs" is
+the user's to turn on (or to grant the wave to turn on and restore in its own window). Until G11-3, Run 16 runs every
+row that needs no file access (SAVE-REFUSE-R, SW-2, the refusals before the attach, a RECORD row "toggle off →
+refused") and the upload rows wait for the user.
+**Why:** Stage 0 F1: Chromium's `dom_handler.cc` refuses `DOM.setFileInputFiles` with "Not allowed" unless the client
+may read local files (re-fetched by the verifier); for an extension that is presumably the file-URL toggle, which
+also lets the bridge navigate to and snapshot any `file:` page — past the folder rule — because the gate passes
+`file:` URLs today (probe). The conservative option is the stricter one, undoable, and no existing test or row uses
+`file:` (S2's verifier checks it).
+**Instead of:** leaving `file:` reachable once the toggle is on; a raw `[chrome.debugger] Not allowed`; turning the
+toggle on inside the wave without a grant (it changes the user's Chrome settings).
+**Revisit if:** S5 measures that the upload works with the toggle off, or the user wants `file:` pages reachable.
+**By:** Claude (for user review — listed under Open decisions)
 
 ### 2026-10-25 · Step 11: Step 10's follow-ups — the details of #229's three items (#244)
 **Decided (proposed):** (a) in `describeDebuggerError` (`extension/src/debugger-errors.ts`) an own `BridgeError`

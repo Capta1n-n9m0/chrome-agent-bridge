@@ -1,7 +1,6 @@
 # Step 11 — D3 file upload (`browser_upload_file`, `Tab.upload`)
 
-**Date:** 2026-10-25 · **Status:** Planned (kickoff `docs/plans/next-session-prompt.md`, written 2026-10-25; draft for
-the session agent's review)
+**Date:** 2026-10-25 · **Status:** Running — Stage 0 done 2026-10-25 (kickoff `docs/plans/next-session-prompt.md`)
 **Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change (§5 layer contract, §6 the human, §10 protocol and codes, with the Step 9 and
 Step 10 dated notes) · **Roadmap:** `docs/progress-and-roadmap.md` §5 (Phase D, "D3 file upload — not started") ·
@@ -102,6 +101,12 @@ log a path" binds in the extension, the daemon, the SDK and the MCP alike (0.10)
 whatever is on disk when Chrome reads it (a file changed between the client's check and Chrome's read is a known
 limit, recorded, not guarded).
 
+*Note 2026-10-25 (Stage 0 F1): Chrome refuses `DOM.setFileInputFiles` ("Not allowed") unless the CDP client may read
+local files — for this extension, presumably its "Allow access to file URLs" toggle, which would also open `file:`
+pages to navigate and snapshot, past the folder rule. Ruled conservatively (decisions.md · 2026-10-25 · Stage 0:
+uploads need Chrome's file access, and the bridge never opens or reads `file:` pages (#245)): the gate refuses `file:`
+pages (S2), the upload checks `isAllowedFileSchemeAccess()` first (S3), and human gate G11-3 holds the toggle.*
+
 ### 0.4 Upload folders: a human-held allow-list in the extension, empty by default (proposed — contract-level, security)
 
 The exfiltration risk is real (Why). Options:
@@ -138,6 +143,13 @@ The exfiltration risk is real (Why). Options:
 - **The safety state on the wire is unchanged:** `safetyState`/`safetyStatus` and `daemon.status.safety` keep
   `{armed, evaluate, blockedCount}`; no folder count is added (conservative: no event shape changes; the refusal tells
   the agent). Offered alternative: an `uploadFolders` count in the state.
+
+*Note 2026-10-25 (Stage 0 F3, F9, F10, M1, M3, N2): the folder rule binds an agent whose only reach is the bridge; an
+agent with a shell can copy or link a file into an allowed folder — a known limit; the options page and `docs/setup.md`
+warn against a home folder or one holding `bridge.token` or `.ssh` (#250). The matcher starts from
+`…-steps/stage0-matcher-cases.txt` plus the verifier's rows; a POSIX path holding `\` is refused, never normalised;
+case folding is ASCII-only; every matcher refusal reaches the wire as `UPLOAD_REFUSED`, and a malformed `paths` fails
+closed at the gate (#249).*
 
 ### 0.5 The gate and the refusal (proposed — contract-level)
 
@@ -198,6 +210,10 @@ The exfiltration risk is real (Why). Options:
   whether a page's CSP can block the finder (row UP-8 measures it).
 - **Pure parts, unit-tested first:** the target rule (jsdom), the finder and unmark strings (jsdom, exactly the
   shipped strings), and the CDP step list (as `extension/src/trusted-input.ts` lists trusted input's steps).
+
+*Note 2026-10-25 (Stage 0 F4, F7, F11, M2): an input with `webkitdirectory` is refused `BAD_PARAMS` (#247); the
+finder runs in an isolated world or by `DOM.getDocument {pierce}`, never the page's main world (#248); the answer's
+`files` is the count Chrome accepted, not proof — the page judges (#247).*
 
 ### 0.8 The SDK: `Tab.upload` within the eight values (proposed — contract-level SDK surface)
 
@@ -274,6 +290,13 @@ scratch folder (`<ROOT>`) with fixture names; sizes 0 B, 1 KiB, 5 MiB, 50 MiB.
 - **SAVE-REFUSE-R** and **SW-2** (0.14), on the same build, before the restore.
 - Restore: the upload folders, block list, armed and JavaScript read back equal to UP-0 by hash.
 
+*Corrected 2026-10-25 (Stage 0 F5, F6, F9, F13, § UP-CLICK; decisions.md · 2026-10-25 · Stage 0: Run 16's pass rules
+corrected before S5 (#251)): UP-6's "no call" is judged by the SDK preflight's message constant and the reporter, not
+`daemon.log` (which logs no calls); UP-6's `..` row expects `UPLOAD_REFUSED`; UP-LOGS counts the actors' tool results,
+not their own inputs, with `<ROOT>` named in the sheet; UP-8 uses port 8084; UP-CLICK is not run. UP-0 also reads the
+file-URL toggle (in a window the wave opened, read only); with it off, a RECORD row measures what the upload answers,
+and the upload rows UP-1…UP-5, UP-8, UP-9 wait for G11-3 (#245).*
+
 ### 0.13 Not in Step 11 (proposed)
 
 Intercepting the native file chooser (`Page.setInterceptFileChooserDialog` + `Page.fileChooserOpened` after a click,
@@ -292,6 +315,10 @@ decisions.md · 2026-10-25 · The user rules on Step 10's open decisions; Step 1
   page error still carry the prefix and EVAL-5's expected text still holds. Live row **SAVE-REFUSE-R**: SAVE-REFUSE's
   refusals (#207, #218) through the SDK and the MCP, each wire message equal to its constant with no prefix; written
   in §4.23 before Run 16, SAVE-REFUSE's Run 15 record untouched.
+  *Corrected 2026-10-25 (Stage 0 F2; decisions.md · 2026-10-25 · Stage 0: S1 marks the bridge's own refusals
+  explicitly; page errors and timeouts keep the prefix (#246)): "an own `BridgeError` whose code is not a debugger
+  code" would also unprefix EVAL-5's page error and timeouts; the bridge's own refusals carry an explicit marker
+  instead, and `pageError` and `TIMEOUT` keep the prefix.*
 - **(b) `kind` in the `saveTo` description.** `browser_evaluate`'s `saveTo` parameter description names the answer's
   `kind` (`string` or `json`, from `evaluateSaveStart`'s result, #218). It sits in the `inputSchema` that #214's
   baseline pins, so the baseline is re-baselined for that one tool with a dated note in the test; the other 22 entries
@@ -472,6 +499,9 @@ every new test of pure logic fails on the code before the stage (the verifier pr
   real site or with the user's credentials. Uploading is outward-facing: a real-site row needs a fresh grant naming
   the site and the file. decisions.md · 2026-10-25 · The user widens Step 10's grants: unlimited Chrome restarts,
   repeated pp1 reads, hidden pp1 writes (#222) was for Step 10 and is not standing.
+- **G11-3** *(added 2026-10-25, Stage 0 F1, #245)* — the extension's "Allow access to file URLs" toggle: the user
+  turns it on, or grants the wave to turn it on and restore it in its own window (it reloads the extension). Until
+  then Run 16's upload rows wait; the rest of the wave runs.
 - **Proposed, under decisions.md · 2026-10-22 · Live E2E waves are run by Claude end to end (#33):** the wave may edit
   the Upload folders box on the options page in its own window, as Runs 13–15 edited the block list, only to add its
   own `<ROOT>` and to restore the found text exactly; a restore that fails is a stop. If the user prefers, this is a
@@ -515,6 +545,17 @@ measurement; and, from Steps 6–10, still binding: everything in `docs/agent-ru
 One block per stage, written by the session agent at the stage close (format: `docs/docs-writing-guide.md` § Phase
 doc header); at the phase close, the gate checklist (item → met? → evidence).
 
+### Stage 0 — Spec audit · 2026-10-25 · verifier: PASS-with-notes · commits `b962460`, `deaffd1` · models: step agent, auditor, verifier Opus 5.5
+- **Z.1 met.** Step 8, 9 and 10 contracts re-executed on port 0 from a `git archive` copy: held. Counts recomputed
+  by auditor and verifier (`…-steps/stage0-counts.txt`). Matcher table 74 rows (`stage0-matcher-cases.txt`).
+  `DOM.setFileInputFiles` cited from Chromium's `dom_handler.cc` (`stage0-cdp.txt`). ~0.5 h against 2 h.
+- **Findings:** 1 CRITICAL (F1, the file-access check → #245, G11-3), 5 MAJOR (F2 → #246; F3 → #250; F4 → #247;
+  F5, F6 → #251), 9 MINOR, 1 NIT (`stage0-audit.md` §6); verifier 3 MINOR, 2 NIT, no CRITICAL/MAJOR.
+- **Decisions:** #245–#252. Notes applied above at 0.3, 0.4, 0.7, 0.12, 0.14 (a), Human gates, Open items.
+- **Contracts (binding forward):** the gate passes `file:` URLs until S2 lands #245 (a); `fs.realpathSync` keeps 8.3
+  names and the given case, `fs.promises.realpath` canonicalises (F8, S4 uses the latter);
+  `s2-focus-first.test.ts` requires `browser_click`'s description to end with the focus sentence (F12, S4).
+
 ## Open items
 
 - Contract-level, ruled at Stage 0 by the conservative rule and listed for the user at the gate: 0.3 (paths only),
@@ -523,7 +564,11 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   signature and result), 0.9 (the tool name, schema and answer).
 - Waiting for the user: G11-2 for any real-site upload; G11-1 for any push. (G11-0 met by #229.)
 - Known limits, recorded, not fixed: a raw client can skip the real-path step; a file changed between the client's
-  read and Chrome's read; a refusal tells an agent which of its paths are allowed.
+  read and Chrome's read; a refusal tells an agent which of its paths are allowed; *(added 2026-10-25, Stage 0
+  F3, F15)* an agent with a shell can put a file into an allowed folder; a refusal raised after the CDP call (a
+  disarm, a folder removed) can leave the file in the page.
+- *Added 2026-10-25 (Stage 0):* for the user at the gate — #245 (`file:` pages refused; G11-3), #247 (the meaning of
+  `files`), #250 (warn or refuse a home folder).
 
 ## Follow-ups
 
