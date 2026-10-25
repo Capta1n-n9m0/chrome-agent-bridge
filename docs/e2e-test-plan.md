@@ -149,7 +149,7 @@ Record outcomes in the [Results template](#results-template). A run "passes" whe
 9. **Reloading the extension by UI automation** — *added 2026-10-23, stage RELOAD-AUTO (decisions.md ·
    2026-10-23 · The driver may reload the extension by UI automation, … (#64)); measured on Windows 11,
    Chrome 156, English UI.* After `npm run build` changes `extension/dist`, Chrome runs the old code
-   until the extension is reloaded (CLAUDE.md gotcha). A driver with shell access reloads it with
+   until the extension is reloaded (root `CLAUDE.md`, "Gotchas that cut across packages"). A driver with shell access reloads it with
    **[SH]**, from the repo root in Windows PowerShell:
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File .\recipes\reload-extension.ps1   # -DryRun: find only
