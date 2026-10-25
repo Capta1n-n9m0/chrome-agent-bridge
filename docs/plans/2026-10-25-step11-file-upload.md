@@ -5,7 +5,8 @@ the session agent's review)
 **Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change (§5 layer contract, §6 the human, §10 protocol and codes, with the Step 9 and
 Step 10 dated notes) · **Roadmap:** `docs/progress-and-roadmap.md` §5 (Phase D, "D3 file upload — not started") ·
-**As-built:** `docs/plans/2026-10-25-step11-file-upload-asbuilt.md` (created at the first stage close) · **Steps
+**As built:** § As built below (decisions.md · 2026-10-25 · Lean procedures: rules by pointer, package CLAUDE.md
+files, risk-tiered models (#230)) · **Steps
 dir:** `docs/plans/2026-10-25-step11-file-upload-steps/` (created at kickoff).
 
 > **PRECONDITION — the Step 11 run starts only after the user has ruled Step 10's open decisions** (decisions.md →
@@ -308,25 +309,53 @@ decisions.md · 2026-10-25 · The user rules on Step 10's open decisions; Step 1
 
 ## Stages
 
-**Lane** is the explicit grant a step agent needs under the `step-agent` ESCALATION list. Budgets are estimates.
+**Lane** is the explicit grant a step agent needs (`docs/agent-rules.md` §3 item 5). **Risk** picks the models
+(`docs/agent-rules.md` §7): *standard* → Opus throughout; *low* → Sonnet (effort high) builder and fixer, Opus
+verifier. Budgets are estimates; the step report records the actual beside each. **Verifier focus** is in addition
+to `agent-rules.md` §6 and the stage's exit checks.
 
-### Stage 0 — Spec audit (2 h, first, alone)
+### Stage 0 — Spec audit (2 h, first, alone; risk: standard)
 - [ ] The four lenses of the kickoff §4 over this doc; Step 10's "Contracts (binding forward)" and Step 9's
       re-executed on port 0; counts recomputed (26 router methods, 26 codes, 23 tools, 3273 tests / 132 files, the
       log-scan count); `DOM.setFileInputFiles`'s parameters, events and errors confirmed from Chrome's protocol
       documentation (one targeted search allowed, source recorded); 0.7's finder vs `DOM.getDocument`; the matcher's
       case table drafted for S2.
-**Lane:** the steps dir; read-only elsewhere; port 0 only.
+**Lane:** the steps dir; read-only elsewhere; port 0 only. **Verifier focus:** re-execute five findings; the contract
+runs are real (port 0); `DOM.setFileInputFiles`'s source cited.
 
-### Stage S1 — Step 10's ordered follow-ups (1 h, after Stage 0)
+*Moved 2026-10-25 from the kickoff (#230).* **Code to cite by execution:** `extension/src/debugger.ts`
+(`withDebugger`, `runWithDebugger`'s guard and session registry) and `debugger-errors.ts` (where an own `BridgeError`
+is prefixed; EVAL-5's text); `safety.ts` (`METHOD_CLASSES`, `safetyDecision`, where class `upload` and a path check
+sit), `safety-state.ts`, `safety-match.ts` (the model for the folder matcher); `evaluate/mark.ts` and
+`content/marked.ts` (the mark pattern 0.7 reverses); `content/a11y.ts` (file inputs listed as `button`;
+`display:none` inputs pruned: confirm by test); `handlers/target.ts`, `handlers/actions.ts`; `options.ts`,
+`options.html`, `options-model.ts`, `extension/test/safety-writers.test.ts`; `daemon/src/methods.ts`; `sdk/src/`
+`tab.ts`, `client.ts`, `index.ts`, `download.ts`, `evaluate-save.ts`; `mcp/src/tools/registry.ts` and
+`mcp/test/s2-focus-first.test.ts`; `shared/src/protocol.ts`, `codes.ts`. `DOM.setFileInputFiles`: parameters, whether
+it needs `DOM.enable`/`DOM.getDocument`, events, and what it does with a missing path, a directory, `accept` and a
+non-`multiple` input, stated plainly where only S5 can measure it.
+
+**Blind spots, seed list (extend it):** the folder rule on Windows (drive-letter case, `/` vs `\`, trailing
+separators, 8.3 names, UNC and `\\?\` prefixes, alternate data streams, `..`, mapped and `subst` drives, OneDrive
+placeholders), POSIX case, a symlink or junction as an allowed folder, the real path on another drive; exfiltration
+around the rule (a device name such as `CON`, a hard link to a file outside, a file swapped between the client's
+check and Chrome's read, whether an agent can get a folder into the options page); the element (replaced between the
+mark and the CDP call, a cross-origin frame or closed shadow root, a re-render on `change`, `input` vs `change` order,
+a form that uploads on `change`); the finder under a strict CSP and with JavaScript off (0.5 says it is not "agent
+JavaScript": attack it); background tabs (UP-1's outcome table, the banner, a disarm during the call); logs (the
+daemon's `redact` keys on `://` and the token, so only "never log params" protects a path; the SDK failure report;
+the MCP's error rendering; an MCP actor's transcript); S1's callers of the prefix; SW-2's warm-up and pre-checks.
+
+### Stage S1 — Step 10's ordered follow-ups (1 h, after Stage 0; risk: standard)
 - [ ] 0.14 (a): own coded refusals unprefixed inside `withDebugger`; failing test first; EVAL-5's text unchanged.
 - [ ] 0.14 (b): `kind` in `browser_evaluate`'s `saveTo` description; the schema baseline re-baselined for that one
       tool with a dated note (#214).
 **Lane:** `extension/src/debugger-errors.ts` (and a caller only if the test shows it must), `mcp/src/tools/registry.ts`
 (`browser_evaluate`'s `saveTo` description only), `extension/test/`, `mcp/test/`. **Parallel with:** nothing (S2
-edits both files after it). *Added 2026-10-25 by #229.*
+edits both files after it). *Added 2026-10-25 by #229.* **Verifier focus:** the new test fails at `eac8324`; raw
+Chrome and page errors keep the prefix; EVAL-5's text unchanged; the baseline differs in one entry.
 
-### Stage S2 — The contract: code, gate, matcher, tables (2.5 h, after S1)
+### Stage S2 — The contract: code, gate, matcher, tables (2.5 h, after S1; risk: standard)
 - [ ] Spec §10 note first (`UPLOAD_REFUSED`, `uploadFiles`, class `upload`); `shared/src/codes.ts` and
       `protocol.ts` (params, result, guard); `extension/src/upload-paths.ts` (0.4's matcher, case table first);
       `safety.ts` class `upload` and its decision; `safety-state.ts` key `safety.uploadFolders` (read per call, fail
@@ -334,37 +363,55 @@ edits both files after it). *Added 2026-10-25 by #229.*
       `log-sentinel` sentinel path.
 **Lane:** `docs/specs/…-design.md` (§10 note), `shared/src/`, `extension/src/{safety,safety-state,upload-paths}.ts`,
 `daemon/src/methods.ts`, `sdk/src/error.ts`, `mcp/src/tools/registry.ts` (`withSafetyRefusals` only), their `test/`
-dirs. **Parallel with:** nothing (every later stage builds on it).
+dirs. **Parallel with:** nothing (every later stage builds on it). **Verifier focus:** spec §10 note before the code;
+three matcher mutants red; no attach while disarmed; 27 codes; log count unchanged.
 
-### Stage S3 — The extension: handler, mark, options page (3 h, after S2)
+### Stage S3 — The extension: handler, mark, options page (3 h, after S2; risk: standard)
 - [ ] `extension/src/handlers/upload.ts`; the content-script target rule and mark (`extension/src/content/`); the
       finder and the CDP steps beside `debugger.ts`'s other CDP legs; `sw.ts` registration (top level, no `await`);
       the options page "Upload folders" box (`options.html`, `options.ts`, `options-model.ts`); the writers test.
 **Lane:** `extension/src/` (not `a11y.ts`, `snapshot.ts`, `locate.ts`), `extension/options.html`, `extension/test/`.
-**Parallel with:** S4 (file-disjoint).
+**Parallel with:** S4 (file-disjoint). **Verifier focus:** mark removed on every path; shipped strings tested;
+`a11y.ts`/`snapshot.ts`/`locate.ts` diff empty; writers test.
 
-### Stage S4 — The SDK and the MCP (2 h, after S2)
+### Stage S4 — The SDK and the MCP (2 h, after S2; risk: standard)
 - [ ] `Tab.upload` + the client mirror + the preflight (`sdk/src/`); `browser_upload_file` and `browser_click`'s
       sentence (`mcp/src/tools/registry.ts`); the schema baseline re-baselined by one entry; a cross-package test over
       real `ws` on port 0 with a fake proto:2 extension.
-**Lane:** `sdk/src/`, `mcp/src/tools/registry.ts`, `sdk/test/`, `mcp/test/`. **Parallel with:** S3.
+**Lane:** `sdk/src/`, `mcp/src/tools/registry.ts`, `sdk/test/`, `mcp/test/`. **Parallel with:** S3. **Verifier
+focus:** zero calls on a preflight refusal; real path sent; eight values; one added schema entry; no directory in any
+answer.
 
-### Stage S5 — Run 16 (live): the upload rows (1.5 h prep + 1.5 h live, after S3 and S4, alone)
+### Stage S5 — Run 16 (live): the upload rows (1.5 h prep + 1.5 h live, after S3 and S4, alone; risk: prep low, live standard)
 - [ ] §4.23 rows of 0.12, SAVE-REFUSE-R and SW-2 (0.14) with expected text, committed before the build is loaded;
       the fixture and its CSP server;
       helpers `recipes/s11*.{ts,ps1,py}` and their rule tests; main-tree build of committed code, the reload script,
       the loaded-build proof first; the record `…-steps/S5-run-record.md`; §5 Run 16.
 - [ ] The safety state, including the upload folders, restored and read back equal to the found state.
 **Lane:** `recipes/s11*`, `recipes/test/s11-*`, a `recipes/tsconfig.s11.json`, `test-fixtures/s11-*`,
-`docs/e2e-test-plan.md` §4.23 and §5, the steps dir. **No product code.**
+`docs/e2e-test-plan.md` §4.23 and §5, the steps dir. **No product code.** **Models:** the prep builder and fixer
+(helpers, rule tests, fixtures, rows) Sonnet; the live runner and every verifier Opus. **Verifier focus:** every
+upload row by the page's reporter; refusals leave 0 files; restore read-back by hash including the Upload folders;
+SW-2's warm-up excluded.
+
+*Moved 2026-10-25 from the kickoff (#230).* **How the live wave runs** (#33, #193, #213): (1) rows and expected text
+committed, with every brief fill-in; (2) the safety state recorded as found (armed, JavaScript, the block list and
+Upload folders counted and hashed, never printed); (3) main-tree `npm run build` of committed code, the reload
+script (exit 0; one re-run on exit 2), the loaded-build proof first; (4) fixtures on 8080/8081 and the threaded CSP
+server (port picked at Stage 0 by `netstat`), files made by the wave under `<ROOT>`, actors: SDK scripts and
+headless `claude -p` sessions with tool search off; the toolbar button, the shortcut and the options page only in
+windows the wave opened; (5) on any STOP line the runner restores and returns; (6) restore and read back; (7)
+results into `docs/e2e-test-plan.md` §5 as Run 16, with the run record and the daemon log as `.txt`; a fresh
+verifier re-reads the record against the pre-written text and scans for `scheme://host`, the token, the test
+patterns, the sentinel folder and the profile path by count. A failed row is recorded, never fixed in the wave.
 - [ ] S5b, only if SW-2 reads "runs to its bound": the fix (failing test first where pure) and its re-measure row.
       **Lane (S5b):** `extension/src/tabs.ts` and its tests; a top-level listener escalates.
 
-### Stage S6 — Docs (1 h, last)
+### Stage S6 — Docs (1 h, last; risk: low)
 - [ ] `docs/setup.md` (Uploading files; the Safety section's Upload folders; the tool list), `README.md`,
-      `recipes/README.md`, the roadmap's Phase D and Step 11 blocks; `CLAUDE.md` changes proposed for the session
-      agent (`…-steps/S6-claude-md-proposals.md`).
-**Lane:** docs only.
+      `recipes/README.md`, the roadmap's Phase D and Step 11 blocks; gotchas and Key-files lines for the package
+      `CLAUDE.md` files proposed for the session agent (`…-steps/S6-claude-md-proposals.md`).
+**Lane:** docs only. **Verifier focus:** setup text matches the code byte for byte; gotchas cite sources.
 
 ## Exit checks (pre-registered)
 
@@ -458,6 +505,11 @@ value, body, locator text, an evaluated value, a `saveTo` path or the token; bin
 widening the token rule; making `BridgeClient` reconnect on a close code other than 4002; letting the MCP crash when
 `connect()` fails; editing a test's expected text to match a changed error; regenerating
 `sdk/test/fixtures/baseline-51de800.json`; adding `windows.update({focused:true})` outside `focusTab`.
+
+## As built
+
+One block per stage, written by the session agent at the stage close (format: `docs/docs-writing-guide.md` § Phase
+doc header); at the phase close, the gate checklist (item → met? → evidence).
 
 ## Open items
 
