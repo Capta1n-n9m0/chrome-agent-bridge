@@ -601,6 +601,10 @@ export type DaemonStatusSafety = SafetyState | null;
  * Which switch a `DISARMED` refusal comes from: `"all"` the kill switch, `"evaluate"` the JavaScript
  * switch on an `evaluate` (decisions.md · 2026-10-24 · The JavaScript switch reuses `DISARMED` with a
  * scope (#133)).
+ * *Superseded 2026-10-25 (Step 10 S4b): `"evaluate"` is no longer produced — a Step 10 extension answers
+ * "JavaScript is off" with its own code, `JS_DISABLED` (no `data`), and sends `DISARMED` only with `"all"`,
+ * because #202 changed #133. Both values stay: an old (Step 9) extension may still send `"evaluate"`, which
+ * the SDK and the MCP render as the JavaScript-off line (Stage 0 F17).*
  */
 export type SafetyScope = "all" | "evaluate";
 

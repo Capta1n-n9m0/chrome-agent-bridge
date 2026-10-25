@@ -138,7 +138,8 @@ function expected(cls: MethodClass, method: string, st: SafetySwitches, kind: Ur
   // Step 10 S4 (2026-10-25; #205, Stage 0 F4): every method of class `evaluate` (evaluate and the three
   // `evaluateSave*`) is refused while JavaScript is off; was `method === "evaluate"`, the class's only member.
   void method;
-  if (!st.evaluate && cls === "evaluate") return "DISARMED";
+  // Step 10 S4b (2026-10-25; #202 changed #133): JavaScript off → JS_DISABLED (was DISARMED {scope:"evaluate"}).
+  if (!st.evaluate && cls === "evaluate") return "JS_DISABLED";
   if (cls === "state") return "allow";
   if (kind === "allowed") return "allow";
   // Fixer r1, finding 5b: downloadStart's own URL is tested by the block list only; a chrome-extension://
@@ -162,11 +163,14 @@ describe("S1.2: safetyDecision over every class × state × JS × URL kind", () 
           for (const t of matrixTargets(cls, URL_OF[kind])) {
             const d = safetyDecision(method, {}, t, st, ctx);
             expect(code(d)).toBe(expected(cls, method, st, kind));
+            // Step 10 S4b (#202): DISARMED is produced only with scope "all" (was "all" | "evaluate");
+            // JS_DISABLED carries no data.
             if (code(d) === "DISARMED") {
-              const s = !st.armed ? "all" : "evaluate";
-              expect(scope(d)).toBe(s);
-              expect(d).toMatchObject({ data: { scope: s } });
+              expect(st.armed).toBe(false);
+              expect(scope(d)).toBe("all");
+              expect(d).toMatchObject({ data: { scope: "all" } });
             }
+            if (code(d) === "JS_DISABLED") expect(isRefusal(d) && d.data).toBeUndefined();
           }
         });
       }
@@ -193,13 +197,15 @@ describe("S1.2: safetyDecision over every class × state × JS × URL kind", () 
 
   it("the state is checked before the tab: disarmed on a blocked tab is DISARMED, not DOMAIN_BLOCKED", () => {
     expect(code(safetyDecision("snapshot", {}, live(BLOCKED), DISARMED, ctx))).toBe("DISARMED");
-    expect(code(safetyDecision("evaluate", {}, live(BLOCKED), ARMED_JS_OFF, ctx))).toBe("DISARMED");
-    expect(scope(safetyDecision("evaluate", {}, live(BLOCKED), ARMED_JS_OFF, ctx))).toBe("evaluate");
+    // Step 10 S4b (#202): JavaScript off is JS_DISABLED (was DISARMED, scope "evaluate"), still before the tab.
+    expect(code(safetyDecision("evaluate", {}, live(BLOCKED), ARMED_JS_OFF, ctx))).toBe("JS_DISABLED");
+    expect(scope(safetyDecision("evaluate", {}, live(BLOCKED), ARMED_JS_OFF, ctx))).toBeUndefined();
     expect(scope(safetyDecision("evaluate", {}, live(BLOCKED), DISARMED_JS_OFF, ctx))).toBe("all");
   });
 
   it("evaluate with or without asRef is refused while JS is off; other tools keep working", () => {
-    expect(scope(safetyDecision("evaluate", { expression: "1", asRef: true }, live(ALLOWED), ARMED_JS_OFF, ctx))).toBe("evaluate");
+    // Step 10 S4b (#202): was scope "evaluate" (DISARMED).
+    expect(code(safetyDecision("evaluate", { expression: "1", asRef: true }, live(ALLOWED), ARMED_JS_OFF, ctx))).toBe("JS_DISABLED");
     // Step 10 S4 (2026-10-25; #205): the other methods of class `evaluate` are refused too (s4-save-gate.test.ts).
     for (const m of ALL_METHODS.filter((m) => methodClass(m) !== "evaluate")) {
       const cls = methodClass(m);
@@ -242,11 +248,12 @@ describe("S1.2: the network forms × {tabId, scope all, id lookup}", () => {
 describe("#138: script URLs, extension pages, chrome:// (cases 39–41 through the gate)", () => {
   const scriptUrls = ["javascript:alert(1)", "JavaScript:void 0", " data:text/html,<p>x", "blob:https://bank.example/uuid", "java\tscript:1", "blob:http://localhost:8080/u"];
   for (const m of ["navigate", "newTab"]) {
-    it(`${m} to javascript:/data:/blob: → DISARMED {scope:"evaluate"} while JS off; allow while on`, () => {
+    // Step 10 S4b (2026-10-25; #202 changed #133): was → DISARMED {scope:"evaluate"}.
+    it(`${m} to javascript:/data:/blob: → JS_DISABLED while JS off; allow while on`, () => {
       for (const u of scriptUrls) {
         const off = safetyDecision(m, { url: u }, own(u), ARMED_JS_OFF, emptyCtx);
-        expect(code(off)).toBe("DISARMED");
-        expect(scope(off)).toBe("evaluate");
+        expect(code(off)).toBe("JS_DISABLED");
+        expect(scope(off)).toBeUndefined();
         expect(safetyDecision(m, { url: u }, own(u), ARMED, emptyCtx)).toBe("allow");
       }
       // Not a script scheme: unchanged while JS is off.
@@ -317,8 +324,9 @@ describe("post-check over {state changed, tab now blocked, tab gone, tab replace
       expect(code(postCheck(m, {}, methodClass(m) === "state" ? none : methodClass(m) === "newTab" || methodClass(m) === "downloadStart" ? own(ALLOWED) : live(ALLOWED), DISARMED, ctx))).toBe("DISARMED");
     }
   });
-  it("JS turned off during an evaluate → DISARMED {scope:evaluate}", () => {
-    expect(scope(postCheck("evaluate", {}, live(ALLOWED), ARMED_JS_OFF, ctx))).toBe("evaluate");
+  // Step 10 S4b (#202): was → DISARMED {scope:evaluate}.
+  it("JS turned off during an evaluate → JS_DISABLED", () => {
+    expect(code(postCheck("evaluate", {}, live(ALLOWED), ARMED_JS_OFF, ctx))).toBe("JS_DISABLED");
   });
   it("tab now blocked (the human navigated it, or a pattern was added) → DOMAIN_BLOCKED", () => {
     expect(code(postCheck("snapshot", {}, live(BLOCKED), ARMED, ctx))).toBe("DOMAIN_BLOCKED");
@@ -395,7 +403,8 @@ describe("S1.2 required rows (#141, fixer r1 / V3) — verbatim", () => {
       }
     }
     for (const last of [BLOCKED, OWN_PAGE, ALLOWED, undefined]) {
-      expect(scope(safetyDecision("evaluate", {}, gone(last), ARMED_JS_OFF, ctx, "receipt"))).toBe("evaluate");
+      // Step 10 S4b (#202): was scope "evaluate" (DISARMED).
+      expect(code(safetyDecision("evaluate", {}, gone(last), ARMED_JS_OFF, ctx, "receipt"))).toBe("JS_DISABLED");
     }
   });
   it("after receipt (effect, post) a gone tab is still tested by its last URL; network is at receipt too", () => {
@@ -533,6 +542,8 @@ describe("targets, refusal shape and messages", () => {
     expect(all.message).toMatch(/stop/i);
     expect(js.message).toMatch(/JavaScript/);
     expect(js.message).toMatch(/every other tool still works/i);
+    expect(js.code).toBe(ErrorCodes.JS_DISABLED); // Step 10 S4b (#202): was DISARMED {scope:"evaluate"}
+    expect(code(navJs)).toBe(ErrorCodes.JS_DISABLED);
     for (const d of [all, js, blocked, ownPage, navExt, navBlocked, navJs, stateUnreadableRefusal()]) {
       if (!isRefusal(d)) throw new Error("expected a refusal");
       for (const s of ["bank.example", "localhost:8081", "sub.test", OWN_ID, OTHER_ID, "://", "options.html"]) {
@@ -554,9 +565,13 @@ describe("targets, refusal shape and messages", () => {
     const d = safetyDecision("evaluate", {}, live(ALLOWED), ARMED_JS_OFF, ctx);
     if (!isRefusal(d)) throw new Error("expected a refusal");
     const e = refusalError(d);
-    expect(e.code).toBe("DISARMED");
+    // Step 10 S4b (#202): was code "DISARMED", data {scope:"evaluate"}.
+    expect(e.code).toBe("JS_DISABLED");
     expect(e.message).toBe(d.message);
-    expect(e.data).toEqual({ scope: "evaluate" });
+    expect(e.data).toBeUndefined();
+    const a = safetyDecision("evaluate", {}, live(ALLOWED), DISARMED_JS_OFF, ctx);
+    if (!isRefusal(a)) throw new Error("expected a refusal");
+    expect(refusalError(a)).toMatchObject({ code: "DISARMED", data: { scope: "all" } });
     const b = safetyDecision("click", {}, live(BLOCKED), ARMED, ctx);
     if (!isRefusal(b)) throw new Error("expected a refusal");
     expect(refusalError(b).data).toBeUndefined();

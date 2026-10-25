@@ -124,7 +124,9 @@ describe("S3.2 — the plain line for DISARMED and DOMAIN_BLOCKED", () => {
 
   it("each line is one line; any other code has none", () => {
     for (const l of [all, js, blocked]) expect(l).not.toContain("\n");
-    for (const code of Object.keys(ErrorCodes).filter((c) => c !== "DISARMED" && c !== "DOMAIN_BLOCKED")) {
+    // Step 10 S4b (2026-10-25; #202): JS_DISABLED joined the codes with a line of its own (S4b.3 below); was
+    // `.filter((c) => c !== "DISARMED" && c !== "DOMAIN_BLOCKED")`.
+    for (const code of Object.keys(ErrorCodes).filter((c) => c !== "DISARMED" && c !== "DOMAIN_BLOCKED" && c !== "JS_DISABLED")) {
       expect(safetyRefusalLine(code, { scope: "all" })).toBeNull();
     }
   });
@@ -252,5 +254,49 @@ describe("TabInfo for hidden rows (#148)", () => {
     expect(tabs[1]).toEqual({ handle: "T2", title: "", url: "", current: false, owner: "x", hidden: "blocked" });
     expect(tabs[2]).toEqual({ handle: "T3", title: "Play", url: "http://localhost:8080/", current: false });
     expect(tabs[3]).toEqual({ handle: "T4", title: "", url: "", current: false });
+  });
+});
+
+// ── Step 10 S4b (phase doc 0.12 with Stage 0 F17; decisions.md #202 changed #133): JS_DISABLED ─────────
+
+describe("S4b.3 — JS_DISABLED stays out of the attach set and reads as one plain line", () => {
+  const JS_LINE =
+    "JS_DISABLED: the user has turned JavaScript off for the bridge in Chrome, so evaluate (browser_evaluate) is refused; every other call still works. Ask the user before relying on it; do not retry it.";
+
+  it("ATTACH_CODES does not hold JS_DISABLED; isAttachCode says no; the set is unchanged", () => {
+    expect(ATTACH_CODES).not.toContain("JS_DISABLED");
+    expect(isAttachCode("JS_DISABLED")).toBe(false);
+    expect([...ATTACH_CODES].sort()).toEqual(["LOCATOR_AMBIGUOUS", "LOCATOR_NOT_FOUND", "NAV_FAILED", "OFFSCREEN", "PAGE_ERROR", "REF_STALE", "TIMEOUT"]);
+  });
+
+  it("a Tab call refused JS_DISABLED makes no attach call and is rethrown as it came", async () => {
+    const { client, conn } = await clientWith(
+      (m) => (m.method === "tabs.claim" ? { result: { tab: "T3" } } : m.method === "evaluate" ? { error: { code: "JS_DISABLED", message: "refused" } } : undefined),
+      dir,
+    );
+    const tab = await client.claim("T3");
+    const err = await caught(tab.evaluate("1"));
+    expect(err.code).toBe("JS_DISABLED");
+    expect(err.data).toBeUndefined();
+    expect(methodsSent(conn)).toEqual(["tabs.claim", "evaluate"]);
+    expect(err.report).toBeUndefined();
+    expect(readdirSync(dir)).toEqual([]);
+  });
+
+  it("safetyRefusalLine(JS_DISABLED) is the JavaScript-off line, whatever data it carries", () => {
+    for (const data of [undefined, null, {}, { scope: "all" }, { scope: "evaluate" }]) {
+      expect(safetyRefusalLine("JS_DISABLED", data)).toBe(JS_LINE);
+    }
+    expect(JS_LINE).not.toContain("\n");
+  });
+
+  it("F17: an old extension's DISARMED {scope:'evaluate'} still reads as the JavaScript-off line, under its own code", () => {
+    const old = safetyRefusalLine("DISARMED", { scope: "evaluate" })!;
+    expect(old.slice("DISARMED: ".length)).toBe(JS_LINE.slice("JS_DISABLED: ".length));
+    expect(old.startsWith("DISARMED: ")).toBe(true);
+  });
+
+  it("renderReport gives the JavaScript-off line for JS_DISABLED (no report)", () => {
+    expect(renderReport({ message: "x", attachErrors: [], now: NOW, code: "JS_DISABLED" })).toBe(JS_LINE);
   });
 });

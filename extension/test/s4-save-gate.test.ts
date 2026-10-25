@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { ErrorCodes } from "@bridge/shared";
 import { GatedRouter } from "../src/router.js";
 import { CallSafety, type CallSafetyDeps } from "../src/safety-call.js";
-import { METHOD_CLASSES, methodClass, routerMethodNames, safetyDecision, DISARMED_ALL_MESSAGE, type SafetyTarget } from "../src/safety.js";
+import { METHOD_CLASSES, methodClass, routerMethodNames, safetyDecision, DISARMED_ALL_MESSAGE, JS_DISABLED_MESSAGE, type SafetyTarget } from "../src/safety.js";
 import { parseBlockList, EMPTY_BLOCK_LIST } from "../src/safety-match.js";
 import { SafetyStore, type SafetyView } from "../src/safety-state.js";
 import { clearEvaluateSaves, evaluateSaveChunk, evaluateSaveStart } from "../src/handlers/evaluate-save.js";
@@ -102,7 +102,8 @@ describe("S4.3 — refusals equal evaluate's (by equality)", () => {
   it("JavaScript off: each new method's wire refusal equals evaluate's; no handler runs", async () => {
     const { router, calls } = harness(() => view({ evaluate: false }), { 7: { url: ALLOWED } });
     const want = (await reply(router, "evaluate")).error;
-    expect(want).toMatchObject({ code: ErrorCodes.DISARMED }); // at S4: DISARMED {scope:"evaluate"}; after S4b: JS_DISABLED
+    // Step 10 S4b (2026-10-25; #202): was `toMatchObject({ code: ErrorCodes.DISARMED })` (S4's DISARMED {scope:"evaluate"}).
+    expect(want).toMatchObject({ code: ErrorCodes.JS_DISABLED });
     for (const m of NEW_METHODS) expect((await reply(router, m)).error, m).toEqual(want);
     expect(calls).toEqual([]);
   });
@@ -198,5 +199,87 @@ describe("S4.3 — the store is dropped at disarm, JavaScript off and tab close 
     expect(SW).toContain('router.on("evaluateSaveStart", evaluateSaveStart);');
     expect(SW).toContain('router.on("evaluateSaveChunk", evaluateSaveChunk);');
     expect(SW).toContain('router.on("evaluateSaveEnd", evaluateSaveEnd);');
+  });
+});
+
+// ------------------------------------------------------------------------------------------------
+// Step 10 S4b.2 (phase doc 0.12 with Stage 0 F6/F17; decisions.md #202 changed #133): JavaScript off →
+// JS_DISABLED on the wire, with no data, for evaluate (with or without asRef), the three evaluateSave*
+// methods and a navigate/newTab to a javascript:, data: or blob: URL; the bridge off → DISARMED {scope:"all"}
+// for the same calls; JavaScript on → unchanged (each reaches its handler).
+// ------------------------------------------------------------------------------------------------
+
+describe("S4b.2 — JavaScript off answers JS_DISABLED on the wire", () => {
+  const SCRIPT_URLS = ["javascript:alert(1)", "data:text/html,<p>x</p>", "blob:http://localhost:8080/0a1b"];
+  const calls: [string, Record<string, unknown>][] = [
+    ["evaluate", { tabId: 7, expression: "1" }],
+    ["evaluate", { tabId: 7, expression: "document.body", asRef: true }],
+    ["evaluateSaveStart", { tabId: 7, expression: "1" }],
+    ["evaluateSaveChunk", { tabId: 7, id: "es1-x", offset: 0 }],
+    ["evaluateSaveEnd", { tabId: 7, id: "es1-x" }],
+    ...SCRIPT_URLS.flatMap((url): [string, Record<string, unknown>][] => [
+      ["navigate", { tabId: 7, url }],
+      ["newTab", { url }],
+    ]),
+  ];
+
+  function wire(state: () => SafetyView) {
+    const deps: CallSafetyDeps = {
+      readState: async () => state(),
+      getTab: async (id: number) => {
+        if (id !== 7) throw new Error(`No tab with id: ${id}.`);
+        return { url: ALLOWED };
+      },
+      replacedBy: () => undefined,
+      lastUrl: () => undefined,
+    };
+    const router = new GatedRouter((method, p) => new CallSafety(method, p, deps));
+    const ran: string[] = [];
+    for (const m of ["evaluate", ...NEW_METHODS, "navigate", "newTab"]) {
+      router.on(m, async () => {
+        ran.push(m);
+        return { ok: true };
+      });
+    }
+    const send = async (m: string, p: Record<string, unknown>) =>
+      JSON.parse((await router.handle(JSON.stringify({ id: "1", method: m, params: p })))!) as { error?: unknown; result?: unknown };
+    return { send, ran };
+  }
+
+  it("armed, JavaScript off: each call answers exactly {code: JS_DISABLED, message} — no data; no handler runs", async () => {
+    const { send, ran } = wire(() => view({ evaluate: false }));
+    for (const [m, p] of calls) {
+      expect((await send(m, p)).error, `${m} ${String(p.url ?? "")}`).toEqual({ code: ErrorCodes.JS_DISABLED, message: JS_DISABLED_MESSAGE });
+    }
+    expect(ran).toEqual([]);
+  });
+
+  it("the bridge off (JavaScript on or off): DISARMED {scope:\"all\"} wins for the same calls", async () => {
+    for (const evaluate of [true, false]) {
+      const { send, ran } = wire(() => view({ armed: false, evaluate }));
+      for (const [m, p] of calls) {
+        expect((await send(m, p)).error, `${m} ${evaluate}`).toEqual({ code: ErrorCodes.DISARMED, message: DISARMED_ALL_MESSAGE, data: { scope: "all" } });
+      }
+      expect(ran).toEqual([]);
+    }
+  });
+
+  it("armed, JavaScript on: nothing changes — each call reaches its handler", async () => {
+    const { send, ran } = wire(() => view());
+    for (const [m, p] of calls) expect((await send(m, p)).result, m).toEqual({ ok: true });
+    expect(ran).toEqual(calls.map(([m]) => m));
+  });
+
+  it("JavaScript off leaves every other navigation alone (not a script scheme)", async () => {
+    const { send, ran } = wire(() => view({ evaluate: false }));
+    expect((await send("navigate", { tabId: 7, url: "http://localhost:8080/x.html" })).result).toEqual({ ok: true });
+    expect((await send("newTab", { url: "about:blank" })).result).toEqual({ ok: true });
+    expect(ran).toEqual(["navigate", "newTab"]);
+  });
+
+  it("the JavaScript-off message names no URL, scheme payload or id, and keeps Step 9's meaning", () => {
+    expect(JS_DISABLED_MESSAGE).toMatch(/turned JavaScript off/);
+    expect(JS_DISABLED_MESSAGE).toMatch(/every other tool still works/i);
+    for (const bad of ["://", "alert", "localhost", OWN_ID, "es1-"]) expect(JS_DISABLED_MESSAGE).not.toContain(bad);
   });
 });

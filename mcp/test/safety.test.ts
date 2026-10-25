@@ -1,6 +1,9 @@
 // Step 9 S3 — the MCP's half of the safety state (phase doc 0.3, 0.5, 0.6; decisions.md · 2026-10-24 #132
 // the `Safety:` line, #133 `DISARMED {scope}`, #134 hidden rows; exit checks S3.2 and S3.3 (#141, #147)).
 import { describe, it, expect, vi } from "vitest";
+import { mkdtempSync, readdirSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { BridgeError, ErrorCodes } from "@bridge/sdk";
 import { registerTools, type RegisterToolsOptions, type ToolBridge } from "../src/tools/registry.js";
@@ -246,5 +249,58 @@ describe("S3.3 — no tool added, removed or renamed", () => {
     for (const name of Object.keys(tools(fakeBridge().bridge).registered)) {
       expect(name).not.toMatch(/arm|disarm|setSafety|safety|block/i);
     }
+  });
+});
+
+// ── Step 10 S4b.3 (phase doc 0.12 with Stage 0 F17; decisions.md #202 changed #133): JS_DISABLED ──────
+
+describe("S4b.3 — JS_DISABLED becomes one plain error line, never a failure report", () => {
+  const JS_DISABLED_LINE =
+    "JS_DISABLED: the user has turned JavaScript off for the bridge in Chrome, so evaluate (browser_evaluate) is refused; every other call still works. Ask the user before relying on it; do not retry it.";
+  const OLD_JS =
+    "DISARMED: the user has turned JavaScript off for the bridge in Chrome, so evaluate (browser_evaluate) is refused; every other call still works. Ask the user before relying on it; do not retry it.";
+
+  function refusing(code: string, data?: unknown) {
+    const attach = vi.fn(async () => {});
+    const f = fakeBridge(async (m) => {
+      if (m === "listTabs") return plainRows;
+      if (m === "tabs.claim") return { tab: "T1" };
+      throw new BridgeError(code, `refused by the extension (${code})`, data);
+    });
+    return { f, t: tools(f.bridge, { attach }), attach };
+  }
+
+  const saveDir = mkdtempSync(path.join(os.tmpdir(), "bridge-s4b-"));
+  const cases: Array<[string, Params]> = [
+    ["browser_evaluate", { expression: "1" }],
+    ["browser_evaluate", { expression: "1", tab: "T5" }],
+    ["browser_evaluate", { expression: "document.body", asRef: true, tab: "T5" }],
+    ["browser_evaluate", { expression: "1", saveTo: path.join(saveDir, "v.txt"), tab: "T5" }],
+    ["browser_navigate", { url: "javascript:void 0", tab: "T5" }],
+    ["browser_new_tab", { url: "data:text/html,x" }],
+  ];
+
+  for (const [name, args] of cases) {
+    it(`${name} ${JSON.stringify(Object.keys(args))}: JS_DISABLED → the one line, isError, no attach, no image`, async () => {
+      const { t, attach } = refusing(ErrorCodes.JS_DISABLED);
+      const res = await t.run(name, args);
+      expect(res).toEqual({ isError: true, content: [{ type: "text", text: JS_DISABLED_LINE }] });
+      expect(attach).not.toHaveBeenCalled();
+    });
+  }
+
+  it("the saveTo leg writes nothing (no file, no .part) when JS_DISABLED refuses the start", async () => {
+    const { t } = refusing(ErrorCodes.JS_DISABLED);
+    const dir = mkdtempSync(path.join(os.tmpdir(), "bridge-s4b-"));
+    await t.run("browser_evaluate", { expression: "1", saveTo: path.join(dir, "v.txt") });
+    expect(readdirSync(dir)).toEqual([]);
+  });
+
+  it("F17: an old extension's DISARMED {scope:'evaluate'} still reads as the JavaScript-off line", async () => {
+    const { t, attach } = refusing("DISARMED", { scope: "evaluate" });
+    const res = await t.run("browser_evaluate", { expression: "1", tab: "T5" });
+    expect(res).toEqual({ isError: true, content: [{ type: "text", text: OLD_JS }] });
+    expect(OLD_JS.slice("DISARMED: ".length)).toBe(JS_DISABLED_LINE.slice("JS_DISABLED: ".length));
+    expect(attach).not.toHaveBeenCalled();
   });
 });

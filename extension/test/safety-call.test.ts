@@ -214,15 +214,19 @@ describe("CallSafety.receipt", () => {
     expect(await new CallSafety("navigate", { tabId: 7, url: "chrome-extension://zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz/x.html" }, deps()).receipt()).toMatchObject({
       code: ErrorCodes.DOMAIN_BLOCKED,
     });
-    expect(await new CallSafety("newTab", { url: "javascript:alert(1)" }, deps({ state: view({ evaluate: false }) })).receipt()).toMatchObject({
-      code: ErrorCodes.DISARMED,
-      data: { scope: "evaluate" },
-    });
+    // Step 10 S4b (2026-10-25; #202 changed #133): was `{ code: ErrorCodes.DISARMED, data: { scope: "evaluate" } }`.
+    const js = await new CallSafety("newTab", { url: "javascript:alert(1)" }, deps({ state: view({ evaluate: false }) })).receipt();
+    expect(js).toMatchObject({ code: ErrorCodes.JS_DISABLED });
+    expect(js).not.toHaveProperty("data");
   });
 
-  it("evaluate with JS off: DISARMED {scope: evaluate}; other tools still allowed", async () => {
+  // Step 10 S4b (#202): was "evaluate with JS off: DISARMED {scope: evaluate}; …" and
+  // `toMatchObject({ code: ErrorCodes.DISARMED, data: { scope: "evaluate" } })`.
+  it("evaluate with JS off: JS_DISABLED; other tools still allowed", async () => {
     const d = deps({ state: view({ evaluate: false }) });
-    expect(await new CallSafety("evaluate", { tabId: 7 }, d).receipt()).toMatchObject({ code: ErrorCodes.DISARMED, data: { scope: "evaluate" } });
+    const r = await new CallSafety("evaluate", { tabId: 7 }, d).receipt();
+    expect(r).toMatchObject({ code: ErrorCodes.JS_DISABLED });
+    expect(r).not.toHaveProperty("data");
     expect(await new CallSafety("click", { tabId: 7 }, d).receipt()).toBe("allow");
   });
 

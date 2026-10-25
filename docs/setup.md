@@ -708,20 +708,32 @@ closes an open options page.
 
 ### The JavaScript switch
 
-With **Allow JavaScript (browser_evaluate)** unticked, `browser_evaluate` (with or without `asRef`; the
-SDK's `tab.evaluate` and `tab.evaluateRef`) and a `browser_navigate`/`browser_new_tab` to a
-`javascript:`, `data:` or `blob:` URL are refused `DISARMED` with `data: {scope: "evaluate"}`; every
-other tool keeps working (decisions.md · 2026-10-24 · The JavaScript switch reuses `DISARMED` with a
-scope; · Script URLs and the JavaScript switch; own pages of every extension). Claude sees: `DISARMED:
-the user has turned JavaScript off for the bridge in Chrome, so evaluate (browser_evaluate) is refused;
-every other call still works. Ask the user before relying on it; do not retry it.` The badge shows
-`JS`. Turning the bridge off overrides it. With JavaScript on, script URLs behave as before; Chrome
+With **Allow JavaScript (browser_evaluate)** unticked, `browser_evaluate` (with or without `asRef`, with
+or without `saveTo`; the SDK's `tab.evaluate`, `tab.evaluateRef` and `tab.evaluateToFile`) and a
+`browser_navigate`/`browser_new_tab` to a `javascript:`, `data:` or `blob:` URL are refused with the
+code `JS_DISABLED`, with no `data`; every other tool keeps working (decisions.md · 2026-10-24 · The user
+rules on the 32 Step 9 open decisions; Step 9 closes (#202); · Script URLs and the JavaScript switch; own
+pages of every extension). The extension's message is "The user has turned JavaScript off for the bridge
+in Chrome (browser_evaluate and script URLs are refused). Every other tool still works; ask the user
+before relying on browser_evaluate." Claude sees one line instead of a failure report (no screenshot, no
+snapshot): `JS_DISABLED: the user has turned JavaScript off for the bridge in Chrome, so evaluate
+(browser_evaluate) is refused; every other call still works. Ask the user before relying on it; do not
+retry it.` (`extension/src/safety.ts` `JS_DISABLED_MESSAGE`; `sdk/src/error.ts` `safetyRefusalLine`). The
+badge shows `JS`. Turning the bridge off overrides it: while the bridge is off these calls answer
+`DISARMED` (scope `all`), like every other call. With JavaScript on, script URLs behave as before; Chrome
 itself answers a `javascript:` navigation through the bridge with `NAV_FAILED` and leaves the page
 unchanged (Run 13 row SAFE-6c).
+*Superseded 2026-10-25: was "are refused `DISARMED` with `data: {scope: "evaluate"}` … Claude sees:
+`DISARMED: the user has turned JavaScript off …`", because Step 10 S4b gave "JavaScript is off" its own
+code, `JS_DISABLED` (#202, which changed decisions.md · 2026-10-24 · The JavaScript switch reuses
+`DISARMED` with a scope). The message and the line's words after the code are unchanged. An extension not
+yet reloaded since Step 9 still answers `DISARMED` with `data: {scope: "evaluate"}`, and Claude then sees
+Step 9's line, `DISARMED: the user has turned JavaScript off …` (the same words) — reload the extension.*
 
 **The Blackboard recipes need JavaScript on.** `recipes/blackboard/boot-bb.ts` loads `bb.js` into the
 course tab by `evaluate`, and `export-grades.ts` reads the gradebook by `evaluate`; with the switch off
-they stop with `DISARMED` (scope `evaluate`).
+they stop with `JS_DISABLED`. *Superseded 2026-10-25: was "`DISARMED` (scope `evaluate`)", because of
+Step 10 S4b (#202).*
 
 ### Blocked sites
 
@@ -828,12 +840,15 @@ the reliable indicator.
 
 `await client.safety()` returns `{armed, evaluate, blockedCount}` as the daemon last heard it, or
 `null` before the extension has reported; `client.on("safetyStatus", (s) => …)` fires on every change.
-Both are read-only. A refused call throws a `BridgeError` with `code` `DISARMED` (`data.scope` `"all"`
-or `"evaluate"`) or `DOMAIN_BLOCKED`, with no failure report attached (no screenshot, no snapshot)
-and no `report` property; the one line Claude sees is `safetyRefusalLine(err.code, err.data)` from
+Both are read-only. A refused call throws a `BridgeError` with `code` `DISARMED` (`data.scope` `"all"`),
+`JS_DISABLED` (no `data`) or `DOMAIN_BLOCKED`, with no failure report attached (no screenshot, no
+snapshot) and no `report` property; the one line Claude sees is `safetyRefusalLine(err.code, err.data)` from
 `@bridge/sdk/report` (decisions.md · 2026-10-24 · S3: Safety refusals get no `report` property; the
 wording is `safetyRefusalLine` on `@bridge/sdk/report`). `client.tabs()` marks withheld rows with `hidden:
 "disarmed" | "blocked"`, their `title` and `url` then `""`. A script should stop and ask, not retry.
+*Superseded 2026-10-25: was "`DISARMED` (`data.scope` `"all"` or `"evaluate"`) or `DOMAIN_BLOCKED`",
+because Step 10 S4b added `JS_DISABLED` (#202); only an extension not reloaded since Step 9 still sends
+scope `"evaluate"`.*
 
 ## Security notes
 

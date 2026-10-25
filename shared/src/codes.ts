@@ -1,10 +1,13 @@
 /**
  * Error codes — spec §10 of `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`. Exactly these
- * 25: 24 that the daemon and the extension put on the wire (`{id, error: {code, message, data?}}`),
+ * 26: 25 that the daemon and the extension put on the wire (`{id, error: {code, message, data?}}`),
  * plus `NO_CURSOR`, raised by the SDK alone. Add a code only by amending the spec first.
  * Step 9 S0 (2026-10-24) added `DISARMED` and `DOMAIN_BLOCKED` after spec §10's dated Step 9 note
  * (decisions.md · 2026-10-24 · The JavaScript switch reuses `DISARMED` with a scope (#133); · The safety
  * state travels as two events and a `daemon.status` field (#132)).
+ * Step 10 S4b (2026-10-25) added `JS_DISABLED` after spec §10's dated Step 10 note (decisions.md ·
+ * 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202), which changed #133).
+ * *Superseded 2026-10-25: was "Exactly these 25: 24 … on the wire", because S4b added `JS_DISABLED`.*
  */
 
 /** Raised by the daemon itself (routing, leases, handshake). */
@@ -23,10 +26,15 @@ export const DAEMON_ERROR_CODES = [
 /**
  * Raised by the extension's handlers. `INTERNAL` also wraps a v1 `{message}` error.
  *
- * Step 9's two (spec §10's Step 9 notes):
- * - `DISARMED`: the human turned the bridge off in Chrome (`data: {scope: "all"}`), or JavaScript is off and
- *   the call is an `evaluate` or a `navigate`/`newTab` to a `javascript:`, `data:` or `blob:` URL
- *   (`data: {scope: "evaluate"}`) — `DisarmedData` in `protocol.ts` (#133, #138).
+ * Step 9's two (spec §10's Step 9 notes) and Step 10's one (spec §10's Step 10 note):
+ * - `DISARMED`: the human turned the bridge off in Chrome (`data: {scope: "all"}`) — `DisarmedData` in
+ *   `protocol.ts`. *Superseded 2026-10-25: was "…, or JavaScript is off and the call is an `evaluate` or a
+ *   `navigate`/`newTab` to a `javascript:`, `data:` or `blob:` URL (`data: {scope: "evaluate"}`)", because
+ *   #202 gave that case its own code, `JS_DISABLED`; a Step 10 extension produces only `scope: "all"`, and
+ *   `"evaluate"` stays in the type for an old (Step 9) extension (Stage 0 F17).*
+ * - `JS_DISABLED`: the bridge is on, JavaScript is off, and the call is an `evaluate` (with or without
+ *   `asRef`), one of S4's `evaluateSave*`, or a `navigate`/`newTab` to a `javascript:`, `data:` or `blob:` URL
+ *   (#202, #138). No `data`; while the bridge is off `DISARMED` wins.
  * - `DOMAIN_BLOCKED`: the tab's URL, or the call's own target URL, is on the human's block list; or the call
  *   is a `navigate`/`newTab` to any `chrome-extension://` URL; or the tab shows this extension's own page
  *   (#138). Its message and data reveal no host or pattern (Stage 0 row SAFE-5).
@@ -47,6 +55,7 @@ export const EXTENSION_ERROR_CODES = [
   "INTERNAL",
   "DISARMED",
   "DOMAIN_BLOCKED",
+  "JS_DISABLED",
 ] as const;
 
 /**
@@ -86,6 +95,7 @@ export const ErrorCodes = {
   INTERNAL: "INTERNAL",
   DISARMED: "DISARMED",
   DOMAIN_BLOCKED: "DOMAIN_BLOCKED",
+  JS_DISABLED: "JS_DISABLED",
   NO_CURSOR: "NO_CURSOR",
 } as const satisfies { [K in ErrorCode]: K };
 

@@ -7,15 +7,17 @@
  * - The method table classifies every router method; `methodClass` throws on a name it does not know,
  *   so a new method cannot bypass the gate (phase doc 0.1; S1.1).
  * - `safetyDecision(method, params, target, state, ctx, phase)` — Stage 0 F7's signature: the state first
- *   (disarmed → `DISARMED {scope:"all"}`; JavaScript off and an `evaluate`, or a script URL for
- *   `navigate`/`newTab` → `DISARMED {scope:"evaluate"}`), then the tab or the call's own URL
+ *   (disarmed → `DISARMED {scope:"all"}`; JavaScript off and a method of class `evaluate`, or a script URL
+ *   for `navigate`/`newTab` → `JS_DISABLED`, no `data`), then the tab or the call's own URL
  *   (→ `DOMAIN_BLOCKED`); `listTabs` is redacted, never refused (decisions.md · 2026-10-24 · #133, #134,
- *   #137, #138).
+ *   #137, #138). *Superseded 2026-10-25 (Step 10 S4b): was "→ `DISARMED {scope:"evaluate"}`" for JavaScript
+ *   off, because #202 changed #133 (spec §10's Step 10 note). Which calls are refused, and when, is
+ *   unchanged.*
  * - The extension's own id and the parsed block list come in through `ctx` (never read here).
  *
  * Messages never contain a URL, a pattern or a title. Never log any of them from here (0.7).
  */
-import { ErrorCodes, type DisarmedData, type HiddenReason, type SafetyScope } from "@bridge/shared";
+import { ErrorCodes, type DisarmedData, type HiddenReason } from "@bridge/shared";
 import type { ExtensionListTabsRow, TabCreatedParams, TabRemovedParams } from "@bridge/shared";
 import { BridgeError } from "./errors.js";
 import { isExtensionUrl, isOwnExtensionPage, isUrlBlocked, urlScheme, type BlockList } from "./safety-match.js";
@@ -159,9 +161,9 @@ export interface SafetyContext {
 export type SafetyPhase = "receipt" | "effect" | "post";
 
 export interface SafetyRefusal {
-  code: typeof ErrorCodes.DISARMED | typeof ErrorCodes.DOMAIN_BLOCKED;
+  code: typeof ErrorCodes.DISARMED | typeof ErrorCodes.DOMAIN_BLOCKED | typeof ErrorCodes.JS_DISABLED;
   message: string;
-  /** `DISARMED` only: `{scope}` (#133). */
+  /** `DISARMED` only: `{scope: "all"}` (#133; Step 10 S4b, #202: `"evaluate"` is no longer produced). */
   data?: DisarmedData;
 }
 
@@ -171,11 +173,20 @@ export function isRefusal(d: SafetyDecision): d is SafetyRefusal {
   return typeof d === "object" && "code" in d;
 }
 
-// Messages (#133: the two DISARMED scopes read differently). Never a URL, pattern or title.
+// Messages (#133: the bridge off and JavaScript off read differently). Never a URL, pattern or title.
 export const DISARMED_ALL_MESSAGE =
   "The user has turned the bridge off in Chrome, so every page call is refused. Stop and ask the user to turn it back on; do not retry.";
-export const DISARMED_EVALUATE_MESSAGE =
+/**
+ * `JS_DISABLED`'s message (Step 10 S4b, #202): Step 9's JavaScript-off text, unchanged — the code changed,
+ * the meaning did not (phase doc 0.12).
+ */
+export const JS_DISABLED_MESSAGE =
   "The user has turned JavaScript off for the bridge in Chrome (browser_evaluate and script URLs are refused). Every other tool still works; ask the user before relying on browser_evaluate.";
+/**
+ * Step 9's name for the same text, kept exported (2026-10-25, Step 10 S4b): `recipes/test/s9-rules.test.ts`
+ * pins Run 13's expected text against it, and that text is history (§4.20). Do not use it in new code.
+ */
+export const DISARMED_EVALUATE_MESSAGE = JS_DISABLED_MESSAGE;
 export const STATE_UNREADABLE_MESSAGE =
   "The bridge could not read its safety state in Chrome, so it refuses the call. Ask the user to check the extension.";
 export const BLOCKED_TAB_MESSAGE =
@@ -186,8 +197,14 @@ export const BLOCKED_URL_MESSAGE =
   "That address is on the user's block list in Chrome; the bridge will not open or fetch it. Ask the user.";
 export const EXTENSION_URL_MESSAGE = "The bridge never opens extension pages.";
 
-function disarmed(scope: SafetyScope, message = scope === "all" ? DISARMED_ALL_MESSAGE : DISARMED_EVALUATE_MESSAGE): SafetyRefusal {
-  return { code: ErrorCodes.DISARMED, message, data: { scope } };
+/** `DISARMED {scope:"all"}` — the only scope a Step 10 extension produces (#202). */
+function disarmed(message = DISARMED_ALL_MESSAGE): SafetyRefusal {
+  return { code: ErrorCodes.DISARMED, message, data: { scope: "all" } };
+}
+
+/** `JS_DISABLED`, with no `data` (Step 10 S4b, #202; was `DISARMED {scope:"evaluate"}`). */
+function jsDisabled(): SafetyRefusal {
+  return { code: ErrorCodes.JS_DISABLED, message: JS_DISABLED_MESSAGE };
 }
 
 function domainBlocked(message: string): SafetyRefusal {
@@ -196,7 +213,7 @@ function domainBlocked(message: string): SafetyRefusal {
 
 /** F10: a failed read of the stored state refuses the call, `DISARMED {scope:"all"}`, with its own message. */
 export function stateUnreadableRefusal(): SafetyRefusal {
-  return disarmed("all", STATE_UNREADABLE_MESSAGE);
+  return disarmed(STATE_UNREADABLE_MESSAGE);
 }
 
 /** A refusal as the error the router sends (`{code, message, data?}` on the wire). */
@@ -259,12 +276,13 @@ export function safetyDecision(
     if (target.kind === "live" && firstBlocked(target.urls, ctx)) return { redact: "blocked" };
     return "allow";
   }
-  if (!state.armed) return disarmed("all");
+  if (!state.armed) return disarmed();
+  // Step 10 S4b (#202): JavaScript off → JS_DISABLED (was DISARMED {scope:"evaluate"}); the same calls.
   if (!state.evaluate) {
-    if (cls === "evaluate") return disarmed("evaluate");
+    if (cls === "evaluate") return jsDisabled();
     if ((cls === "navigate" || cls === "newTab") && target.kind === "own" && typeof target.url === "string") {
       const scheme = urlScheme(target.url);
-      if (scheme !== null && SCRIPT_SCHEMES.has(scheme)) return disarmed("evaluate");
+      if (scheme !== null && SCRIPT_SCHEMES.has(scheme)) return jsDisabled();
     }
   }
 
