@@ -39,9 +39,10 @@ A wave that edits at scale or will not fit one context runs under the `long-run`
 4. **New lessons** from the closing phase go where they bind: a measured runtime fact into the
    package `CLAUDE.md` it concerns (via `session-closeout`), a process rule into `agent-rules.md`,
    a phase-specific rule into the phase doc. The kickoff only points at them.
-5. **Resume point** (pausing mid-phase): a top `RESUME POINT` block: what is done (commits), the
-   next stage, open user decisions, what is running (normally nothing: say so), whether the loaded
-   extension matches `dist/`.
+5. **Resume point** (pausing mid-phase): the state goes where state lives: the root Current state
+   (what is done, the next stage, open user decisions) and the journal (commits, what is running,
+   whether the loaded extension matches `dist/`). The kickoff gets one line: "Resume: read the
+   Current state and `<steps-dir>/journal.md` first".
 6. **Check:** every path the prompt cites exists; every decision it cites exists under that date +
    title; `node scripts/doc-check.mjs` is clean for the prompt; the word count is within budget.
 7. Commit with the closeout, or alone as `docs: <phase or wave> kickoff`.

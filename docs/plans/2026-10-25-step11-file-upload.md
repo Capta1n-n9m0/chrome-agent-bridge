@@ -315,7 +315,11 @@ verifier. Budgets are estimates; the step report records the actual beside each.
 to `agent-rules.md` §6 and the stage's exit checks.
 
 ### Stage 0 — Spec audit (2 h, first, alone; risk: standard)
-- [ ] The four lenses of the kickoff §4 over this doc; Step 10's "Contracts (binding forward)" and Step 9's
+- [ ] Four lenses over this doc: (a) every cited file, function, message and Chrome/CDP/MCP API exists and
+      behaves as stated, **executed**, not read; (b) every count and bound recomputed from the repo; (c) blind spots,
+      extending the seed list below; (d) every exit check executable and discriminating, pass rules written before
+      any measurement. Output `…-steps/stage0-audit.md`, findings ranked and tagged plan-side (a dated note here) or
+      code-side (a stage item). Then: Step 10's "Contracts (binding forward)" and Step 9's
       re-executed on port 0; counts recomputed (26 router methods, 26 codes, 23 tools, 3273 tests / 132 files, the
       log-scan count); `DOM.setFileInputFiles`'s parameters, events and errors confirmed from Chrome's protocol
       documentation (one targeted search allowed, source recorded); 0.7's finder vs `DOM.getDocument`; the matcher's
@@ -500,9 +504,7 @@ table to make a row pass; sending file bytes over the wire instead of paths with
 names a path, folder or file; leaving the upload mark on an element; changing `a11y.ts`, `locate`'s rules or the
 snapshot to make a hidden input targetable; adding focus or the visibility lock to the upload without a measurement;
 judging an upload by its `ok`; editing a row's expected text after its run; choosing a bound after seeing the
-measurement; and, from Steps 6–10, still binding: weakening a lease or lock invariant; logging a URL, title, header
-value, body, locator text, an evaluated value, a `saveTo` path or the token; binding anything but `127.0.0.1` or
-widening the token rule; making `BridgeClient` reconnect on a close code other than 4002; letting the MCP crash when
+measurement; and, from Steps 6–10, still binding: everything in `docs/agent-rules.md` §2; making `BridgeClient` reconnect on a close code other than 4002; letting the MCP crash when
 `connect()` fails; editing a test's expected text to match a changed error; regenerating
 `sdk/test/fixtures/baseline-51de800.json`; adding `windows.update({focused:true})` outside `focusTab`.
 

@@ -26,11 +26,11 @@ headless `claude -p` sessions on Opus reported which canaries reached their cont
 
 | Case | Root | `extension/` |
 |---|---|---|
-| main session, Read `extension/a.ts` | at start | after the Read |
+| main session, Read `<scratch>/extension/a.ts` | at start | after the Read |
 | main session, Bash `cat extension/a.ts` | at start | after the cat |
 | subagent, Read | at start | after the Read |
 | subagent, Bash `cat` | at start | after the cat |
-| main session, Read `daemon/b.ts` | at start | not loaded |
+| main session, Read `<scratch>/daemon/b.ts` | at start | not loaded |
 
 Not covered: an agent that never opens a file in the folder (only `npm test`, `grep`), and
 Explore/Plan agents, which load no `CLAUDE.md` at all. **Repeat on Windows** before Step 11

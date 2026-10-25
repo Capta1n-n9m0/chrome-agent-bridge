@@ -12,10 +12,20 @@ Reports: `docs/cleanup/<YYYY-MM-DD>[-n].md`.
 
 1. **Lead cleaner** (Opus, a fresh agent, not a fork, so it is not anchored on the session's view).
    It runs `node scripts/doc-check.mjs`, reads `git diff <last cleanup report's commit>..HEAD --stat`
-   and the changed docs, and sends only the area cleaners whose area the changes touched. On a
+   (first pass ever: the commit the brief names) and the changed docs, and sends only the area cleaners whose area the changes touched. On a
    quick pass it may cover a small area itself.
 2. **Area cleaners** report numbered findings and never edit: location, what is wrong, evidence
    (quote both sides of a contradiction), a suggested fix, mechanical or needs-the-user.
+
+**Area-cleaner brief** (the lead fills it; it points, never pastes):
+```
+ROLE: area cleaner (<area>) — cleanup pass <date>, chrome-agent-bridge. Read docs/agent-rules.md
+first (§6 Lead cleaner / area cleaner) and .claude/skills/cleanup-pass/SKILL.md (your area's row).
+SCOPE: git diff <base>..HEAD; the files of your area: <paths>. doc-check output: <path or "run it">.
+OUTPUT: <docs/cleanup/<date>-evidence/<area>.md>, numbered findings as above. Read only; no commit.
+```
+
+**Records and living docs:** `docs/docs-writing-guide.md` § Doc types.
 
 | Area | Checks | Model |
 |---|---|---|

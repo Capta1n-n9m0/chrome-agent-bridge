@@ -14,8 +14,7 @@ Bookkeeping: **`session-closeout`**. Docs at a phase close: **`cleanup-pass`**.
 the *design of record* is `docs/specs/<date>-*-design.md`; a *stage* is one unit of the phase,
 owned by one step agent.
 
-**Precedence:** pre-registered rules (exit checks, pass rules, STOP rules, human gates) > the phase
-doc > the kickoff > this skill.
+**Precedence:** `docs/agent-rules.md` §4.
 
 ## 1. Context discipline
 
@@ -62,10 +61,11 @@ Never redo completed substeps.
 
 ## 5. End of phase
 
-1. The gate checklist, item by item, in the phase doc. An unmet item means the phase is not closed.
-2. The **`cleanup-pass`** skill, full pass (it also checks what later plans, `docs/setup.md` and
-   `CLAUDE.md` assumed that the as-built broke).
-3. The **`session-closeout`** skill, then **`phase-kickoff`** for the next step.
-4. Final report: **decisions taken while the user was away** (date + title), then the gate
+1. The gate checklist, item by item, in the phase doc's § As built. An unmet item means the phase
+   is not closed.
+2. The **`session-closeout`** skill. Its order is the one order: records and Current state, then a
+   **full** `cleanup-pass` (it also checks what later plans, `docs/setup.md` and the `CLAUDE.md` files
+   assumed that the as-built broke), then **`phase-kickoff`** for the next step, then the commit.
+3. Final report: **decisions taken while the user was away** (date + title), then the gate
    measurements with their sources, then open decisions, then what needs the user's keyboard
    (extension reload, live E2E, push).

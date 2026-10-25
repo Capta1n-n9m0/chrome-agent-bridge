@@ -36,8 +36,8 @@ whole session diff. Put a **How this session runs** block right after the openin
    Flagged defaults: "FLAGGED DEFAULT (execute unless the user objects): …".
 4. **Standing constraints**: one line pointing to `docs/agent-rules.md` (integrity floor §2,
    stop list §3), plus only what this wave adds (e.g. "no protocol change", "no extension reload").
-5. **If anything blocks** — record the exact error, surface options with a recommendation,
-   stop that branch; never improvise a change to get past a check.
+5. **If anything blocks**: `docs/agent-rules.md` §3 decides whether it stops; anything else is
+   recorded with the exact error and options, and the rest of the wave continues.
 6. **Exit checks** — lettered (a), (b), … each checkable (`npm test` count, typecheck,
    build, a grep that must return nothing, a doc section that must exist).
 7. **When done, update statuses** — which plan/roadmap statuses flip; append the as-built
@@ -52,7 +52,7 @@ whole session diff. Put a **How this session runs** block right after the openin
 ### Every behaviour or number that moved   (| Item | Was | Now | Source |)
 ### Builds and checks                      (exit checks with results)
 ### Deliberately left for later            (item → why → who owns it)
-### Proposed decisions — for the user      (Options · Recommendation · Why · Revisit if)
+### Proposed decisions — for the user      (format: docs/agent-rules.md §5, plus Options and a Recommendation)
 ```
 
 ## Lessons carried from the exp3 waves

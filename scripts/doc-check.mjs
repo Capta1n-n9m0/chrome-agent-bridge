@@ -24,7 +24,7 @@ const FROZEN = [/^docs\/plans\/.*-steps\//, /^docs\/decisions-archive\//, /^docs
 const PATH_RECORDS = [/^docs\/decisions\.md$/, /^docs\/progress-and-roadmap\.md$/];
 // Word budgets (decisions.md · 2026-10-25 · Lean procedures … (#230)). Above budget is a finding.
 const BUDGET = [
-  [/^CLAUDE\.md$/, 3000], [/^(extension|daemon|sdk|mcp|shared|recipes)\/CLAUDE\.md$/, 3500],
+  [/^CLAUDE\.md$/, 3000], [/^(extension|daemon|sdk|mcp|shared|recipes)\/CLAUDE\.md$/, 3500], [/\/src\/.*CLAUDE\.md$/, 1200],
   [/^docs\/agent-rules\.md$/, 2500], [/^\.claude\/skills\/.*\.md$/, 1200],
   [/^docs\/plans\/next-session-prompt\.md$/, 1500], [/^docs\/decisions\.md$/, 10000],
 ];
@@ -59,6 +59,8 @@ for (const r of living.filter((r) => !PATH_RECORDS.some((re) => re.test(r)))) {
   const text = read(r);
   const lines = text.split("\n");
   lines.forEach((line, i) => {
+    // A dated note saying a file was retired names it on purpose.
+    if (/\bretired\b/i.test(line)) return;
     const cands = [...line.matchAll(PATH_RE)].map((m) => [m[1], true]).concat([...line.matchAll(LINK_RE)].map((m) => [m[1], false]));
     for (const [tok, rootRel] of cands) {
       if (/^(https?:|mailto:)/.test(tok) || /[*{}<>…]|\.\.\.|YYYY|<|N\b|\/dist\//.test(tok)) continue;

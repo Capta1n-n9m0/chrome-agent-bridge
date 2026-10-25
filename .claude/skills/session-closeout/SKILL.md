@@ -51,11 +51,10 @@ the repo does not hold. Never status.
 ## 6. Cleanup pass
 
 If the session changed docs, `CLAUDE.md` files or skills, run the **`cleanup-pass`** skill
-(quick pass; a full pass at a phase close).
+(quick pass; a full pass at a phase close). It runs after §1–§5, so it checks the updated records.
+At a phase close, `phase-kickoff` follows it, before the commit.
 
 ## 7. Commit
 
-Exact file list (never `dist/`, `bridge.token`, `.env`, never `git add -A`), message
-`<type>(<scope>): <what>` with a body that states what changed, why, and the decisions taken (date
-+ title), plus the session's trailer. Push only when the user asks. If a phase or wave closed or
-paused, run `phase-kickoff` first so the next prompt lands in the same commit.
+Format and trailer: `docs/agent-rules.md` §10. The body states what changed, why, and the
+decisions taken (date + title). Push only when the user asks.

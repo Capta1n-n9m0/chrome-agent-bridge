@@ -27,8 +27,8 @@ and add it where it belongs, not to a brief.
    the Read tool. Then list the first heading line of every CLAUDE.md content in your context, verbatim, and say
    which appeared after the Read. Do not open any CLAUDE.md yourself." Expected: the root file at start,
    `sdk/CLAUDE.md` after the Read, no other package file. Then a second subagent the same way with
-   `extension/src/content/a11y.ts`: expected `extension/CLAUDE.md` and `extension/src/content/CLAUDE.md`. Record both. If `sdk/CLAUDE.md` did not load, every
-   brief adds "read the `CLAUDE.md` of each package you touch" to its READ list, and record that as a decision.
+   `extension/src/content/a11y.ts`: expected `extension/CLAUDE.md` and `extension/src/content/CLAUDE.md`. Record both. If a file did not load, amend `docs/agent-rules.md` §1 to "read the `CLAUDE.md` of each package you
+   touch" and record that as a decision; briefs stay as they are.
 3. **Environment, re-checked and dated:** `git log -1` and `git status --short` (clean); `npm test` count,
    `npm run typecheck`, `npm run build` (exit 0, no tracked change), run by an agent, not in your context; port 9234
    free; 23 tools, 26 codes, 26 router methods (`node scripts/doc-check.mjs` prints the code's counts); whether the
@@ -50,16 +50,13 @@ and add it where it belongs, not to a brief.
 7. `docs/setup.md` (Safety; Running JavaScript; Writing a script) and `docs/e2e-test-plan.md` §1 items 8–9, §4.20–4.22
    and §5 Runs 13–15, when a stage touches them. Live-run and Windows tooling facts: `recipes/CLAUDE.md`.
 
-**Precedence:** pre-registered rules (exit checks, human gates, STOP rules) > the phase doc > this prompt > the skills.
+**Precedence:** `docs/agent-rules.md` §4.
 
 ## 3. This phase's settings
 
 - **Form: three levels.** One step agent per stage (Stage 0, S1–S6); each spawns a fresh builder (or live runner),
   an independent verifier, and at most two fix rounds.
-- **Models by risk** (`docs/agent-rules.md` §7, the phase doc's risk per stage): Stage 0 and S1–S4 standard (Opus
-  throughout); S5's prep low (Sonnet builder and fixer, effort high), its live runner Opus; S6 low; every verifier
-  Opus. Headless `claude -p` actors may run Sonnet. Pass `model` on every `Agent` call, and `effort: "high"` for
-  Sonnet.
+- **Models:** by each stage's risk in the phase doc, per `docs/agent-rules.md` §7.
 - **Order and parallelism:** Stage 0 → S1 → S2 → (S3 ∥ S4, file-disjoint) → S5 alone, with no uncommitted code in
   the main tree → S6. At most two step agents at once. Host tests bind port 0; only S5 starts the real daemon on 9234.
 - **Steps dir:** `docs/plans/2026-10-25-step11-file-upload-steps/`. Create it with an append-only `journal.md`, and
@@ -67,8 +64,7 @@ and add it where it belongs, not to a brief.
   leaves).
 - **For the trial** (`docs/plans/2026-10-25-lean-procedures.md` § Trial): one journal line per spawned agent (stage ·
   role · model · start and end time, UTC), and each step report lists the verifier's findings by severity.
-- **Commits** end with exactly one trailer line, the model that wrote the commit
-  (`Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`, or Sonnet 5.5), and no `Claude-Session` line.
+- **Commits:** `docs/agent-rules.md` §10.
 - **Grants beyond the standing ones:** none. Run 16 is yours on fixture pages (decisions.md · 2026-10-22 · Live E2E
   waves are run by Claude end to end (#33)); the phase doc's Human gates say what that covers and what needs me
   (G11-1 any push or tag, G11-2 any non-fixture upload).
@@ -79,18 +75,12 @@ and add it where it belongs, not to a brief.
 Before spawning it, record the phase doc's **(proposed)** decisions, and the proposed details under its (user)
 headings, in `docs/decisions.md`, so the audit can attack them; contract-level ones go under Open decisions.
 
-The auditor works four lenses over the phase doc, using its Stage 0 seed lists (code to cite, blind spots):
-(a) every cited file, function, message and Chrome/CDP/MCP API exists and behaves as stated, **executed**, not read;
-(b) every count and bound recomputed from the repo; (c) blind spots, extending the seed list; (d) every exit check
-executable and discriminating, pass rules written before any measurement. It re-executes Step 10's and Step 9's
-contracts on port 0 (a contract that does not hold is CRITICAL). Output `…-steps/stage0-audit.md`, findings ranked
-and tagged plan-side (dated note in the phase doc) or code-side (a stage item). After it, write the stage split with
-estimates and risk tiers in `journal.md`.
+The audit is the phase doc's Stage 0 (its lenses, seed lists and exit check Z.1). After it, write the stage split
+with estimates and risk tiers in `journal.md`.
 
 ## 5. Close-out
 
-`long-run` §5: the gate checklist in the phase doc's § As built, a full `cleanup-pass`, `session-closeout`, and the
-trial numbers into `docs/plans/2026-10-25-lean-procedures.md` § Trial. Then `phase-kickoff` for the next step: **the
+`long-run` §5, and the trial numbers into `docs/plans/2026-10-25-lean-procedures.md` § Trial. Then `phase-kickoff` for the next step: **the
 block list stops redirected requests** (#140, its own small step by #229), then **Step 12 — Phase F** (decisions.md ·
 2026-10-24 · The roadmap after Step 8 (#129)). The final report leads with the decisions taken while I was away.
 
