@@ -1,6 +1,6 @@
 # S7 live runner brief (Step 10, stage S7 — Run 15, the live wave)
 
-Written 2026-10-25 by the S7 prep builder (model: `briefs/S1-runner.md`); the step agent fills `<PREP>` (the S7 prep
+Written 2026-10-25 by the S7 prep builder (model: `briefs/S1-runner.md`); the step agent fills `b55048d` (the S7 prep
 commit) and commits this brief before it spawns the runner (#213).
 
 Repo C:\Users\aliev\Projects\chrome-remote-extention (chrome-agent-bridge), branch `main`. Shell: the PowerShell tool
@@ -35,7 +35,7 @@ throwaway headless Chrome with its own temporary profile (SAVE-IDONLY; never the
   identity). Never restart or kill the user's Chrome (RET-1 is prepared only: G10-2) → that is a STOP. No real site and
   no real login (BBL-1 is dry runs on 127.0.0.1:8085 only; the pp1 leg is prepared only: G10-3).
 - **Pre-flight before any state change** (block 1, read-only): git clean (tracked files outside the steps dir —
-  the ledger and the record live in the steps dir and may change) and HEAD includes the S7 prep commit `<PREP>`; no `mcp/dist/index.js` process (none descending from your session, none from another); port 9234
+  the ledger and the record live in the steps dir and may change) and HEAD includes the S7 prep commit `b55048d`; no `mcp/dist/index.js` process (none descending from your session, none from another); port 9234
   free or held only by a bridge daemon; 8080/8081/8083/8085 free. **PINNING RULE** (block 4): if the button is already
   pinned, proceed. If not pinned and UI Automation cannot pin it, the script prints `STOP: … HUMAN GATE (pinning) …` —
   return (no mouse-click pinning; #202 does not pre-approve it).
