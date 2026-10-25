@@ -1226,6 +1226,31 @@ describe("Step 7 tab layer over a real WsHost", () => {
     expect(logs.filter((l) => l.includes("legacy"))).toEqual([]);
   });
 
+  // Step 11 S2 (S2.4; decisions.md · 2026-10-25 · Step 11: the wire method `uploadFiles`, no visibility lock, no
+  // focus (#238)): a tab method — lease-checked, forwarded with a numeric tabId and the paths as sent, no lock.
+  it("Step 11 S2.4: uploadFiles on another client's tab → TAB_HELD, nothing forwarded; the holder's is forwarded, no lock", async () => {
+    const { port } = await start();
+    const ext = await extension(port, (e) => e.hold.add("uploadFiles"));
+    const a = await client(port, "A");
+    const b = await client(port, "B");
+    const t = await newTab(a);
+    const paths = ["C:\\Wave\\Up\\a.txt", "/srv/wave/up/b.bin"];
+
+    const held = await call(b, "uploadFiles", { tab: t.tab, ref: "e1", paths });
+    expect(errOf(held).code).toBe("TAB_HELD");
+    expect(errOf(held).message).toMatch(HELD(t.tab, "A"));
+    expect(ext.reqs("uploadFiles")).toHaveLength(0);
+
+    const id = send(a, "uploadFiles", { tab: t.tab, ref: "e1", paths });
+    const req = await ext.waitReq("uploadFiles");
+    expect(req.params).toEqual({ ref: "e1", paths, tabId: t.id });
+    // In flight: the visibility lock is not held.
+    expect(((await call(b, "daemon.status")).result as { lock: unknown }).lock).toEqual({});
+    ext.answer(req, { files: 2 });
+    expect((await a.frame(response(id))).result).toEqual({ files: 2 });
+    expect(errOf(await call(a, "uploadFiles", { ref: "e1", paths })).code).toBe("BAD_PARAMS"); // tab is required
+  });
+
   it("S2b.3 (#81 F8): an unlisted method without tab → BAD_PARAMS; with a tab it is resolved and forwarded", async () => {
     const { port } = await start();
     const ext = await extension(port);

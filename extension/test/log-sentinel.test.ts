@@ -449,3 +449,143 @@ describe("S4.5 sentinel test — no saveTo value, expression or path in any capt
     }
   });
 });
+
+// ---------------------------------------------------------------- Step 11 S2: a sentinel upload folder and path
+// Phase doc 0.10 (decisions.md · 2026-10-25 · Step 11: nothing logs an upload path, and the rest of the safety
+// boundary is unchanged (#242)), exit check S2.5: the matcher, the folder rule, the stored key, the file: rule (#245
+// (a)) through the gated router, and the daemon forwarding `uploadFiles` over real ws — no captured line may carry
+// the sentinel folder, file name or a file: URL naming them.
+const UP_FOLDER_WIN = String.raw`C:\Wave\sentinel-folder-U7K3`;
+const UP_FOLDER_POSIX = "/srv/sentinel-folder-u7k3-posix";
+const UP_FILE_IN = String.raw`C:\Wave\sentinel-folder-U7K3\sentinel-file-F4M8.txt`;
+const UP_FILE_OUT = String.raw`C:\Wave\Other\sentinel-file-F4M8.txt`;
+const UP_FILE_URL = "file:///C:/Wave/sentinel-folder-U7K3/sentinel-file-F4M8.txt";
+const UP_NEEDLES = ["sentinel-folder-u7k3", "sentinel-file-f4m8", "wave\\other", "c:\\wave", "c:/wave"];
+
+function expectUploadClean(lines: readonly string[]): void {
+  for (const line of lines) {
+    const low = line.toLowerCase();
+    for (const n of UP_NEEDLES) expect(low.includes(n), `an upload sentinel (${n}) in a log line: ${line.length} chars`).toBe(false);
+  }
+}
+
+describe("Step 11 S2.5 sentinel test — no upload path, folder or file name in any captured log line", () => {
+  it("extension: matcher, folder rule, stored key, file: rule through the gated router", async () => {
+    const { parseUploadFolders, uploadPathsAllowed, uploadPathRefusalClass } = await import("../src/upload-paths.js");
+    const { uploadRefusal } = await import("../src/safety.js");
+    for (const k of Object.keys(stored)) delete stored[k];
+    const foldersText = [UP_FOLDER_WIN, UP_FOLDER_POSIX, "sentinel-folder-u7k3-relative", "# sentinel-folder-u7k3 comment"].join("\n");
+    stored[SAFETY_KEYS.uploadFolders] = foldersText;
+
+    const folders = parseUploadFolders(foldersText);
+    expect(folders.count).toBe(2);
+    expect(uploadPathsAllowed([UP_FILE_IN], folders)).toBe(true);
+    expect(uploadPathsAllowed([UP_FILE_OUT], folders)).toBe(false);
+    for (const p of [UP_FILE_IN, UP_FILE_OUT, `${UP_FILE_IN}:ads`, String.raw`\\srv\sentinel-folder-U7K3\x`, ""]) uploadPathRefusalClass(p);
+
+    const s = store();
+    const view = await s.read();
+    expect(uploadRefusal({ paths: [UP_FILE_IN] }, view.ctx)).toBeNull();
+    const refused = uploadRefusal({ paths: [UP_FILE_OUT, 5] }, view.ctx)!;
+    expect(refused.code).toBe("UPLOAD_REFUSED");
+    expectUploadClean([refused.message]);
+    s.applyChanges({ [SAFETY_KEYS.uploadFolders]: { newValue: `${foldersText}\n${UP_FILE_OUT}` } });
+    s.applyChanges({ [SAFETY_KEYS.uploadFolders]: { newValue: 7 } }); // wrong-typed: fails closed
+    stored[SAFETY_KEYS.uploadFolders] = 7;
+    await s.read().catch(() => {});
+    stored[SAFETY_KEYS.uploadFolders] = foldersText;
+
+    // The file: rule (#245 (a)) through the gated router: a file: tab and a navigate to a file: URL.
+    const deps: CallSafetyDeps = {
+      readState: () => store().read(),
+      getTab: async (id) => ({ url: id === 1 ? UP_FILE_URL : OTHER_URL }),
+      replacedBy: () => undefined,
+      lastUrl: () => UP_FILE_URL,
+    };
+    const router = new GatedRouter((method, params) => new CallSafety(method, params, deps));
+    router.on("snapshot", async () => ({ url: UP_FILE_URL }));
+    router.on("navigate", async () => ({ url: UP_FILE_URL }));
+    const replies = [
+      await router.handle(JSON.stringify({ id: "a", method: "snapshot", params: { tabId: 1 } })),
+      await router.handle(JSON.stringify({ id: "b", method: "navigate", params: { tabId: 2, url: UP_FILE_URL } })),
+      await router.handle(JSON.stringify({ id: "c", method: "navigate", params: { tabId: 2, url: ` FILE:${UP_FILE_IN}` } })),
+      await router.handle(JSON.stringify({ id: "d", method: "uploadFiles", params: { tabId: 2, ref: "e1", paths: [UP_FILE_IN] } })),
+    ];
+    for (const r of replies.slice(0, 3)) expect(JSON.parse(r!).error.code).toBe("DOMAIN_BLOCKED");
+    expectUploadClean(replies.slice(0, 3) as string[]);
+
+    // The capture is live: one press line.
+    const api = fakeAction();
+    const badge = new BadgeController({ api, read: async () => (await s.read()).switches });
+    await badge.press(() => s.toggle());
+    expect(captured.some((l) => l.startsWith("console.log: safety: "))).toBe(true);
+    expectUploadClean(captured);
+    expectClean(captured);
+  });
+
+  it("daemon: uploadFiles forwarded over real ws (port 0) with sentinel paths; refused and answered; nothing logged", async () => {
+    const daemonLog: string[] = [];
+    const host = new WsHost(new Bridge(), { port: 0, token: TOKEN, build: "sentinel-build", log: (m) => daemonLog.push(m), heartbeatMs: 60_000 });
+    const port = await host.listen();
+    const sockets: WebSocket[] = [];
+    const open = (): Promise<{ ws: WebSocket; frames: Record<string, unknown>[] }> =>
+      new Promise((resolve, reject) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+        sockets.push(ws);
+        const frames: Record<string, unknown>[] = [];
+        ws.on("message", (raw) => frames.push(JSON.parse(raw.toString())));
+        ws.on("open", () => resolve({ ws, frames }));
+        ws.on("error", reject);
+      });
+    const until = async (pred: () => boolean, ms = 3000) => {
+      const t0 = Date.now();
+      while (!pred()) {
+        if (Date.now() - t0 > ms) throw new Error("timed out");
+        await new Promise((r) => setTimeout(r, 5));
+      }
+    };
+    try {
+      const ext = await open();
+      const seen: Record<string, unknown>[] = [];
+      ext.ws.on("message", (raw) => {
+        const f = JSON.parse(raw.toString()) as { id?: string; method?: string; params?: Record<string, unknown> };
+        if (typeof f.id !== "string" || typeof f.method !== "string") return;
+        if (f.method === "listTabs") ext.ws.send(JSON.stringify({ id: f.id, result: { tabs: [{ id: 1, windowId: 1, active: true, current: true, title: TITLE, url: UP_FILE_URL }] } }));
+        else if (f.method === "newTab") ext.ws.send(JSON.stringify({ id: f.id, result: { id: 2 } }));
+        else if (f.method === "uploadFiles") {
+          seen.push(f.params ?? {});
+          const n = seen.length;
+          if (n === 1) ext.ws.send(JSON.stringify({ id: f.id, result: { files: 1 } }));
+          else ext.ws.send(JSON.stringify({ id: f.id, error: { code: "UPLOAD_REFUSED", message: `refused ${UP_FILE_OUT}` } }));
+        } else ext.ws.send(JSON.stringify({ id: f.id, result: { ok: true } }));
+      });
+      ext.ws.send(JSON.stringify({ type: "hello", token: TOKEN, role: "extension", proto: 2, session: "s2-up" }));
+      await until(() => ext.frames.some((f) => f.type === "welcome"));
+      const client = await open();
+      client.ws.send(JSON.stringify({ type: "hello", token: TOKEN, role: "client", name: "sentinel-s2", proto: 2 }));
+      await until(() => client.frames.some((f) => f.type === "welcome"));
+      let seq = 0;
+      const call = async (method: string, params?: Record<string, unknown>) => {
+        const id = `u${++seq}`;
+        client.ws.send(JSON.stringify({ id, method, params }));
+        await until(() => client.frames.some((f) => f.id === id));
+        return client.frames.find((f) => f.id === id)!;
+      };
+      const t = (await call("newTab", { url: UP_FILE_URL })).result as { tab: string };
+      expect((await call("uploadFiles", { tab: t.tab, ref: "e1", paths: [UP_FILE_IN] })).result).toEqual({ files: 1 });
+      expect(((await call("uploadFiles", { tab: t.tab, ref: "e1", paths: [UP_FILE_OUT] })).error as { code: string }).code).toBe("UPLOAD_REFUSED");
+      await call("uploadFiles", { ref: "e1", paths: [UP_FILE_IN] }); // no tab: BAD_PARAMS
+      await call("uploadFiles", { tab: "T999", ref: "e1", paths: [UP_FILE_IN] }); // unknown handle
+      await call("daemon.status");
+      expect(seen.map((p) => p.paths)).toEqual([[UP_FILE_IN], [UP_FILE_OUT]]);
+
+      expect(daemonLog.length).toBeGreaterThan(0); // the capture is live
+      expectUploadClean(daemonLog);
+      expectUploadClean(captured);
+      expectClean(daemonLog);
+    } finally {
+      for (const ws of sockets) ws.terminate();
+      await host.close();
+    }
+  });
+});

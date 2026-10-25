@@ -13,14 +13,18 @@
  *   #137, #138). *Superseded 2026-10-25 (Step 10 S4b): was "→ `DISARMED {scope:"evaluate"}`" for JavaScript
  *   off, because #202 changed #133 (spec §10's Step 10 note). Which calls are refused, and when, is
  *   unchanged.*
- * - The extension's own id and the parsed block list come in through `ctx` (never read here).
+ * - The extension's own id and the parsed block list come in through `ctx` (never read here); since Step 11 S2 also
+ *   the parsed upload folders (`ctx.uploadFolders`, missing = none), which `uploadRefusal` reads (#236, #237).
+ * - Step 11 S2, #245 (a): a tab call on a `file:` page and a `navigate`/`newTab` to a `file:` URL → `DOMAIN_BLOCKED`
+ *   (`FILE_PAGE_MESSAGE`, `FILE_URL_MESSAGE`), for every method; `listTabs` rows and events are not hidden by it.
  *
  * Messages never contain a URL, a pattern or a title. Never log any of them from here (0.7).
  */
 import { ErrorCodes, type DisarmedData, type HiddenReason } from "@bridge/shared";
 import type { ExtensionListTabsRow, TabCreatedParams, TabRemovedParams } from "@bridge/shared";
 import { BridgeError } from "./errors.js";
-import { isExtensionUrl, isOwnExtensionPage, isUrlBlocked, urlScheme, type BlockList } from "./safety-match.js";
+import { isExtensionUrl, isFileUrl, isOwnExtensionPage, isUrlBlocked, urlScheme, type BlockList } from "./safety-match.js";
+import { uploadPathsAllowed, type UploadFolders } from "./upload-paths.js";
 
 // ------------------------------------------------------------------------------------------------
 // The method table
@@ -151,17 +155,25 @@ export interface SafetySwitches {
   evaluate: boolean;
 }
 
-/** Inputs the pure gate cannot read itself: `chrome.runtime.id` and the parsed block list. */
+/**
+ * Inputs the pure gate cannot read itself: `chrome.runtime.id`, the parsed block list and (Step 11 S2) the parsed
+ * upload folders. `uploadFolders` missing means no folder: every upload is refused (fails closed).
+ */
 export interface SafetyContext {
   extensionId: string;
   blockList: BlockList;
+  uploadFolders?: UploadFolders;
 }
 
 /** Where the gate runs (0.1's F1 note): at receipt, before a first side effect, or before the reply. */
 export type SafetyPhase = "receipt" | "effect" | "post";
 
 export interface SafetyRefusal {
-  code: typeof ErrorCodes.DISARMED | typeof ErrorCodes.DOMAIN_BLOCKED | typeof ErrorCodes.JS_DISABLED;
+  code:
+    | typeof ErrorCodes.DISARMED
+    | typeof ErrorCodes.DOMAIN_BLOCKED
+    | typeof ErrorCodes.JS_DISABLED
+    | typeof ErrorCodes.UPLOAD_REFUSED;
   message: string;
   /** `DISARMED` only: `{scope: "all"}` (#133; Step 10 S4b, #202: `"evaluate"` is no longer produced). */
   data?: DisarmedData;
@@ -196,6 +208,16 @@ export const OWN_PAGE_MESSAGE =
 export const BLOCKED_URL_MESSAGE =
   "That address is on the user's block list in Chrome; the bridge will not open or fetch it. Ask the user.";
 export const EXTENSION_URL_MESSAGE = "The bridge never opens extension pages.";
+/** #245 (a), Step 11 S2: a tab showing a `file:` page. Names no path. */
+export const FILE_PAGE_MESSAGE = "This tab shows a local file (a file: page), which the bridge never reads or acts on.";
+/** #245 (a), Step 11 S2: `navigate`/`newTab` to a `file:` URL. Names no path. */
+export const FILE_URL_MESSAGE = "The bridge never opens local files (file: URLs).";
+/**
+ * `UPLOAD_REFUSED`'s message (Step 11 S2; phase doc 0.5's proposed wording; #237): fixed, naming no path, folder,
+ * count or file name. The same text for a malformed `paths` (#249).
+ */
+export const UPLOAD_REFUSED_MESSAGE =
+  "That file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders); the bridge will not upload it. Ask the user.";
 
 /** `DISARMED {scope:"all"}` — the only scope a Step 10 extension produces (#202). */
 function disarmed(message = DISARMED_ALL_MESSAGE): SafetyRefusal {
@@ -214,6 +236,18 @@ function domainBlocked(message: string): SafetyRefusal {
 /** F10: a failed read of the stored state refuses the call, `DISARMED {scope:"all"}`, with its own message. */
 export function stateUnreadableRefusal(): SafetyRefusal {
   return disarmed(STATE_UNREADABLE_MESSAGE);
+}
+
+/**
+ * Step 11 S2 — the folder rule of the safety class `upload` (phase doc 0.5; #237, #249): every entry of
+ * `params.paths` must lie strictly inside a folder of `ctx.uploadFolders` (`extension/src/upload-paths.ts`), else
+ * `UPLOAD_REFUSED` with no `data`. A malformed `paths` (absent, not an array, empty, more than 20, a hole, a
+ * non-string) and a context with no folders are refused (fails closed). Returns null when every path is allowed.
+ * It runs after the state and the tab tests (order `DISARMED` > `DOMAIN_BLOCKED` > `UPLOAD_REFUSED`).
+ */
+export function uploadRefusal(params: Record<string, unknown>, ctx: SafetyContext): SafetyRefusal | null {
+  if (uploadPathsAllowed(params.paths, ctx.uploadFolders)) return null;
+  return { code: ErrorCodes.UPLOAD_REFUSED, message: UPLOAD_REFUSED_MESSAGE };
 }
 
 /** A refusal as the error the router sends (`{code, message, data?}` on the wire). */
@@ -301,12 +335,14 @@ export function safetyDecision(
     case "replaced": {
       const b = firstBlocked(target.urls, ctx);
       if (b === "own") return domainBlocked(OWN_PAGE_MESSAGE);
+      if (target.urls.some((u) => isFileUrl(u))) return domainBlocked(FILE_PAGE_MESSAGE); // #245 (a)
       if (b === "list") return domainBlocked(BLOCKED_TAB_MESSAGE);
       return "allow";
     }
     case "gone": {
       const b = tabUrlBlocked(target.lastUrl, ctx);
       if (b === "own") return domainBlocked(OWN_PAGE_MESSAGE);
+      if (isFileUrl(target.lastUrl)) return domainBlocked(FILE_PAGE_MESSAGE); // #245 (a)
       if (b === "list") return domainBlocked(BLOCKED_TAB_MESSAGE);
       return "allow";
     }
@@ -317,6 +353,8 @@ export function safetyDecision(
       // (0.4); every chrome-extension:// URL is left to the handler's BAD_PARAMS, as today (S1 fixer r1,
       // finding 5b: no reply changes while armed, JS on, empty list).
       if ((cls === "navigate" || cls === "newTab") && isExtensionUrl(u)) return domainBlocked(EXTENSION_URL_MESSAGE);
+      // #245 (a), Step 11 S2: the bridge never opens a file: page (downloadStart's own handler refuses non-http(s)).
+      if ((cls === "navigate" || cls === "newTab") && isFileUrl(u)) return domainBlocked(FILE_URL_MESSAGE);
       if (isUrlBlocked(u, ctx.blockList)) return domainBlocked(BLOCKED_URL_MESSAGE);
       return "allow";
     }

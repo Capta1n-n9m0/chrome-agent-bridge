@@ -30,6 +30,8 @@ describe("method table", () => {
         "evaluateSaveStart",
         "evaluateSaveChunk",
         "evaluateSaveEnd",
+        // Step 11 S2 (2026-10-25; decisions.md #238): `uploadFiles` added by design.
+        "uploadFiles",
       ].sort(),
     );
     for (const m of TAB_METHODS) expect(classify(m, {})).toBe("tab");

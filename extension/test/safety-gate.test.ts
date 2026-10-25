@@ -257,9 +257,13 @@ describe("#138: script URLs, extension pages, chrome:// (cases 39–41 through t
         expect(safetyDecision(m, { url: u }, own(u), ARMED, emptyCtx)).toBe("allow");
       }
       // Not a script scheme: unchanged while JS is off.
-      for (const u of ["https://a.example/", "about:blank", "file:///C:/x", "chrome://version"]) {
+      // Step 11 S2 (2026-10-25; decisions.md #245 (a)): `file:///C:/x` left this list — the bridge never opens a
+      // file: page, so it is DOMAIN_BLOCKED whatever the JavaScript switch (asserted below and, for every method and
+      // phase, in s2-upload-gate.test.ts).
+      for (const u of ["https://a.example/", "about:blank", "chrome://version"]) {
         expect(safetyDecision(m, { url: u }, own(u), ARMED_JS_OFF, emptyCtx)).toBe("allow");
       }
+      expect(code(safetyDecision(m, { url: "file:///C:/x" }, own("file:///C:/x"), ARMED_JS_OFF, emptyCtx))).toBe("DOMAIN_BLOCKED");
     });
     it(`${m} to ANY chrome-extension:// URL → DOMAIN_BLOCKED (case 39 own, case 41 other), empty list, JS on`, () => {
       for (const u of [OWN_PAGE, OTHER_PAGE, "CHROME-EXTENSION://x/y", " chrome-extension://abc/"]) {
@@ -436,7 +440,9 @@ describe("armed + JS on + empty list: every classified method allows (except #13
     "http://[::1]:8081/",
     "about:blank",
     "data:text/html,<p>x</p>",
-    "file:///C:/x.html",
+    // Step 11 S2 (2026-10-25; decisions.md #245 (a)): "file:///C:/x.html" left this list — every tab call on a
+    // file: page and every navigate/newTab to one is DOMAIN_BLOCKED now; s2-upload-gate.test.ts asserts it for
+    // every method, target form and phase.
     "chrome://extensions",
     "javascript:void 0",
     "blob:https://a.example/u",

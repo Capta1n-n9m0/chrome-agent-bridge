@@ -304,3 +304,31 @@ describe("S4b.3 — JS_DISABLED becomes one plain error line, never a failure re
     expect(attach).not.toHaveBeenCalled();
   });
 });
+
+// ── Step 11 S2 (phase doc 0.5; spec §10's Step 11 note; decisions.md #237): UPLOAD_REFUSED ─────────────────
+// The tool browser_upload_file comes in S4; S2 lays only the rendering: withSafetyRefusals turns the code, from any
+// tool, into the SDK's one plain line, never a failure report.
+
+describe("S2.3 — UPLOAD_REFUSED becomes one plain error line, never a failure report", () => {
+  const UPLOAD_LINE =
+    "UPLOAD_REFUSED: that file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), so the bridge will not upload it. Stop and ask the user; do not retry with another path.";
+
+  for (const [name, args] of [
+    ["browser_click", { ref: "e1", tab: "T5" }],
+    ["browser_click", { ref: "e1" }],
+    ["browser_snapshot", { tab: "T5" }],
+  ] as Array<[string, Params]>) {
+    it(`${name} ${JSON.stringify(Object.keys(args))}: UPLOAD_REFUSED → the one line, isError, no attach`, async () => {
+      const attach = vi.fn(async () => {});
+      const f = fakeBridge(async (m) => {
+        if (m === "listTabs") return plainRows;
+        if (m === "tabs.claim") return { tab: "T1" };
+        throw new BridgeError(ErrorCodes.UPLOAD_REFUSED, "refused by the extension (sentinel-folder-Q2)");
+      });
+      const res = await tools(f.bridge, { attach }).run(name, args);
+      expect(res).toEqual({ isError: true, content: [{ type: "text", text: UPLOAD_LINE }] });
+      expect(textOf(res)).not.toContain("sentinel");
+      expect(attach).not.toHaveBeenCalled();
+    });
+  }
+});

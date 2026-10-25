@@ -6,7 +6,8 @@
 /**
  * Tab-carrying and lease-checked: resolved to a numeric `tabId` before forwarding. Step 10 S4 (decisions.md #205;
  * Stage 0 F4): `browser_evaluate {saveTo}`'s three `evaluateSave*` methods are here — the start and each pull
- * carry the tab, so only its holder can pull; no visibility lock.
+ * carry the tab, so only its holder can pull; no visibility lock. Step 11 S2 (decisions.md #238): `uploadFiles` — a tab
+ * method, lease-checked, no visibility lock (the upload needs no screen) and no focus.
  */
 export const TAB_METHODS: ReadonlySet<string> = new Set([
   "navigate",
@@ -28,6 +29,7 @@ export const TAB_METHODS: ReadonlySet<string> = new Set([
   "evaluateSaveStart",
   "evaluateSaveChunk",
   "evaluateSaveEnd",
+  "uploadFiles",
 ]);
 
 /** Free (no lease check), forwarded. `networkRequests` still has its scope resolved (#40). */

@@ -567,6 +567,50 @@ export function isLocator(value: unknown): value is Locator {
   return optional(value, "nth", (v) => Number.isSafeInteger(v) && (v as number) >= 0);
 }
 
+// ── Step 11 S2: `uploadFiles` (phase doc `docs/plans/2026-10-25-step11-file-upload.md` 0.3, 0.6; spec §10's Step 11
+// note; decisions.md · 2026-10-25 · Step 11: paths cross the wire, never bytes (#235); · Step 11: the wire method
+// `uploadFiles`, no visibility lock, no focus (#238)). A client adds `tab`; the daemon forwards a numeric `tabId`
+// (a tab method, lease-checked, no lock). Chrome itself opens the paths (`DOM.setFileInputFiles`); no file bytes
+// cross the wire. The safety gate (class `upload`) tests every path against the human's upload folders and fails
+// closed on a malformed `paths` (#249); nothing logs a path (#242).
+
+/** At most this many paths in one `uploadFiles` call (S2's build decision on 0.6's cap). */
+export const UPLOAD_FILES_MAX_PATHS = 20;
+
+/** `uploadFiles`'s own params: the target (a ref or a locator) and 1–`UPLOAD_FILES_MAX_PATHS` absolute paths. */
+export type UploadFilesParams = ActionTarget & { paths: string[] };
+
+/**
+ * The value of an `uploadFiles` call: `files` is the number of paths Chrome accepted (`DOM.setFileInputFiles`
+ * returned ok), not proof that the page took them (#247). `pastSnapshotCap` as on every locator-resolved action
+ * since Step 10 S3.
+ */
+export interface UploadFilesResult {
+  files: number;
+  pastSnapshotCap?: true;
+}
+
+/**
+ * `uploadFiles`'s params as they arrive untyped: exactly one of a non-empty string `ref` or a valid `locator`, and
+ * `paths` an array of 1–`UPLOAD_FILES_MAX_PATHS` non-empty strings (no hole). Other keys (`tab`, `tabId`) are not
+ * checked here. A shape check only: the folder rule is the safety gate's (`extension/src/upload-paths.ts`).
+ */
+export function isUploadFilesParams(value: unknown): value is UploadFilesParams {
+  if (!isPlainObject(value)) return false;
+  const hasRef = value.ref !== undefined;
+  const hasLocator = value.locator !== undefined;
+  if (hasRef === hasLocator) return false;
+  if (hasRef && (typeof value.ref !== "string" || value.ref === "")) return false;
+  if (hasLocator && !isLocator(value.locator)) return false;
+  const paths = value.paths;
+  if (!Array.isArray(paths) || paths.length === 0 || paths.length > UPLOAD_FILES_MAX_PATHS) return false;
+  for (let i = 0; i < paths.length; i++) {
+    const p: unknown = paths[i];
+    if (typeof p !== "string" || p === "") return false;
+  }
+  return true;
+}
+
 // ── Step 9 (docs/plans/2026-10-24-step9-phase-e-safety.md; spec §10's Step 9 note) ───────────────────
 // The human's three controls, enforced in the extension. Nothing here changes the safety state: no
 // method of any layer arms, disarms, edits the block list or turns JavaScript on (phase doc 0.1).

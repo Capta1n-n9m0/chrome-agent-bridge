@@ -126,16 +126,23 @@ const JS_DISABLED_LINE = `JS_DISABLED: ${JS_OFF_BODY}`;
 const DISARMED_EVALUATE_LINE = `DISARMED: ${JS_OFF_BODY}`;
 const DOMAIN_BLOCKED_LINE =
   "DOMAIN_BLOCKED: the user has blocked this site for the bridge in Chrome. Stop and ask the user; do not retry, and do not try to reach the site another way.";
+/**
+ * Step 11 S2 (2026-10-25; spec §10's Step 11 note; decisions.md #237): `UPLOAD_REFUSED` — out of `ATTACH_CODES`, one
+ * plain line naming no path, folder or file (the extension's message names none either; phase doc 0.5, 0.9).
+ */
+const UPLOAD_REFUSED_LINE =
+  "UPLOAD_REFUSED: that file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), so the bridge will not upload it. Stop and ask the user; do not retry with another path.";
 
 /**
  * The one plain line for a safety refusal, or null for any other code. `JS_DISABLED` (Step 10 S4b) is the
- * JavaScript-off line whatever its `data`. `DISARMED` reads by `data.scope`: `"evaluate"` — an old (Step 9)
+ * JavaScript-off line whatever its `data`; `UPLOAD_REFUSED` (Step 11 S2) the upload line. `DISARMED` reads by `data.scope`: `"evaluate"` — an old (Step 9)
  * extension's JavaScript-off refusal, the same body; anything else (`"all"`, absent or invalid) — the kill
  * switch, the stricter reading. Never names a URL, a title or a pattern.
  */
 export function safetyRefusalLine(code: unknown, data: unknown): string | null {
   if (code === "DOMAIN_BLOCKED") return DOMAIN_BLOCKED_LINE;
   if (code === "JS_DISABLED") return JS_DISABLED_LINE;
+  if (code === "UPLOAD_REFUSED") return UPLOAD_REFUSED_LINE;
   if (code !== "DISARMED") return null;
   const scope = typeof data === "object" && data !== null ? (data as { scope?: unknown }).scope : undefined;
   return scope === "evaluate" ? DISARMED_EVALUATE_LINE : DISARMED_ALL_LINE;

@@ -248,6 +248,18 @@ export function isExtensionUrl(url: string | undefined): boolean {
 }
 
 /**
+ * Step 11 S2, #245 (a) (decisions.md · 2026-10-25 · Stage 0: uploads need Chrome's file access, and the bridge never
+ * opens or reads `file:` pages (#245)): a `file:` URL — the scheme read as Chrome reads it (any case, after leading
+ * C0/space, tabs and newlines removed), also inside a `blob:`/`filesystem:`/`view-source:` wrapper. A wrapper nested
+ * deeper than the unwrap bound counts as `file:` (fails closed).
+ */
+export function isFileUrl(url: string | undefined): boolean {
+  if (typeof url !== "string") return false;
+  const inner = innermostUrl(url);
+  return inner === null || urlScheme(inner) === "file:";
+}
+
+/**
  * Rule 7: one of THIS extension's own pages (`chrome-extension://<extensionId>/…`), also wrapped; the
  * scheme and the id compare case-insensitively (the URL parser keeps a non-special scheme's host case,
  * Chrome lower-cases it).

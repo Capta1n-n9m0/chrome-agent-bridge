@@ -1,6 +1,6 @@
 /**
  * Error codes — spec §10 of `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`. Exactly these
- * 26: 25 that the daemon and the extension put on the wire (`{id, error: {code, message, data?}}`),
+ * 27: 26 that the daemon and the extension put on the wire (`{id, error: {code, message, data?}}`),
  * plus `NO_CURSOR`, raised by the SDK alone. Add a code only by amending the spec first.
  * Step 9 S0 (2026-10-24) added `DISARMED` and `DOMAIN_BLOCKED` after spec §10's dated Step 9 note
  * (decisions.md · 2026-10-24 · The JavaScript switch reuses `DISARMED` with a scope (#133); · The safety
@@ -8,6 +8,9 @@
  * Step 10 S4b (2026-10-25) added `JS_DISABLED` after spec §10's dated Step 10 note (decisions.md ·
  * 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202), which changed #133).
  * *Superseded 2026-10-25: was "Exactly these 25: 24 … on the wire", because S4b added `JS_DISABLED`.*
+ * Step 11 S2 (2026-10-25) added `UPLOAD_REFUSED` after spec §10's dated Step 11 note (decisions.md · 2026-10-25 ·
+ * Step 11: the safety class `upload` and the code `UPLOAD_REFUSED` (#237)).
+ * *Superseded 2026-10-25: was "Exactly these 26: 25 … on the wire", because Step 11 S2 added `UPLOAD_REFUSED`.*
  */
 
 /** Raised by the daemon itself (routing, leases, handshake). */
@@ -37,7 +40,11 @@ export const DAEMON_ERROR_CODES = [
  *   (#202, #138). No `data`; while the bridge is off `DISARMED` wins.
  * - `DOMAIN_BLOCKED`: the tab's URL, or the call's own target URL, is on the human's block list; or the call
  *   is a `navigate`/`newTab` to any `chrome-extension://` URL; or the tab shows this extension's own page
- *   (#138). Its message and data reveal no host or pattern (Stage 0 row SAFE-5).
+ *   (#138). Its message and data reveal no host or pattern (Stage 0 row SAFE-5). Since Step 11 S2 also every call
+ *   on a `file:` tab and every `navigate`/`newTab` to a `file:` URL (#245 (a)).
+ * - `UPLOAD_REFUSED` (Step 11 S2, spec §10's Step 11 note): a path given to `uploadFiles` is not strictly inside a
+ *   folder the human allows for uploads, or `paths` is malformed. A fixed message naming no path, folder, count or
+ *   file; no `data` (#237, #249).
  */
 export const EXTENSION_ERROR_CODES = [
   "REF_STALE",
@@ -56,6 +63,7 @@ export const EXTENSION_ERROR_CODES = [
   "DISARMED",
   "DOMAIN_BLOCKED",
   "JS_DISABLED",
+  "UPLOAD_REFUSED",
 ] as const;
 
 /**
@@ -96,6 +104,7 @@ export const ErrorCodes = {
   DISARMED: "DISARMED",
   DOMAIN_BLOCKED: "DOMAIN_BLOCKED",
   JS_DISABLED: "JS_DISABLED",
+  UPLOAD_REFUSED: "UPLOAD_REFUSED",
   NO_CURSOR: "NO_CURSOR",
 } as const satisfies { [K in ErrorCode]: K };
 

@@ -162,9 +162,9 @@ function quotedPageOf(row: ListedTab): string {
 
 /**
  * `server` whose `tool` registers each handler wrapped (#133): a `DISARMED` or `DOMAIN_BLOCKED` — and, since
- * Step 10 S4b, a `JS_DISABLED` (#202) — from any tool becomes the one plain line as an error result — never a
- * failure report, never a screenshot (none of the three is in the attach set, #120). Every other outcome is
- * the handler's own, unchanged.
+ * Step 10 S4b, a `JS_DISABLED` (#202), and since Step 11 S2 an `UPLOAD_REFUSED` (#237) — from any tool becomes the
+ * one plain line as an error result — never a failure report, never a screenshot (none of the four is in the attach
+ * set, #120). Every other outcome is the handler's own, unchanged.
  */
 function withSafetyRefusals(server: McpServer): Pick<McpServer, "tool"> {
   const tool = (...args: unknown[]): unknown => {

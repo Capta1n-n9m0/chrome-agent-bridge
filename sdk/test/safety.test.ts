@@ -126,7 +126,9 @@ describe("S3.2 — the plain line for DISARMED and DOMAIN_BLOCKED", () => {
     for (const l of [all, js, blocked]) expect(l).not.toContain("\n");
     // Step 10 S4b (2026-10-25; #202): JS_DISABLED joined the codes with a line of its own (S4b.3 below); was
     // `.filter((c) => c !== "DISARMED" && c !== "DOMAIN_BLOCKED")`.
-    for (const code of Object.keys(ErrorCodes).filter((c) => c !== "DISARMED" && c !== "DOMAIN_BLOCKED" && c !== "JS_DISABLED")) {
+    // Step 11 S2 (2026-10-25; #237): UPLOAD_REFUSED joined with a line of its own (S2.3 below).
+    const SAFETY = ["DISARMED", "DOMAIN_BLOCKED", "JS_DISABLED", "UPLOAD_REFUSED"];
+    for (const code of Object.keys(ErrorCodes).filter((c) => !SAFETY.includes(c))) {
       expect(safetyRefusalLine(code, { scope: "all" })).toBeNull();
     }
   });
@@ -298,5 +300,43 @@ describe("S4b.3 — JS_DISABLED stays out of the attach set and reads as one pla
 
   it("renderReport gives the JavaScript-off line for JS_DISABLED (no report)", () => {
     expect(renderReport({ message: "x", attachErrors: [], now: NOW, code: "JS_DISABLED" })).toBe(JS_LINE);
+  });
+});
+
+// ── Step 11 S2 (phase doc 0.5; spec §10's Step 11 note; decisions.md #237): UPLOAD_REFUSED ───────────────────
+
+describe("S2.3 — UPLOAD_REFUSED stays out of the attach set and reads as one plain line", () => {
+  const UPLOAD_LINE =
+    "UPLOAD_REFUSED: that file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), so the bridge will not upload it. Stop and ask the user; do not retry with another path.";
+
+  it("ATTACH_CODES does not hold UPLOAD_REFUSED; the set is unchanged", () => {
+    expect(ATTACH_CODES).not.toContain("UPLOAD_REFUSED");
+    expect(isAttachCode("UPLOAD_REFUSED")).toBe(false);
+    expect([...ATTACH_CODES].sort()).toEqual(["LOCATOR_AMBIGUOUS", "LOCATOR_NOT_FOUND", "NAV_FAILED", "OFFSCREEN", "PAGE_ERROR", "REF_STALE", "TIMEOUT"]);
+  });
+
+  it("safetyRefusalLine(UPLOAD_REFUSED) is the one upload line, whatever data it carries; it names no path", () => {
+    for (const data of [undefined, null, {}, { scope: "all" }, { path: String.raw`C:\Wave\sentinel.txt` }]) {
+      expect(safetyRefusalLine("UPLOAD_REFUSED", data)).toBe(UPLOAD_LINE);
+    }
+    expect(UPLOAD_LINE).not.toContain("\n");
+    expect(UPLOAD_LINE).not.toMatch(/[A-Za-z]:\\|\/srv|sentinel/);
+  });
+
+  it("renderReport gives the upload line for UPLOAD_REFUSED (no report)", () => {
+    expect(renderReport({ message: String.raw`x C:\Wave\a.txt`, attachErrors: [], now: NOW, code: "UPLOAD_REFUSED" })).toBe(UPLOAD_LINE);
+  });
+
+  it("a raw call refused UPLOAD_REFUSED makes no attach call and leaves no report", async () => {
+    const { client, conn } = await clientWith(
+      (m) => (m.method === "uploadFiles" ? { error: { code: "UPLOAD_REFUSED", message: "refused" } } : undefined),
+      dir,
+    );
+    const err = await caught(client.call("uploadFiles", { tab: "T3", ref: "e1", paths: ["/srv/wave/a.txt"] }));
+    expect(err.code).toBe("UPLOAD_REFUSED");
+    expect(err.data).toBeUndefined();
+    expect(methodsSent(conn)).toEqual(["uploadFiles"]);
+    expect(err.report).toBeUndefined();
+    expect(readdirSync(dir)).toEqual([]);
   });
 });

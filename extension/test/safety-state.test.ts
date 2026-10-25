@@ -62,19 +62,22 @@ function fakeStorage(initial: Record<string, unknown> = {}) {
 
 describe("stored keys and parsing", () => {
   it("the keys are namespaced and never collide with port, token or the session marker (F36)", () => {
-    expect(SAFETY_KEYS).toEqual({ armed: "safety.armed", evaluate: "safety.evaluate", blockList: "safety.blockList" });
-    expect([...SAFETY_KEY_NAMES].sort()).toEqual(["safety.armed", "safety.blockList", "safety.evaluate"]);
+    // Step 11 S2 (2026-10-25; #236): a fourth key, `safety.uploadFolders` (default ""), joined the stored state.
+    expect(SAFETY_KEYS).toEqual({ armed: "safety.armed", evaluate: "safety.evaluate", blockList: "safety.blockList", uploadFolders: "safety.uploadFolders" });
+    expect([...SAFETY_KEY_NAMES].sort()).toEqual(["safety.armed", "safety.blockList", "safety.evaluate", "safety.uploadFolders"]);
     for (const k of SAFETY_KEY_NAMES) expect(["port", "token", "sessionMarker"]).not.toContain(k);
   });
 
   it("missing keys mean the defaults: armed, JavaScript on, an empty list (F10)", () => {
-    expect(DEFAULT_STORED_SAFETY).toEqual({ armed: true, evaluate: true, blockList: "" });
-    expect(parseStoredSafety({})).toEqual({ armed: true, evaluate: true, blockList: "" });
-    expect(parseStoredSafety({ "safety.armed": false })).toEqual({ armed: false, evaluate: true, blockList: "" });
+    // Step 11 S2 (2026-10-25; #236): a fourth key, `safety.uploadFolders` (default ""), joined the stored state.
+    expect(DEFAULT_STORED_SAFETY).toEqual({ armed: true, evaluate: true, blockList: "", uploadFolders: "" });
+    expect(parseStoredSafety({})).toEqual({ armed: true, evaluate: true, blockList: "", uploadFolders: "" });
+    expect(parseStoredSafety({ "safety.armed": false })).toEqual({ armed: false, evaluate: true, blockList: "", uploadFolders: "" });
     expect(parseStoredSafety({ "safety.evaluate": false, "safety.blockList": "bank.example" })).toEqual({
       armed: true,
       evaluate: false,
       blockList: "bank.example",
+      uploadFolders: "",
     });
   });
 

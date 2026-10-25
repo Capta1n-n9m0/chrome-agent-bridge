@@ -65,7 +65,8 @@ describe("S2c — a re-arm whose write is rejected leaves the state disarmed", (
     const h = harness({ "safety.armed": false, "safety.evaluate": false, "safety.blockList": "bank.example" });
     await h.store.start();
     await expect(h.store.toggle()).rejects.toThrow();
-    expect(h.store.memory).toEqual({ armed: false, evaluate: false, blockList: "bank.example" });
+    // Step 11 S2 (2026-10-25; #236): the stored state gained `uploadFolders` (default "").
+    expect(h.store.memory).toEqual({ armed: false, evaluate: false, blockList: "bank.example", uploadFolders: "" });
     expect(h.store.ingestView()!.blockedCount).toBe(1);
   });
 
@@ -173,8 +174,8 @@ describe("S2c fixer 1 — a change that does not touch `armed` during the pendin
   }
 
   it.each([
-    ["the block list only", { "safety.blockList": { oldValue: "", newValue: "bank.example" } }, { evaluate: true, blockList: "bank.example" }],
-    ["the JavaScript switch only", { "safety.evaluate": { oldValue: true, newValue: false } }, { evaluate: false, blockList: "" }],
+    ["the block list only", { "safety.blockList": { oldValue: "", newValue: "bank.example" } }, { evaluate: true, blockList: "bank.example", uploadFolders: "" }],
+    ["the JavaScript switch only", { "safety.evaluate": { oldValue: true, newValue: false } }, { evaluate: false, blockList: "", uploadFolders: "" }],
   ] as const)("a change to %s: memory, ingestView() and read() say disarmed; the newer field stands; the next press is a retry", async (_label, change, rest) => {
     const h = harness();
     const { t, reject } = await pendingArm(h);
@@ -207,7 +208,7 @@ describe("S2c fixer 1 — a change that does not touch `armed` during the pendin
     h.store.applyChanges({ "safety.blockList": { oldValue: "", newValue: "bank.example" } });
     reject(new Error("storage set failed"));
     await expect(t).rejects.toThrow("storage set failed");
-    expect(h.store.memory).toEqual({ armed: true, evaluate: true, blockList: "bank.example" });
+    expect(h.store.memory).toEqual({ armed: true, evaluate: true, blockList: "bank.example", uploadFolders: "" }); // + uploadFolders, Step 11 S2 (#236)
     expect(h.deps.onDisarm).not.toHaveBeenCalled();
   });
 

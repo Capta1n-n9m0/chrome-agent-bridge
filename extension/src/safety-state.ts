@@ -15,30 +15,48 @@
  *   disarm never is (decisions.md · 2026-10-24 · A re-arm right after a disarm is ignored (#144)). A re-arm whose
  *   write is rejected puts the memory copy back to disarmed and rejects (S2c, #189; #174).
  * - Nothing here is reachable from the router: only the worker's own listeners and the options page call it.
+ * - Step 11 S2: a fourth key, `safety.uploadFolders` (the options page's Upload folders text, one folder per line),
+ *   read per call like the others; missing = no folder (every upload refused); a wrong-typed value makes the state
+ *   unreadable, so every call is refused `DISARMED` (decisions.md · 2026-10-25 · Step 11: upload folders are a
+ *   human-held allow-list in the extension, empty by default (#236)). Its parsed form rides in the gate's context
+ *   (`ctx.uploadFolders`); the reported state is unchanged (no folder count).
  *
  * No log call here, and nothing that could print a pattern (phase doc 0.7).
  */
 import { ErrorCodes, type SafetyState } from "@bridge/shared";
 import { DISARMED_ALL_MESSAGE, type SafetyContext, type SafetyRefusal, type SafetySwitches } from "./safety.js";
 import { EMPTY_BLOCK_LIST, parseBlockList, type BlockList } from "./safety-match.js";
+import { EMPTY_UPLOAD_FOLDERS, parseUploadFolders, type UploadFolders } from "./upload-paths.js";
 
 /** The `storage.local` keys of the safety state. Written only through this module (`toStorageItems`). */
 export const SAFETY_KEYS = Object.freeze({
   armed: "safety.armed",
   evaluate: "safety.evaluate",
   blockList: "safety.blockList",
+  uploadFolders: "safety.uploadFolders",
 } as const);
 
-export const SAFETY_KEY_NAMES: readonly string[] = Object.freeze([SAFETY_KEYS.armed, SAFETY_KEYS.evaluate, SAFETY_KEYS.blockList]);
+export const SAFETY_KEY_NAMES: readonly string[] = Object.freeze([
+  SAFETY_KEYS.armed,
+  SAFETY_KEYS.evaluate,
+  SAFETY_KEYS.blockList,
+  SAFETY_KEYS.uploadFolders,
+]);
 
-/** The stored state, as typed values. `blockList` is the options page's text, one pattern per line. */
+/**
+ * The stored state, as typed values. `blockList` is the options page's text, one pattern per line;
+ * `uploadFolders` (Step 11 S2) the Upload folders text, one folder per line — optional in the type only, so a state
+ * written before Step 11 (Step 9's three fields, e.g. `recipes/test/s9-rules.test.ts`) still type-checks; absent
+ * means no folder (fails closed). `parseStoredSafety` always sets it.
+ */
 export interface StoredSafety {
   armed: boolean;
   evaluate: boolean;
   blockList: string;
+  uploadFolders?: string;
 }
 
-export const DEFAULT_STORED_SAFETY: Readonly<StoredSafety> = Object.freeze({ armed: true, evaluate: true, blockList: "" });
+export const DEFAULT_STORED_SAFETY: Readonly<StoredSafety> = Object.freeze({ armed: true, evaluate: true, blockList: "", uploadFolders: "" });
 
 /** The kill switch's refusal (`DISARMED {scope:"all"}`), for the disarm actions (#133). */
 export const DISARMED_ALL: SafetyRefusal = Object.freeze({
@@ -67,6 +85,7 @@ export function parseStoredSafety(raw: unknown): StoredSafety {
   const armed = raw[SAFETY_KEYS.armed];
   const evaluate = raw[SAFETY_KEYS.evaluate];
   const list = raw[SAFETY_KEYS.blockList];
+  const folders = raw[SAFETY_KEYS.uploadFolders];
   if (armed !== undefined) {
     if (typeof armed !== "boolean") throw new Error(UNREADABLE);
     out.armed = armed;
@@ -79,6 +98,10 @@ export function parseStoredSafety(raw: unknown): StoredSafety {
     if (typeof list !== "string") throw new Error(UNREADABLE);
     out.blockList = list;
   }
+  if (folders !== undefined) {
+    if (typeof folders !== "string") throw new Error(UNREADABLE);
+    out.uploadFolders = folders;
+  }
   return out;
 }
 
@@ -88,6 +111,7 @@ export function toStorageItems(change: Partial<StoredSafety>): Record<string, un
   if (change.armed !== undefined) items[SAFETY_KEYS.armed] = change.armed;
   if (change.evaluate !== undefined) items[SAFETY_KEYS.evaluate] = change.evaluate;
   if (change.blockList !== undefined) items[SAFETY_KEYS.blockList] = change.blockList;
+  if (change.uploadFolders !== undefined) items[SAFETY_KEYS.uploadFolders] = change.uploadFolders;
   return items;
 }
 
@@ -127,9 +151,13 @@ export function reportOf(view: SafetyView): SafetyState {
   return { armed: view.switches.armed, evaluate: view.switches.evaluate, blockedCount: view.blockedCount };
 }
 
-/** The view used when the state cannot be read: disarmed, JavaScript off, no pattern (fail closed). */
+/** The view used when the state cannot be read: disarmed, JavaScript off, no pattern, no upload folder (fail closed). */
 export function failClosedView(extensionId: string): SafetyView {
-  return { switches: { armed: false, evaluate: false }, ctx: { extensionId, blockList: EMPTY_BLOCK_LIST }, blockedCount: 0 };
+  return {
+    switches: { armed: false, evaluate: false },
+    ctx: { extensionId, blockList: EMPTY_BLOCK_LIST, uploadFolders: EMPTY_UPLOAD_FOLDERS },
+    blockedCount: 0,
+  };
 }
 
 /** The in-memory copy: a stored state, or `unreadable` (a wrong-typed value arrived). */
@@ -169,6 +197,8 @@ export class SafetyStore {
   private chain: Promise<unknown> = Promise.resolve();
   private lastText: string | null = null;
   private lastList: BlockList = EMPTY_BLOCK_LIST;
+  private lastFoldersText: string | null = null;
+  private lastFolders: UploadFolders = EMPTY_UPLOAD_FOLDERS;
   /** Counts `storage.onChanged` batches that touched `safety.armed` (S2c fixer 1: the failed arm's revert). */
   private armedChanges = 0;
 
@@ -239,6 +269,7 @@ export class SafetyStore {
       [SAFETY_KEYS.armed]: base.armed,
       [SAFETY_KEYS.evaluate]: base.evaluate,
       [SAFETY_KEYS.blockList]: base.blockList,
+      [SAFETY_KEYS.uploadFolders]: base.uploadFolders,
     };
     for (const k of SAFETY_KEY_NAMES) {
       if (!Object.prototype.hasOwnProperty.call(changes, k)) continue;
@@ -345,9 +376,14 @@ export class SafetyStore {
       this.lastList = s.blockList === "" ? EMPTY_BLOCK_LIST : parseBlockList(s.blockList);
     }
     const blockList = this.lastList;
+    const foldersText = s.uploadFolders ?? "";
+    if (foldersText !== this.lastFoldersText) {
+      this.lastFoldersText = foldersText;
+      this.lastFolders = foldersText === "" ? EMPTY_UPLOAD_FOLDERS : parseUploadFolders(foldersText);
+    }
     return {
       switches: { armed: s.armed, evaluate: s.evaluate },
-      ctx: { extensionId: this.deps.extensionId, blockList },
+      ctx: { extensionId: this.deps.extensionId, blockList, uploadFolders: this.lastFolders },
       blockedCount: blockList.blockedCount,
     };
   }

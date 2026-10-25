@@ -38,9 +38,15 @@ const STEP8 = {
  */
 const STEP10_S4_TAB_METHODS = ["evaluateSaveStart", "evaluateSaveChunk", "evaluateSaveEnd"];
 
+/**
+ * Step 11 S2 (2026-10-25; decisions.md · 2026-10-25 · Step 11: the wire method `uploadFiles`, no visibility lock, no
+ * focus (#238)): one tab method added by design, appended after Step 10 S4's; any other change still fails.
+ */
+const STEP11_S2_TAB_METHODS = ["uploadFiles"];
+
 describe("S3.3 — the daemon's method tables are Step 8's", () => {
-  it("each table equals Step 8's, element for element (plus Step 10 S4's three tab methods)", () => {
-    expect([...TAB_METHODS]).toEqual([...STEP8.TAB_METHODS, ...STEP10_S4_TAB_METHODS]);
+  it("each table equals Step 8's, element for element (plus Step 10 S4's three and Step 11 S2's one tab method)", () => {
+    expect([...TAB_METHODS]).toEqual([...STEP8.TAB_METHODS, ...STEP10_S4_TAB_METHODS, ...STEP11_S2_TAB_METHODS]);
     expect([...FREE_METHODS]).toEqual(STEP8.FREE_METHODS);
     expect([...DAEMON_METHODS]).toEqual(STEP8.DAEMON_METHODS);
     expect([...NETWORK_METHODS]).toEqual(STEP8.NETWORK_METHODS);
