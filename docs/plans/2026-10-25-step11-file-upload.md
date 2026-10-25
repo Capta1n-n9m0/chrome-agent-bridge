@@ -597,6 +597,11 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   handler is unreachable with a refused path"; the gate's view carries `paths` and the parsed folders; extension
   tests are not type-checked (tsconfig covers `src` only).
 
+### S3c — A recipes typecheck broken since S3 · 2026-10-25 · verifier: PASS-with-notes · commit `214c821` · models: builder Sonnet 5.5 (medium), verifier Opus 5.5
+- `recipes/tsconfig.s10.json` exited 2 since `7e12707` (TS2339 at `upload-files.ts:133-134`; S3's verifiers ran only
+  the root typecheck); an erased `import type` fixes it (#276). All recipes configs exit 0; `dist/` byte-identical;
+  tests unchanged 3625/146. Verifier: NIT 1 (keep the `type` keyword).
+
 ### S4 — The SDK and the MCP · 2026-10-25 · verifier: PASS-with-notes · commit `acbb042` (its message says "verifier: pending"; the verdict is this line's) · models: all Opus 5.5
 - **S4.1–S4.4 met** (verifier on a `git archive` copy): preflight refusals make zero calls; `fs.promises.realpath`
   sent; sha256 equals the file's; eight values; types pinned; baseline +1 tool; no directory in any answer;

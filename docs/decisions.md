@@ -176,6 +176,16 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
 
+### 2026-10-25 · S3c: an erased type import lets the recipes programs see `Window.__agentBridge` (#276)
+**Decided:** `extension/src/upload-files.ts` gains `import type {} from "./content/index.js";` (with a comment), which
+the compiler removes; every recipes typecheck exits 0 and every `dist/` file is byte-identical (S3c verifier).
+**Why:** the recipes programs pull `upload-files.ts` in without `content/index.ts`, where the `Window` augmentation
+lives; the erased import carries the declaration and nothing else.
+**Instead of:** a triple-slash reference or moving the declaration into a `.d.ts` file (safer against someone dropping
+the `type` keyword, which would bundle the content script into `sw.js` — the verifier's NIT, recorded).
+**Revisit if:** another extension file in a recipes program hits the same TS2339, or the `type` keyword is ever at risk.
+**By:** Claude (S3c's proposal)
+
 ### 2026-10-25 · S5: a recipes typecheck broken since S3 is fixed before the live slices (#275)
 **Decided:** a one-item slice **S3c** (doers Sonnet medium, verifier Opus) makes `npx tsc --noEmit -p
 recipes/tsconfig.s10.json` exit 0 again (it exits 2 at `extension/src/upload-files.ts:133-134` since S3, measured by
