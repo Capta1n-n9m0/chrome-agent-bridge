@@ -9,8 +9,18 @@ as a dated entry and point back.
 
 ## Open decisions
 
-None open. Step 10's were ruled on 2026-10-25 (#229); the lists of earlier steps' open decisions, with their
-rulings, are in the archive entries they cite and in git (`817f8b1`).
+Step 10's were ruled on 2026-10-25 (#229); the lists of earlier steps' open decisions, with their rulings, are in
+the archive entries they cite and in git (`817f8b1`).
+
+**Step 11 (contract-level, proposed 2026-10-25; Stage 0 attacks them, then the session agent applies the
+conservative rule and they wait for the user at the gate).** Each entry is in the Log below with its options.
+- 2026-10-25 · Step 11: paths cross the wire, never bytes (#235) — recommended (A) paths only.
+- 2026-10-25 · Step 11: upload folders are a human-held allow-list in the extension, empty by default (#236).
+- 2026-10-25 · Step 11: the safety class `upload` and the code `UPLOAD_REFUSED` (#237).
+- 2026-10-25 · Step 11: the wire method `uploadFiles`, no visibility lock, no focus (#238).
+- 2026-10-25 · Step 11: `Tab.upload`'s signature and result (#240).
+- 2026-10-25 · Step 11: the MCP tool `browser_upload_file` (#241).
+- 2026-10-25 · Step 11: Run 16 may edit the Upload folders box in its own window (#243) — a gate if the user prefers.
 
 ## Standing decisions
 
@@ -148,6 +158,137 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
+
+### 2026-10-25 · Step 11: Step 10's follow-ups — the details of #229's three items (#244)
+**Decided (proposed):** (a) in `describeDebuggerError` (`extension/src/debugger-errors.ts`) an own `BridgeError`
+whose code is not a debugger code passes through unchanged (code, message, `data`); raw Chrome and page errors keep
+`[chrome.debugger] `; EVAL-5 unchanged; failing test first; live row SAVE-REFUSE-R. (b) `browser_evaluate`'s `saveTo`
+description names `kind` (`string` | `json`); the #214 baseline is re-baselined for that one tool with a dated note.
+(c) SW-2: SW-1R's differential design with one discarded warm-up trial, then three measured trials; the outcome table
+of the Step 10 phase doc's 0.8 unchanged; a fix stage S5b only on "runs to its bound". Phase doc 0.14.
+**Why:** the user ordered all three at Step 10's close (#229); these are the how.
+**Instead of:** prefix-stripping at each caller; a new baseline file; SW-2 without a warm-up.
+**Revisit if:** Stage 0 finds a caller that relies on the prefix of an own error.
+**By:** Claude (proposed; Stage 0 attacks it)
+
+### 2026-10-25 · Step 11: Run 16 may edit the Upload folders box in its own window (#243)
+**Decided (proposed):** Run 16 (phase doc 0.12) runs on fixture pages only under #33; the wave may edit the options
+page's Upload folders box in a window it opened, only to add its own scratch `<ROOT>` and to restore the found text
+exactly (read back by hash); a failed restore is a stop. Rows UP-0…UP-9, UP-LOGS, UP-CLICK (RECORD, only if Stage 0
+names a safe way to close the dialog), SAVE-REFUSE-R and SW-2.
+**Why:** as Runs 13–15 edited the block list (#33); a wave cannot test the folder rule without one folder.
+**Instead of:** a human gate for that edit (the user may still prefer it — listed under Open decisions).
+**Revisit if:** the user makes it a gate, or a restore fails.
+**By:** Claude (proposed)
+
+### 2026-10-25 · Step 11: nothing logs an upload path, and the rest of the safety boundary is unchanged (#242)
+**Decided (proposed):** no layer logs a path, folder, file name or an uploaded file's sha256; refusals name none;
+the log-scan allowlist count stays; `log-sentinel.test.ts` gains a sentinel folder and file name. Step 9's invariants
+hold, now covering the upload folders; armed, JavaScript on, empty block list and no folders → every existing tool
+and test behaves as before, and `uploadFiles` answers `UPLOAD_REFUSED`. Phase doc 0.10–0.11.
+**Why:** with paths on the wire (#235) the extension sees the path, so "never log a path" binds in every layer.
+**Instead of:** redacting paths in the daemon's `redact` (it keys on `://` and the token only).
+**Revisit if:** a debugging need for paths in logs appears (it would need a ruling, never a quiet change).
+**By:** Claude (proposed)
+
+### 2026-10-25 · Step 11: the MCP tool `browser_upload_file` (#241)
+**Decided (proposed, contract):** input `{ref?, locator?, paths: string[] (1–20, absolute), tab?}`; answer
+`Uploaded <n> file(s) to <target>:` then `<basename> · <bytes> bytes · sha256 <hex>` per file, no directory part;
+the description names the folder rule, `UPLOAD_REFUSED` (ask the user, never retry another path), the banner and
+"never click a file input"; `browser_click`'s description gains one sentence; 24 tools; the #214 baseline gains
+exactly one entry. Phase doc 0.9.
+**Why:** matches `browser_click`'s target fields and the SDK result (#240).
+**Instead of:** a single `path` field; echoing full paths in the answer.
+**Revisit if:** the user wants the answer to carry the paths.
+**By:** Claude (proposed; for user review)
+
+### 2026-10-25 · Step 11: `Tab.upload`'s signature and result (#240)
+**Decided (proposed, contract):** `tab.upload(target, paths: string | string[], options?: {timeoutMs?})` →
+`{files: {name, bytes, sha256}[]}`, mirrored by `client.upload(…)`; new types `UploadOptions`, `UploadResult`; the
+main entry keeps eight values. A client preflight (absolute, exists, regular file, readable; `fs.realpath` sent; sha256
+while reading) refuses with `BAD_PARAMS` and no call; it is a convenience, never the boundary. No `focusTab`. Phase
+doc 0.8.
+**Why:** within the ratified `Tab` surface (#118); the real-path step lets the extension refuse a junction that
+points out (#236).
+**Instead of:** no preflight (the extension cannot see links); bytes in the result.
+**Revisit if:** sha256 of large files proves slow.
+**By:** Claude (proposed; for user review)
+
+### 2026-10-25 · Step 11: which element receives the files (#239)
+**Decided (proposed):** in the content script, after the ref/locator resolves: an `<input type="file">`, a `<label>`
+whose `control` is one, or an element with exactly one file-input descendant (open shadow roots, same-origin frames);
+else `BAD_PARAMS`. Refused before attach: disabled; >1 path without `multiple`; 0 or >20 paths. A one-off mark
+attribute, a closure-free finder by `Runtime.evaluate` returning an `objectId`, then `DOM.setFileInputFiles`; the mark
+removed on every path; 0 matches `REF_STALE`, 2 `INTERNAL`. `a11y.ts`, `locate` and the snapshot unchanged. Phase doc
+0.7.
+**Why:** reaches the common hidden-input-behind-a-label pattern without changing locator rules.
+**Instead of:** `DOM.getDocument {pierce}` + `DOM.querySelector` (Stage 0 weighs it); making hidden inputs targetable.
+**Revisit if:** a strict CSP blocks the finder (UP-8).
+**By:** Claude (proposed; Stage 0 attacks it)
+
+### 2026-10-25 · Step 11: the wire method `uploadFiles`, no visibility lock, no focus (#238)
+**Decided (proposed, contract):** tab method `uploadFiles {tab, ref | locator, paths: string[]}` → `{files: number}`
+(+ `pastSnapshotCap?: true`); 1–20 paths; in `TAB_METHODS`, lease-checked, `takesLock` false; no `focusFirst`
+(`DOM.setFileInputFiles` is not `Input.*`); the debugger banner shows. Whether it works on a background tab is
+unmeasured: Run 16's UP-1 decides with a pre-written outcome table; a failure becomes a proposed decision, never a
+fix in the wave. Phase doc 0.6.
+**Why:** the upload needs no screen; adding focus without a measurement is a forbidden fix.
+**Instead of:** taking the lock or focusing first by default.
+**Revisit if:** UP-1 shows the page receives nothing on a background tab.
+**By:** Claude (proposed; for user review)
+
+### 2026-10-25 · Step 11: the safety class `upload` and the code `UPLOAD_REFUSED` (#237)
+**Decided (proposed, contract):** `uploadFiles` gets class `upload` in `METHOD_CLASSES`: the tab's tests (disarmed →
+`DISARMED {scope:"all"}`; blocked or own page → `DOMAIN_BLOCKED`), then the folder rule on every path →
+`UPLOAD_REFUSED` (27 codes, 26 on the wire; spec §10 amended first); order `DISARMED` > `DOMAIN_BLOCKED` >
+`UPLOAD_REFUSED` > `BAD_PARAMS`; the JavaScript switch does not apply. A fixed message naming no path, folder, count
+or file, no `data`, not in the failure-report attach set; one line in the SDK and the MCP. A refusal reveals only that
+a path is outside the folders. Phase doc 0.5.
+**Why:** the agent must learn to ask the human, as with `JS_DISABLED` (#219).
+**Instead of:** `BAD_PARAMS` (hides that the human decides); `DISARMED` with a new scope (#202 moved away from scopes).
+**Revisit if:** the user wants the JavaScript switch to cover uploads.
+**By:** Claude (proposed; for user review)
+
+### 2026-10-25 · Step 11: upload folders are a human-held allow-list in the extension, empty by default (#236)
+**Decided (proposed, contract, security):** a key `safety.uploadFolders` (folder paths, one per line) in
+`chrome.storage.local`, read per call, missing = empty = refused, wrong-typed → every call `DISARMED` (#139, #171);
+written only by the options page ("Upload folders"; a root and a relative path refused, a home folder warned); a pure
+matcher `extension/src/upload-paths.ts` (separator boundary, drive letters case-insensitive, POSIX case-sensitive;
+relative, `.`/`..`, UNC, `\\?\`/`\\.\`, an ADS `:`, control characters and empty refused; ≥ 40 cases first); the
+clients send `fs.realpath`; the wire's safety state unchanged (no folder count). Phase doc 0.4.
+**Why:** an upload sends local files to a page; an injected agent must not choose which. Safety lives in the
+extension (Step 9).
+**Instead of:** no rule; a per-upload confirmation (later mode); an allow-list in the client's config (the agent's
+to edit; a forbidden fix).
+**Revisit if:** the user wants the per-upload confirmation, or a folder count in the state.
+**By:** Claude (proposed; for user review)
+
+### 2026-10-25 · Step 11: paths cross the wire, never bytes (#235)
+**Decided (proposed, contract):** (A) the client sends absolute paths; the extension passes them to
+`DOM.setFileInputFiles`; Chrome reads the files. Known limit: a file changed between the client's check and Chrome's
+read. Phase doc 0.3.
+**Why:** same machine and user as Chrome; no 100 MiB frame limit; real `File` objects and Chrome's own events.
+**Instead of:** (B) bytes in chunks into an extension store and a page-side `DataTransfer` (synthetic, CSP-fragile);
+(C) a temp file the extension writes (it cannot).
+**Revisit if:** the bridge ever serves a client on another machine.
+**By:** Claude (proposed; for user review)
+
+### 2026-10-25 · Step 11: the upload is `Tab.upload` / `browser_upload_file` through `DOM.setFileInputFiles` (#234)
+**Decided (proposed):** names and mechanism as the Phase D sketch; not this step: intercepting the native file
+chooser (needs Step 12's keep-attached session), drag-and-drop zones with no input, clearing an input, the
+per-upload confirmation mode, a folder count in the state. Phase doc 0.2, 0.13.
+**Why:** the roadmap orders D3 (#129); the CDP primitive exists and the extension already runs CDP sessions.
+**Instead of:** a file-chooser interception now.
+**Revisit if:** Stage 0 finds `DOM.setFileInputFiles` unusable through `chrome.debugger`.
+**By:** Claude (proposed)
+
+### 2026-10-25 · Step 11: the order of the stages (#233)
+**Decided (proposed):** Stage 0 → S1 (#229's two code items) → S2 (contract) → S3 ∥ S4 → S5 (Run 16, alone) → S6
+(docs); one live wave. Phase doc 0.1 and § Stages.
+**Why:** S1 edits files S2–S4 also edit; S3 and S4 are file-disjoint.
+**Instead of:** S1 inside S2.
+**Revisit if:** Stage 0 finds S3 and S4 not disjoint.
+**By:** Claude (proposed)
 
 ### 2026-10-25 · Gotchas follow the code they bind (#232)
 **Decided:** A runtime gotcha lives in the `CLAUDE.md` of the code an agent would edit to break it (a top-level
