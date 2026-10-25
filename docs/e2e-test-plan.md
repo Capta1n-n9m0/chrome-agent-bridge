@@ -1541,8 +1541,8 @@ blocked sites — a miss is a `STOP:`; the toolbar button presses need it pinned
 *Added 2026-10-25, before any observation (S5-rules verifiers; decisions.md · 2026-10-25 · S5-rules: SW-2's edge
 cases and UP-LOGS's fixture set, ruled before Run 16 (#277)):* **SW-2** — a warm-up trial that is itself not measured,
 or a trial count other than one warm-up plus three, makes SW-2 NOT MEASURED (never a decided outcome). **UP-LOGS** — a
-URL counts as fixture only when it is `http://` on the wave's own fixture servers (127.0.0.1 and its `*.localhost`
-aliases on ports 8081 and 8084), `chrome://extensions`, or this extension's own `chrome-extension://<id>/` pages;
+URL counts as fixture only when it is `http://` on the wave's own fixture servers (127.0.0.1, `localhost` and its `*.localhost`
+aliases on ports 8081 and 8084; bare `localhost` added the same day, before any observation, #278), `chrome://extensions`, or this extension's own `chrome-extension://<id>/` pages;
 any other `scheme://host`, another loopback port included, counts as other.
 
 ## 5. Results template

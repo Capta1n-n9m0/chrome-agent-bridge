@@ -176,6 +176,22 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
 
+### 2026-10-25 · S5-actor: accepted over its size; bare `localhost` is fixture; a verifier started the daemon (#278)
+**Decided:** `recipes/s11.ts` (977 lines against a ~600 brief; no row missing, nothing dead or copied) is accepted.
+UP-LOGS counts bare `localhost` on 8081/8084 as fixture (UP-8's page is `localhost:8084`; `isFixture10` did the
+same), added to #277's §4.23 note before any observation. UP-RACE-A keeps the sheet's +1.6 s timing; only UP-RACE-B
+waits on the actor's `loop-done` signal. Tab placement for UP-5 and the race rows, which the sheet leaves unnamed, is
+set-up for S5-driver to choose and record, not a pass rule.
+**Why:** the S5-actor verifiers (PASS-with-notes, two rounds). **The incident, recorded:** verifier 1's dry check of
+the `fa` subcommand connected before refusing (its MINOR-1), which spawned the real daemon on 9234 (PID 22108) and
+the user's extension connected; no tab call was made; the verifier identified the process as its own and stopped it
+at 21:15Z; the session agent found 9234 free and no stray node process afterwards. The fix makes every tab subcommand
+refuse before connecting (a spy test). The builder did not stop at DONE-PARTIAL as #271 asks.
+**Instead of:** re-splitting `s11.ts` after the fact.
+**Revisit if:** the trial shows size overruns on Sonnet-built slices are the norm (then the size rule needs a check,
+not a request).
+**By:** Claude
+
 ### 2026-10-25 · S5-rules: SW-2's edge cases and UP-LOGS's fixture set, ruled before Run 16 (#277)
 **Decided:** (a) SW-2 is NOT MEASURED when the warm-up trial itself is not measured or when there are not exactly one
 warm-up and three trials (as `s11-rules.ts` already does). (b) UP-LOGS counts as fixture only `http://` on the wave's
