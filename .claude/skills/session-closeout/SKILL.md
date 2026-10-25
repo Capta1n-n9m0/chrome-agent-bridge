@@ -36,9 +36,9 @@ milestone (extend an existing one if the milestone continues); flip the roadmap 
 - **Root Current state:** update when a stage or phase completes, the resume point moves, or the
   workstream changes. Overwrite it in place: no "Superseded" notes in any `CLAUDE.md`; the history
   is in `decisions.md` and git.
-- **A runtime fact learned the hard way** becomes one bullet in the `CLAUDE.md` of the package it
-  concerns (`extension/`, `daemon/`, `sdk/`, `mcp/`, `shared/`, or `recipes/` for live-run and
-  Windows tooling facts), stated as measured, with the date. A rule that binds every package goes
+- **A runtime fact learned the hard way** becomes one bullet in the `CLAUDE.md` of the code an agent
+  would edit to break it (#232; `recipes/` for live-run and Windows tooling facts), with a one-line
+  pointer from every other package it binds, stated as measured, with the date. A rule that binds every package goes
   into the root's short invariant list. The story stays in the phase doc.
 - Update Key files, Commands and counts where they changed. Keep each file within its budget
   (`scripts/doc-check.mjs` reports it).

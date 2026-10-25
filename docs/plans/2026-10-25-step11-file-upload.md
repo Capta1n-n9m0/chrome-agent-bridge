@@ -310,8 +310,8 @@ decisions.md · 2026-10-25 · The user rules on Step 10's open decisions; Step 1
 ## Stages
 
 **Lane** is the explicit grant a step agent needs (`docs/agent-rules.md` §3 item 5). **Risk** picks the models
-(`docs/agent-rules.md` §7): *standard* → Opus throughout; *low* → Sonnet (effort high) builder and fixer, Opus
-verifier. Budgets are estimates; the step report records the actual beside each. **Verifier focus** is in addition
+(`docs/agent-rules.md` §7): *standard* → Opus throughout; *low* → Sonnet (effort high) builder and first two
+fixers, a third fix round on Opus, Opus verifier. Budgets are estimates; the step report records the actual beside each. **Verifier focus** is in addition
 to `agent-rules.md` §6 and the stage's exit checks.
 
 ### Stage 0 — Spec audit (2 h, first, alone; risk: standard)
@@ -394,7 +394,7 @@ answer.
 - [ ] The safety state, including the upload folders, restored and read back equal to the found state.
 **Lane:** `recipes/s11*`, `recipes/test/s11-*`, a `recipes/tsconfig.s11.json`, `test-fixtures/s11-*`,
 `docs/e2e-test-plan.md` §4.23 and §5, the steps dir. **No product code.** **Models:** the prep builder and fixer
-(helpers, rule tests, fixtures, rows) Sonnet; the live runner and every verifier Opus. **Verifier focus:** every
+(helpers, rule tests, fixtures, rows) Sonnet, per §7 (a third fix round on Opus); the live runner and every verifier Opus. **Verifier focus:** every
 upload row by the page's reporter; refusals leave 0 files; restore read-back by hash including the Upload folders;
 SW-2's warm-up excluded.
 

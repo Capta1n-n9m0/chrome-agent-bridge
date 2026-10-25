@@ -176,7 +176,7 @@ by `docs/e2e-test-plan.md` against real Chrome. New pure logic → write a faili
 - `phase-kickoff` — writes `docs/plans/next-session-prompt.md` (phase kind) or an entry in `docs/plans/handoffs.md`
   (wave kind).
 - `session-closeout` — end of significant work: the doc entry, `docs/decisions.md`, `docs/progress-and-roadmap.md`,
-  the Current state block above, a new gotcha in the package file it concerns, memory, the cleanup pass, the commit.
+  the Current state block above, a new gotcha with the code it binds (#232), memory, the cleanup pass, the commit.
 - `cleanup-pass` — a lead cleaner runs `node scripts/doc-check.mjs` and sends area cleaners; reports in `docs/cleanup/`.
 - Writing rules for every doc: `docs/docs-writing-guide.md`. Decisions are dated plain-language entries in
   `docs/decisions.md`, cited by date + title.
