@@ -54,3 +54,4 @@
 ## 2026-10-25 — close-out
 
 - Propagator done (`de1a103`). Phase doc Status/Outcome rewritten as results; as-built gate checklist; CLAUDE.md Current state; memory. Gate open: #204 (contract parts), #205–#208, #216 item 2, #217, #218, #219 item 1, #227; G10-1. Next: the user rules (plain-language review doc), Step 11 kickoff.
+- Step 10 closed by the user (#229, `5a21346`); step8 tag + release/step8 pushed. Step 11 phase doc and kickoff drafted by a fresh agent, reviewed (headless actors may run Sonnet, as #203; baseline note), committed.
