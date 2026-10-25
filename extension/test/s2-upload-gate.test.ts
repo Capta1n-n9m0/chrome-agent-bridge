@@ -9,11 +9,17 @@
  *   with a fixed message, for every method, the scheme in any case, wrapped, or after leading whitespace.
  * Reserved names and fixture-like paths only.
  */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, it, expect, vi } from "vitest";
 import { ErrorCodes } from "@bridge/shared";
+import { BridgeError } from "../src/errors.js";
 import {
   METHOD_CLASSES,
   TARGETS_BY_CLASS,
+  BLOCKED_TAB_MESSAGE,
+  OWN_PAGE_MESSAGE,
+  routerMethodNames,
   DISARMED_ALL_MESSAGE,
   FILE_PAGE_MESSAGE,
   FILE_URL_MESSAGE,
@@ -204,8 +210,9 @@ describe("#245 (a) — every tab call on a file: tab → DOMAIN_BLOCKED, for eve
   const armed = { armed: true, evaluate: true };
   const tabMethods = Object.keys(METHOD_CLASSES).filter((m) => TARGETS_BY_CLASS[methodClass(m)].includes("live") && methodClass(m) !== "listTabs");
 
-  it("covers every class that takes a tab (tab, navigate, evaluate, newTab, closeTab, network)", () => {
-    expect(new Set(tabMethods.map(methodClass))).toEqual(new Set(["tab", "navigate", "evaluate", "newTab", "closeTab", "network"]));
+  // Renamed 2026-10-25 (S2 fix round 2, #256): the title and the set gained `upload`.
+  it("covers every class that takes a tab (tab, navigate, evaluate, newTab, closeTab, network, upload)", () => {
+    expect(new Set(tabMethods.map(methodClass))).toEqual(new Set(["tab", "navigate", "evaluate", "newTab", "closeTab", "network", "upload"]));
   });
 
   for (const phase of ["receipt", "effect", "post"] as const) {
@@ -233,8 +240,10 @@ describe("#245 (a) — every tab call on a file: tab → DOMAIN_BLOCKED, for eve
     for (const m of tabMethods) {
       const cls = methodClass(m);
       const t: SafetyTarget = { kind: "gone", lastUrl: FILE_URLS[0] };
-      if (cls !== "network") expect(safetyDecision(m, {}, t, armed, ctx(), "receipt"), m).toBe("allow");
-      expect(safetyDecision(m, {}, t, armed, ctx(), "effect"), m).toEqual({ code: ErrorCodes.DOMAIN_BLOCKED, message: FILE_PAGE_MESSAGE });
+      // S2 fix round 2 (#256): class `upload` gets a path inside a folder, so only the file: rule is tested here.
+      const p = cls === "upload" ? { paths: [IN] } : {};
+      if (cls !== "network") expect(safetyDecision(m, p, t, armed, ctx(), "receipt"), m).toBe("allow");
+      expect(safetyDecision(m, p, t, armed, ctx(), "effect"), m).toEqual({ code: ErrorCodes.DOMAIN_BLOCKED, message: FILE_PAGE_MESSAGE });
     }
   });
 
@@ -254,7 +263,9 @@ describe("#245 (a) — every tab call on a file: tab → DOMAIN_BLOCKED, for eve
 
   it("an http tab and a blocked tab and this extension's own page answer as before", () => {
     for (const m of tabMethods) {
-      expect(safetyDecision(m, {}, { kind: "live", urls: [ALLOWED] }, armed, ctx())).toBe("allow");
+      // S2 fix round 2 (#256): class `upload` gets a path inside a folder (its folder rule has its own rows below).
+      const p = methodClass(m) === "upload" ? { paths: [IN] } : {};
+      expect(safetyDecision(m, p, { kind: "live", urls: [ALLOWED] }, armed, ctx()), m).toBe("allow");
       expect(safetyDecision(m, {}, { kind: "live", urls: [BLOCKED] }, armed, ctx("", "bank.example"))).toMatchObject({ code: ErrorCodes.DOMAIN_BLOCKED });
       expect(safetyDecision(m, {}, { kind: "live", urls: [OWN_PAGE, FILE_URLS[0]] }, armed, ctx())).toMatchObject({ code: ErrorCodes.DOMAIN_BLOCKED });
     }
@@ -320,5 +331,255 @@ describe("#245 (a) — navigate and newTab to a file: URL → DOMAIN_BLOCKED, as
       code: ErrorCodes.DOMAIN_BLOCKED,
       message: FILE_URL_MESSAGE,
     });
+  });
+});
+
+// ------------------------------------------------------------------------------------------------
+// #256 (2026-10-25, S2 fix round 2): `uploadFiles` in the safety table as class `upload`, through the real
+// `CallSafety` (a real tab read) and `GatedRouter` — S2.2's and S2.5's gate rows, the stub, verifier MINOR 2.
+// ------------------------------------------------------------------------------------------------
+
+const SW_SOURCE = readFileSync(fileURLToPath(new URL("../src/sw.ts", import.meta.url)), "utf8");
+
+/** A gated router over a stored state (the real `SafetyStore`) and a tab map read by `getTab`. */
+function uploadHarness(
+  stored: Record<string, unknown>,
+  tabs: Record<number, { url?: string; pendingUrl?: string }>,
+  lastUrls: Record<number, string> = {},
+) {
+  const store = new SafetyStore({ get: async () => ({ ...stored }), set: async () => {}, extensionId: OWN_ID, now: () => 0 });
+  const getTab = vi.fn(async (id: number) => {
+    const t = tabs[id];
+    if (!t) throw new Error(`No tab with id: ${id}.`);
+    return t;
+  });
+  const deps: CallSafetyDeps = { readState: () => store.read(), getTab, replacedBy: () => undefined, lastUrl: (id) => lastUrls[id] };
+  const router = new GatedRouter((m, p) => new CallSafety(m, p, deps));
+  /** Stands in for S3's handler: the effect check before the attach, then the attach. */
+  const attach = vi.fn();
+  const handler = vi.fn(async (_p: Record<string, unknown>, s: { effect(): Promise<void> }) => {
+    await s.effect();
+    attach();
+    return { files: 1 };
+  });
+  router.on("uploadFiles", handler);
+  const call = async (params: Record<string, unknown>) =>
+    JSON.parse((await router.handle(JSON.stringify({ id: "u", method: "uploadFiles", params })))!) as { result?: unknown; error?: unknown };
+  return { router, handler, attach, getTab, call, stored, tabs };
+}
+
+const FOLDERS = `${ROOT}\n/srv/wave/up`;
+const UP_OK = { tabId: 7, ref: "e1", paths: [IN] };
+const ARMED_ON = { armed: true, evaluate: true };
+
+describe("#256 — uploadFiles is in the safety table as class upload", () => {
+  it("METHOD_CLASSES.uploadFiles is upload, tested by its tab (live, replaced, gone)", () => {
+    expect(METHOD_CLASSES.uploadFiles).toBe("upload");
+    expect(methodClass("uploadFiles")).toBe("upload");
+    expect([...TARGETS_BY_CLASS.upload].sort()).toEqual(["gone", "live", "replaced"]);
+    expect(() => safetyDecision("uploadFiles", UP_OK, { kind: "own", url: ALLOWED }, ARMED_ON, ctx())).toThrow();
+    expect(() => safetyDecision("uploadFiles", UP_OK, { kind: "none" }, ARMED_ON, ctx())).toThrow();
+  });
+
+  it("the router scan: sw.ts registers uploadFiles, and the names equal the table", () => {
+    const { names, nonLiteral } = routerMethodNames(SW_SOURCE);
+    expect(nonLiteral).toEqual([]);
+    expect(names).toContain("uploadFiles");
+    expect([...names].sort()).toEqual(Object.keys(METHOD_CLASSES).sort());
+  });
+
+  it("safetyDecision: order DISARMED > DOMAIN_BLOCKED > UPLOAD_REFUSED, in every phase; JavaScript off does not apply", () => {
+    const c = ctx(FOLDERS, "bank.example");
+    const live = (u: string): SafetyTarget => ({ kind: "live", urls: [u] });
+    const out = { ...UP_OK, paths: [OUT] };
+    for (const phase of ["receipt", "effect", "post"] as const) {
+      expect(safetyDecision("uploadFiles", UP_OK, live(ALLOWED), ARMED_ON, c, phase)).toBe("allow");
+      expect(safetyDecision("uploadFiles", out, live(ALLOWED), ARMED_ON, c, phase)).toEqual({ code: ErrorCodes.UPLOAD_REFUSED, message: UPLOAD_REFUSED_MESSAGE });
+      expect(safetyDecision("uploadFiles", out, live(BLOCKED), ARMED_ON, c, phase)).toEqual({ code: ErrorCodes.DOMAIN_BLOCKED, message: BLOCKED_TAB_MESSAGE });
+      expect(safetyDecision("uploadFiles", out, live(BLOCKED), { armed: false, evaluate: true }, c, phase)).toEqual({
+        code: ErrorCodes.DISARMED,
+        message: DISARMED_ALL_MESSAGE,
+        data: { scope: "all" },
+      });
+      expect(safetyDecision("uploadFiles", UP_OK, live(ALLOWED), { armed: true, evaluate: false }, c, phase)).toBe("allow");
+    }
+  });
+});
+
+describe("#256 — S2.2 through CallSafety (a real tab read) and the gated router", () => {
+  it("control: an allowed tab and a path inside a folder — the handler runs and attaches", async () => {
+    const h = uploadHarness({ "safety.uploadFolders": FOLDERS }, { 7: { url: ALLOWED } });
+    expect(await h.call(UP_OK)).toEqual({ id: "u", result: { files: 1 } });
+    expect(h.attach).toHaveBeenCalledTimes(1);
+    expect(h.getTab).toHaveBeenCalledWith(7);
+  });
+
+  it("a blocked tab, this extension's own page and a file: page (url or pendingUrl) → DOMAIN_BLOCKED; no handler runs", async () => {
+    const rows: [{ url?: string; pendingUrl?: string }, string][] = [
+      [{ url: BLOCKED }, BLOCKED_TAB_MESSAGE],
+      [{ url: ALLOWED, pendingUrl: BLOCKED }, BLOCKED_TAB_MESSAGE],
+      [{ url: OWN_PAGE }, OWN_PAGE_MESSAGE],
+      [{ url: ALLOWED, pendingUrl: OWN_PAGE }, OWN_PAGE_MESSAGE],
+      [{ url: "file:///C:/Wave/Up/a.txt" }, FILE_PAGE_MESSAGE],
+      [{ url: ALLOWED, pendingUrl: "file:///srv/wave/up/b.bin" }, FILE_PAGE_MESSAGE],
+    ];
+    for (const [tab, message] of rows) {
+      const h = uploadHarness({ "safety.uploadFolders": FOLDERS, "safety.blockList": "bank.example" }, { 7: tab });
+      expect(await h.call(UP_OK), JSON.stringify(tab)).toEqual({ id: "u", error: { code: ErrorCodes.DOMAIN_BLOCKED, message } });
+      expect(h.handler).not.toHaveBeenCalled();
+      expect(h.getTab).toHaveBeenCalledWith(7);
+    }
+  });
+
+  it("a tab that turns blocked between receipt and the effect check → DOMAIN_BLOCKED, no attach", async () => {
+    const h = uploadHarness({ "safety.uploadFolders": FOLDERS, "safety.blockList": "bank.example" }, { 7: { url: ALLOWED } });
+    h.handler.mockImplementationOnce(async (_p, s) => {
+      h.tabs[7] = { url: BLOCKED };
+      await s.effect();
+      h.attach();
+      return { files: 1 };
+    });
+    expect(await h.call(UP_OK)).toEqual({ id: "u", error: { code: ErrorCodes.DOMAIN_BLOCKED, message: BLOCKED_TAB_MESSAGE } });
+    expect(h.attach).not.toHaveBeenCalled();
+  });
+
+  it("disarmed → DISARMED {scope:all} and the handler never runs; a disarm before the effect check → no attach", async () => {
+    const want = { code: ErrorCodes.DISARMED, message: DISARMED_ALL_MESSAGE, data: { scope: "all" } };
+    const h = uploadHarness({ "safety.uploadFolders": FOLDERS, "safety.armed": false }, { 7: { url: ALLOWED } });
+    expect(await h.call(UP_OK)).toEqual({ id: "u", error: want });
+    expect(h.handler).not.toHaveBeenCalled();
+
+    const h2 = uploadHarness({ "safety.uploadFolders": FOLDERS }, { 7: { url: ALLOWED } });
+    h2.handler.mockImplementationOnce(async (_p, s) => {
+      h2.stored["safety.armed"] = false;
+      await s.effect();
+      h2.attach();
+      return { files: 1 };
+    });
+    expect(await h2.call(UP_OK)).toEqual({ id: "u", error: want });
+    expect(h2.attach).not.toHaveBeenCalled();
+  });
+
+  it("JavaScript off → not refused for that reason (the handler runs)", async () => {
+    const h = uploadHarness({ "safety.uploadFolders": FOLDERS, "safety.evaluate": false }, { 7: { url: ALLOWED } });
+    expect(await h.call(UP_OK)).toEqual({ id: "u", result: { files: 1 } });
+    expect(h.attach).toHaveBeenCalledTimes(1);
+  });
+
+  it("folders empty, absent, or the path outside → UPLOAD_REFUSED; no handler runs", async () => {
+    const cases: [Record<string, unknown>, Record<string, unknown>][] = [
+      [{ "safety.uploadFolders": "" }, UP_OK],
+      [{}, UP_OK],
+      [{ "safety.uploadFolders": "# only a comment\n\n" }, UP_OK],
+      [{ "safety.uploadFolders": FOLDERS }, { ...UP_OK, paths: [OUT] }],
+      [{ "safety.uploadFolders": FOLDERS }, { ...UP_OK, paths: [IN, OUT] }],
+      [{ "safety.uploadFolders": FOLDERS }, { ...UP_OK, paths: [] }],
+      [{ "safety.uploadFolders": FOLDERS }, { tabId: 7, ref: "e1" }],
+    ];
+    for (const [stored, params] of cases) {
+      const h = uploadHarness(stored, { 7: { url: ALLOWED } });
+      expect(await h.call(params), JSON.stringify([stored, params])).toEqual({
+        id: "u",
+        error: { code: ErrorCodes.UPLOAD_REFUSED, message: UPLOAD_REFUSED_MESSAGE },
+      });
+      expect(h.handler).not.toHaveBeenCalled();
+    }
+  });
+
+  it("the folders removed between receipt and the effect check → UPLOAD_REFUSED, no attach (read per call)", async () => {
+    const h = uploadHarness({ "safety.uploadFolders": FOLDERS }, { 7: { url: ALLOWED } });
+    h.handler.mockImplementationOnce(async (_p, s) => {
+      h.stored["safety.uploadFolders"] = "";
+      await s.effect();
+      h.attach();
+      return { files: 1 };
+    });
+    expect(await h.call(UP_OK)).toEqual({ id: "u", error: { code: ErrorCodes.UPLOAD_REFUSED, message: UPLOAD_REFUSED_MESSAGE } });
+    expect(h.attach).not.toHaveBeenCalled();
+  });
+
+  it("wrong-typed folders → DISARMED (state unreadable); no handler runs", async () => {
+    for (const v of [1, true, null, [ROOT], { a: 1 }]) {
+      const h = uploadHarness({ "safety.uploadFolders": v }, { 7: { url: ALLOWED } });
+      expect(await h.call(UP_OK), JSON.stringify(v)).toEqual({
+        id: "u",
+        error: { code: ErrorCodes.DISARMED, message: STATE_UNREADABLE_MESSAGE, data: { scope: "all" } },
+      });
+      expect(h.handler).not.toHaveBeenCalled();
+    }
+  });
+
+  it("MINOR 2's question: a tab gone at receipt still gets the folder rule (fails closed)", async () => {
+    const h = uploadHarness({ "safety.uploadFolders": FOLDERS }, {});
+    expect(await h.call({ ...UP_OK, paths: [OUT] })).toEqual({ id: "u", error: { code: ErrorCodes.UPLOAD_REFUSED, message: UPLOAD_REFUSED_MESSAGE } });
+    expect(h.handler).not.toHaveBeenCalled();
+    const empty = uploadHarness({}, {}, { 7: ALLOWED });
+    expect((await empty.call(UP_OK)).error).toEqual({ code: ErrorCodes.UPLOAD_REFUSED, message: UPLOAD_REFUSED_MESSAGE });
+    expect(empty.handler).not.toHaveBeenCalled();
+    // Paths inside, the tab gone: allowed at receipt as for every tab class (#137) — the handler answers TAB_UNKNOWN.
+    expect(safetyDecision("uploadFiles", UP_OK, { kind: "gone" }, ARMED_ON, ctx(FOLDERS), "receipt")).toBe("allow");
+    // A gone tab whose last URL was blocked: refused after receipt, as for every tab class.
+    expect(safetyDecision("uploadFiles", UP_OK, { kind: "gone", lastUrl: BLOCKED }, ARMED_ON, ctx(FOLDERS, "bank.example"), "effect")).toEqual({
+      code: ErrorCodes.DOMAIN_BLOCKED,
+      message: BLOCKED_TAB_MESSAGE,
+    });
+  });
+});
+
+describe("#256 — the sw.ts stub is unreachable while the folder list is empty", () => {
+  const STUB_RE =
+    /router\.on\(\s*"uploadFiles"\s*,\s*async\s*\(\)\s*=>\s*\{\s*throw new BridgeError\(\s*ErrorCodes\.INTERNAL\s*,\s*"([^"]+)"\s*\);\s*\}\s*\);/;
+
+  it("sw.ts registers uploadFiles, at the top level, as a stub that throws one fixed INTERNAL", () => {
+    const m = STUB_RE.exec(SW_SOURCE);
+    expect(m, "the stub registration").not.toBeNull();
+    const line = SW_SOURCE.split(/\r?\n/).find((l) => l.includes('router.on("uploadFiles"'))!;
+    expect(line.startsWith("router.on(")).toBe(true); // column 1: the top level
+    expect(m![1]).not.toMatch(/[\\/:]/); // names no path
+  });
+
+  it("with no folder (absent, empty, comments only, invalid lines) the gate answers UPLOAD_REFUSED for every paths form; the stub never runs", async () => {
+    const message = STUB_RE.exec(SW_SOURCE)![1]!;
+    const forms: Record<string, unknown>[] = [
+      UP_OK,
+      { ...UP_OK, paths: [IN, IN2] },
+      { ...UP_OK, paths: ["/"] },
+      { ...UP_OK, paths: [] },
+      { tabId: 7, ref: "e1" },
+      { tabId: 7, locator: { css: "input[type=file]" }, paths: [IN] },
+    ];
+    const noFolder: Record<string, unknown>[] = [
+      {},
+      { "safety.uploadFolders": "" },
+      { "safety.uploadFolders": "\n#\n" },
+      { "safety.uploadFolders": String.raw`relative\dir` + "\n/\n" + ` ${ROOT}` },
+    ];
+    for (const stored of noFolder) {
+      for (const evaluate of [true, false]) {
+        for (const tabs of [{ 7: { url: ALLOWED } }, {}] as Record<number, { url?: string }>[]) {
+          const h = uploadHarness({ ...stored, "safety.evaluate": evaluate }, tabs);
+          const stub = vi.fn(async () => {
+            throw new BridgeError(ErrorCodes.INTERNAL, message);
+          });
+          h.router.on("uploadFiles", stub);
+          for (const params of forms) {
+            expect((await h.call(params)).error, JSON.stringify([stored, params])).toEqual({
+              code: ErrorCodes.UPLOAD_REFUSED,
+              message: UPLOAD_REFUSED_MESSAGE,
+            });
+          }
+          expect(stub).not.toHaveBeenCalled();
+        }
+      }
+    }
+  });
+
+  it("control: with a folder and a path inside it, the stub is reached and answers its fixed INTERNAL", async () => {
+    const message = STUB_RE.exec(SW_SOURCE)![1]!;
+    const h = uploadHarness({ "safety.uploadFolders": FOLDERS }, { 7: { url: ALLOWED } });
+    h.router.on("uploadFiles", async () => {
+      throw new BridgeError(ErrorCodes.INTERNAL, message);
+    });
+    expect((await h.call(UP_OK)).error).toEqual({ code: ErrorCodes.INTERNAL, message });
   });
 });

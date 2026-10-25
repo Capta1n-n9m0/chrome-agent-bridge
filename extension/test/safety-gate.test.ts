@@ -25,6 +25,7 @@ import {
   type SafetyTarget,
 } from "../src/safety.js";
 import { parseBlockList, EMPTY_BLOCK_LIST } from "../src/safety-match.js";
+import { parseUploadFolders } from "../src/upload-paths.js";
 
 const OWN_ID = "abcdefghijklmnopabcdefghijklmnop";
 const OTHER_ID = "ponmlkjihgfedcbaponmlkjihgfedcba";
@@ -43,6 +44,10 @@ const DISARMED_JS_OFF: SafetySwitches = { armed: false, evaluate: false };
 const LIST = parseBlockList("bank.example\n*.sub.test\nlocalhost:8081");
 const ctx: SafetyContext = { extensionId: OWN_ID, blockList: LIST };
 const emptyCtx: SafetyContext = { extensionId: OWN_ID, blockList: EMPTY_BLOCK_LIST };
+// Step 11 S2 (2026-10-25; decisions.md #256): class `upload` is allowed only with a folder and every path inside it.
+const UP_FOLDER = "/srv/wave/up";
+const UP_PARAMS = { paths: ["/srv/wave/up/a.txt"] };
+const withFolder = (c: SafetyContext): SafetyContext => ({ ...c, uploadFolders: parseUploadFolders(UP_FOLDER) });
 
 const live = (...urls: (string | undefined)[]): SafetyTarget => ({ kind: "live", urls });
 const replaced = (...urls: (string | undefined)[]): SafetyTarget => ({ kind: "replaced", urls });
@@ -66,12 +71,14 @@ describe("S1.1: the method table classifies every router method", () => {
     const { names, nonLiteral } = routerMethodNames(source);
     expect(nonLiteral).toEqual([]); // a registration through a variable would escape the scan
     // 23 → 26: Step 10 S4 (2026-10-25; decisions.md #205): the three `evaluateSave*` methods added by design.
-    expect(names).toHaveLength(26);
+    // 26 → 27: Step 11 S2 (2026-10-25; decisions.md #256): `uploadFiles` (class `upload`, a stub until S3) by design.
+    expect(names).toHaveLength(27);
     for (const n of names) expect(() => methodClass(n)).not.toThrow();
     expect([...names].sort()).toEqual([...ALL_METHODS].sort());
   });
 
-  it("the table lists the 23 methods of phase doc 0.1, plus Step 10 S4's three", () => {
+  // Renamed 2026-10-25 (Step 11 S2, #256): was "… plus Step 10 S4's three"; the list gained `uploadFiles`.
+  it("the table lists the 23 methods of phase doc 0.1, plus Step 10 S4's three and Step 11's uploadFiles", () => {
     expect([...ALL_METHODS].sort()).toEqual(
       [
         "navigate", "snapshot", "screenshot", "click", "type", "scroll", "hover", "selectOption", "pressKey",
@@ -79,6 +86,8 @@ describe("S1.1: the method table classifies every router method", () => {
         "networkRequests", "networkClear", "downloadStart", "downloadChunk", "downloadEnd",
         // Step 10 S4 (2026-10-25; decisions.md #205): the three `evaluateSave*` methods added by design.
         "evaluateSaveStart", "evaluateSaveChunk", "evaluateSaveEnd",
+        // Step 11 S2 (2026-10-25; decisions.md #256): class `upload`.
+        "uploadFiles",
       ].sort(),
     );
   });
@@ -121,6 +130,7 @@ function matrixTargets(cls: MethodClass, u: string): SafetyTarget[] {
     case "closeTab":
     case "network":
     case "listTabs":
+    case "upload": // Step 11 S2 (2026-10-25; #256)
       return [live(u)];
     case "navigate":
       return [live(u), own(u)];
@@ -141,7 +151,9 @@ function expected(cls: MethodClass, method: string, st: SafetySwitches, kind: Ur
   // Step 10 S4b (2026-10-25; #202 changed #133): JavaScript off → JS_DISABLED (was DISARMED {scope:"evaluate"}).
   if (!st.evaluate && cls === "evaluate") return "JS_DISABLED";
   if (cls === "state") return "allow";
-  if (kind === "allowed") return "allow";
+  // Step 11 S2 (2026-10-25; #237, #256): an upload passes the tab's tests, then the folder rule — `ctx` holds no
+  // folder (and `{}` no paths), so an allowed tab is UPLOAD_REFUSED; a blocked or own tab is DOMAIN_BLOCKED first.
+  if (kind === "allowed") return cls === "upload" ? "UPLOAD_REFUSED" : "allow";
   // Fixer r1, finding 5b: downloadStart's own URL is tested by the block list only; a chrome-extension://
   // URL is left to the handler (BAD_PARAMS as today).
   if (cls === "downloadStart" && kind === "own") return "allow";
@@ -210,7 +222,9 @@ describe("S1.2: safetyDecision over every class × state × JS × URL kind", () 
     for (const m of ALL_METHODS.filter((m) => methodClass(m) !== "evaluate")) {
       const cls = methodClass(m);
       const t = cls === "state" || cls === "newTab" || cls === "downloadStart" ? (cls === "state" ? none : own(ALLOWED)) : live(ALLOWED);
-      expect(code(safetyDecision(m, {}, t, ARMED_JS_OFF, ctx))).toBe("allow");
+      // Step 11 S2 (2026-10-25; #256): an upload is allowed only with a folder holding its paths.
+      const up = cls === "upload";
+      expect(code(safetyDecision(m, up ? UP_PARAMS : {}, t, ARMED_JS_OFF, up ? withFolder(ctx) : ctx)), m).toBe("allow");
     }
   });
 });
@@ -457,13 +471,23 @@ describe("armed + JS on + empty list: every classified method allows (except #13
             kind === "live" ? live(u, u) : kind === "replaced" ? replaced(u) : kind === "gone" ? gone(u) : kind === "own" ? own(u) : none;
           const navToExtension = kind === "own" && (cls === "navigate" || cls === "newTab") && u === OTHER_PAGE;
           for (const phase of ["receipt", "effect", "post"] as const) {
-            const d = safetyDecision(method, { url: u }, t, ARMED, emptyCtx, phase);
+            // Step 11 S2 (2026-10-25; #256): class `upload` gets a folder and a path inside it (else UPLOAD_REFUSED).
+            const d =
+              cls === "upload"
+                ? safetyDecision(method, { url: u, ...UP_PARAMS }, t, ARMED, withFolder(emptyCtx), phase)
+                : safetyDecision(method, { url: u }, t, ARMED, emptyCtx, phase);
             // newTab's post-check is the state only; every other own-URL check applies in every phase.
             if (navToExtension && !(cls === "newTab" && phase === "post")) expect(code(d)).toBe("DOMAIN_BLOCKED");
             else expect(d).toBe("allow");
           }
         }
-        if (kind === "gone") expect(safetyDecision(method, {}, gone(), ARMED, emptyCtx)).toBe("allow");
+        if (kind === "gone") {
+          if (cls === "upload") {
+            // Step 11 S2 (2026-10-25; #256): the folder rule runs for a tab gone at receipt too (fails closed).
+            expect(safetyDecision(method, UP_PARAMS, gone(), ARMED, withFolder(emptyCtx))).toBe("allow");
+            expect(code(safetyDecision(method, {}, gone(), ARMED, emptyCtx))).toBe("UPLOAD_REFUSED");
+          } else expect(safetyDecision(method, {}, gone(), ARMED, emptyCtx)).toBe("allow");
+        }
         if (kind === "own") expect(safetyDecision(method, {}, own(), ARMED, emptyCtx)).toBe("allow");
       }
     });

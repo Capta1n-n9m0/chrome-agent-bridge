@@ -89,12 +89,19 @@ describe("sw.ts constructs only the gated router", () => {
     expect(src).not.toMatch(/router\s*\[/);
     expect(src).not.toMatch(/\.on\.(call|apply|bind)\s*\(/);
     // 23 → 26: Step 10 S4 (2026-10-25; decisions.md #205): the three `evaluateSave*` methods added by design.
-    expect(src.match(/\brouter\.on\(\s*"[A-Za-z]+"\s*,/g)).toHaveLength(26);
+    // 26 → 27: Step 11 S2 (2026-10-25; decisions.md #256): the `uploadFiles` stub, which S3 replaces.
+    expect(src.match(/\brouter\.on\(\s*"[A-Za-z]+"\s*,/g)).toHaveLength(27);
   });
 
   it("the handlers it registers come from ./handlers/ only", () => {
     const names = [...src.matchAll(/\brouter\.on\(\s*"[A-Za-z]+"\s*,\s*([A-Za-z_$][\w$]*)\s*\)/g)].map((m) => m[1]!);
     expect(names).toHaveLength(26); // 23 → 26: Step 10 S4 (#205)
+    // Step 11 S2 (2026-10-25; decisions.md #256): the one registration not of the `router.on("name", handler)` form
+    // is the inline `uploadFiles` stub (a fixed INTERNAL throw, no handler code) until S3 registers its handler here.
+    const all = [...src.matchAll(/\brouter\.on\(\s*"([A-Za-z]+)"\s*,/g)].map((m) => m[1]!);
+    const named = new Set([...src.matchAll(/\brouter\.on\(\s*"([A-Za-z]+)"\s*,\s*[A-Za-z_$][\w$]*\s*\)/g)].map((m) => m[1]!));
+    expect(all.filter((n) => !named.has(n))).toEqual(["uploadFiles"]);
+    expect(src).toMatch(/\nrouter\.on\("uploadFiles", async \(\) => \{\r?\n  throw new BridgeError\(ErrorCodes\.INTERNAL, "[^"\n]+"\);\r?\n\}\);/);
     const imports = [...src.matchAll(/import\s*\{([^}]*)\}\s*from\s*"([^"]+)"/g)];
     for (const n of names) {
       const from = imports.find(([, list]) => list!.split(",").some((x) => x.trim().split(/\s+as\s+/).pop() === n));

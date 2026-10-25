@@ -164,7 +164,10 @@ describe("CallSafety.receipt", () => {
   it("armed, JS on, empty list: allow for every method on an ordinary tab", async () => {
     for (const m of Object.keys(METHOD_CLASSES)) {
       const c = new CallSafety(m, { tabId: 7, url: ALLOWED, expression: "1" }, deps());
-      expect(await c.receipt(), m).toBe("allow");
+      // Step 11 S2 (2026-10-25; decisions.md #256): `uploadFiles` (class `upload`) passes the tab, then the folder
+      // rule refuses — this view holds no folder; s2-upload-gate.test.ts has its allowed rows with a folder.
+      if (m === "uploadFiles") expect(await c.receipt(), m).toMatchObject({ code: ErrorCodes.UPLOAD_REFUSED });
+      else expect(await c.receipt(), m).toBe("allow");
     }
   });
 

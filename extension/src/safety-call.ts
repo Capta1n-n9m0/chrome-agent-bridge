@@ -117,6 +117,7 @@ function testsTab(method: string, params: Record<string, unknown>): boolean {
     case "evaluate":
     case "closeTab":
     case "navigate":
+    case "upload": // Step 11 S2 (#256): a missing label here would compile (default: false) and read no tab
       return true;
     case "network":
       return tabIdOf(params) !== undefined;
@@ -190,6 +191,8 @@ export function callTargets(
       return finalUrl === undefined ? [ownTarget(method, params)] : [ownTarget(method, params), { kind: "own", url: finalUrl }];
     case "network":
       return tabIdOf(params) !== undefined ? [tabTarget] : [{ kind: "none" }];
+    case "upload": // Step 11 S2 (#256)
+      return [tabTarget];
     case "listTabs":
     case "state":
       return [{ kind: "none" }];

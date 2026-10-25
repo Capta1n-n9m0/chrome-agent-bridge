@@ -42,6 +42,8 @@ import { uploadPathsAllowed, type UploadFolders } from "./upload-paths.js";
  *   (never refused while armed; entries filtered instead).
  * - `downloadStart`: its own URL (and, at the post-check, the final URL after redirects).
  * - `state`: no tab, no URL — the state only (`downloadChunk`, `downloadEnd`).
+ * - `upload` (Step 11 S2, #237, #256): `uploadFiles` — the tab's tests as `tab`, then the folder rule on every path
+ *   (`uploadRefusal` → `UPLOAD_REFUSED`); the JavaScript switch does not apply.
  */
 export type MethodClass =
   | "tab"
@@ -52,7 +54,8 @@ export type MethodClass =
   | "listTabs"
   | "network"
   | "downloadStart"
-  | "state";
+  | "state"
+  | "upload";
 
 /**
  * Every router method (`extension/src/sw.ts`), classified. A new method must enter here. Step 10 S4 (decisions.md
@@ -87,6 +90,7 @@ export const METHOD_CLASSES: Readonly<Record<string, MethodClass>> = Object.free
     evaluateSaveStart: "evaluate",
     evaluateSaveChunk: "evaluate",
     evaluateSaveEnd: "evaluate",
+    uploadFiles: "upload",
   } satisfies Record<string, MethodClass>),
 );
 
@@ -147,6 +151,7 @@ export const TARGETS_BY_CLASS: Readonly<Record<MethodClass, readonly SafetyTarge
   network: ["live", "replaced", "gone", "none"],
   downloadStart: ["own"],
   state: ["none"],
+  upload: ["live", "replaced", "gone"],
 });
 
 /** The two switches the gate reads (the stored state; `blockedCount` is not needed here). */
@@ -288,7 +293,8 @@ function firstBlocked(urls: readonly (string | undefined)[], ctx: SafetyContext)
  * the state (disarmed; JavaScript off); then, except for `newTab`/`closeTab` at the post-check, the tab
  * or the call's own URL. A tab gone at receipt is allowed whatever its last URL (the handler answers
  * `TAB_UNKNOWN` as today), except for the network class; later (effect, post), or for a network `tabId`,
- * a gone tab is refused only when its last known URL is blocked (#137; 0.3's F30 note).
+ * a gone tab is refused only when its last known URL is blocked (#137; 0.3's F30 note). Class `upload` (Step 11 S2,
+ * #256) then runs the folder rule (`uploadRefusal`) in every phase, a tab gone at receipt included (fails closed).
  */
 export function safetyDecision(
   method: string,
@@ -302,8 +308,6 @@ export function safetyDecision(
   if (!TARGETS_BY_CLASS[cls].includes(target.kind)) {
     throw new Error(`safety gate: target "${target.kind}" is not valid for method "${method}"`);
   }
-  void params; // the target carries what the gate needs; params are kept in the F7 signature for S2a
-
   // 1. The state.
   if (cls === "listTabs") {
     if (!state.armed) return { redact: "disarmed" };
@@ -325,9 +329,20 @@ export function safetyDecision(
 
   // 2b. #137: at receipt an unreadable tab is left to the handler (today's TAB_UNKNOWN), whatever its last
   // URL — except a network `tabId`, which 0.3's F30 note tests by its last known URL (S1 fixer r1, finding 1).
-  if (phase === "receipt" && target.kind === "gone" && cls !== "network") return "allow";
+  // Step 11 S2 (#256; S2 verifier MINOR 2's question): an upload's folder rule still runs here (fails closed).
+  if (phase === "receipt" && target.kind === "gone" && cls !== "network") {
+    return cls === "upload" ? (uploadRefusal(params, ctx) ?? "allow") : "allow";
+  }
 
   // 3. The tab, or the call's own URL.
+  const d = targetDecision(cls, target, ctx);
+  // 4. Step 11 S2 (#237, #256): class `upload` — after the state and the tab, the folder rule on every path.
+  if (d !== "allow" || cls !== "upload") return d;
+  return uploadRefusal(params, ctx) ?? "allow";
+}
+
+/** Step 3 of the gate: the tab, or the call's own URL (the state already passed). */
+function targetDecision(cls: MethodClass, target: SafetyTarget, ctx: SafetyContext): SafetyDecision {
   switch (target.kind) {
     case "none":
       return "allow";
