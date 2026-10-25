@@ -23,6 +23,9 @@
  */
 import { BridgeError, ErrorCodes } from "./errors.js";
 import { markOwnRefusal } from "./debugger-errors.js";
+// Type-only (erased): brings the `Window.__agentBridge` augmentation (declared in content/index.ts) into any program
+// that includes this file, e.g. the recipes typechecks. Emits nothing.
+import type {} from "./content/index.js";
 import {
   DIRECTORY_INPUT_MESSAGE,
   DISABLED_INPUT_MESSAGE,
