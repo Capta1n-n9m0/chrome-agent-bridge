@@ -118,6 +118,21 @@ decisions" below.*
 
 ## Log
 
+### 2026-10-25 · The user widens Step 10's grants: unlimited Chrome restarts, repeated pp1 reads, hidden pp1 writes (#222)
+**Decided:** for Step 10's remaining work, the user allows (1) restarting (including killing and relaunching) their
+real Chrome as many times as needed; (2) reading the pp1 Blackboard course as many times as needed; (3) test writes on
+pp1, provided what is written is hidden from students — something briefly visible to students is acceptable as long as
+it is hidden shortly after. The repo stays public: no course or student data in committed evidence; only sizes, hashes
+and counts.
+**Why:** the user's clarification (2026-10-25): "you may restart chrome as many times as you need, and also you may
+access pp1 course reading as many times as you need + if you need to test writes, you are free to do so, just make
+sure it is hidden from students. If something is brifely open to the students, it is fine, as long as it will be
+hidden shortly after".
+**Instead of:** #221's once-only grants.
+**Revisit if:** the user withdraws it; Step 10 closes (not standing beyond this step).
+**By:** user
+*#221's G10-2 and G10-3 grants are widened by this entry.*
+
 ### 2026-10-25 · The user grants RET-1's Chrome kill (G10-2) and the pp1 leg (G10-3) once for Run 15; the button is already pinned (#221)
 **Decided:** asked once when Run 15's runner stopped at `STOP: HUMAN GATE (pinning)` before its first row, the user
 answered: pinning — "Already pinned" (so no click is granted, and the helper's reading that the button is unpinned is
