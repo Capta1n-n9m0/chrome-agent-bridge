@@ -268,3 +268,103 @@
 2026-10-25T10:44:11Z client - "s9-wait" (0 clients)
 2026-10-25T10:44:11Z client + "s9-probe" (1 client)
 2026-10-25T10:44:11Z client - "s9-probe" (0 clients)
+2026-10-25T10:45:11Z client + "s9-cleanup" (1 client)
+2026-10-25T10:45:11Z client - "s9-cleanup" (0 clients)
+2026-10-25T10:45:12Z client + "s9-cleanup" (1 client)
+2026-10-25T10:45:12Z client - "s9-cleanup" (0 clients)
+2026-10-25T10:45:13Z client + "s9-shutdown" (1 client)
+2026-10-25T10:45:13Z safety state: not reported (extension disconnected)
+2026-10-25T10:45:13Z client - "s9-shutdown" (0 clients)
+2026-10-25T10:45:13Z exit 0 (shutdown 4002) clients=0 extensionEvents=41 ignoredClientFrames=0
+2026-10-25T10:48:07Z start pid=17360
+2026-10-25T10:48:07Z config pid=17360 port=9234 idleMs=600000 build=021286ab5f321207d3933d2030c725c3869627b76e224bbfeffbeb7e51477210
+2026-10-25T10:48:07Z listening on 127.0.0.1:9234
+2026-10-25T10:48:07Z client + "s9-wait" (1 client)
+2026-10-25T10:48:10Z safety state: armed=true evaluate=true blocked=0
+2026-10-25T10:48:10Z extension resync: 2 tabs, 0 gone
+2026-10-25T10:48:10Z client - "s9-wait" (0 clients)
+2026-10-25T10:48:43Z client + "export-grades" (1 client)
+2026-10-25T10:48:52Z client - "export-grades" (0 clients)
+2026-10-25T10:49:01Z client + "claude-code #6512" (1 client)
+2026-10-25T10:49:35Z client - "claude-code #6512" (0 clients)
+2026-10-25T10:49:52Z client + "export-grades" (1 client)
+2026-10-25T10:49:52Z client - "export-grades" (0 clients)
+2026-10-25T10:49:53Z client + "s6-close-bb-tab" (1 client)
+2026-10-25T10:49:53Z client - "s6-close-bb-tab" (0 clients)
+2026-10-25T10:50:00Z client + "s9-wait" (1 client)
+2026-10-25T10:50:00Z client - "s9-wait" (0 clients)
+2026-10-25T10:50:22Z client + "s9-wait" (1 client)
+2026-10-25T10:50:22Z client - "s9-wait" (0 clients)
+2026-10-25T10:51:00Z client + "s9-wait" (1 client)
+2026-10-25T10:51:00Z client - "s9-wait" (0 clients)
+2026-10-25T10:51:00Z client + "s10-ret1-holder" (1 client)
+2026-10-25T10:51:02Z safety state: not reported (extension disconnected)
+2026-10-25T10:52:55Z extension session changed: 2 handles retired
+2026-10-25T10:52:55Z safety state: armed=true evaluate=true blocked=0
+2026-10-25T10:52:55Z extension resync: 1 tabs, 0 gone
+2026-10-25T10:54:28Z client - "s10-ret1-holder" (0 clients)
+2026-10-25T11:04:28Z idle for 600000 ms with no clients — shutting down
+2026-10-25T11:04:28Z safety state: not reported (extension disconnected)
+2026-10-25T11:04:28Z exit 0 (shutdown 1001) clients=0 extensionEvents=15 ignoredClientFrames=0
+2026-10-25T11:47:47Z start pid=33480
+2026-10-25T11:47:47Z config pid=33480 port=9234 idleMs=600000 build=021286ab5f321207d3933d2030c725c3869627b76e224bbfeffbeb7e51477210
+2026-10-25T11:47:47Z listening on 127.0.0.1:9234
+2026-10-25T11:47:47Z client + "s9-wait" (1 client)
+2026-10-25T11:47:52Z safety state: armed=true evaluate=true blocked=0
+2026-10-25T11:47:52Z extension resync: 3 tabs, 0 gone
+2026-10-25T11:47:52Z client - "s9-wait" (0 clients)
+2026-10-25T11:52:00Z client + "s10-daemon-up" (1 client)
+2026-10-25T11:52:00Z client - "s10-daemon-up" (0 clients)
+2026-10-25T11:52:00Z client + "s9-wait-alone" (1 client)
+2026-10-25T11:52:00Z client - "s9-wait-alone" (0 clients)
+2026-10-25T11:52:06Z safety state: not reported (extension disconnected)
+2026-10-25T11:52:08Z safety state: armed=true evaluate=true blocked=0
+2026-10-25T11:52:08Z extension resync: 4 tabs, 0 gone
+2026-10-25T11:52:14Z client + "s10-setup" (1 client)
+2026-10-25T11:52:15Z client - "s10-setup" (0 clients)
+2026-10-25T11:52:15Z client + "s9-wait-alone" (1 client)
+2026-10-25T11:52:15Z client - "s9-wait-alone" (0 clients)
+2026-10-25T11:52:36Z client + "s9-safe0" (1 client)
+2026-10-25T11:52:36Z client - "s9-safe0" (0 clients)
+2026-10-25T11:52:36Z client + "s10-check" (1 client)
+2026-10-25T11:52:36Z client - "s10-check" (0 clients)
+2026-10-25T11:52:46Z client + "s9-probe" (1 client)
+2026-10-25T11:52:46Z client - "s9-probe" (0 clients)
+2026-10-25T11:52:49Z client + "s9-wait" (1 client)
+2026-10-25T11:52:49Z client - "s9-wait" (0 clients)
+2026-10-25T11:52:54Z client + "s6-rep0" (1 client)
+2026-10-25T11:53:05Z client - "s6-rep0" (0 clients)
+2026-10-25T11:53:27Z client + "s10-mcpf-click" (1 client)
+2026-10-25T11:53:28Z client + "claude-code #22924" (2 clients)
+2026-10-25T11:54:01Z client - "s10-mcpf-click" (1 client)
+2026-10-25T11:54:01Z client - "claude-code #22924" (0 clients)
+2026-10-25T11:54:02Z client + "s9-wait-alone" (1 client)
+2026-10-25T11:54:02Z client - "s9-wait-alone" (0 clients)
+2026-10-25T11:54:06Z client + "s10-mcpf-type" (1 client)
+2026-10-25T11:54:07Z client + "claude-code #26684" (2 clients)
+2026-10-25T11:54:33Z client - "s10-mcpf-type" (1 client)
+2026-10-25T11:54:34Z client - "claude-code #26684" (0 clients)
+2026-10-25T11:54:35Z client + "s9-wait-alone" (1 client)
+2026-10-25T11:54:35Z client - "s9-wait-alone" (0 clients)
+2026-10-25T11:54:40Z client + "s10-mcpf-press" (1 client)
+2026-10-25T11:54:40Z client + "claude-code #18868" (2 clients)
+2026-10-25T11:55:05Z client - "s10-mcpf-press" (1 client)
+2026-10-25T11:55:06Z client - "claude-code #18868" (0 clients)
+2026-10-25T11:55:06Z client + "s9-wait-alone" (1 client)
+2026-10-25T11:55:06Z client - "s9-wait-alone" (0 clients)
+2026-10-25T11:55:11Z client + "s10-cap1-mcp" (1 client)
+2026-10-25T11:55:12Z client + "claude-code #5788" (2 clients)
+2026-10-25T11:55:33Z client - "s10-cap1-mcp" (1 client)
+2026-10-25T11:55:34Z client - "claude-code #5788" (0 clients)
+2026-10-25T11:55:34Z client + "s9-wait-alone" (1 client)
+2026-10-25T11:55:34Z client - "s9-wait-alone" (0 clients)
+2026-10-25T11:56:04Z safety state: armed=false evaluate=true blocked=0
+2026-10-25T11:56:04Z client + "s9-r15-3r" (1 client)
+2026-10-25T11:56:04Z client - "s9-r15-3r" (0 clients)
+2026-10-25T11:56:07Z safety state: armed=true evaluate=true blocked=0
+2026-10-25T11:56:07Z client + "s9-wait" (1 client)
+2026-10-25T11:56:07Z client - "s9-wait" (0 clients)
+2026-10-25T11:56:36Z client + "s9-wait" (1 client)
+2026-10-25T11:56:36Z client - "s9-wait" (0 clients)
+2026-10-25T11:56:36Z client + "s9-probe" (1 client)
+2026-10-25T11:56:36Z client - "s9-probe" (0 clients)

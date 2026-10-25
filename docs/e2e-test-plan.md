@@ -1300,6 +1300,13 @@ Step 10's code: 0.2 (MCP trusted tools focus first, #106, #214), 0.3 (the 800-ca
 are **prepared here and NOT run**: the record says `not run — waits for the user` (S7.5). §4.20 and §4.21 are not
 edited (their rows and results stand; re-measurements are new rows).*
 
+*Superseded 2026-10-25: was "RET-1 (0.7, G10-2) and the pp1 leg (0.5, G10-3) are prepared here and NOT run: the record
+says `not run — waits for the user`", because the user granted both (decisions.md · 2026-10-25 · The user grants
+RET-1's Chrome kill (G10-2) and the pp1 leg (G10-3) once for Run 15; the button is already pinned (#221), widened by
+#222) and both ran in Run 15 after the teardown: PP1 PASS, RET-1 NOT MEASURED (the relaunch helper failed after the
+kill), RET-1R PASS (§5 Run 15). The heading "Prepared, NOT run" over the RET-1/RET-1R/PP1 table below is read with
+this note; the rows' text is unchanged.*
+
 *How the wave runs: [`S7-wave-sheet.md`](plans/2026-10-24-step10-step8-follow-ups-steps/S7-wave-sheet.md) — every block
 is one call of `recipes/s10-r15.ps1 -Block <name>` (Run 14's model, #213: one stop procedure, a narrow resume). Helpers
 (written before the run; rules tested by `npm test` — `recipes/test/s10-rules.test.ts`, `s10-fixtures.test.ts` —
@@ -2519,6 +2526,118 @@ Open items (each recorded, not re-run; the fixes are proposed decisions in [`S1.
   with occluder diagnostics and the fixed cursor park.
 - **R14-TEARDOWN (FAIL)** — a scanner defect (live verifier F1), and the helper printed no `STOP:` line on the failed
   scan (F2). Proposed: the raw-output scan counts `scheme://host` only, and a teardown scan failure takes the STOP path.
+
+### Run 15 (S7) — 2026-10-25 (Step 10: Step 10's own rows, §4.22)
+
+*Rows, expected text and helpers committed before the Step 10 build was loaded (`b55048d`, 09:13:30Z, before runner
+1's preflight at 09:14:19Z); every later row (SW-1R, MCPF-1R, CAP-1R, R15-3R, RET-1R) was added as a dated amendment
+under §4.22 and committed before its first observation (`0fca1ea`, `29f9efc`); between-rows helper fixes in
+`e28b609`, `0fca1ea`, `29f9efc`. No product code changed during the wave (`git diff --stat 02eb0c2 0e7647a -- daemon
+extension mcp sdk shared` empty). Block 2's `npm run build` left dist byte-identical in every attempt (the disk already
+held the committed Step 10 build); the extension was reloaded by `recipes/reload-extension.ps1` (exit 0, attempt 1) in
+every attempt that reached block 6, and SAFE-0-S10 proved the Step 10 build each time. Run by the S7 live runners, the
+user not present (#33). The wave took a stopped start, four attempts and five returns to the step agent (#193):
+**Return 1** — runner 1 stopped at block 4's pinning gate (the pin reader read the button unpinned; the user answered
+"already pinned" and granted G10-2/G10-3, #221, widened by #222); nothing touched, `-Block reset` archived it.
+**Return 2** — attempt 1 (runner 2) ran SAFE-0 … CAP-1, then stopped in SW-1's set-up on a helper bug (`evalValue` sent
+an expression without the `return (<expr>);` wrapper), before any trial; state untouched. **Return 3** — attempt 2
+(runner 3) ran SW-1R … SAVE-TTL, then R15-3's guard before the re-arm click met a 223×25 px topmost popup owned by the
+driver's own options window; the stop procedure re-armed (read back equal). **Return 4** — attempt 3 (runner 4) ran
+SAVE-DISARM … the teardown and PP1, then RET-1 killed Chrome (G10-2) and its relaunch helper failed (`-ArgLine ''`
+dropped by Windows PowerShell 5.1); Chrome was relaunched by the session agent (#222). **Return 5** — the
+post-relaunch read-back threw (two new Chrome windows, the helper touched neither) and printed `NOT equal`; it was
+redone under #223 by runner A (a marked check window: `-> equal`). Attempt 4 (runner B) ran the re-measurements
+MCPF-1R, CAP-1R, R15-3R, the restore, logs, teardown and RET-1R with no STOP. No row that had made an observation was
+re-run. **Live verifier: PASS-with-notes** (fresh; it agrees with every recorded verdict, rebuilt the six synthetic
+SAVE values and counted 0 value runs in 196 files). Full evidence:
+[`S7-run-record.md`](plans/2026-10-24-step10-step8-follow-ups-steps/S7-run-record.md),
+[`S7-live-verifier.md`](plans/2026-10-24-step10-step8-follow-ups-steps/S7-live-verifier.md), the ledger
+[`S7.ledger.md`](plans/2026-10-24-step10-step8-follow-ups-steps/S7.ledger.md) (blocks 1–7, returns), the step report
+[`S7.md`](plans/2026-10-24-step10-step8-follow-ups-steps/S7.md); daemon log
+[`S7-daemon-log.txt`](plans/2026-10-24-step10-step8-follow-ups-steps/S7-daemon-log.txt) (370 lines since the mark);
+raw output [`S7-run-raw.txt`](plans/2026-10-24-step10-step8-follow-ups-steps/S7-run-raw.txt) (attempt 4's; attempts
+1–3's stay in `%TEMP%` archives). Runs 1–14 above are unchanged.*
+
+```
+Date: 2026-10-25 (UTC 09:14–11:58; live verifier to 12:15)  Chrome 156.0.8078.48  Node v25.2.1  OS Windows 11 Pro 10.0.26300
+HEAD: prep b55048d; runner 1 on 0232a5b; attempt 1 on e28b609, 2 on 0fca1ea, 3 on 8acde66; RET-1 end redo on 29f9efc;
+      attempt 4 on 0e7647a
+Daemon build: 021286ab5f321207d3933d2030c725c3869627b76e224bbfeffbeb7e51477210 (Step 10)   reload: exit 0 in attempts 1–4
+
+Row             Attempt   Verdict          Observed (short)
+SAFE-0 (L1)     1–4       [P] x4           Step 10 build: evaluateSaveStart answers BAD_PARAMS (a Step 9 extension: UNKNOWN_METHOD)
+R15-FOUND       1–4       [RECORD] x4      armed, JavaScript on, empty list (sha256 the empty text's); guard passed
+REP-0 (probe)   1–4       [P] x4           the report's capture switched to the failed fixture tab (magenta), controls read
+BBL-1           1         [P]              delayed old exit 4 / new exit 0; stuck 90006 ms, elsewhere 90013 ms (≤ 95 s);
+                                           1 press, 1 submit each
+MCPF-1          1         [F]              page 9/9 trusted, tab in front, 3of3 PASS; trial 1 of each kind -calls/-answer
+                                           FAIL: the actor called ToolSearch first (deferred tools)
+CAP-1           1         [F]              SDK half all PASS; MCP calls-0900/answer-0900 FAIL (ToolSearch first); the tool
+                                           text itself was the expected two lines
+SW-1            1         [NOT MEASURED]   STOP in set-up (evalValue helper bug), before trial 1
+SW-1R           2         [RECORD]         d = [101, 1276, 1421] ms → undetermined (a decided outcome needs 3/3)
+R15-POP-2       2         [P] (a) [REC] (b) (a) opener in front: held opener, leaseGranted 150 ms; (b) behind: Chrome named
+                                           another tab, no grant (Run 14's conjecture)
+SAVE-1M         2         [P]              SDK + MCP: page = file = report, 1048576 bytes; answer 170 ≤ 187 chars, no run
+SAVE-4M (ctl)   2         [P]              4206649 bytes, sha256 equal
+SAVE-SURR       2         [P]              astral char whole across 1 MiB; lone surrogates efbfbd
+SAVE-JSON       2         [P]              kind json, 13240 bytes, sha256 equal
+SAVE-REFUSE     2         [F]              codes, data, no file right; every message prefixed "[chrome.debugger] " (the
+                                           product's coded-error path, debugger-errors.ts; the row text lacked it)
+SAVE-HOLD       2         [P]              another client's pull TAB_HELD, exact message
+SAVE-CLOSE      2         [P]              pull after closeTab: TAB_GONE, no file
+SAVE-FIX        2         [P]              418754 bytes: page = SDK file = MCP file; transcript 32-char runs 0
+SAVE-64         2         [P]              67108871 bytes, SDK 4329 ms; worker memory +212.3 MiB [record]; MCP answer 172
+SAVE-PRIM       2         [RECORD]         CHECK PASS: a 64 MiB primitive saved whole — #217's Revisit-if not met
+SAVE-IDONLY     2         [RECORD]         headless throwaway Chrome: primitive + idOnly → no objectId (#217 not met)
+SAVE-TTL        2         [P]              pull after 330 s idle: INTERNAL Unknown or expired evaluateSave id
+R15-3           2         [NOT MEASURED]   disarm half observed; the guard before the re-arm click met an O-owned popup
+SAVE-DISARM     3         [P]              DISARMED {scope:"all"} on pull 2, no file; old id INTERNAL after re-arm
+SAVE-JSOFF      3         [P]              JS_DISABLED (no data) on pull 2, evaluate and start alike; no file
+SAVE-BLOCK      3         [P]              DOMAIN_BLOCKED on start and pull (a *.localhost fixture name, then emptied)
+JSD             3         [P]              JS off → JS_DISABLED; bridge off (JS also off) → DISARMED wins; on → unchanged;
+                                           SDK and MCP, no report, no PNG
+MCPF-1-off      3         [P]              the one DISARMED: line; nothing reached the page; the tab stayed behind
+SAVE-LOG        3         [P]              daemon.log and console: markers 0, value runs 0
+PP1 (G10-3)     3         [P]              pp1, read-only: page = SDK file = MCP file sha256, 419015 bytes; transcript value
+                                           runs 0; only its own files deleted; start/end read-backs equal
+RET-1 (G10-2)   3         [NOT MEASURED]   kill observed; relaunch helper exited 1 (PS 5.1 dropped -ArgLine ''); not re-run
+MCPF-1R         4         [P]              tool search off: 9/9 trusted, tab in front, every -calls/-answer PASS, 3of3
+CAP-1R          4         [P]              MCP leg: 0900 click + the cap Warning line; 0010 no warning; calls/answers exact
+R15-3R          4         [P]              OFF title 49 ms; DISARMED all; O "Bridge OFF…"; armed title 68 ms; O "Bridge
+                                           armed." 31 ms after, not reloaded — the O-owned popup exempt under #224
+R15-RESTORE     3, 4      [P] x2           read back equal: stored page, daemon.status, title, block-list sha256
+R15-LOGS        3, 4      [P] x2           daemon.log 370 lines, 14 transcripts: all 0; worker console: attempt 3 PASS,
+                                           attempt 4 NOT MEASURED (no toolbar-disarm control line in its capture)
+R15-TEARDOWN    3, 4      [P] x2           desk as found; ports free; raw scan scheme://host fixture 17, other 0
+RET-1R (G10-2)  4         [P]              KILLED 6448, relaunched, reconnect 106 ms; tabGone T1348 with its fixture URL; old
+                                           Tab TAB_GONE; "3 handles retired"; start/end read-backs equal
+Counts: PASS 27 / FAIL 3 / NOT MEASURED 3 / RECORD 4   (framing rows R15-PRE, BUILD, SRV, PIN, DAEMON, RELOAD,
+        SETUP, CONSOLE as found in every attempt that ran them)
+
+Found state = read-back in every attempt: armed=true evaluate=true count=0 lines=0, sha256 e3b0c442…b855 (the empty
+text's) at both ends — attempts 1 and 2 by the stop procedure (attempt 2 re-armed after R15-3's disarm), attempts 3 and 4
+by block 33; PP1 start/end, RET-1 start, RET-1 end (redone under #223), RET-1R start/end: each "-> equal". Pin pinned ->
+pinned; layout 0x04090409; Chrome windows as found per attempt (1, 1, 1, 3)
+STOP lines: 8 (runner 1 ×2, sw1 ×2, r3 ×2, RET-1 relaunch, RET-1 end NOT equal), each matched to Returns 1–5; attempt 4
+and RET-1R: 0
+Log hygiene: daemon.log since 09:57:04Z (370 lines), worker console (attempt 3: 229 texts; attempt 4: 213), 14 actor
+transcripts + pp1's: non-fixture scheme://host 0, token 0, test pattern 0, real course host 0, value runs 0
+Chrome restarts: 2 granted kills (RET-1 10:51:02Z, RET-1R 11:58:09Z); relaunches 10:52:55Z (session agent) and
+11:58:14Z (RET-1R); one Chrome start at 09:33:08Z between runner 1 and attempt 1 is in no trace (not the wave's)
+Returns: 5 (all tooling or gates; each matched by the live verifier)
+```
+
+Open items (each recorded, not re-run; the proposals are in [`S7.md`](plans/2026-10-24-step10-step8-follow-ups-steps/S7.md)):
+- **SAVE-REFUSE (FAIL)** — the product prefixes its own `saveTo` refusals with `[chrome.debugger] ` (by design of
+  `describeDebuggerError`); the row text lacked it. Proposed: drop the prefix for the bridge's own coded refusals and
+  re-measure as a new row, or keep the product and correct the row text by a dated note — the user's call.
+- **MCPF-1 / CAP-1 (FAIL)** — a harness cause (the actors' first call was Claude Code's `ToolSearch`); superseded in
+  substance by MCPF-1R / CAP-1R PASS. Headless actors run with `ENABLE_TOOL_SEARCH=false`.
+- **SW-1 / SW-1R** — SW-1 not measured; SW-1R undetermined (trial 1's front capture took 870 ms), so no S7b. Proposed:
+  a later re-measure with a discarded warm-up trial.
+- **R15-3 (NOT MEASURED)** — re-measured as R15-3R PASS under #224's exemption.
+- **RET-1 (NOT MEASURED)** — re-measured as RET-1R PASS (#222).
 
 ## 6. Exit criteria
 
