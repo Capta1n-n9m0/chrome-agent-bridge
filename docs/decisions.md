@@ -33,7 +33,9 @@ conservative rule and they wait for the user at the gate).** Each entry is in th
 - 2026-10-25 · S2: the `paths` cap, the exact messages, and the folder-line rules (#257) — the refusal texts.
 - 2026-10-25 · S2: the `file:` rule's edges (#259) — `file:` tabs still listed with their URL.
 - 2026-10-25 · S4: `prepareUpload` joins the `@bridge/sdk/download` subpath (#261) — an additive SDK export.
-- 2026-10-25 · S4: the client line for `UPLOAD_REFUSED` names both causes (#263) — with #257's texts.
+- 2026-10-25 · S4: the client line for `UPLOAD_REFUSED` names both causes (#263) — with #257's texts; wording #264.
+- 2026-10-25 · S3: the failure-path unmark runs without the safety gate (#266) — safety-side.
+- 2026-10-25 · S3: the upload's wire texts and its 15 s CDP bound (#268) — with #257.
 
 ## Standing decisions
 
@@ -171,6 +173,45 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
+
+### 2026-10-25 · S3: the Upload folders box (#269)
+**Decided:** its own textarea and Save on the options page; invalid lines listed by number with a reason (#257's
+rules); a home folder or one holding `.ssh` warned, not refused (#250); the only writer of `safety.uploadFolders`.
+**Why:** the block list's pattern, with #250's warning.
+**Instead of:** sharing the block list's Save.
+**Revisit if:** the user rules #250 as a refusal.
+**By:** Claude (S3 builder's proposal)
+
+### 2026-10-25 · S3: the upload's wire texts and its 15 s CDP bound (#268)
+**Decided:** `NO_FILE_ACCESS_MESSAGE` (fixed, no path) for #245 (b); the finder's `REF_STALE` and `INTERNAL` are marked
+with `markOwnRefusal` and reach the wire unprefixed, breakdowns keep `[chrome.debugger] `; the upload's CDP calls are
+bounded at 15 s, chosen before any measurement (Run 16 records the durations; a bound is never retuned to a result).
+**Why:** S1's contract (#246, #254) and a bound like the other CDP legs'.
+**Instead of:** prefixed finder refusals; no bound.
+**Revisit if:** Run 16 measures an upload near the bound.
+**By:** Claude (S3 builder's proposal; wire text — for user review with #237 and #257)
+
+### 2026-10-25 · S3: marking sweeps stray upload marks first; the finder runs in a CDP-created isolated world (#267)
+**Decided:** before setting its mark the content script removes every stray `data-__bridge-upload` in the document,
+so a concurrent second upload on one tab ends the first `REF_STALE`. #248's choice: `Page.getFrameTree` →
+`Page.createIsolatedWorld` → `Runtime.evaluate {contextId}`, not `DOM.getDocument {pierce}`.
+**Why:** a stray mark from a crashed call must not match a later call; the isolated world keeps page-patched
+prototypes out of the finder.
+**Instead of:** refusing while a mark exists (a crashed call would block the tab); the DOM-walk alternative.
+**Revisit if:** Run 16 shows `createIsolatedWorld` needs `Page.enable`, or a same-origin frame is unreachable.
+**By:** Claude (S3 builder's proposal)
+
+### 2026-10-25 · S3: the failure-path unmark runs without the safety gate (#266)
+**Decided:** after a failed upload the handler removes its own mark without passing the gate (so also after a
+disarm), only in the marked document (`documentId`, since `d4718ca`), and never when the mark's injection was
+itself rejected. It sets nothing and reads nothing back.
+**Why:** "the mark is removed on every path" (0.7, S3.2) and leaving it is a forbidden fix; a disarm must not strand the
+bridge's own attribute on a page. Both verifiers judged it not a hole in the gate: it only undoes the bridge's own
+write in the document it made it in.
+**Instead of:** gating the unmark (the mark would stay after a disarm); sweeping the tab's current document (MINOR 1:
+it could script a page the tab navigated to).
+**Revisit if:** Run 16's RECORD row shows Chrome running a script in a stale `documentId`.
+**By:** Claude (safety-side — for user review, listed under Open decisions)
 
 ### 2026-10-25 · S4b: the `UPLOAD_REFUSED` client line's wording (#264)
 **Decided:** the line in `sdk/src/error.ts` opens "the bridge will not upload that file", gives the two causes as

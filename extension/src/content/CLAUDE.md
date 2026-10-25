@@ -53,6 +53,12 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply. `extension/CLAUDE.md`
   on `extension/src/content/locate.ts` both empty). A `snapshot` — including the one a failure report takes —
   renumbers the tab's refs, so a ref held from before it silently names another element once the page
   changed (measured by the S4 verifier with the real content-script code in jsdom; S4.md §6). The SDK rewrites a failure report's `candidates` refs (`sdk/CLAUDE.md`).
+- **An upload marks its input with `data-__bridge-upload`, never `MARK_ATTR`'s name** (`upload-target.ts`, Step 11
+  S3). The target rule (`uploadInputOf`) picks the input after the ref or locator resolved; marking first sweeps any
+  stray upload mark in the document, so a second concurrent upload on one tab ends the first `REF_STALE`; the service
+  worker's isolated-world finder (`extension/src/upload-files.ts`) finds the mark, and every path removes it — on a
+  failure only in the marked document (`documentId`), never a page the tab navigated to. `a11y.ts`, `locate` and the
+  snapshot are unchanged: a hidden input is reached through its label or wrapper, never made targetable.
 - **node → ref crosses worlds through a `data-__bridge-mark` attribute.** `evaluate {asRef}` runs in the
   page's main world (CDP); the RefMap lives in the content script's isolated world. The serialiser's
   own `Runtime.callFunctionOn` sets a fresh unique mark (`evaluate/mark.ts` `newMark`) on a connected

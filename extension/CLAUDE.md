@@ -46,10 +46,14 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   `"disarmed" | "armed" | "ignored" | "write-failed"`, the 1 s re-arm guard, `readStoredArmed`, the
   `safetyState` reporter), `safety-call.ts` (one call's gate at receipt, before each first side effect,
   and the post-check), `safety-debugger.ts` (the session registry `detachAll` at disarm),
-  `safety-network.ts` (the ingest filter), `options-model.ts` (the options page's analysis and texts),
+  `safety-network.ts` (the ingest filter), `upload-paths.ts` (Step 11: the upload-folder matcher, pure, no log;
+  #236, #249, #258), `upload-files.ts` (Step 11: the upload's CDP steps in one session — finder in a
+  `Page.createIsolatedWorld` world, `DOM.setFileInputFiles`, the unmark; the shipped strings are closure-free and
+  tested), `handlers/upload.ts` (the `uploadFiles` handler: the file-access check before the attach, #245 (b)),
+  `options-model.ts` (the options page's analysis and texts, the Upload folders lines since Step 11),
   `relay-sender.ts` (the offscreen sender check); `badge.ts` (badge/title by state, `BadgeController.press`;
   `chrome.action` injected, unit-tested) logs one fixed line per press (`toggleLogLine`); `options.ts` +
-  `extension/options.html` are page glue (DOM + `chrome.storage.local`, the Safety and Blocked sites
+  `extension/options.html` are page glue (DOM + `chrome.storage.local`, the Safety, Blocked sites and Upload folders
   boxes), not unit-tested, read statically by `safety-writers.test.ts`. Tests that guard them:
   `extension/test/log-scan.test.ts` (+ `log-allowlist.ts`, 54 log sites) and `log-sentinel.test.ts` (no
   pattern/URL/token in any log), `safety-writers.test.ts` (only the toggle and the options page write the

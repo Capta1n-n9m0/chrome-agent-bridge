@@ -217,6 +217,8 @@ closed at the gate (#249).*
 *Note 2026-10-25 (Stage 0 F4, F7, F11, M2): an input with `webkitdirectory` is refused `BAD_PARAMS` (#247); the
 finder runs in an isolated world or by `DOM.getDocument {pierce}`, never the page's main world (#248); the answer's
 `files` is the count Chrome accepted, not proof — the page judges (#247).*
+*Note 2026-10-25 (S3): built with `Page.getFrameTree` → `Page.createIsolatedWorld` → `Runtime.evaluate {contextId}`
+(#267); marking sweeps stray marks first; the failure-path unmark runs ungated, only in the marked document (#266).*
 
 ### 0.8 The SDK: `Tab.upload` within the eight values (proposed — contract-level SDK surface)
 
@@ -599,6 +601,19 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   `subst` or mapped drive (the real path may resolve past the drive letter) — S5/S6 notes.
 - **Decisions:** #261–#263; #263 orders S4b (the client line names both causes), after S3.
 
+### S3 — The extension: handler, mark, options page · 2026-10-25 · verifier: PASS-with-notes (second check) · commits `7e12707`, `d4718ca` · models: all Opus 5.5
+- **S3.1–S3.4 met**, with #245 (b), #246, #247, #248: the handler replaces S2's stub; target rule and mark in
+  `content/upload-target.ts`; CDP steps in `upload-files.ts` (isolated world); the toggle read before the attach;
+  the Upload folders box, the only writer. New tests red on the pre-change source; 18 verifier mutants red;
+  `a11y.ts`/`snapshot.ts`/`locate.ts` diff against `eac8324` empty; log-scan count unchanged. Tests 3532/140 →
+  3593/144 at `d4718ca` (S4b's +2 included). Nothing measured in Chrome yet.
+- **Findings, both checks:** CRITICAL 0, MAJOR 0, MINOR 2 (the sweep targeted the tab, not the marked document —
+  fixed; S5's row list short — carried), NIT 7 (3 fixed, 4 recorded; `S3.md` §3).
+- **Decisions:** #266–#269.
+- **Contracts (binding forward):** S5's §4.23 must cover the twelve rows of `…-steps/S3.md` §7 besides 0.12's; not
+  measured until then: `createIsolatedWorld` without `Page.enable`, Chrome refusing a stale `documentId`, a tab whose
+  content script predates the reload, a "Not allowed" with the toggle on surfacing as `DEBUGGER_ATTACH`.
+
 ### S4b — The `UPLOAD_REFUSED` client line names both causes · 2026-10-25 · verifier: PASS-with-notes · commit `01f60b2` · models: all Opus 5.5
 - The SDK line names the folder rule and the file-URL toggle (#263, #264); three tests that pinned the old line carry
   dated notes, two added; the old `error.ts` turns 8 red. `npm test` 3585 / 143 at `01f60b2` (S3's commits included).
@@ -631,3 +646,6 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - **Carried from Step 10:** a popup lease for a background opener, only as a design change (decisions.md ·
   2026-10-25 · S7: Run 15 stands as recorded; its follow-ups (#226)). SW-2 is in Run 16 (0.14).
 - **Later, if wanted:** the per-upload confirmation mode; drag-and-drop zones.
+- *Added 2026-10-25 (S3 verifier 2 NIT A):* the closure-free guard on the shipped finder copies esbuild's options
+  instead of reading `extension/build.mjs`, so `keepNames: true` there would pass the tests and ship a finder calling
+  `__name`; make the test read the build file (a test-only change, low risk).
