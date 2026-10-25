@@ -11,7 +11,7 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-25, Step 10 closed)
+## Current state (2026-10-25, Step 10 closed; lean procedures in place)
 
 - **Shipped:** Steps 1–9 (Step 9 — Phase E safety — closed 2026-10-24, #202; Step 8 closed 2026-10-24, wave W2,
   #106–#127). Public on GitHub (MIT). **23 tools, 26 codes (25 on the wire), 26 router methods, 3273 tests in 132
@@ -28,8 +28,11 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
   `release/step8` are pushed (G10-1).
 - **Reloads need no human:** `recipes/reload-extension.ps1` reloads the extension by UI automation
   and proves it (#65); an exit-2 reload may be re-run during waves (#99).
-- **Resume:** Step 11 — D3 file upload: kickoff `docs/plans/next-session-prompt.md`, phase doc
-  `docs/plans/2026-10-25-step11-file-upload.md`. Interactive sessions using the bridge need `/mcp` or a fresh session (the MCP
+- **Lean procedures (2026-10-25, #230):** rules for every agent in `docs/agent-rules.md`, briefs by pointer,
+  package `CLAUDE.md` files, decisions archived by step, risk-tiered models, the `cleanup-pass` skill. Built on the
+  Linux copy (`docs/plans/2026-10-25-lean-procedures.md`); Step 11 is its trial against Step 10.
+- **Resume:** Step 11 — D3 file upload, on Windows: kickoff `docs/plans/next-session-prompt.md` (its first checks
+  re-run the package `CLAUDE.md` loading probe there), phase doc `docs/plans/2026-10-25-step11-file-upload.md`. Interactive sessions using the bridge need `/mcp` or a fresh session (the MCP
   and daemon builds changed in Step 10); the loaded extension is already the Step 10 build (Run 15).
 - **Next** (decisions.md · 2026-10-24 · The roadmap after Step 8 (#129), order open for veto): **Step 11** — D3 file
   upload (`browser_upload_file` / `Tab.upload` via `DOM.setFileInputFiles`), with a first code stage for #227 (b) and
@@ -163,8 +166,8 @@ by `docs/e2e-test-plan.md` against real Chrome. New pure logic → write a faili
 
 ## Conventions
 
-- Commits end with the `Co-Authored-By: Claude …` trailer for the model that wrote them (plus the
-  `Claude-Session:` line the session supplies).
+- Commits end with exactly one trailer, `Co-Authored-By: Claude <model> <noreply@anthropic.com>` for the model that
+  wrote them, and no `Claude-Session:` line (the user's instruction since Step 10 S7).
 - Don't commit the token (`bridge.token`, `.env` are gitignored). The localhost bind + token are the
   only security boundary — treat the token as a password; never log it.
 

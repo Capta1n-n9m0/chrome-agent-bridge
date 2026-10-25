@@ -26,7 +26,8 @@ and add it where it belongs, not to a brief.
 2. **Package CLAUDE.md loading on Windows.** Spawn one general-purpose Opus subagent: "Open `sdk/src/index.ts` with
    the Read tool. Then list the first heading line of every CLAUDE.md content in your context, verbatim, and say
    which appeared after the Read. Do not open any CLAUDE.md yourself." Expected: the root file at start,
-   `sdk/CLAUDE.md` after the Read, no other package file. Record the answer. If `sdk/CLAUDE.md` did not load, every
+   `sdk/CLAUDE.md` after the Read, no other package file. Then a second subagent the same way with
+   `extension/src/content/a11y.ts`: expected `extension/CLAUDE.md` and `extension/src/content/CLAUDE.md`. Record both. If `sdk/CLAUDE.md` did not load, every
    brief adds "read the `CLAUDE.md` of each package you touch" to its READ list, and record that as a decision.
 3. **Environment, re-checked and dated:** `git log -1` and `git status --short` (clean); `npm test` count,
    `npm run typecheck`, `npm run build` (exit 0, no tracked change), run by an agent, not in your context; port 9234

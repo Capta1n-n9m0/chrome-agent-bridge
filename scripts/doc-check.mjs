@@ -98,7 +98,7 @@ const claudes = files.filter((r) => /(^|\/)CLAUDE\.md$/.test(r));
 const headlines = new Map();
 for (const r of claudes) {
   read(r).split("\n").forEach((line, i) => {
-    if (/\*(Superseded|Corrected) \d{4}-\d\d-\d\d/.test(line)) add("History notes inside CLAUDE.md files", `${r}:${i + 1}`);
+    if (/\*(Superseded|Corrected|Updated|Note) \d{4}-\d\d-\d\d/.test(line)) add("History notes inside CLAUDE.md files", `${r}:${i + 1}`);
     const h = line.match(/^- \*\*(.+?)\*\*/);
     if (h) {
       const key = h[1].toLowerCase().replace(/\W+/g, " ").trim();
