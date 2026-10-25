@@ -8,5 +8,5 @@
     "blackboard/*.ts",
     "test/*.test.ts"
   ],
-  "exclude": ["test/s9-rules.test.ts", "test/s10-rules.test.ts", "test/s10-fixtures.test.ts"]
+  "exclude": ["test/s9-rules.test.ts", "test/s10-rules.test.ts", "test/s10-fixtures.test.ts", "test/s11-rules.test.ts"]
 }

@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["node", "chrome"], "lib": ["ES2022", "DOM", "DOM.Iterable"] },
+  "include": ["s11-rules.ts", "test/s11-rules.test.ts"]
+}
