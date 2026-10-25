@@ -16,7 +16,12 @@
 latest state; Step 8 closed 2026-10-24 (wave W2), and Step 9 (Phase E safety: §6.5's and §10's Step 9 notes) is
 built and E2E-run (Run 13): 23 tools, 25 codes, 2720 tests in 116 files (`npm test` at `ba6029e`); its gate waits
 on the user's ruling on Run 13 and its open decisions. Contracts and deviations:
-`docs/plans/2026-10-24-step9-phase-e-safety-asbuilt.md`.* Plans: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`, `…step7-multi-actor-tabs.md`, `…step8-sdk-surface-and-mcp-cursor.md`.
+`docs/plans/2026-10-24-step9-phase-e-safety-asbuilt.md`.* *Corrected 2026-10-25 (Step 10 propagator): was
+"its gate waits on the user's ruling on Run 13 and its open decisions" as the latest state; Step 9 closed 2026-10-24
+(#202), and Step 10 (the Step 8 follow-ups: the dated Step 10 notes in §8, §10, §11, §12 and §13) is built and
+E2E-run (Runs 14–15): 23 tools, 26 codes (25 on the wire), 26 router methods, 3273 tests in 132 files (`npm test`
+at `025bdef`); its gate waits on the user's open decisions. Contracts and deviations:
+`docs/plans/2026-10-24-step10-step8-follow-ups-asbuilt.md`.* Plans: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`, `…step7-multi-actor-tabs.md`, `…step8-sdk-surface-and-mcp-cursor.md`.
 - **Owner:** Abbas Aliyev (@Capta1n-n9m0)
 - **Supersedes in part:** `2026-06-04-chrome-real-profile-agent-bridge-design.md` §3 "Controller: MCP server", §4 topology, and the "Tab targeting: active tab" decision. Everything about the extension's perception/action model stands.
 
@@ -373,6 +378,16 @@ stays as written):*
 - *The cursor changes only on `newTab`/`claim` and a 4002 reconnect; with none a call throws
   `NO_CURSOR`. Trusted `click`/`type`/`pressKey` focus the tab first (`focusFirst`, #89).*
 
+*Corrected 2026-10-25 (Step 10 propagator), on what Step 10 added to the SDK (Step 10 as-built § S3, § S4):*
+- *`tab.evaluateToFile(expression, {path, overwrite?, timeoutMs?})` → `{path, bytes, kind, sha256}` (and the
+  client's cursor mirror) writes a value to a file without returning it; the value travels through an
+  extension-side store in 1 MiB pulls (decisions.md · 2026-10-25 · Stage 0: `saveTo` uses transport (B), with
+  tab-carrying pulls (#205); · S4: `saveTo`'s wire methods, refusals, store caps, SDK form and file finish (#218)).*
+- *An action resolved from a locator past the snapshot's 800-element cap emits `client.on("warning", {tab, method,
+  kind: "pastSnapshotCap"})`; `tab.locate()` returns the flag; no action's return type changed (decisions.md ·
+  2026-10-25 · Stage 0: the cap warning reaches SDK actions as a client event (#206)). The public surface is still
+  eight values.*
+
 ### 8.2 Why "Claude writes the scripts" shifts polish toward errors
 
 A human learns an API once and benefits from sugar daily. Claude writes each script fresh from the
@@ -432,6 +447,11 @@ lines, and never claims; the actions and `browser_wait_for` take a nested `locat
 comes to the front only when the cursor is the human's tab, else opens in the background and says so
 (decisions.md · 2026-10-23 · S5's MCP details: `browser_new_tab` activation, the status lines, the
 tool schemas, reports (#95)) — see Step 8 as-built § S5.*
+*Corrected 2026-10-25 (Step 10 propagator): `browser_focus_tab` is no longer the only tool that brings a tab on
+screen — since Step 10 S2 a trusted `browser_click`/`browser_type`/`browser_press_key` sends `focusTab` on its tab
+first; the cursor does not move (decisions.md · 2026-10-24 · FE and `focusFirst` are ratified; the MCP's trusted
+tools focus first too (#106); #214). Step 10 also added `browser_evaluate {saveTo, overwrite?}` and a warning line
+on the six action tools for an element past the snapshot's cap (#127, #216); still 23 tools.*
 
 ## 9. Daemon lifecycle
 
@@ -645,6 +665,14 @@ The block itself is left as written.*
   - *`JS_DISABLED` is not in the SDK's failure-report attach set: the MCP renders it as one plain line, with no
     failure report and no screenshot.*
   - *With the bridge armed and JavaScript on, nothing changes.*
+- *Corrected 2026-10-25 (Step 10 propagator; Step 10 as-built § S3, § S4): Step 10 also added, on the wire, three
+  tab methods `evaluateSaveStart {tab, expression, timeoutMs?}` → `{id, bytes, kind}`, `evaluateSaveChunk {tab, id,
+  offset, length?}` → `{data}` (base64, ≤ 1 MiB) and `evaluateSaveEnd {tab, id}` → `{released}` — lease-checked,
+  no lock, safety class `evaluate`; a lost or expired id answers `INTERNAL Unknown or expired evaluateSave id: <id>`
+  (decisions.md · 2026-10-25 · S4: `saveTo`'s wire methods, refusals, store caps, SDK form and file finish (#218));
+  and an optional `pastSnapshotCap: true` on `locate`'s result and on the reply of an action resolved from a
+  locator past the snapshot's 800th listable element, absent otherwise (decisions.md · 2026-10-25 · S3: the cap
+  warning's edges as built (#216)). Both are open for the user at Step 10's gate.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
@@ -683,6 +711,10 @@ as-built § Stage D1, § Stage D3, § Stage D5.*
 `content/{a11y,locate,nearest,marked}.ts`, `handlers/{target,locate,locator-wait}.ts`,
 `evaluate/mark.ts`, `trusted-input.ts`, `session-marker.ts`; and `recipes/{sdk-login,s6,fe}.ts` with
 `recipes/blackboard/` — see Step 8 as-built.*
+*Corrected 2026-10-25 (Step 10 propagator): Step 10 added `extension/src/evaluate-save-store.ts`,
+`extension/src/evaluate/save.ts`, `extension/src/handlers/evaluate-save.ts`, `sdk/src/evaluate-save.ts`, the MCP
+schema baseline `mcp/test/tool-schemas.ts` with its fixture, and the Run 14–15 helpers in `recipes/` (`s9-r14.ps1`,
+`s10*`); it removed `recipes/blackboard/assemble-mcp.ts` and `transcript.ts` (#228) — see Step 10 as-built.*
 
 ## 12. Risks and what E2E must settle
 
@@ -711,6 +743,10 @@ as-built § Stage D1, § Stage D3, § Stage D5.*
 *Corrected 2026-10-24 (Step 8 S7): row 1 — focus emulation was measured and does not fix it (Run 11),
 so the SDK's `focus()` before trusted input is the policy (#89); the new risk is closed by the session
 marker (§13).*
+*Corrected 2026-10-25 (Step 10 propagator): row 1 — the MCP's trusted tools focus first too since Step 10 S2 (#106;
+Run 15 MCPF-1R 9/9). Row 3 — Step 10's differential row SW-1R stayed undetermined, so `activateForCapture`'s
+waits are unchanged and the ~1.5 s flash stays (decisions.md · 2026-10-25 · S7: Run 15 stands as recorded; its
+follow-ups (#226) item 1).*
 
 *See Step 7 as-built § T5, § Stage T2.*
 
@@ -737,3 +773,5 @@ marker (§13).*
   details: the `selectTab` refusal grep, the marker's edge cases, the handle mark (#94)). Measured in
   Run 12: an extension reload kept a held handle (SM-0); a Chrome restart left no handle minted before
   it listed, and the old handle answered `TAB_GONE` (SM-1, where `chrome://quit` had already closed the tab, so the restart retired 0).*
+  *Updated 2026-10-25 (Step 10 propagator): the N ≥ 1 branch ran live — a killed Chrome retired 3 held handles
+  (`tabGone` with the fixture URL, the old `Tab` → `TAB_GONE`), Run 15 RET-1R (#226 item 4).*

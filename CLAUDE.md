@@ -68,7 +68,8 @@ Flow: tool → `BridgeLink.call` → `BridgeClient.call(method, params, {timeout
 (`route.ts`) → extension socket → `GatedRouter` (the safety gate at receipt, again before each first side effect and as
 the post-check) → handler → `chrome.*` / `callInPage`. Default actions use synthetic content-script events (no banner);
 `browser_click {trusted:true}` (or a content-action failure) escalates to real CDP `Input` via
-`chrome.debugger` (shows the "extension is debugging this browser" banner). Clients name tabs by
+`chrome.debugger` (shows the "extension is debugging this browser" banner); with `trusted:true` the SDK and,
+since Step 10 S2, the MCP call `focusTab` first (#89, #106). Clients name tabs by
 daemon-minted **handles** (`T3`), never Chrome ids; one client holds a tab at a time (a **lease**:
 opened, claimed, or a popup of a held tab), and a call on another client's tab fails fast with
 `TAB_HELD`. The daemon forwards every tab method with a numeric `tabId` and never a `tab` key, and
@@ -100,9 +101,13 @@ records nothing while disarmed and drops blocked hosts. The daemon only relays t
   `Locator`/`LocatorName`/`LocateResult`, `WaitForParams`, `ActionTarget`, `TrustedInputOptions`,
   `EvalEnvelope.ref`, the hello's `session`, `isLocator`; Step 9's `SafetyState`/`isSafetyState`,
   `DaemonStatusSafety`, `SafetyScope`/`DisarmedData`, `HiddenReason`, the `hidden?` row fields, the
-  `safetyState`/`safetyStatus` events),
-  `codes.ts` (the 25 error codes of spec §10: 24 on the wire, Step 9's `DISARMED` and `DOMAIN_BLOCKED` among them, plus `NO_CURSOR`, raised by the SDK
+  `safetyState`/`safetyStatus` events; Step 10's `LocateResult.pastSnapshotCap?`, `EvaluateSaveKind` and the
+  `evaluateSave*` params),
+  `codes.ts` (the 26 error codes of spec §10: 25 on the wire, Step 9's `DISARMED` and `DOMAIN_BLOCKED` and Step 10's
+  `JS_DISABLED` among them, plus `NO_CURSOR`, raised by the SDK
   alone), `error.ts` (`BridgeError`, `toWire`/`fromWire`; `WireError.code` required since S2b).
+  *Superseded 2026-10-25: was "the 25 error codes … 24 on the wire", because Step 10 S4b added `JS_DISABLED`
+  (decisions.md · 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202); #219).*
   *Superseded 2026-10-24: was "the 22 error codes", because Step 8 S0 added `NO_CURSOR`
   (decisions.md · 2026-10-23 · `NO_CURSOR` enters `shared/src/codes.ts` as the 23rd code (#76)).*
   *Superseded 2026-10-24: was "the 23 error codes … 22 on the wire", because Step 9 S0 added
@@ -116,7 +121,8 @@ records nothing while disarmed and drops blocked hosts. The daemon only relays t
   remap on `tabReplaced`, dead handles kept 1 h / 1 000 for `TAB_GONE`), `leases.ts` (`LeaseTable`:
   one owner per tab, `TAB_HELD {owner, since}`), `lock.ts` (`VisibilityLock`: FIFO, `LOCK_TIMEOUT
   {holder}`, released on completion, deadline or disconnect), `methods.ts` (the one method-class
-  table — a new extension method must enter it; `REMOVED_METHODS`: `selectTab` → `UNKNOWN_METHOD`),
+  table — a new extension method must enter it; `REMOVED_METHODS`: `selectTab` → `UNKNOWN_METHOD`; Step 10's
+  `evaluateSaveStart`/`Chunk`/`End` are tab methods, lease-checked, no lock, #205),
   `intercept.ts` (`TabLayer`: resolve, lease check, lock, forward with `tabId`; events → handles; the
   opener rule and `leaseGranted`; `tab is required`; `retireAll` on a changed session marker; Step 9: keeps the extension's last
   `safetyState` (null until reported, from each new extension hello until that socket reports, and after the socket closes;
@@ -132,11 +138,16 @@ records nothing while disarmed and drops blocked hosts. The daemon only relays t
   types), `connect.ts` (`connect({name, failureReports?, …})`), `knock.ts` (knock/spawn/handover state
   machine), `client.ts` (`BridgeClient`: calls, events, 4002 reconnect; Step 8's `newTab`, `claim`,
   `tab()` — the cursor, `NO_CURSOR` without one — `tabs()` (rows carry `hidden?`, Step 9), Step 9's `safety()`
-  and `on("safetyStatus")`, and the cursor's `Tab` methods mirrored but
+  and `on("safetyStatus")`, Step 10's `on("warning")` (a `BridgeWarning {tab, method, kind: "pastSnapshotCap"}`,
+  #206), and the cursor's `Tab` methods mirrored but
   `close`), `tab.ts` (Step 8 `Tab {handle}`: navigate…release, stale after a 4002 reconnect →
-  `TAB_UNKNOWN` with no call), `locator.ts` (`Target = ref | Locator`, `normalizeTarget`), `error.ts`
+  `TAB_UNKNOWN` with no call; Step 10's `evaluateToFile` and the type `BridgeWarning`), `evaluate-save.ts` (Step 10
+  S4: `saveEvaluateToFile` — the target checks, `.part` opened `"wx"`, 1 MiB pulls, the hard-link finish,
+  `SAVE_TRANSFER_MS`; re-exported with `checkSaveTarget` on the `@bridge/sdk/download` subpath; #207, #218),
+  `locator.ts` (`Target = ref | Locator`, `normalizeTarget`), `error.ts`
   (failure reports: the attach set, the 5 s budget, `report()`; Step 9's `safetyRefusalLine` — one plain line
-  for `DISARMED`/`DOMAIN_BLOCKED`, no report — re-exported by `report.ts`), `report.ts` (the `@bridge/sdk/report`
+  for `DISARMED`/`DOMAIN_BLOCKED` and, since Step 10 S4b, `JS_DISABLED` (#219), no report — re-exported by
+  `report.ts`), `report.ts` (the `@bridge/sdk/report`
   subpath: `attachContext` for the MCP), `policy.ts` (`TRUSTED_INPUT_POLICY = "focusFirst"`),
   `transport.ts` (the `ws` socket), `spawn.ts`,
   `paths.ts` (daemon path, `BRIDGE_DAEMON`), `token.ts` (`resolveToken`, also used by the daemon),
@@ -154,9 +165,15 @@ records nothing while disarmed and drops blocked hosts. The daemon only relays t
   4002 reconnect or a new client), `tools/registry.ts` (the 23 MCP tools — `browser_focus_tab` is
   Step 7's, `browser_use_active_tab` Step 8's; the `locator` object on the actions and
   `browser_wait_for`; `failureReport`/`failedLine`: an attach-set failure on a handle is rendered as the
-  SDK's report plus a PNG; Step 9's `withSafetyRefusals` (a `DISARMED`/`DOMAIN_BLOCKED` from any tool → one
-  error line), `safetyStatusLine` (`browser_status`'s second text item `Safety: …`), hidden rows
-  `(hidden: the bridge is off)` / `(hidden: blocked site)`). *Superseded 2026-10-24: was "moved only by
+  SDK's report plus a PNG; Step 9's `withSafetyRefusals` (a `DISARMED`/`JS_DISABLED`/`DOMAIN_BLOCKED` from any
+  tool → one error line), `safetyStatusLine` (`browser_status`'s second text item `Safety: …`), hidden rows
+  `(hidden: the bridge is off)` / `(hidden: blocked site)`; Step 10: `focusTab {tab}` before a trusted
+  `browser_click`/`browser_type`/`browser_press_key` (#106, #214), `capped`/`CAP_WARNING_LINE` on the six action
+  tools (#216), `browser_evaluate {saveTo, overwrite?}` → `Saved <path>` / `<bytes> bytes · <kind> · sha256 <hex>`
+  (#127, #218)); its tool names and input schemas are pinned through a real `tools/list` by
+  `mcp/test/s2-focus-first.test.ts` (+ `tool-schemas.ts`) against `mcp/test/fixtures/tool-schemas-f45e3bf.json`, re-baselined only by a recorded decision (#214). *Superseded
+  2026-10-25: was "a `DISARMED`/`DOMAIN_BLOCKED` from any tool", because Step 10 S4b added `JS_DISABLED` (#219).*
+  *Superseded 2026-10-24: was "moved only by
   `browser_select_tab`/`browser_new_tab` … the 22 MCP tools", because Step 8 S5 added
   `browser_use_active_tab` (Step 8 as-built § S5).*
 - `recipes/` (run with `npm run recipe -- <file>`, i.e. `tsx`; index in `recipes/README.md`):
@@ -166,13 +183,22 @@ records nothing while disarmed and drops blocked hosts. The daemon only relays t
   E2E driver helpers), `fe.ts`/`fe-rules.ts`/`fe-win.ps1` (Step 8 stage FE, focus emulation),
   `s6.ts`/`s6-rules.ts` (Step 8 S6's SDK rows), `blackboard/` (`boot-bb.ts` loads the
   blackboard-ultra skill's `bb.js` in a tab of its own; `export-grades.ts` reads a gradebook into
-  gitignored `exports/`; `assemble-mcp.ts`, `held.ts` and their helpers `export-file.ts`,
-  `guard.ts`, `readonly.ts`, `session.ts`, `transcript.ts`, `stub-bb.js`; read-only by construction,
-  `failureReports: false`), `bb-login.ps1` (that login step), `fixtures/` (its Blackboard and SSO
-  stand-in pages), `bgf-*.ps1` (Chrome quit/relaunch/count: BG-FLAGS, then SM-1), `s9.ts`/`s9-rules.ts`/`s9-actor.ts`/`s9-win.ps1`/`s9-redirect.py` (Step 9 S4, Run 13: SDK rows, their
+  gitignored `exports/`; `held.ts` and their helpers `export-file.ts`,
+  `guard.ts`, `readonly.ts`, `session.ts`, `stub-bb.js`; read-only by construction,
+  `failureReports: false`), `bb-login.ps1` (that login step; since Step 10 S5 a condition wait inside one
+  `-WaitSec` bound, #215), `fixtures/` (its Blackboard and SSO stand-in pages; Step 10 S5 added
+  `{bb,sso}-standin-{delayed,stuck,elsewhere}.html`, `elsewhere-landing.html`, `sso-submit-delayed.html`),
+  `bgf-*.ps1` (Chrome quit/relaunch/count: BG-FLAGS, then SM-1), `s9.ts`/`s9-rules.ts`/`s9-actor.ts`/`s9-win.ps1`/`s9-redirect.py` (Step 9 S4, Run 13: SDK rows, their
   rules, headless MCP actors, UI Automation of the button/shortcut/options page/worker console, the port-8083
-  redirect server), `test/` (part of `npm test`), `tsconfig{,.fe,.s6,.s9}.json` (recipes are not in `npm run
-  typecheck`: `npx tsc --noEmit -p recipes/tsconfig.s6.json`). *Superseded 2026-10-24: was `hello.ts`,
+  redirect server, threaded since Step 10 S1), `s9-r14.ps1` (Step 10 S1, Run 14's block runner),
+  `s10.ts`/`s10-rules.ts`/`s10-r15.ps1`/`s10-win.ps1`/`s10-mem.ps1`/`s10-ret1.ts`/`s10-ret1.ps1` (Step 10 S7, Run 15;
+  `s10-ret1.*` kills and relaunches the user's Chrome, only under a grant), `test/` (part of `npm test`),
+  `tsconfig{,.fe,.s6,.s9,.s10}.json` (recipes are not in `npm run
+  typecheck`: `npx tsc --noEmit -p recipes/tsconfig.s6.json`). Step 10's fixtures for the bridge are
+  `test-fixtures/s10-{cap,mcpf,save}.html`. *Superseded 2026-10-25: named `assemble-mcp.ts` and `transcript.ts`
+  and `tsconfig{,.fe,.s6,.s9}.json`, because Step 10 S8 retired the chunked MCP recipe (phase doc 0.5; decisions.md ·
+  2026-10-25 · S8: the retirement as done, the s6 typecheck fix, and where the pointers go (#228)) and S7 added
+  `tsconfig.s10.json`.* *Superseded 2026-10-24: was `hello.ts`,
   `reload-extension.ps1`, `t5*`, `bgf-*.ps1` "BG-FLAGS only", because Step 8 FE and S6 added the rest.*
 - `extension/src/`: `sw.ts` (the `GatedRouter` + offscreen orchestration; the top-level `chrome.tabs.on*`,
   `action.onClicked` and `storage.onChanged` listeners), `router.ts` (thrown error →
@@ -198,9 +224,18 @@ records nothing while disarmed and drops blocked hosts. The daemon only relays t
   `storage.session` rehydrate/flush, the own-port variable), `handlers/network.ts`,
   `download.ts` (pure: `DownloadStore`, base64, filename from `content-disposition`) +
   `handlers/download.ts` (the service-worker fetch); the other half is `sdk/src/download.ts`.
+  Step 10: `evaluate-save-store.ts` (pure: `EvaluateSaveStore` — 5 min TTL refreshed per pull, 8 entries, 256 MiB per
+  value and in total, 1 MiB slices, the `Unknown or expired evaluateSave id` refusal), `evaluate/save.ts` (pure: the
+  page-side sources `SAVE_PREPARE_SRC`/`SAVE_META_SRC`/`SAVE_SLICE_SRC`, the value checks and refusal texts) +
+  `handlers/evaluate-save.ts` (the three `evaluateSave*` handlers; the CDP-leg slices in `debugger.ts`);
+  `content/locate.ts` computes `pastSnapshotCap` and `handlers/{target,locate,actions}.ts` carry it (#216).
   Step 9 (Phase E safety): pure, unit-tested, with no log call — `safety.ts` (the gate
-  `safetyDecision`, the method table `METHOD_CLASSES` over all 23 router methods — `methodClass` throws
-  on an unknown name — the refusal messages, `listTabs`/event redaction, the network predicate),
+  `safetyDecision`, the method table `METHOD_CLASSES` over all 26 router methods (Step 10 S4 added
+  `evaluateSaveStart`/`evaluateSaveChunk`/`evaluateSaveEnd`, class `evaluate`) — `methodClass` throws
+  on an unknown name — the refusal messages (since Step 10 S4b `JS_DISABLED_MESSAGE`, with
+  `DISARMED_EVALUATE_MESSAGE` kept as its alias, #219), `listTabs`/event redaction, the network predicate;
+  *superseded 2026-10-25: was "over all 23 router methods", because S4 added three (#205, #218); `grep -c
+  'router.on(' extension/src/sw.ts` → 26*),
   `safety-match.ts` (the block-list grammar and matcher, dot boundary only; #135, #156), `safety-state.ts`
   (`SAFETY_KEYS` in `storage.local`, the per-call read that fails closed, `SafetyStore.toggle()` →
   `"disarmed" | "armed" | "ignored" | "write-failed"`, the 1 s re-arm guard, `readStoredArmed`, the
@@ -220,11 +255,14 @@ records nothing while disarmed and drops blocked hosts. The daemon only relays t
 ```bash
 npm install
 npm run build        # daemon/dist/index.js + mcp/dist/index.js + extension/dist/{sw,options,offscreen,content}.js
-npm test             # vitest — 2720 passed, 116 files (`npm test` 2026-10-24 at ba6029e; recipes/test included)
+npm test             # vitest — 3273 passed, 132 files (`npm test` 2026-10-25 at 025bdef; recipes/test included)
 npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension (chained with &&: the first failure hides the rest)
 npm run recipe -- recipes/<file>.ts [args]   # a script against the SDK, run with tsx (= npx tsx recipes/<file>.ts)
-npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9 cover the others)
+npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10 cover the others; all five exit 0 since Step 10 S8)
 ```
+*Superseded 2026-10-25: was "2720 passed, 116 files (… at ba6029e)" and "(tsconfig.json, .fe, .s6, .s9 …)", because
+Step 10 added 560 tests and 16 files and S8 removed 7 (as-built, per stage; S8-builder.md), and S7 added
+`tsconfig.s10.json`.*
 *Superseded 2026-10-24: was "950 passed, 59 files (`npm test` 2026-10-23 at 9cfc7db …)", because
 Step 8 added 764 tests and 26 files (Step 8 as-built, per stage; 1714 / 85 also at 75f0bd6).*
 *Superseded 2026-10-24: was "1714 passed, 85 files (… at eb6b991)", because Step 9 added 1006 tests and 31
@@ -492,9 +530,16 @@ and follow `docs/e2e-test-plan.md`.
   a page-side visibility check is no proof of what the human saw. Hence the policy `"focusFirst"`
   (`sdk/src/policy.ts`): the SDK's `Tab.click/type/pressKey({trusted:true})` call `focusTab` first — the
   tab comes to the front of its window, the window is focused, and it stays there; the SDK never sends
-  `focusEmulation`, and the MCP's trusted tools are unchanged (decisions.md · 2026-10-23 · The
-  background-input policy (#89); · FE's rows and outcome table, amended before anything is measured
-  (#78)). An untrusted action whose content path fails is escalated to CDP by the extension itself, out
+  `focusEmulation` (decisions.md · 2026-10-23 · The background-input policy (#89); · FE's rows and outcome
+  table, amended before anything is measured (#78)). Since Step 10 S2 the MCP's trusted `browser_click`/
+  `browser_type`/`browser_press_key` do the same: `focusTab {tab}` on the resolved handle, then the input on the
+  same handle; a `focusTab` error is the answer and the input is not sent; untrusted actions never focus; the
+  cursor does not move (`mcp/src/tools/registry.ts`; decisions.md · 2026-10-24 · FE and `focusFirst` are ratified;
+  the MCP's trusted tools focus first too (#106); · 2026-10-25 · S2: the MCP schema baseline, a failed focus's
+  answer, and the focus sentence (#214)). Measured: 9/9 trusted inputs reached a background fixture tab, the tab
+  in front after (Run 15 MCPF-1R). Focus and input are two calls, so another actor's capture in the same window
+  can come between them (phase doc 0.2, Stage 0 F19; not seen live). *Superseded 2026-10-25: was "and the MCP's
+  trusted tools are unchanged", because #106 made them focus first.* An untrusted action whose content path fails is escalated to CDP by the extension itself, out
   of the SDK's sight, so on a background tab it can still answer `ok` and do nothing; pass `trusted`
   or call `focus()` when it must land. A clipboard write in `evaluate` likewise needs `focusTab` (BG-3:
   `NotAllowedError … Document is not focused`). *Superseded 2026-10-24: was "Focus emulation is
@@ -506,14 +551,19 @@ and follow `docs/e2e-test-plan.md`.
   shows the target and no `focusTab` touched it. `captureVisibleTab` needs the window visible, not
   focused: a target in an unfocused second window captured with the foreground window unchanged (Run
   9 R9-SCREEN-5). `focusTab` is the only call that runs `windows.update({focused:true})` (T3.3 grep;
-  its alias `selectTab` was removed in Step 8 S2b). Never add focus to the capture, and never lower the
+  its alias `selectTab` was removed in Step 8 S2b; the MCP's trusted tools call it since Step 10 S2 and add no
+  focus of their own). Never add focus to the capture, and never lower the
   1000 ms or 50 ms waits without a measurement.
 - **The switch flash is ~1.5 s, not a frame.** Measured page-side from `visibilitychange` timestamps on
   the human's tab: hidden +5–6 ms after the call, visible again after 1509/1486/1493 ms (Run 8
   SCREEN-1, median 1493 ms) and 1588/1557/1556 ms (Run 9 R9-SCREEN-1, median 1557 ms). That is about
   the 1000 ms wait running to its limit + 50 ms + the capture, which suggests `onActivated` does not
   end the wait (unconfirmed; Run 8 finding 3). Three concurrent captures serialised with no quota error
-  (Run 8 SCREEN-3, Run 9 R9-SCREEN-3).
+  (Run 8 SCREEN-3, Run 9 R9-SCREEN-3). The code says the listener does end it (Step 10 Stage 0 F3, by reading
+  `showTab`); the live differential row SW-1R (background-tab capture minus front-tab capture) stayed
+  undetermined — d = 101, 1276, 1421 ms, trial 1's front capture taking 870 ms against 287/218 ms, a first-call
+  or capture-slot cost — so the waits stay (Run 15; decisions.md · 2026-10-25 · S7: Run 15 stands as recorded;
+  its follow-ups (#226) item 1). A later differential row needs a discarded warm-up trial (S7.md Findings 6).
 - **A capture of a tab in a fully covered (occluded) window hangs.** `captureVisibleTab` did not return
   and the call ended in `TIMEOUT` after 35 s (Run 8 SCREEN-5 first attempt); before T5b the target tab
   then stayed in front ≥ 49 s. Since T5b the chain bound restores the previous tab at 30 s: measured
@@ -554,7 +604,12 @@ and follow `docs/e2e-test-plan.md`.
 - **`leaseGranted.url` starts empty for a popup** — `tabs.onCreated` fires before a `target=_blank`
   tab's url is set (Run 8 LEASE-3: `""`). The daemon polls `listTabs` (100 ms, ≤ 2 s) before sending
   the event; Run 9 R9-LEASE-3 got the url after 45 ms, and another client was refused (`TAB_HELD`) 44
-  ms after the click, before the event (the grant is immediate).
+  ms after the click, before the event (the grant is immediate). A popup of a **background** opener gets
+  no lease at all: Chrome names another tab as its opener, so the daemon's opener rule finds no holder and
+  sends no `leaseGranted` (Run 14 R14-POP-1 FAIL, explained by Run 15 R15-POP-2 (b); with the opener in front
+  it was granted after 150 ms, R15-POP-2 (a); decisions.md · 2026-10-25 · S7: Run 15 stands as recorded; its
+  follow-ups (#226) item 3, #211 closed). A lease for such a popup would be a design change to the opener rule,
+  the user's call (#226's Revisit-if).
 - **The SDK's knock hashes `daemon/dist/index.js` on disk at every knock** (`sdk/src/knock.ts:162`,
   `io.hashDaemon`, defined in `sdk/src/spawn.ts:44`), not a build baked into the client, so a client
   started from an older bundle adopts whatever daemon was built last (Stage 0 F5, found by reading
@@ -590,10 +645,19 @@ and follow `docs/e2e-test-plan.md`.
   equality; `{text}` the innermost element that survives the pruning gates whose visible text contains
   it; `{css}` any element past the gates; `nth` is 0-based in walk order; `locate` searches past the
   snapshot's 800-element cap (decisions.md · 2026-10-23 · S1's locator details (#87); · Locator rules,
-  the MCP locator schema and the exported `BridgeError` (#83)). A pre-S1 capture of 46 fixtures stayed
-  byte-identical (`extension/test/fixtures/snapshot-pre-s1.json`; regenerate only on pre-S1 code). Cost,
+  the MCP locator schema and the exported `BridgeError` (#83)). A pre-S1 capture of 45 fixtures stayed
+  byte-identical (`extension/test/fixtures/snapshot-pre-s1.json`; regenerate only on pre-S1 code). *Corrected
+  2026-10-25: was "46 fixtures", because the capture holds 45 (its one commit `e9e5e8c` too; Step 10 S3 verifier
+  finding 5, S3.md; re-counted by S8).* Cost,
   measured in jsdom only: a `{text}` locate over 5 000 text elements ≈ 1.4 s (S1.md §6); `waitFor
-  {locator}` polls from the service worker every 100 ms, without overlap.
+  {locator}` polls from the service worker every 100 ms, without overlap. Since Step 10 S3 a locator match past
+  the 800th listable element (on a page with more than 800) carries `pastSnapshotCap: true` on `LocateResult` and
+  on the action's reply; the SDK emits `client.on("warning", {tab, method, kind: "pastSnapshotCap"})` and the MCP
+  adds `CAP_WARNING_LINE`; `waitFor {locator}` carries none; the count stops at the 801st listable element, and
+  `a11y.ts`/`snapshot.ts` did not change for it (decisions.md · 2026-10-24 · S1's locator details are ratified; a
+  locator past the snapshot's cap warns (#117); · 2026-10-25 · Stage 0: the cap warning reaches SDK actions as a
+  client event (#206); · S3: the cap warning's edges as built (#216)). Measured live on SDK and MCP (Run 15 CAP-1's
+  SDK leg, CAP-1R).
 - **`locate` adds refs, it never resets the RefMap — but every snapshot does.** `locate` mints through
   `refs.add` and never calls `buildSnapshot` (S1.4: `grep -rn "reset"` and `grep -rn buildSnapshot`
   on `extension/src/content/locate.ts` both empty). A `snapshot` — including the one a failure report takes —
@@ -660,14 +724,22 @@ and follow `docs/e2e-test-plan.md`.
   extension reload kept the held handle (`extension resync: 5 tabs, 0 gone`, no session line; Run 12
   SM-0); `chrome://quit` closes every tab before the session changes, so a leased handle is retired by
   `tabGone` at the quit (+1539 ms) and the restart logs `0 handles retired` (Run 12 SM-1, twice;
-  S6.md gotcha candidate 4).
+  S6.md gotcha candidate 4). With a killed (not quit) Chrome the N ≥ 1 branch ran live: kill, relaunch,
+  reconnect 106 ms; the daemon logged `extension session changed: 3 handles retired`, the holder got `tabGone`
+  with its fixture URL, the old `Tab` answered `TAB_GONE`, and the safety state in `storage.local` survived
+  (Run 15 RET-1R, under the user's grant G10-2; decisions.md · 2026-10-25 · S7: Run 15 stands as recorded; its
+  follow-ups (#226) item 4).
 - **Recipes run with `tsx` (`npm run recipe -- <file>`), and `String(fn)` page code breaks under tsx.**
   tsx's keepNames wraps inner named functions and named arrows in `__name(…)`, so `String(fn)` of such a
   function throws `ReferenceError: __name is not defined` in the page; under vitest the same function
   is self-contained, so a unit test cannot catch it (S6 verifier §7, reproduced in `node:vm`, tsx
   v4.23.15). Recipes ship page code as literal strings. The extension's `SERIALIZER_SRC` is unaffected
   (bundled by esbuild without keepNames). Recipes are not in `npm run typecheck`: use their own
-  `tsconfig*.json` (Commands).
+  `tsconfig*.json` (Commands); a recipes test that imports chrome-typed extension code belongs in a tsconfig
+  with `"chrome"` in `types` (`tsconfig.s9`/`.s10`) — `tsconfig.s6.json`'s `test/*.test.ts` glob pulled in
+  `s9-rules.test.ts` (since `e91e437`, 26 errors in `extension/src/tabs.ts`) and, through `s10-rules.test.ts`,
+  `debugger.ts` (since `b55048d`, 3 more) until Step 10 S8 excluded them (S8-builder.md item 3; decisions.md ·
+  2026-10-25 · S8: the retirement as done, the s6 typecheck fix, and where the pointers go (#228)).
 - **`npm run typecheck` chains the projects with `&&`** (root `package.json`), so a type error in one
   package hides the later packages' results; when another stage's work is in flight, run `tsc -p
   <pkg>/tsconfig.json` per package (S2b builder and fixer; S2b.md gotcha candidates).
@@ -712,12 +784,17 @@ and follow `docs/e2e-test-plan.md`.
 - **`navigate`/`newTab` are gated on the URL Chrome will open**, so a relative URL that resolves to this
   extension's `options.html` is refused, not just `chrome-extension://…` written out (S2a round-1
   CRITICAL, #175; measured in Run 13 SAFE-REL-1, PASS). `view-source:` of a relative own-page path
-  answered `ok` (SAFE-REL-3 `rel`, recorded; what it opened is not shown, #196); every later call on such
-  a tab is refused.
+  answered `ok` (SAFE-REL-3 `rel`, recorded) — it resolves against the page's origin, not the extension
+  (`wrapper=view-source inner=http own=no`, Run 14 R14-REL-3; #196 answered); every later call on such a tab is
+  refused. *Superseded 2026-10-25: was "what it opened is not shown, #196", because R14-REL-3 showed it.*
 - **The disarm reaches running work fast, Chrome's banner does not.** A running trusted `type` ended
   `DISARMED` 14 ms after the press (578 of 1000 characters typed), but the "is debugging this browser"
-  banner was still shown 3 s later and gone by +14 s (Run 13 SAFE-4 (b), FAIL, Chrome-owned; re-measured in
-  Step 10, #194); a running `waitFor` was refused 54–92 ms after the press (SAFE-4 (a), 4c).
+  banner was still shown 3 s later and gone by +14 s (Run 13 SAFE-4 (b), FAIL, Chrome-owned). Re-measured in
+  Step 10's Run 14 (R14-4b): the `type` ended 5 ms after the press (571 of 1000 typed), the banner was gone between
+  +4.7 s and +5.0 s and did not return, and a trusted call after the re-arm worked on the same tab, so the debugger
+  session was detached (a record, no bound; S1.md Findings 3; decisions.md · 2026-10-25 · S1: Run 14's results
+  stand as recorded (#210)). A running `waitFor` was refused 54–92 ms after the press (SAFE-4 (a), 4c).
+  *Superseded 2026-10-25: was "re-measured in Step 10, #194", because Run 14 measured it.*
 - **`Alt+Shift+K` is assigned as `_execute_action` on Chrome 156** and pressing it left the Windows input
   layout unchanged (`0x04090409` before and after, three layouts installed; Run 13 SAFE-2). The toolbar
   extension button and the Extensions (puzzle) button expose **no UIA Invoke pattern**: pinning and
@@ -727,7 +804,9 @@ and follow `docs/e2e-test-plan.md`.
   record SAFE-1 (4), SAFE-9): read only the first line when checking the title by UI automation.
 - **Chrome refuses a `javascript:` navigation through the bridge itself**: `NAV_FAILED JavaScript URLs are
   not allowed in API based extension navigations. …`, page unchanged (Run 13 SAFE-6c, JavaScript on,
-  record). With JavaScript off the gate refuses first (`DISARMED`, scope `evaluate`, SAFE-6).
+  record). With JavaScript off the gate refuses first (Run 13: `DISARMED`, scope `evaluate`, SAFE-6; since Step 10
+  S4b `JS_DISABLED` with no `data`, measured live in Run 15 JSD; #202, #219). *Superseded 2026-10-25: was
+  "(`DISARMED`, scope `evaluate`, SAFE-6)", because S4b gave "JavaScript is off" its own code.*
 - **On a reload the daemon logs `safety state:` before `extension resync`** (by design:
   `daemon/src/intercept.ts` `onSafetyState` vs the resync; Run 13 SAFE-9, a wrong expected text, #195). A
   reload also closes an open options page (SAFE-9 record), and right after it `daemon.status` shows URLs one
@@ -735,17 +814,55 @@ and follow `docs/e2e-test-plan.md`.
 - **Chrome 156 titles the service worker's DevTools window `DevTools`**, with no extension URL (Run 13
   SAFE-10 set-up, #195).
 - **An options page in a background window did not show a `storage.onChanged` re-arm until brought to
-  the front** (Run 13 SAFE-3, FAIL; cause undetermined — UIA staleness or deferred rendering; re-measured in
-  Step 10, #194). After a `write-failed` disarm the options page shows the stored state ("Bridge armed.")
+  the front** (Run 13 SAFE-3, FAIL; cause undetermined — UIA staleness or deferred rendering). Re-measured
+  with the options window visible beside the driver window, not covered: it showed `Bridge armed.` 31 ms after
+  the re-arm, without a reload (Run 15 R15-3R, PASS under the user's occluder exemption; decisions.md · 2026-10-25 ·
+  R15-3R: the guard ignores a popup owned by the wave's own window that covers nothing the row reads (#224)).
+  *Superseded 2026-10-25: was "re-measured in Step 10, #194", because Runs 14–15 measured it (R14-3 NOT MEASURED,
+  R15-3R PASS).* After a `write-failed` disarm the options page shows the stored state ("Bridge armed.")
   while the badge says OFF and every call is refused — the memory disarm is not visible to the page (S2b
   verifier F4, by construction, not producible live). The badge is the indicator.
 - **The block list is not a network firewall.** A redirect hop of a bridge `navigate` or `downloadStart`
   onto a blocked host is still requested; the post-check refuses the reply and a download drops its bytes
   (`downloadStart` checks its own URL, then `res.url`, #140, #154). The post-redirect download check is
-  unit-tested only: Run 13 SAFE-5c's redirect half timed out on the single-threaded test server (#194).
+  measured live: a download redirected onto a blocked host was refused `DOMAIN_BLOCKED` in 76 ms with no file, and
+  the server saw the hop and the target each requested once (Run 14 R14-5c, on the threaded `s9-redirect.py`;
+  S1.md Findings 4). *Superseded 2026-10-25: was "unit-tested only: Run 13 SAFE-5c's redirect half timed out on the
+  single-threaded test server (#194)", because Run 14 measured it.*
   A cross-origin frame of a blocked host shows in screenshots (stage0-audit F16, by reading).
 - **Build fact: esbuild keeps comments placed inside array literals** in the bundle (S0 bundle diff, S0.md
   §6 item 3) — keep comments out of literals where a bounded bundle diff is checked.
+
+**Step 10 — the Step 8 follow-ups (2026-10-25; reports in `docs/plans/2026-10-24-step10-step8-follow-ups-steps/`)**
+
+- **A primitive completion value crosses CDP in one reply; only `return …` is sliced.** `Runtime.evaluate`
+  returns a string, number, boolean or null inline — there is no `objectId` to slice — so `saveTo` reads a value
+  out of the page in 1 MiB slices (`Runtime.callFunctionOn` on a holder object) only when the expression produces
+  an object or a promise completion, i.e. with `return …`; a bare string expression crosses as one CDP reply and
+  is sliced from the worker on (S4.md §6 candidate 1, by protocol + fake-CDP tests; decisions.md · 2026-10-25 ·
+  S4: a primitive completion value crosses the CDP leg whole; S7 measures it (#217)). Measured on Chrome 156: a
+  64 MiB primitive was saved whole (Run 15 SAVE-PRIM), and `serializationOptions: {serialization: "idOnly"}` gave a
+  primitive no `objectId` (SAVE-IDONLY) — #217's Revisit-if not met. A 64 MiB value took 4.3 s to save and raised
+  the private memory of the extension's Chrome process by ~212 MiB at its peak (SAVE-64, a record). Keep the advice
+  "produce a very large value with `return …`" (tool description, `docs/setup.md`).
+- **The `saveTo` store is worker memory; the file finish uses `link`.** The value waits in `EvaluateSaveStore`
+  (`extension/src/evaluate-save-store.ts`: 5 min TTL refreshed per pull, 8 entries, 256 MiB per value and in
+  total), dropped at a worker restart, a disarm, JavaScript off, the tab's close or replace, or the TTL; a later
+  pull answers `INTERNAL Unknown or expired evaluateSave id: <id>` and the SDK removes `.part` (S4.md §6 candidate
+  2; unit + cross-package tests; Run 15 SAVE-TTL, SAVE-CLOSE, SAVE-DISARM, SAVE-JSOFF). The extension never sees
+  the path. `fs.rename` replaces an existing target on Windows and POSIX alike, so the no-overwrite finish
+  hard-links `.part` to the target (fails `EEXIST` → `BAD_PARAMS`) and falls back to re-check + rename only where
+  links are unsupported (S4.md §6 candidate 3, measured on NTFS by the S4 verifier; decisions.md · 2026-10-25 · S4:
+  `saveTo`'s wire methods, refusals, store caps, SDK form and file finish (#218)). A refusal thrown inside
+  `withDebugger` reaches the wire prefixed `[chrome.debugger] ` (`describeDebuggerError`; Run 15 SAVE-REFUSE;
+  decisions.md · 2026-10-25 · S7: SAVE-REFUSE's `[chrome.debugger] ` prefix — the product stays for now; a fix is
+  offered (#227)).
+- **A scratch worktree never shares `node_modules` through a junction.** A recursive delete of a worktree
+  followed a `node_modules` junction and emptied the main tree's `node_modules/.bin` and `@asamuzakjp` (Step 10
+  S4b, observed by its verifier; repaired by `npm ci`). Run `npm ci` in the worktree, or remove a junction only
+  with `cmd /c rmdir <link>` before `git worktree remove` — never `rm -rf` / `Remove-Item -Recurse` across it
+  (decisions.md · 2026-10-25 · Scratch worktrees never share `node_modules` through a junction a recursive delete
+  can follow (#220); S4b.md Findings 1).
 
 **Driving Chrome from the outside (live waves, Windows)**
 
@@ -772,7 +889,11 @@ and follow `docs/e2e-test-plan.md`.
   are stripped from a native command's arguments, so send JSON-bearing prompts from Git Bash;
   `Get-ChildItem` with a wildcard in the middle of the path plus `-Filter` returns nothing (put the
   pattern in the path); `>` in a `-NoProfile` shell writes UTF-16LE (`ff fe`), which a UTF-8 reader
-  turned into a page `SyntaxError` — read a file's encoding from its BOM.
+  turned into a page `SyntaxError` — read a file's encoding from its BOM. Met in Step 10: variable names are
+  case-insensitive, so a local `$h` in a function shadows a script-level `$H` through dynamic scope (S5 builder:
+  `Close-Own` cast "127.0.0.1" to IntPtr, exit 1; S5.md Findings 3); and `powershell -File` drops an empty
+  argument — `-ArgLine ''` arrived with no value, `Missing an argument for parameter 'ArgLine'`, exit 1 (Run 15
+  RET-1, Return 4; S7.md Findings 1): omit an empty parameter and let its default apply.
 - **`npx` on Windows goes through `cmd.exe`, which refuses a long argument**: an ~8 000-character actor
   prompt via `npx tsx …` printed `The command line is too long.` and exited 1 with nothing sent
   (cmd's 8191-character limit); `node --import tsx …` worked (Run 12 MCP leg; S6.md candidate 14).
@@ -780,12 +901,31 @@ and follow `docs/e2e-test-plan.md`.
   survive a Chrome restart (session restore brings windows back under new HWNDs) — find the window
   again or open your own; a full-window OS frame includes Chrome's own UI (the bookmark bar), so judge
   frames by numbers or crop to the viewport; Chrome resolves every `*.localhost` name to loopback with
-  no DNS lookup (one 127.0.0.1 server can stand in for a second host); the login script's post-submit
-  check (it stops once the address bar has been stable for 4 s, at most 20 s) read the SSO page about
-  8 s after the press, yet the login had worked (decisions.md · 2026-10-23 · SDK-6/SDK-7 run in
-  the session the login actually opened (#101)) — wait on a condition with a bound; and live data can
+  no DNS lookup (one 127.0.0.1 server can stand in for a second host); the login script's old post-submit
+  check (address stable 4 s, at most 20 s) read the SSO page about 8 s after the press, yet the login had
+  worked (decisions.md · 2026-10-23 · SDK-6/SDK-7 run in the session the login actually opened (#101)) — so
+  since Step 10 S5 `bb-login.ps1` polls on a condition inside one `-WaitSec` bound (default 90) from the press:
+  exit 0 on a delayed redirect where the old script exits 4, exit 4 at the bound on a stuck or foreign page (Run
+  15 BBL-1: 90006 ms, 90013 ms; decisions.md · 2026-10-25 · S5: `bb-login.ps1`'s post-submit wait — exit rules and
+  the hard bound (#215)), and the real pp1 login took one press (Run 15 PP1); session restore adds windows after
+  a relaunch, so "exactly one new window" is no safe test — wait for a stable window set and pick only a window
+  with a unique title marker (Run 15 Return 5; decisions.md · 2026-10-25 · RET-1's end safety read-back reads only
+  a window the wave opens and marks (#223); S7.md Findings 3); and live data can
   change between two reads minutes apart (inferred from counts, not proven), so compare two
   transports over one held snapshot (decisions.md · 2026-10-23 · S6.3 compares one in-page export read through both paths (#103)).
+- **A headless `claude -p` actor calls `ToolSearch` first unless tool search is off.** Claude Code 2.1.310 defers
+  MCP tools, so an actor's first call was `ToolSearch`, and a row checking "the actor called exactly
+  [browser_click]" failed while the page saw 9/9 trusted inputs (Run 15 MCPF-1, CAP-1 FAIL); with
+  `ENABLE_TOOL_SEARCH=false` in the actor's environment (`recipes/s9-actor.ts --no-tool-search`) the
+  re-measurements MCPF-1R and CAP-1R passed (S7.md Findings 2; `S7-wave-fixer2.md`, an offline dummy-MCP probe).
+- **Occlusion guards meet windows you did not open.** An auto-hidden Windows taskbar is a visible topmost window
+  whose 2 px strip lies inside the monitor's work area (`[x,1078,…,1126]` on a 1080-px monitor): cut placements
+  at the taskbar (Run 14 Return 2; S1.md Findings 1). After a switch is toggled on the options page, a
+  Chrome-owned topmost, no-activate popup (`Chrome_WidgetWin_1`, 223×25 px at the window's top right, owned by the
+  options window) appears over it (Run 14 Return 3; Run 15 Return 3 and attempt 4; S1.md Findings 2, S7.md
+  Findings 4); R15-3R exempted it only because a driver window owned it and it covered none of the read elements
+  (#224). Park the cursor and print occluder diagnostics before a click that a guard protects (decisions.md ·
+  2026-10-25 · S1: Run 14's wave mechanics are kept for Run 15 (#213)).
 
 ## Testing philosophy
 
@@ -793,7 +933,7 @@ Logic units (protocol, WS correlation, bridge, handshake, the daemon's registry/
 the SDK's knock/client/connect over injected I/O and clocks, the MCP link, RefMap, snapshot, actions,
 geometry, tools, inject helpers, the `NetworkLog` reducer/query, the daemon's handles/leases/lock/
 tab layer, the extension's error mapping and tab events, the MCP cursor, the SDK formatters, Step 9's safety gate, block-list matcher, state store, badge model and
-options model) are
+options model, Step 10's save store, save sources and the SDK's file finish) are
 **TDD with real assertions**; `mcp/test/multi-actor.test.ts` runs a real daemon + SDK + MCP against a
 fake proto:2 extension on port 0.
 Socket tests bind port 0, never 9234. The `chrome.*` glue (service worker,
@@ -848,7 +988,12 @@ session marker, the MCP's `browser_use_active_tab` (23 tools), the first recipes
 *Superseded 2026-10-24: was "its open decisions are listed in `docs/decisions.md` → Open decisions", because W2
 ruled them.* **Step 9 built and E2E-run (2026-10-24, Run 13):** the kill switch, the JavaScript switch and the
 block list, enforced by one gate in the extension (`docs/plans/2026-10-24-step9-phase-e-safety.md`, as-built
-`…-asbuilt.md`); its gate waits on the user's ruling on Run 13 (#192).
+`…-asbuilt.md`); closed 2026-10-24 (decisions.md · 2026-10-24 · The user rules on the 32 Step 9 open decisions;
+Step 9 closes (#202)). *Superseded 2026-10-25: was "its gate waits on the user's ruling on Run 13 (#192)", because
+#202 ruled it.* **Step 10 built and E2E-run (2026-10-25, Runs 14–15):** the MCP's trusted tools focus first, the
+800-cap warning, `saveTo` / `evaluateToFile`, `JS_DISABLED`, bb-login's condition wait, the local `release/step8`
+branch; the chunked recipe retired (`docs/plans/2026-10-24-step10-step8-follow-ups.md`, as-built `…-asbuilt.md`,
+reports in `…-steps/`); its gate waits on the user's open decisions (decisions.md → Open decisions → Step 10).
 *Superseded 2026-10-24: was "Next: Step 8 (SDK surface, cursor tools, the background-input policy) —
 `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`, plan `docs/plans/2026-10-21-step8…`",
 because Step 8 was built and run (Step 8 as-built register).*

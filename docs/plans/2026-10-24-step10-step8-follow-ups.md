@@ -87,6 +87,11 @@ the front and stays. This replaces "the MCP's trusted tools keep today's behavio
   lock only for itself), so another actor's default capture in the same window can come between them and the input
   lands on a background tab answering `ok` (the SDK has the same gap); MCPF-1 (one actor) cannot show it. Revisit
   if a live row sees it.*
+- *Corrected 2026-10-25 (propagator): as built in S2 (`8ae1a95`), `browser_focus_tab`'s description changed too —
+  its "the only tool that changes what the human sees" became false — and the schema baseline is a real `tools/list`
+  captured at `f45e3bf` (decisions.md · 2026-10-25 · S2: the MCP schema baseline, a failed focus's answer, and the
+  focus sentence (#214)). Live: MCPF-1 FAILed on the harness (the actors called `ToolSearch` first); MCPF-1R
+  PASSed, 9/9 trusted inputs on a background fixture tab (as-built § S2, § S7).*
 
 ### 0.3 A warning when a locator resolves past the snapshot's cap (user)
 
@@ -149,6 +154,12 @@ description says chunked paging is a test device only. *Proposed details:*
   debugger session, never one CDP reply of the whole value), and S4's lane names `extension/src/debugger.ts`. A size
   refusal for plain `evaluate` would be a new refusal (a contract change): recorded under Open items, not built in
   Step 10 unless ruled.*
+  *Superseded 2026-10-25 (propagator): was "never one CDP reply of the whole value" without exception, because S4
+  found that CDP returns a **primitive** completion value (a bare string expression, no `return`) inline in
+  `Runtime.evaluate`'s reply, with no `objectId` to slice; only objects and promise completions (`return …`) are
+  sliced on the CDP leg, a primitive is sliced from the worker on (decisions.md · 2026-10-25 · S4: a primitive
+  completion value crosses the CDP leg whole; S7 measures it (#217); open for the user). Run 15 saved a 64 MiB
+  primitive whole and `idOnly` gave a primitive no `objectId` (SAVE-PRIM, SAVE-IDONLY), so #217 stands (#226 item 2).*
   *Amended 2026-10-24 (Stage 0 F4): (B)'s new methods carry the tab (`tab` on the wire, a `tabId` at the extension):
   they enter `daemon/src/methods.ts` `TAB_METHODS` (lease-checked, not the lock) and `METHOD_CLASSES` as
   `"evaluate"`, so the kill switch, the JavaScript switch and the block list refuse each pull and only the tab's
@@ -170,6 +181,13 @@ description says chunked paging is a test device only. *Proposed details:*
   value is `BAD_PARAMS` before anything is stored; a throw from `JSON.stringify` is `PAGE_ERROR`.*
   (F11, F12: decisions.md · 2026-10-25 · Stage 0: `saveTo`'s file rules are stricter than `browser_download`'s
   (#207); contract-level, open for the user.)
+  *Corrected 2026-10-25 (propagator): as built in S4 (`6ba2d10`), "then renamed" holds only with `overwrite: true`;
+  without it the finish hard-links `.part` to the path (`EEXIST` → `BAD_PARAMS`), because `fs.rename` replaces an
+  existing file on Windows and POSIX alike. The store (`TTL, a few entries`) is 5 min refreshed per pull, 8 entries,
+  256 MiB per value and in total; a lost or other tab's id answers `INTERNAL Unknown or expired evaluateSave id:
+  <id>`; the wire methods are `evaluateSaveStart`/`evaluateSaveChunk`/`evaluateSaveEnd` (decisions.md · 2026-10-25
+  · S4: `saveTo`'s wire methods, refusals, store caps, SDK form and file finish (#218); open for the user). Its own
+  refusals reach the wire prefixed `[chrome.debugger] ` (Run 15 SAVE-REFUSE FAIL; #227, a fix offered).*
 - **The answer** is `Saved <path>` and `<bytes> bytes · <kind> · sha256 <hex>` — no part of the value. `asRef`
   with `saveTo` is `BAD_PARAMS`. A value of kind `undefined`, `node` or `function` is refused `BAD_PARAMS` (nothing
   to save).
@@ -178,6 +196,10 @@ description says chunked paging is a test device only. *Proposed details:*
 - **SDK.** The SDK's public surface is exactly eight values (`sdk/src/index.ts`); a ninth export is a contract
   change. Proposed: a `Tab` method `evaluateToFile(expression, {path, overwrite?, timeoutMs?})` and no new
   top-level export (conservative).
+  *Corrected 2026-10-25 (propagator): as built, still eight values; S3 and S4 added the types `BridgeWarning`,
+  `EvaluateToFileOptions` and `EvaluateToFileResult`, a client mirror `client.evaluateToFile`, and two helpers
+  (`saveEvaluateToFile`, `checkSaveTarget`) on the existing `@bridge/sdk/download` subpath (#216 item 5, #218 item
+  5; `sdk/src/index.ts`, `sdk/src/download.ts`).*
 - **Logs.** Nothing logs the value or the path (the Step 9 log scan, `extension/test` and the sentinel test,
   extended with a sentinel value and path).
 
@@ -202,6 +224,10 @@ description says chunked paging is a test device only. *Proposed details:*
   `recipes/test/blackboard-export-file.test.ts` and `recipes/README.md`, so that S8.1's grep finds only dated
   history notes.* (decisions.md · 2026-10-25 · Stage 0: count corrections, stricter checks, SW-1 as a differential
   row, the retirement set, bb-login's bound (#209).)
+- *Done 2026-10-25 (propagator): the fixture leg passed (Run 15 SAVE-FIX, a 418 754-byte synthetic export), and
+  the pp1 leg ran under G10-3 (#221, #222) and passed (page = SDK file = MCP file by sha256, 419 015 bytes; no value
+  run in the transcript). S8 retired the set (3280 → 3273 tests; decisions.md · 2026-10-25 · S8: the retirement as
+  done, the s6 typecheck fix, and where the pointers go (#228)).*
 
 ### 0.6 A squashed `step8` release branch; the tag at the user's grant (user)
 
@@ -248,6 +274,12 @@ held handles live (Run 12 saw only `0 handles retired`, because `chrome://quit` 
   found'); its PASS does not depend on session restore or the 'Restore pages?' prompt; G10-2's request names that
   unsaved form data in the user's open tabs is lost.* (decisions.md · 2026-10-25 · Stage 0: count corrections,
   stricter checks, SW-1 as a differential row, the retirement set, bb-login's bound (#209).)
+- *Corrected 2026-10-25 (propagator): RET-1 itself is NOT MEASURED — the kill was observed, then the relaunch helper
+  exited 1 (`-ArgLine ''` dropped by Windows PowerShell 5.1) and the session agent relaunched Chrome under #222; the
+  row was re-measured as **RET-1R**, PASS: reconnect 106 ms, `extension session changed: 3 handles retired`,
+  `tabGone` with the fixture URL, the old `Tab` → `TAB_GONE`, the safety state read back equal; its end read-back
+  reads only a window the wave opens and marks (#223) (as-built § S7; decisions.md · 2026-10-25 · S7: Run 15 stands
+  as recorded; its follow-ups (#226) item 4).*
 
 ### 0.8 The ~1.5 s failure-report screen switch (proposed: measure, then decide)
 
@@ -277,6 +309,10 @@ not a frame": "suggests `onActivated` does not end the wait (unconfirmed)").
   2026-10-25 · Stage 0: count corrections, stricter checks, SW-1 as a differential row, the retirement set,
   bb-login's bound (#209).)
 - Never lower the 1000 ms or 50 ms waits without a measurement; never add window focus to the capture.
+- *Corrected 2026-10-25 (propagator): SW-1 is NOT MEASURED (a helper stopped in set-up); its re-measure row SW-1R gave
+  d = 101, 1276, 1421 ms — undetermined, trial 1's front capture taking 870 ms against 287/218 ms — so there is **no
+  S7b**, `activateForCapture` is unchanged, and the ~1.5 s switch stays a carried input; a later row needs a
+  discarded warm-up trial (decisions.md · 2026-10-25 · S7: Run 15 stands as recorded; its follow-ups (#226) item 1).*
 
 ### 0.9 `bb-login.ps1`'s condition-based post-submit wait (user — the item; proposed details)
 
@@ -321,6 +357,13 @@ decisions.md · 2026-10-24 · S4: Dated notes on §4.20 for two expected-text er
   never the URL.
 - The wave records the safety state as found (armed? JavaScript? the block list counted and hashed, never printed),
   restores it and reads it back equal (sha256 of the list text).
+- *Corrected 2026-10-25 (propagator), as measured in Run 14 (S1): R14-5c, R14-4b and R14-REL-3 PASS; R14-POP-1 FAILed
+  — the claimed opener was a background tab — and Run 15's R15-POP-2 explained it: with the opener behind, Chrome
+  names another tab as the popup's opener, so no `leaseGranted` (not a daemon defect; #211 closed by #226 item 3);
+  R14-3 was NOT MEASURED (a Chrome window that was not the driver's covered the options page; Run 15 found a small
+  Chrome-owned popup there, its likely identity) and was re-measured as R15-3R, PASS under
+  the user's exemption (#224); R14-TEARDOWN FAILed on a scanner bug (#213). The state read back equal (decisions.md
+  · 2026-10-25 · S1: Run 14's results stand as recorded (#210)).*
 
 ### 0.11 Nothing in Step 10 changes the safety boundary (proposed)
 
@@ -370,10 +413,13 @@ bound (#209).)
 **Lane:** `recipes/s9*`, `recipes/test/s9-rules.test.ts`, `recipes/tsconfig.s9.json`, `docs/e2e-test-plan.md` §4.21
 and §5, the steps dir. **No product code.** If #192's ruling asks for a re-run of Run 13's blocks 4–30, those rows
 run here first under the same rules.
+*Done 2026-10-25 (`f717682`; as-built § S1): Run 14, four attempts and three returns, verifier PASS-with-notes;
+the state read back equal; tests 2720 → 2763 (`recipes/test/s9-rules.test.ts`).*
 
 ### Stage S2 — MCP trusted tools focus first (1 h, after S1)
 - [ ] 0.2 in `mcp/src/tools/registry.ts`; tests first.
 **Lane:** `mcp/src/tools/registry.ts`, `mcp/test/`. **Parallel with:** S5 and S6 (file-disjoint).
+*Done 2026-10-25 (`8ae1a95`; as-built § S2): PASS-with-notes, #214; tests → 2807 / 117.*
 
 ### Stage S3 — The 800-cap warning (2 h, after S2)
 - [ ] 0.3: `pastSnapshotCap` computed in `extension/src/content/locate.ts`, carried by `handlers/target.ts` and
@@ -382,6 +428,7 @@ run here first under the same rules.
 **Lane:** `shared/src/protocol.ts`, `extension/src/content/locate.ts`, `extension/src/handlers/{target,locate,actions}.ts`,
 `sdk/src/`, `mcp/src/tools/registry.ts`, their `test/` dirs. Not `a11y.ts`, not `snapshot.ts`.
 **Parallel with:** S5, S6 (after S2 because both edit `registry.ts`).
+*Done 2026-10-25 (`89d6de7`; as-built § S3): PASS-with-notes, #216; tests → 2989 / 122.*
 
 ### Stage S4 — `browser_evaluate {saveTo}` (3 h, after S3)
 - [ ] 0.4 with Stage 0's transport ruling; the SDK `Tab` method; the MCP parameter and description; log-scan and
@@ -392,6 +439,7 @@ run here first under the same rules.
 *Amended 2026-10-25 (Stage 0 stage split, `stage0.md` §7; F2, F4): the transport is (B) (#205), so the lane holds
 `daemon/src/methods.ts` (the tab-carrying pulls, F4) and gains `extension/src/debugger.ts` (CDP-leg slicing, F2);
 budget 3.5 h (was 3 h). The work also carries F11/F12's file rules and V8's lost-store refusal (0.4's notes).*
+*Done 2026-10-25 (`6ba2d10`; as-built § S4): PASS-with-notes, #217, #218; tests → 3145 / 130.*
 
 ### Stage S4b — The `JS_DISABLED` code (1.5 h, after S4)
 - [ ] 0.12: spec §10 note first; the code in `shared/src/codes.ts` and its type; the extension's refusal; the SDK and
@@ -400,16 +448,20 @@ budget 3.5 h (was 3 h). The work also carries F11/F12's file rules and V8's lost
 `mcp/src/tools/registry.ts`, their `test/` dirs, `recipes/s9-rules.ts` and its test if they pin the old text,
 `docs/setup.md` (Safety). **Parallel with:** S5, S6 (after S4 because both edit `registry.ts`).
 *Added 2026-10-24 by the user's ruling on #133 (decisions.md · 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202)).*
+*Done 2026-10-25 (spec `2866c43`, code `da16277`; as-built § S4b): PASS-with-notes, #219, #220; tests → 3165 / 130.*
 
 ### Stage S5 — `bb-login.ps1`'s condition wait (1 h, any time after S1)
 - [ ] 0.9; the delayed-redirect fixture; dry runs old vs new on it.
 **Lane:** `recipes/bb-login.ps1`, `recipes/fixtures/`, the steps dir. Driver-opened windows on 127.0.0.1 only.
 **Parallel with:** S2–S4 (file-disjoint; it uses no bridge port). It runs only when no live stage runs.
+*Done 2026-10-25 (`34adfdc`; as-built § S5): PASS-with-notes, #215; tests unchanged (no TypeScript).*
 
 ### Stage S6 — The `release/step8` branch (0.5 h, any time after Stage 0)
 - [ ] 0.6: the local branch; the tree check; the message list. Tag and push wait for G10-1.
 **Lane:** git refs only (a new local branch), the steps dir. **Parallel with:** anything; it never checks out
 another branch in the main working tree (a separate worktree, removed after).
+*Done 2026-10-25 (report `09fa604`; as-built § S6): `release/step8` tip `db72e9a`, Variant C (#208); no tag, no push
+(G10-1).*
 
 ### Stage S7 — Live wave B, Run 15: Step 10's rows (1.5 h prep + 2 h live, after S4 and S5, alone)
 - [ ] §4.22 rows, committed before the build is loaded: **MCPF-1** (an MCP actor's trusted click, type and press on
@@ -422,6 +474,9 @@ another branch in the main working tree (a separate worktree, removed after).
       and a top-level `tabs.onActivated` listener escalates (it touches the 'listeners at the top level of `sw.ts`'
       invariant). F16: RET-1 runs only with the found state armed (0.7's note).*
 **Lane:** `recipes/`, `docs/e2e-test-plan.md` §4.22 and §5, the steps dir; S7b: `extension/src/tabs.ts` and tests.
+*Done 2026-10-25 (`b55048d` … `32cb5fc`, `c8169ff`; as-built § S7): Run 15, 27 PASS / 3 FAIL / 3 NOT MEASURED / 4
+RECORD, none a product defect (#226); re-measure rows SW-1R, MCPF-1R, CAP-1R, R15-3R, RET-1R added before their
+observations; RET-1R and the pp1 leg ran under #221/#222; no S7b (SW-1R undetermined); tests → 3280 / 132.*
 
 ### Stage S8 — Retire the chunked recipe; docs (1 h, last)
 - [ ] 0.5's retirement (if the fixture leg passed); `docs/setup.md` (focus-first on the MCP's trusted tools, the
@@ -432,6 +487,8 @@ another branch in the main working tree (a separate worktree, removed after).
 `recipes/blackboard/export-file.ts`, `export-grades.ts`, `held.ts`, `recipes/test/blackboard-export-file.test.ts`
 and `recipes/README.md` (`--mcp-plan`'s help text naming `browser_evaluate {saveTo}`); the retirement set and its
 −7 tests are 0.5's note.*
+*Done 2026-10-25 (`7e12566`; as-built § S8): PASS-with-notes, #228; tests 3280 → 3273 / 132; `CLAUDE.md`'s
+proposals in `…-steps/S8-claude-md-proposals.md`, applied by the propagator (`…-steps/propagator.md`).*
 
 ## Exit checks (pre-registered)
 
@@ -556,6 +613,10 @@ the token rule; making `BridgeClient` reconnect on a close code other than 4002;
   Stage 0's rulings are #209. A size refusal for plain `evaluate` (F2) is not built unless the user rules it. 0.8's
   fix, if any, is decided by SW-1 as amended (F3).*
 - Waiting for the user: G10-0 (#192), G10-1, G10-2, G10-3.
+  *Superseded 2026-10-25 (propagator): G10-0 was met by #202; G10-2 and G10-3 were granted for Run 15 (decisions.md ·
+  2026-10-25 · The user grants RET-1's Chrome kill (G10-2) and the pp1 leg (G10-3) once for Run 15; the button is
+  already pinned (#221), widened by #222). Only G10-1 (the `step8` tag and any push) still waits, with the open
+  decisions listed in `docs/decisions.md` → Open decisions → Step 10.*
 - Not this step: blocking a redirect hop onto a blocked host (`declarativeNetRequest`, #140); SAFE-7c stays unmeasured
   (decisions.md · 2026-10-24 · SAFE-7c (the debugger on this extension's own options page) stays unmeasured (#200)).
 

@@ -9,7 +9,9 @@
   `e963bff` `npm test` runs 1714 tests in 85 files, `recipes/test/` included (Step 8 as-built § S6,
   § S7).* *Corrected 2026-10-24 (Step 9 propagator): was "1714 tests in 85 files" as the current count; at
   `ba6029e` `npm test` runs 2720 tests in 116 files (Step 9 as-built § Stage S5), and Step 9's safety controls
-  are covered live by §4.20 (Run 13 in §5).*
+  are covered live by §4.20 (Run 13 in §5).* *Corrected 2026-10-25 (Step 10 propagator): was "2720 tests in 116
+  files" as the current count; at `025bdef` `npm test` runs 3273 tests in 132 files (Step 10 as-built § S8), and
+  Step 10 is covered live by §4.21 (Run 14) and §4.22 (Run 15).*
 
 Each test has an **ID**, **objective**, **steps** (as MCP tool calls), and an **expected result**.
 Record outcomes in the [Results template](#results-template). A run "passes" when all **must-pass**
@@ -1480,6 +1482,9 @@ SAFE-9 [ ] SAFE-11 restore [ ] SAFE-10 log [ ] console [ | not measured ] SAFE-O
 Failures / notes (TC id → what happened → SW-console / server-stderr excerpt):
 - …
 ```
+
+*Note 2026-10-25 (Step 10 propagator): the template has no line for §4.21 (R14) or §4.22 (R15) rows; Runs 14 and 15
+record their verdicts in their own tables below (Run 14, Run 15), which a later wave on those rows copies.*
 
 ### Run 2 — 2026-09-03 (Phase C verification of commit `39e6cb4`)
 

@@ -587,6 +587,12 @@ debugger is already attached" branch of `describeDebuggerError` (Chrome 152 no l
 for DevTools; it would take a second debugger extension). DPR 2 (a true Retina panel) has not been
 measured, though DPR 1.25 and 1.5 both needed no correction.
 
+*Updated 2026-10-25 (Step 10 propagator): this section stops at Step 5; the live checks of Steps 6–10 are in §1's
+step blocks and `docs/e2e-test-plan.md` §5 (Runs 7–15). Step 10 verified live two items that were unit-tested only:
+the post-redirect `downloadStart` check (Run 14 R14-5c) and the retire of N ≥ 1 held handles on a killed Chrome (Run
+15 RET-1R). Still not verified live after Step 10: why a background capture takes ~1.5 s (SW-1R undetermined, #226),
+and another actor's capture landing between a trusted tool's focus and its input (Stage 0 F19).*
+
 ## 4. Known limitations & risks
 
 - **Trusted input needs its target on screen** — CDP `Input` takes CSS-pixel viewport coordinates
@@ -609,7 +615,8 @@ measured, though DPR 1.25 and 1.5 both needed no correction.
   per-frame injection or CDP, not a single content script); `visibility:hidden` prunes the whole
   subtree even though a descendant could set `visibility:visible`.
 - **Snapshot cap** — very large pages are truncated at 800 listed elements with a note. There is
-  no "expand" or viewport-only mode yet.
+  no "expand" or viewport-only mode yet. Since Step 10 an action whose locator resolves past the cap says so
+  (the MCP's warning line, the SDK's `warning` event; #117, #216).
 - **One extension, one daemon** — one extension at a time (a second valid connection replaces the
   first) and one daemon per port. Several Claude sessions and scripts share the daemon, each on its
   own tabs (Step 7). *Superseded 2026-10-22: was "one server per port … two Claude sessions still
@@ -619,8 +626,9 @@ measured, though DPR 1.25 and 1.5 both needed no correction.
 - **Background tabs** — trusted CDP input into a background tab silently does nothing, and a
   default-mode screenshot of a background tab flashes it for ~1.5 s (Step 7 block). CDP focus
   emulation does not fix the input (Run 11), so the SDK's trusted actions bring the tab to the front
-  first and leave it there (`focusFirst`); the MCP's trusted tools need an explicit
-  `browser_focus_tab`. A failure report's screenshot flashes the failed tab the same way (Run 12
+  first and leave it there (`focusFirst`); since Step 10 the MCP's trusted tools do the same (#106; Run 15
+  MCPF-1R). *Superseded 2026-10-25: was "the MCP's trusted tools need an explicit `browser_focus_tab`", because
+  Step 10 S2 made them focus first.* A failure report's screenshot flashes the failed tab the same way (Run 12
   REP-0). *Superseded 2026-10-24: was "Step 8 sets the policy", because Step 8 set it (Step 8 block).*
 - **Tab safety** — a Claude session claims the tab the human is looking at on its first call, and any
   actor can claim an unowned tab by handle, sensitive ones included. Mitigations: localhost-only +
@@ -682,7 +690,11 @@ open for the user's veto.* *Updated 2026-10-24 (Step 9 S5): Step 9 is built and 
 Step 9 block](#step-9--phase-e-safety-the-kill-switch-the-javascript-switch-blocked-sites-2026-10-24)),
 its gate open for the user (#192). Step 10's inputs gain Run 13's four re-measurements (SAFE-5c's
 redirect half, SAFE-POP-1, SAFE-3, SAFE-4 (b); #194; see Phase E below). Steps 11 (D3 file upload) and
-12 (Phase F) are unchanged.* *Superseded 2026-10-22 (W1): was "its
+12 (Phase F) are unchanged.* *Updated 2026-10-25 (Step 10 propagator): Step 9 closed 2026-10-24 (#202);
+Step 10 is built and E2E-run (Runs 14–15; [§1 Step 10 block](#step-10--the-step-8-follow-ups-2026-10-25)), its gate
+open for the user (`docs/decisions.md` → Open decisions → Step 10; G10-1, the `step8` tag). Next: Step 11 (D3 file
+upload), then Step 12 (Phase F); the place of the network rule against redirects onto blocked sites (#140) is set
+at Step 10's close.* *Superseded 2026-10-22 (W1): was "its
 live E2E waits for the D6 wave with the user. Next after that: Step 7, then Step 8".* *Superseded 2026-10-22: was "Step 6 starts
 by pasting it into a fresh session that does not use the bridge MCP. Nothing is built.", because
 Step 6's code stages D0–D5b landed.*
@@ -719,7 +731,8 @@ modifier chords for `press_key`, and caret-preserving trusted typing.
 block](#step-9--phase-e-safety-the-kill-switch-the-javascript-switch-blocked-sites-2026-10-24)): a kill
 switch by toolbar button, `Alt+Shift+K` and the options page; a JavaScript switch; a block list, empty
 by default; the own-page block; a log scan that keeps patterns, URLs and the token out of every log.
-Its gate waits for the user's ruling on Run 13 (#192). Not built: blocking a redirect hop onto a
+Closed 2026-10-24 (#202). *Superseded 2026-10-25: was "Its gate waits for the user's ruling on Run 13
+(#192)", because #202 ruled it.* Not built: blocking a redirect hop onto a
 blocked host (`declarativeNetRequest`, #140), and an allow-list mode (#128 turned it down).
 *Superseded 2026-10-24: was "An explicit arm/disarm toggle in the options page; optional per-domain
 allow/block list; never log page content or tokens. Higher priority since Step 4 …", because Step 9
@@ -736,7 +749,11 @@ re-measurements are its first live wave (Run 14), and it starts only after the u
 (decisions.md · 2026-10-24 · S4: Run 13 stands as recorded, with the runner's four self-resolved stops
 listed (#192)).* *Updated 2026-10-24: the user ratified Run 13 and ruled all 32 Step 9 decisions
 (decisions.md · 2026-10-24 · The user rules on the 32 Step 9 open decisions; Step 9 closes (#202)); Step 10 also
-gains stage S4b, a new code `JS_DISABLED` for "JavaScript is off".*
+gains stage S4b, a new code `JS_DISABLED` for "JavaScript is off".* *Updated 2026-10-25 (Step 10 propagator):
+measured in Run 14 (§4.21) and Run 15 (§4.22): SAFE-5c's redirect half as R14-5c, PASS (`DOMAIN_BLOCKED`, no file,
+hop and target each requested once); SAFE-4 (b) as R14-4b, PASS (banner gone at +4.7–5.0 s, a record); SAFE-POP-1 as
+R14-POP-1, FAIL, explained by R15-POP-2 (Chrome names another opener for a popup of a background tab; not a daemon
+defect, #226); SAFE-3 as R14-3, NOT MEASURED, then R15-3R, PASS (#224). No product change followed.*
 
 **Later — the block list stops redirected requests** (#202, planned 2026-10-24): a `declarativeNetRequest`
 network rule (a new Chrome permission) so that a redirect onto a blocked site is never sent, for downloads and
