@@ -89,7 +89,11 @@ machine that used the bridge before:
    a script's `tab.locate()` with `unknown method: locate`. Step 8 also removed the Step 6 compatibility path: a script
    that calls a tab method without `tab` now gets `BAD_PARAMS "tab is required"`, and `selectTab` gets
    `UNKNOWN_METHOD` (use `focusTab`), so port old scripts to the `Tab` of
-   [Writing a script](#writing-a-script).*
+   [Writing a script](#writing-a-script).* *Updated 2026-10-25: Step 10 changed the extension, the
+   daemon and the MCP again — reload the extension and run `/mcp` (or start a new session) after
+   upgrading. An extension not reloaded since Step 9 answers `browser_evaluate {saveTo}` with
+   `unknown method: evaluateSaveStart` and a JavaScript-off refusal as `DISARMED` instead of
+   `JS_DISABLED`.*
 
 Every client on a machine must use the same `BRIDGE_PORT`; see [The daemon](#the-daemon).
 
@@ -135,9 +139,9 @@ acts on **this session's tab**.
 | `browser_navigate(url)` *tab* | Navigate the tab |
 | `browser_snapshot()` *tab* | Accessibility outline of the tab with element refs |
 | `browser_screenshot(fullPage?)` *tab* | Screenshot (viewport; full-page via CDP when `fullPage:true`). A viewport shot of a background tab shows that tab for about 1.5 s, then puts your tab back — see [Screenshots](#screenshots) |
-| `browser_click(ref \| locator, trusted?)` *tab* | Click a ref or a [locator](#locators); `trusted:true` forces real CDP input (shows the debugging banner) |
-| `browser_type(ref \| locator, text, submit?, trusted?)` *tab* | Type `text` into a ref or locator, optionally submit; `trusted:true` sends real CDP keystrokes (shows the debugging banner) |
-| `browser_press_key(key, trusted?)` *tab* | Press a key on the focused element; `trusted:true` sends a real CDP keystroke (shows the debugging banner) |
+| `browser_click(ref \| locator, trusted?)` *tab* | Click a ref or a [locator](#locators); `trusted:true` forces real CDP input (shows the debugging banner) and first brings the tab to the front of its window, where it stays |
+| `browser_type(ref \| locator, text, submit?, trusted?)` *tab* | Type `text` into a ref or locator, optionally submit; `trusted:true` sends real CDP keystrokes (shows the debugging banner) and first brings the tab to the front of its window, where it stays |
+| `browser_press_key(key, trusted?)` *tab* | Press a key on the focused element; `trusted:true` sends a real CDP keystroke (shows the debugging banner) and first brings the tab to the front of its window, where it stays |
 | `browser_scroll(ref? \| locator?, direction?)` *tab* | Scroll to a ref or locator, or the page up/down |
 | `browser_hover(ref \| locator)` *tab* | Hover a ref or locator |
 | `browser_select_option(ref \| locator, values)` *tab* | Select option(s) in a `<select>` |
@@ -145,9 +149,9 @@ acts on **this session's tab**.
 | `browser_wait_for(text?, seconds?, networkIdle?, idleMs?, locator?, state?)` *tab* | Wait until text appears on the tab, for N seconds, — with `networkIdle:true` — until the tab has made no network request for `idleMs` (default 500, max 10 s wait), or — with `locator` — until an element matching it is visible (`state:"hidden"`: until none is; max 10 s) |
 | `browser_list_tabs()` | List open tabs: handle, `*` on the human's active tab, the holding actor, title — URL |
 | `browser_select_tab(tab)` | Make `tab` this session's tab: claims it, **without** bringing it on screen |
-| `browser_focus_tab()` *tab* | Bring the tab on screen and focus its window — the only tool that changes what you see |
+| `browser_focus_tab()` *tab* | Bring the tab on screen and focus its window (trusted click/type/press key do the same first); it does not change this session's tab |
 | `browser_new_tab(url?)` / `browser_close_tab(tab)` | Open a tab (it becomes this session's tab; it comes to the front only if you were looking at this session's tab, else it opens in the background) / close a tab by handle |
-| `browser_evaluate(expression, timeoutMs?, asRef?)` *tab* | Run JavaScript in the tab's page context and return the result (shows the debugging banner); `asRef:true` also returns a `[ref=eN]` for an element result, to act on with the other tools |
+| `browser_evaluate(expression, timeoutMs?, asRef?, saveTo?, overwrite?)` *tab* | Run JavaScript in the tab's page context and return the result (shows the debugging banner); `asRef:true` also returns a `[ref=eN]` for an element result, to act on with the other tools; `saveTo` (an absolute file path) writes the value to that file instead and answers only path, size, kind and sha256 — see [Running JavaScript](#running-javascript) |
 | `browser_network_requests(tab?, filter?, types?, failedOnly?, limit?, includeHeaders?, id?)` | List the network requests the tab has made — method, status, type, duration, size, URL — captured continuously with no banner; `id` shows one request's headers and body summary |
 | `browser_network_clear(tab?)` | Forget the recorded network requests, so the next `browser_network_requests` shows only what your next action caused |
 | `browser_download(url, path, overwrite?, timeoutMs?)` | Save a URL to disk with the profile's cookies (fetched by the extension's service worker: no CORS, cross-origin redirects followed). `path` is absolute — a file, or a directory to use the response's filename. Reports size, type and sha256 |
@@ -159,6 +163,11 @@ without showing and `browser_focus_tab` is new.*
 *Superseded 2026-10-23: was 22 tools, actions by `ref` only and `browser_new_tab` always in front,
 because Step 8 S5 added `browser_use_active_tab`, the `locator` on actions and `browser_wait_for`,
 `asRef`, and the background rule of `browser_new_tab`.*
+*Superseded 2026-10-25: was "`trusted:true` forces real CDP input (shows the debugging banner)" with no
+focus, `browser_focus_tab` "the only tool that changes what you see", and `browser_evaluate` without
+`saveTo`, because Step 10 S2 made the trusted tools focus first (decisions.md · 2026-10-24 · FE and
+`focusFirst` are ratified; the MCP's trusted tools focus first too (#106)) and S4 added `saveTo` (#127).
+Still 23 tools; their names and other parameters are unchanged.*
 
 Typical loop: `browser_snapshot()` to see refs → act by ref (`browser_click`, `browser_type`)
 → snapshot again to see the result. When the name is already known, act by locator and skip the
@@ -182,6 +191,13 @@ makes the match case-sensitive and whole instead of a substring. Pass `ref` or `
 wait for — a text locator is `locator: {text: …}`. `browser_wait_for({locator, state?})` waits alone
 (no `text`, `seconds` or `networkIdle` with it), up to 10 s. `browser_press_key` has no target: it
 presses on the focused element.
+
+A locator searches the whole page, also past the 800 elements a `browser_snapshot` lists. When an
+action's element comes after the 800th element a snapshot lists (on a page with more than 800), the
+action still runs and its answer gains a last line: `Warning: this element is past the snapshot's
+800-element cap — browser_snapshot does not list it.` (`mcp/src/tools/registry.ts` `CAP_WARNING_LINE`;
+decisions.md · 2026-10-24 · S1's locator details are ratified; a locator past the snapshot's cap warns
+(#117)). `browser_wait_for` with a `locator` gives no such line.
 
 ### Failure reports
 
@@ -251,6 +267,10 @@ Each tab has at most one owner, the actor named in `[name]`. An actor owns a tab
 `browser_select_tab`), and a tab that a page in one of its tabs opened itself (a `target=_blank`
 link or a popup — "click Export, a new tab appears" lands with the clicker; a script gets a
 `leaseGranted` event for it). A tab you open yourself is unowned until someone claims it.
+*Updated 2026-10-25: measured in Step 10 (Run 14 row R14-POP-1, Run 15 row R15-POP-2): when the
+opener tab is in the background, Chrome named another tab as the popup's opener, so the popup stayed
+unowned and no `leaseGranted` came; with the opener in front it was granted (after 150 ms). Claim such a
+popup by handle (decisions.md · 2026-10-25 · S7: Run 15 stands as recorded; its follow-ups (#226)).*
 
 - Any call on a tab another actor owns fails at once with `TAB_HELD` and the owner's name; nobody
   waits for a tab. Reading the network log is the exception: `browser_network_requests` works on any
@@ -270,19 +290,33 @@ link or a popup — "click Export, a new tab appears" lands with the clicker; a 
   the session's first tab, and whenever the bridge cannot tell — it opens in the background and the
   result says `(in the background — browser_focus_tab shows it)`. *Superseded 2026-10-23: was "Claude's
   `browser_new_tab` opens it in front", because Step 8 S5 applied phase doc 0.6's rule.* No call
-  brings a Chrome window to the front except `browser_focus_tab` (a script's `focusTab`).
+  brings a Chrome window to the front except `browser_focus_tab` (a script's `focusTab`) and the trusted
+  input that runs it first (`trusted:true` on `browser_click`, `browser_type`, `browser_press_key`, or
+  a script's trusted `click`/`type`/`pressKey`; next bullet). *Superseded 2026-10-25: was "except
+  `browser_focus_tab` (a script's `focusTab`)", because Step 10 S2 made the MCP's trusted tools focus
+  first (#106); the SDK's already did.*
 - **A viewport screenshot of a background tab flashes it.** The bridge switches the tab's window to
   it, captures, and switches back: your tab is hidden for about 1.5 s (measured 1.49–1.59 s, Step 7
   Runs 8 and 9). The window is not brought to the front (the foreground window stayed the same in Run 9). If you
   switch tabs in that window during the flash, the bridge leaves your choice alone instead of
   switching back (barring a race of a few milliseconds).
   Screenshots from several actors take turns, one at a time.
-- **Trusted input needs the tab in front.** `trusted:true` on a background tab returns `Clicked …` /
-  `Typed …` but the page receives nothing (measured in Step 7, also with Chrome's anti-throttling
-  flags, and in Step 8 with CDP focus emulation: Run 11 in `docs/e2e-test-plan.md`). Call
-  `browser_focus_tab` first, or use the default synthetic input. The same holds for anything that
-  needs window focus, such as a clipboard write in `browser_evaluate`. A script's trusted actions
-  focus the tab first by themselves — see [Writing a script](#writing-a-script).
+- **Trusted input needs the tab in front, so it brings it there.** Trusted CDP input into a
+  background tab returns `Clicked …` / `Typed …` but the page receives nothing (measured in Step 7,
+  also with Chrome's anti-throttling flags, and in Step 8 with CDP focus emulation: Run 11 in
+  `docs/e2e-test-plan.md`). So `browser_click`, `browser_type` and `browser_press_key` with
+  `trusted:true` — like a script's trusted actions (see [Writing a script](#writing-a-script)) — first
+  bring the tab to the front of its window and focus the window (as `browser_focus_tab` does), and
+  leave it there; this session's tab does not change. Measured in Step 10's Run 15 (row MCPF-1R): on a
+  background fixture tab, 9 of 9 trusted clicks, typings and key presses reached the page as trusted
+  events, the tab in front. Default synthetic input never changes what you see. Focus and input are
+  two calls, so another actor's screenshot in the same window can switch tabs between them (phase doc
+  0.2, Stage 0 F19; not seen live). The same need holds for anything that requires window focus, such
+  as a clipboard write in `browser_evaluate`: call `browser_focus_tab` first. *Superseded 2026-10-25:
+  was "Call `browser_focus_tab` first, or use the default synthetic input … A script's trusted actions
+  focus the tab first by themselves", because Step 10 S2 made the MCP's trusted tools focus first too
+  (decisions.md · 2026-10-24 · FE and `focusFirst` are ratified; the MCP's trusted tools focus first
+  too (#106)).*
 
 ### Screenshots
 
@@ -367,7 +401,9 @@ reports off (below).
 - The `Tab` methods: `navigate`, `back`, `forward`, `snapshot`, `screenshot({fullPage?, mode?,
   path?})`, `click`, `type(target, text, {submit?, trusted?})`, `pressKey(key, {trusted?})`, `hover`,
   `scroll({target?, direction?})`, `selectOption(target, values)`, `locate`, `waitFor`, `evaluate`,
-  `evaluateRef`, `network`, `networkClear`, `download(url, path)`, `focus`, `close`, `release`.
+  `evaluateRef`, `evaluateToFile(expression, {path, overwrite?, timeoutMs?})`, `network`,
+  `networkClear`, `download(url, path)`, `focus`, `close`, `release`. *Superseded 2026-10-25: the list
+  had no `evaluateToFile`, because Step 10 S4 added it (#127, #205).*
 
 **Locators.** Every action takes a target: a ref from `tab.snapshot()` (`"e4"`), or a locator object
 (`Locator` in `shared/src/protocol.ts`), resolved in the page by the same walk and the same role and
@@ -384,12 +420,25 @@ accessible-name rules that build the snapshot:
 elements. `tab.locate(locator)` resolves one to `{ref, role, name}` without acting. A `{name}` with
 no `role` is refused at once (`BAD_PARAMS`, use `{text}` or add `role`).
 
+A locator searches past the 800 elements a `snapshot()` lists. When the element comes after the 800th
+element a snapshot lists (a `snapshot()` does not show it), `tab.locate()`'s result also carries
+`pastSnapshotCap: true`, and an action on such an element emits one `client.on("warning", (w) => …)`
+event `{tab, method, kind: "pastSnapshotCap"}` (no locator or text; the type `BridgeWarning`) — the
+action itself still resolves `undefined` (`shared/src/protocol.ts` `LocateResult`, `sdk/src/client.ts`
+`on("warning")`; decisions.md · 2026-10-24 · #117; · 2026-10-25 · Stage 0: the cap warning reaches SDK
+actions as a client event (#206)). `waitFor({locator})` carries no flag. On a page with 800 listable
+elements or fewer nothing changes.
+
 **Waiting and evaluating.** `tab.waitFor(…)` takes exactly one of `{text}` (page text, up to 10 s),
 `{locator, state?, timeoutMs?}` (`state: "visible"` by default, `"hidden"` to wait for it to go;
 default 10 s, at most 60 s), `{networkIdle: true, idleMs?}` and `{seconds}`. `tab.evaluate<T>(js)`
 resolves with the value when it is plain JSON; a page exception rejects with `PAGE_ERROR`.
 `tab.evaluateRef(js)` returns a ref to the `Element` the expression evaluates to — "find it with JS,
-act on it with `click`" — and `BAD_PARAMS` for anything else.
+act on it with `click`" — and `BAD_PARAMS` for anything else. `tab.evaluateToFile(js, {path,
+overwrite?, timeoutMs?})` writes the value to the absolute file `path` instead of returning it — the
+SDK half of `browser_evaluate {saveTo}`, with the same rules ([Running JavaScript](#running-javascript))
+— and resolves with `{path, bytes, kind, sha256}`, never the value (`sdk/src/tab.ts`; the client's
+cursor has it too).
 
 **Failure reports.** When a `Tab` call fails because the page was not as expected —
 `LOCATOR_NOT_FOUND`, `LOCATOR_AMBIGUOUS`, `REF_STALE`, `OFFSCREEN`, `PAGE_ERROR`, `NAV_FAILED` or
@@ -427,8 +476,10 @@ tested, but are **experimental** until a later release: their names or shapes ma
 **What Claude sees through the MCP** is the same machinery: the [locators](#locators) on the action
 tools and `browser_wait_for`, `browser_evaluate {asRef}`, the [failure reports](#failure-reports) with
 their image, and this session's tab ([Tabs](#tabs)) — which never follows you except through
-`browser_use_active_tab`. The MCP's trusted tools do not focus first; `browser_focus_tab` is an
-explicit call.
+`browser_use_active_tab`. The MCP's trusted tools focus first, like the SDK's: `trusted:true` brings
+the tab to the front of its window and leaves it there; untrusted actions never do. *Superseded
+2026-10-25: was "The MCP's trusted tools do not focus first; `browser_focus_tab` is an explicit call",
+because Step 10 S2 made them focus first (#106).*
 
 ## The daemon
 
@@ -515,12 +566,44 @@ with `(output truncated — …)`. Note that `maxString` (5 000) applies only to
 object: a **top-level** string is a primitive that never reaches the in-page serialiser, so it is
 capped by the 20 000-character total instead.
 
-**Not for bulk data.** Everything `browser_evaluate` returns enters the model's context (and the
-session's transcript on disk). Don't page a large result through it in slices — Step 8's SDK-7 did,
-once, as a transport test (53 calls of 8 000 characters), and that is a test device, not a pattern.
-Read bulk data with a script ([Writing a script](#writing-a-script): `tab.evaluate` returns to your
-code, not to a model) or save a file with `browser_download` (decisions.md · 2026-10-24 · Bulk data
-through `browser_evaluate` was a test device only; the MCP gets a `saveTo` path).
+**Bulk data goes to a file: `saveTo`.** Everything `browser_evaluate` returns enters the model's
+context (and the session's transcript on disk). `browser_evaluate {saveTo: <absolute path>,
+overwrite?}` writes the value to that file instead (a string as is, anything else as JSON, without the
+result limits below, up to 256 MiB) and answers only
+
+```
+Saved <path>
+<bytes> bytes · <kind> · sha256 <hex>
+```
+
+where `<kind>` is `string` or `json` — no part of the value (`mcp/src/tools/registry.ts`, the
+`browser_evaluate` handler). The file is UTF-8 without a BOM (a lone surrogate becomes U+FFFD); a
+non-string value is `JSON.stringify`'d in the page. The path must be absolute and its folder must
+exist (nothing is created); an existing file is replaced only with `overwrite: true`; the file is
+written to `<path>.part` and moved into place at the end, so a failure leaves no file. Refused with
+`BAD_PARAMS` before anything is read: a relative path, an existing directory, a missing parent folder,
+an existing file without `overwrite`, an existing `<path>.part`, and `asRef` with `saveTo`
+(`browser_evaluate takes asRef or saveTo, not both — saveTo writes the value to a file, asRef returns a
+ref to an element`); refused `BAD_PARAMS` by the page side: a value that is `undefined`, a function, a
+symbol, a `Map`, a `Set` or a DOM node; `PAGE_ERROR` when `JSON.stringify` throws (a cycle)
+(decisions.md · 2026-10-25 · Stage 0: `saveTo`'s file rules are stricter than `browser_download`'s
+(#207)). Produce a very large value with `return …`: it is then read out of the page in 1 MiB slices,
+while a bare string expression crosses Chrome's debugger as one piece (`sdk/src/tab.ts`
+`evaluateToFile`; #217). The value waits in the extension's memory between slices (5 minutes without a pull,
+8 values, 256 MiB) and is dropped when you turn the bridge off, turn JavaScript off or close the tab
+(`extension/src/evaluate-save-store.ts`). The tool description says it plainly: `Paging bulk data
+through browser_evaluate in chunks is a test device only, never a supported pattern: pass saveTo to
+write a large value to a file instead.` From a script the same is `await tab.evaluateToFile(expression,
+{path})` ([Writing a script](#writing-a-script)). Measured in Step 10's Run 15 on fixture pages: 1 MiB,
+4 MiB, 2 MiB with astral characters across a slice boundary, a JSON value past the result limits, a
+418 754-byte synthetic export and a 64 MiB primitive each saved with the page's own sha256 (rows SAVE-*);
+a refusal's message then read `[chrome.debugger] …` in front of the text, the code and data right
+(SAVE-REFUSE; decisions.md · 2026-10-25 · S7: SAVE-REFUSE's `[chrome.debugger] ` prefix — the product
+stays for now; a fix is offered (#227)). *Superseded 2026-10-25: was "**Not for bulk data.** … Read bulk data with a
+script … or save a file with `browser_download`", because Step 10 S4 built `saveTo` (decisions.md ·
+2026-10-24 · Bulk data through `browser_evaluate` was a test device only; the MCP gets a `saveTo` path
+(#127)) and S8 retired the chunked recipe that paged Step 8's SDK-7 export through it (53 calls of 8 000
+characters, a transport test).*
 
 **`return` and `await`.** Top-level `await` works, and so does a multi-statement script whose last
 expression is the value (`const a = 1; a + 1` → `2`). A bare `return` is also accepted: the bridge
@@ -540,8 +623,10 @@ detaches and you get `Timed out after Ns …` — but **work the page already st
 this browser" banner for the duration, exactly like `trusted:true` input.
 
 **The JavaScript switch.** Untick **Allow JavaScript (browser_evaluate)** in the options page and
-every `browser_evaluate` (and `asRef`) is refused `DISARMED` with scope `evaluate`, while every other
+every `browser_evaluate` (with `asRef` or `saveTo` too) is refused `JS_DISABLED`, while every other
 tool keeps working; the Blackboard recipes need it ticked. See [Safety](#the-javascript-switch).
+*Superseded 2026-10-25: was "refused `DISARMED` with scope `evaluate`", because Step 10 S4b gave
+"JavaScript is off" its own code (#202, #219).*
 
 **`userGesture`.** The expression runs with transient user activation, so popups, autoplay and other
 gesture-gated APIs work — but activation is **not window focus**. Anything gated on
@@ -703,6 +788,9 @@ closes an open options page.
   running waits and drops downloads held for pickup. Measured in Run 13: a trusted `type` stopped 14 ms
   after the press, but Chrome's "is debugging this browser" banner was still shown 3 s later and gone by
   14 s (row SAFE-4 (b)); a running `waitFor` was refused 54–92 ms after the press (SAFE-4 (a), 4c).
+  *Updated 2026-10-25: Step 10's Run 14 measured it again (row R14-4b): the `type` stopped 5 ms after
+  the press, the banner was gone between 4.7 s and 5.0 s after it, and a trusted call after the re-arm
+  worked on the same tab.*
 - **The network log records nothing while off.** Requests recorded before stay, and the network tools
   show them again once you turn the bridge back on.
 
@@ -785,10 +873,14 @@ whose redirect lands on one — the download is refused on its final address and
 but the request went out (`downloadStart` checks its own address before the fetch). Blocking the hop
 itself would need a `declarativeNetRequest` rule, which is not built (decisions.md · 2026-10-24 ·
 `downloadStart` and redirects onto a blocked host; · S1: `downloadStart` checks its own URL against the
-block list only). The download's check of its final address is unit-tested but **not yet measured
-live**: Run 13's redirect test timed out on its own test server, and Step 10 measures it again
-(decisions.md · 2026-10-24 · S4: SAFE-5c's redirect half, SAFE-POP-1, SAFE-3 and SAFE-4(b) are
-re-measured in the next live wave (Step 10)). Finally, a blocked site framed inside an allowed page is
+block list only). The download's check of its final address was measured live in Step 10's Run 14
+(row R14-5c): a download redirected onto a blocked host was refused `DOMAIN_BLOCKED` with no file
+written, and the test server saw the redirect hop and the target each requested once. *Superseded
+2026-10-25: was "unit-tested but **not yet measured live**: Run 13's redirect test timed out on its own
+test server, and Step 10 measures it again (decisions.md · 2026-10-24 · S4: SAFE-5c's redirect half,
+SAFE-POP-1, SAFE-3 and SAFE-4(b) are re-measured in the next live wave (Step 10))", because Run 14
+measured it on a threaded test server (decisions.md · 2026-10-25 · S1: Run 14's results stand as
+recorded (#210)).* Finally, a blocked site framed inside an allowed page is
 not in that page's snapshot (cross-origin frames are never walked), but **it shows in a screenshot** of
 the allowed page.
 
@@ -834,7 +926,9 @@ S2b verifier, `docs/plans/2026-10-24-step9-phase-e-safety-steps/S2b-verifier.md`
 
 An options page left open in a background window may not show a change made elsewhere (the button,
 the shortcut) until you bring it to the front (Run 13 row SAFE-3; cause not determined). The badge is
-the reliable indicator.
+the reliable indicator. *Updated 2026-10-25: with the options window visible beside the window you
+click in, the page showed `Bridge armed.` within 2 s of a toolbar re-arm, without a reload (Step 10's
+Run 15, row R15-3R); the background-window case is as Run 13 found it.*
 
 ### For scripts
 
@@ -894,9 +988,11 @@ scope `"evaluate"`.*
 - **Start with `browser_status`.** It tells you which part is broken: the daemon
   (`Daemon: not connected` plus a `Problem:` line), the extension (not connected), or neither (then
   look at the active tab it reports).
-- **Every call answers `DISARMED`, or one tab answers `DOMAIN_BLOCKED`**: the bridge is off, JavaScript
-  is off (scope `evaluate`), or the site is on your block list — your own controls, working as meant.
-  Check the badge and the `Safety:` line of `browser_status`; see [Safety](#safety).
+- **Every call answers `DISARMED`, `browser_evaluate` answers `JS_DISABLED`, or one tab answers
+  `DOMAIN_BLOCKED`**: the bridge is off, JavaScript is off, or the site is on your block list — your
+  own controls, working as meant. Check the badge and the `Safety:` line of `browser_status`; see
+  [Safety](#safety). *Superseded 2026-10-25: was "JavaScript is off (scope `evaluate`)" under
+  `DISARMED`, because Step 10 S4b added `JS_DISABLED` (#202, #219).*
 - **"No welcome from 127.0.0.1:9234 within 2 s after hello: a pre-Step-6 bridge server holds port
   9234"** from `browser_status` or any tool: an old Claude session still runs the previous bridge
   server. End that session, or stop the process listening on the port (`Stop-Process -Id
@@ -934,8 +1030,13 @@ scope `"evaluate"`.*
   *normal* window.)
 - **`VERSION` with "the Chrome extension is an older build — reload it at chrome://extensions"**: the
   daemon was rebuilt but Chrome still runs the old extension. Reload it (§4).
-- **`trusted:true` "succeeds" but nothing happens on the page**: the tab is in the background (see
-  [What you see](#what-you-see-while-actors-work)); `browser_focus_tab` first.
+- **`trusted:true` "succeeds" but nothing happens on the page**: the tab was not in front when the
+  input ran (see [What you see](#what-you-see-while-actors-work)) — the trusted tools focus first, but
+  another actor's screenshot in the same window can switch tabs between the focus and the input (phase
+  doc 0.2, Stage 0 F19); retry, or `browser_focus_tab` and retry. An untrusted action whose synthetic
+  path failed is retried as trusted input by the extension without focusing: pass `trusted:true`.
+  *Superseded 2026-10-25: was "the tab is in the background …; `browser_focus_tab` first", because
+  Step 10 S2 made the trusted tools focus first (#106).*
 - **A screenshot fails with `TIMEOUT` after 35 s**: the tab's window is entirely covered by other
   windows, so Chrome produces no frame to capture; uncover it (your tab is put back after ~30 s).
 - **"The tab was discarded by Chrome's Memory Saver"**: Chrome unloaded the tab; `browser_focus_tab`

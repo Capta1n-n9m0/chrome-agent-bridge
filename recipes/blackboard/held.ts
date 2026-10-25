@@ -7,6 +7,9 @@
 // and the key both legs read (`held-<course>`). Pure; written 2026-10-23 with its tests
 // (recipes/test/blackboard-held.test.ts). No line here carries a course id beyond the label given, a URL,
 // a title or page content.
+// *Updated 2026-10-25 (Step 10 S8): the MCP leg now reads the held export with one `browser_evaluate {saveTo}` (Run
+// 15's PP1 row; phase doc 0.5, #209); the chunked read-back that consumed `--mcp-plan`'s CHUNK lines is retired.
+// `mcpPlanLines` is unchanged (its lines are pinned by recipes/test/blackboard-held.test.ts).*
 import { MCP_CHUNK_CHARS, MCP_MAX_CHARS } from "./export-file.js";
 import { checkLoadedTab, isAdaCoursePage, Refusal, type CourseArg } from "./guard.js";
 import { chunkExpression, exportKey, startExpression, statusExpression } from "./readonly.js";

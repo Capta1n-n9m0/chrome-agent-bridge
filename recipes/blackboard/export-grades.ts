@@ -6,7 +6,11 @@
 // on `/gradebook/columns` and `/gradebook/columns/<id>/users` under the course's public v2 API; any
 // other op throws here before anything reaches the page, and the page dispatcher refuses it again.
 // The export is canonical (sorted keys, columns by id, grades by userId, no timestamp), so the MCP leg
-// (`--mcp-plan`, then recipes/blackboard/assemble-mcp.ts) can be compared byte for byte by sha256.
+// (one `browser_evaluate {saveTo}` of the held export's text) can be compared byte for byte by sha256.
+// *Retired 2026-10-25 (Step 10 S8): was "(`--mcp-plan`, then recipes/blackboard/assemble-mcp.ts)", because the
+// chunked MCP leg is retired: Run 15's PP1 row read the held export with one `browser_evaluate {saveTo}` (page = SDK
+// file = MCP file by sha256; phase doc 0.5, Stage 0 F9, #209). `--mcp-plan` stays and still prints the
+// START/STATUS/CHUNK expressions; paging bulk data through `browser_evaluate` in chunks is a test device only.*
 //
 // What it needs open: as boot-bb.ts — Chrome logged in to https://ada.blackboard.com, the course id (or
 // URL) as the argument; it opens and closes its own tab (`--keep-open` leaves it open, bb loaded, for the
@@ -22,7 +26,8 @@
 //
 //   npm run recipe -- recipes/blackboard/export-grades.ts <course-id|course-url|course-key> [--overwrite] [--keep-open] [--timeout <s>] [--bbjs <path>]
 //   npm run recipe -- recipes/blackboard/export-grades.ts <course-id> --dry-run
-//   npm run recipe -- recipes/blackboard/export-grades.ts <course-id> --mcp-plan     (prints the MCP leg's expressions; connects to nothing)
+//   npm run recipe -- recipes/blackboard/export-grades.ts <course-id> --mcp-plan     (prints the MCP leg's expressions; connects to nothing;
+//                                                     the MCP leg reads them with browser_evaluate {saveTo}, not in chunks)
 //
 // Held-export mode (added 2026-10-23, decision #103, before S6.3's re-run; recipes/blackboard/held.ts):
 // `--hold` makes the SDK leg build the export ONCE under the key `held-<course>`, read it as before, and
@@ -47,7 +52,7 @@ const NAME = "export-grades";
 const say = (msg: string): void => console.log(`${new Date().toISOString()} ${NAME}: ${msg}`);
 const HELP = `recipes/blackboard/export-grades.ts <course-id|course-url|course-key> [--overwrite] [--keep-open] [--timeout <s>] [--bbjs <path>]
 recipes/blackboard/export-grades.ts <course-id> --dry-run [--fixture-origin http://localhost:<port>]
-recipes/blackboard/export-grades.ts <course-id> --mcp-plan
+recipes/blackboard/export-grades.ts <course-id> --mcp-plan   (the MCP leg's expressions; read the export with one browser_evaluate {saveTo}, never in chunks)
 recipes/blackboard/export-grades.ts <course> --hold [--dry-run]   |   <course> --mcp-plan --hold   |   <course> --drop-held <T#> [--dry-run]
 Reads the course gradebook (read-only) into exports/<course>-<date>.json; prints counts and sha256 only.`;
 

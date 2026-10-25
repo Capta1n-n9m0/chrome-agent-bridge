@@ -11,7 +11,6 @@ import { describe, expect, it } from "vitest";
 import { checkHoldFlags, parseBbArgs, parseCourseArg, Refusal } from "../blackboard/guard.js";
 import { checkHeldTab, droppedLine, heldFoundLine, heldKey, heldLine, keptHeldLine, mcpPlanLines } from "../blackboard/held.js";
 import { chunkExpression, dropExpression, exportKey, PAGE_EXPORT_SRC, startExpression, statusExpression } from "../blackboard/readonly.js";
-import { parseTranscriptChunks } from "../blackboard/transcript.js";
 import { RETURN_RE } from "../../extension/src/evaluate/wrap.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -83,21 +82,6 @@ describe("the MCP plan in hold mode (#103): no START, the held key", () => {
     expect(lines[2]).toBe("# no START: the SDK leg (--hold) built the export once and holds it in its tab; this leg only reads it (M1 = select the tab + the first STATUS)");
     expect(/_\d+_\d+/.test(text)).toBe(false);
     expect(lines).toHaveLength(8);
-  });
-  it("a transcript of that plan is read back on the held key", () => {
-    const s = { state: "done", length: 3, bytes: 3, sha256: "x".repeat(64), columns: 1, grades: 0 };
-    const t = [
-      { message: { content: [{ type: "tool_use", id: "a", name: "mcp__chrome-agent-bridge__browser_evaluate", input: { expression: section(lines, "STATUS:")[0] } }] } },
-      { message: { content: [{ type: "tool_result", tool_use_id: "a", content: [{ type: "text", text: JSON.stringify(s, null, 2) }] }] } },
-      { message: { content: [{ type: "tool_use", id: "b", name: "mcp__chrome-agent-bridge__browser_evaluate", input: { expression: chunkExpression("held-pp1", 0, 8000) } }] } },
-      { message: { content: [{ type: "tool_result", tool_use_id: "b", content: [{ type: "text", text: "abc" }] }] } },
-    ].map((o) => JSON.stringify(o));
-    const r = parseTranscriptChunks(t, heldKey("pp1"));
-    expect(r.errors).toEqual([]);
-    expect(r.status).toMatchObject({ state: "done", length: 3 });
-    expect(r.chunks).toEqual([{ start: 0, end: 8000, text: "abc" }]);
-    // the same transcript gives nothing on the pre-#103 key
-    expect(parseTranscriptChunks(t, exportKey("mcp", "pp1")).status).toBeUndefined();
   });
 });
 

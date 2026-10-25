@@ -1,9 +1,11 @@
-// Tests for recipes/blackboard/export-file.ts (file names, chunk ranges, reassembly, hashes) and
-// recipes/blackboard/transcript.ts (the MCP leg of SDK-7 read back from a Claude transcript).
+// Tests for recipes/blackboard/export-file.ts (file names, chunk ranges, hashes).
+// *Retired 2026-10-25 (Step 10 S8): was "(file names, chunk ranges, reassembly, hashes) and
+// recipes/blackboard/transcript.ts (the MCP leg of SDK-7 read back from a Claude transcript)", because the chunked
+// MCP leg is retired (phase doc 0.5, Stage 0 F9, #209): the `assemble` test and the five `parseTranscriptChunks`
+// tests left with assemble-mcp.ts, transcript.ts and `assemble()`.*
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
-  assemble,
   chunkRanges,
   exportFileName,
   isInside,
@@ -13,8 +15,6 @@ import {
   sha256Hex,
   verifyTransfer,
 } from "../blackboard/export-file.js";
-import { parseTranscriptChunks } from "../blackboard/transcript.js";
-import { chunkExpression, statusExpression } from "../blackboard/readonly.js";
 
 describe("exportFileName", () => {
   const d = new Date(Date.UTC(2026, 9, 23, 23, 30));
@@ -77,12 +77,6 @@ describe("chunks", () => {
   it("MCP chunks stay under the MCP's 20 000-character output cap", () => {
     expect(MCP_CHUNK_CHARS).toBeLessThan(20_000);
   });
-  it("assemble needs contiguous chunks from 0 to the length; identical duplicates are fine", () => {
-    expect(assemble([{ start: 3, text: "def" }, { start: 0, text: "abc" }, { start: 0, text: "abc" }], 6)).toBe("abcdef");
-    expect(() => assemble([{ start: 0, text: "abc" }], 6)).toThrow(/missing/);
-    expect(() => assemble([{ start: 0, text: "abc" }, { start: 4, text: "ef" }], 6)).toThrow(/missing|gap/);
-    expect(() => assemble([{ start: 0, text: "abc" }, { start: 0, text: "abd" }, { start: 3, text: "def" }], 6)).toThrow(/differ/);
-  });
 });
 
 describe("verifyTransfer", () => {
@@ -97,68 +91,5 @@ describe("verifyTransfer", () => {
     expect(() => verifyTransfer(text, { length: 4, bytes: 3, sha256: sha256Hex(text) })).toThrow(/length/);
     expect(() => verifyTransfer(text, { length: 3, bytes: 4, sha256: sha256Hex(text) })).toThrow(/bytes/);
     expect(() => verifyTransfer(text, { length: 3, bytes: 3, sha256: "0".repeat(64) })).toThrow(/sha256/);
-  });
-});
-
-/** One transcript line as Claude Code writes it. */
-function assistant(id: string, expression: string): string {
-  return JSON.stringify({
-    type: "assistant",
-    message: { content: [{ type: "tool_use", id, name: "mcp__chrome-agent-bridge__browser_evaluate", input: { expression } }] },
-  });
-}
-function result(id: string, text: string, isError = false): string {
-  return JSON.stringify({
-    type: "user",
-    message: { content: [{ type: "tool_result", tool_use_id: id, is_error: isError, content: [{ type: "text", text }] }] },
-  });
-}
-
-describe("parseTranscriptChunks", () => {
-  const key = "mcp-_5_1";
-  const status = { state: "done", length: 7, bytes: 7, sha256: sha256Hex("abcdefg"), columns: 1, grades: 2 };
-  it("reads the status and the chunk results of the key, in any order", () => {
-    const lines = [
-      assistant("s1", statusExpression(key)),
-      result("s1", JSON.stringify(status, null, 2)),
-      assistant("c2", chunkExpression(key, 4, 7)),
-      assistant("c1", chunkExpression(key, 0, 4)),
-      result("c1", "abcd"),
-      result("c2", "efg"),
-    ];
-    const r = parseTranscriptChunks(lines, key);
-    expect(r.errors).toEqual([]);
-    expect(r.status).toMatchObject({ length: 7, sha256: status.sha256 });
-    expect(assemble(r.chunks, r.status!.length)).toBe("abcdefg");
-  });
-  it("accepts t5-actor's wrapped lines ({t, m})", () => {
-    const wrap = (l: string): string => JSON.stringify({ t: "2026-10-23T00:00:00Z", m: JSON.parse(l) });
-    const r = parseTranscriptChunks([wrap(assistant("c1", chunkExpression(key, 0, 3))), wrap(result("c1", "abc"))], key);
-    expect(r.chunks).toEqual([{ start: 0, end: 3, text: "abc" }]);
-  });
-  it("records a truncated, errored or wrong-length chunk as an error, never as data", () => {
-    const lines = [
-      assistant("c1", chunkExpression(key, 0, 4)),
-      result("c1", "abcd\n… [truncated: 5 more chars]\n(output truncated — narrow the expression)"),
-      assistant("c2", chunkExpression(key, 4, 7)),
-      result("c2", "PAGE_ERROR: x", true),
-      assistant("c3", chunkExpression(key, 7, 9)),
-      result("c3", "xyz"),
-    ];
-    const r = parseTranscriptChunks(lines, key);
-    expect(r.chunks).toEqual([]);
-    expect(r.errors.length).toBe(3);
-  });
-  it("accepts a short last chunk (asked past the end) and assembles to the status length", () => {
-    const lines = [assistant("c1", chunkExpression(key, 0, 4)), result("c1", "abcd"), assistant("c2", chunkExpression(key, 4, 8)), result("c2", "efg")];
-    const r = parseTranscriptChunks(lines, key);
-    expect(r.errors).toEqual([]);
-    expect(assemble(r.chunks, 7)).toBe("abcdefg");
-  });
-  it("ignores other keys and other tools", () => {
-    const lines = [assistant("c1", chunkExpression("sdk-_5_1", 0, 3)), result("c1", "abc"), "not json", ""];
-    const r = parseTranscriptChunks(lines, key);
-    expect(r.chunks).toEqual([]);
-    expect(r.status).toBeUndefined();
   });
 });

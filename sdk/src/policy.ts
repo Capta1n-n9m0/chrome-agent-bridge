@@ -14,10 +14,15 @@
 //   FE-5 control 0/12 (not void). Read off #78's pre-written table: no input kind passes all its
 //   trials → outcome (B).
 //
-// What (B) means (#78 item 4): the SDK never sends `focusEmulation`; only the SDK's `Tab` focuses
-// first — `Tab.click/type/pressKey({trusted: true})` call `focus()` (`focusTab`) before the input, so
-// the tab comes to the front of its window, the window is focused, and it stays there. The MCP's
-// trusted tools keep today's behaviour (no automatic focus; `browser_focus_tab` stays an explicit call).
+// What (B) means (#78 item 4): the SDK never sends `focusEmulation`; the SDK's `Tab` focuses first —
+// `Tab.click/type/pressKey({trusted: true})` call `focus()` (`focusTab`) before the input, so the tab
+// comes to the front of its window, the window is focused, and it stays there. The MCP's trusted tools
+// focus first too (decisions.md · 2026-10-24 · FE and `focusFirst` are ratified; the MCP's trusted tools
+// focus first too (#106)): `browser_click`/`browser_type`/`browser_press_key` with `trusted: true` call
+// `focusTab` on the same handle before the input (`mcp/src/tools/registry.ts`).
+// *Superseded 2026-10-25: was "only the SDK's `Tab` focuses first … The MCP's trusted tools keep today's
+// behaviour (no automatic focus; `browser_focus_tab` stays an explicit call).", because #106 made them
+// focus first (Step 10 S2).*
 // Untrusted (synthetic, content-script) actions do not focus, and normally work on a background tab.
 // One case escapes the SDK: an untrusted `click`/`type` whose content-script path fails is escalated
 // by the extension itself to CDP input (`extension/src/handlers/actions.ts`), which on a background
