@@ -30,23 +30,30 @@ whole session diff. Put a **How this session runs** block right after the openin
    to the user". Context-overflow rule: "if context runs short, stop at a clean sub-boundary,
    write the as-built for what landed, and list the remainder."
 2. **Read first, in this order** — numbered paths, each with what to take from it
-   (sections, decision titles that bind). `CLAUDE.md` gotchas always.
+   (sections, decision titles that bind). The package `CLAUDE.md` files load by themselves.
 3. **Scope** — numbered items, each concrete: what to produce, from which source, where it
    lands. Split into parts (a)/(b) when the wave is long, with "finish (a) before (b)".
    Flagged defaults: "FLAGGED DEFAULT (execute unless the user objects): …".
-4. **Standing constraints** — this repo's never-violate list, pasted: the security boundary
-   (`127.0.0.1` bind, token gate) is unchanged; the token is never committed or printed;
-   nothing is pushed, tagged or published by the agent; the user's real Chrome profile is
-   not driven and the extension is not reloaded unless granted; the repo is public, so no
-   private URLs, hostnames or credentials enter docs or fixtures; `CLAUDE.md` stays lean
-   (state + pointers + gotchas).
+4. **Standing constraints**: one line pointing to `docs/agent-rules.md` (integrity floor §2,
+   stop list §3), plus only what this wave adds (e.g. "no protocol change", "no extension reload").
 5. **If anything blocks** — record the exact error, surface options with a recommendation,
    stop that branch; never improvise a change to get past a check.
 6. **Exit checks** — lettered (a), (b), … each checkable (`npm test` count, typecheck,
    build, a grep that must return nothing, a doc section that must exist).
 7. **When done, update statuses** — which plan/roadmap statuses flip; append the as-built
-   (format: [`asbuilt.md`](asbuilt.md) § Wave) to the named record doc; run
+   (format below) to the named record doc; run
    `session-closeout`; commit; say what the next session is.
+
+## Wave as-built (appended to the record doc)
+
+```markdown
+## <Wave name> as-built — <plain title> (YYYY-MM-DD)
+### What changed, by scope item
+### Every behaviour or number that moved   (| Item | Was | Now | Source |)
+### Builds and checks                      (exit checks with results)
+### Deliberately left for later            (item → why → who owns it)
+### Proposed decisions — for the user      (Options · Recommendation · Why · Revisit if)
+```
 
 ## Lessons carried from the exp3 waves
 

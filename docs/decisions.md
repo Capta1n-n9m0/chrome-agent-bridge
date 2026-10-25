@@ -115,6 +115,25 @@ None open now. *Updated 2026-10-25: all Step 10 open decisions are ruled (#229).
 
 ## Log
 
+### 2026-10-25 · Lean procedures: rules by pointer, package CLAUDE.md files, risk-tiered models (#230)
+**Decided:** Rules every agent follows live once, in `docs/agent-rules.md`; briefs, kickoffs and skills point to
+it and never paste rules, spec text or numbers (`briefs/common.md` and the "paste verbatim" step end). The root
+`CLAUDE.md` keeps the map, state and cross-package invariants; each package's gotchas move to its own `CLAUDE.md`,
+which loads when an agent opens a file there (probed 2026-10-25). `CLAUDE.md` files carry no history notes. Fewer
+files per stage; the as-built is a section of the phase doc. A cleanup pass (`cleanup-pass` skill,
+`scripts/doc-check.mjs`) replaces the propagator. `decisions.md` keeps open and standing decisions and the current
+step; closed steps go to `docs/decisions-archive/`. Low-risk stages (no contract file, nothing on the safety
+side) get Sonnet at effort high for builders and fixers, Opus after two failed Sonnet fix rounds; every verifier,
+step and session agent stays Opus; low-risk cleanup areas run Sonnet. The three-level agent tree stays.
+**Why:** Step 10 cost about 17.5 h and 336k words in its steps dir from 46 briefs, each carrying 4.6k words of
+pasted rules on top of a 13.3k-word `CLAUDE.md` loaded by every agent; the user: "it is getting out of control",
+"we don't want to sacrifice quality for speed, we just want to remove the bloat".
+**Instead of:** keeping all-Opus (#203) and the pasted blocks; or cutting verification levels (the user keeps the
+levels and full cycles to keep each agent's context small).
+**Revisit if:** Step 11's trial (`docs/plans/2026-10-25-lean-procedures.md` § Trial) shows more verifier findings
+or live defects on Sonnet-built stages, or a package gotcha that failed to load where it was needed.
+**By:** user (discussed 2026-10-25)
+
 ### 2026-10-25 · The user rules on Step 10's open decisions; Step 10 closes (#229)
 **Decided:** after reading `docs/plans/2026-10-25-step10-open-decisions-review.md`, the user ruled in four groups:
 - **saveTo (A1–A4): accepted as built** — #205 (store + 1 MiB pulls), #207 (strict file rules), #218 (method names,

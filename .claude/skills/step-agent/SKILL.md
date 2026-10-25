@@ -1,97 +1,67 @@
 ---
 name: step-agent
-description: Templates for the stage level of a long autonomous run in this repo — the STEP BRIEF the session agent hands a step agent, the ledger, the step-report schema with Proposed decisions, the ESCALATION list, and the builder / verifier / fixer / propagator prompts (in role-prompts.md). Use when spawning a step agent or any builder/verifier/fixer/propagator, when acting as one, or when resuming one from its ledger.
+description: Brief templates for the stage level of a long autonomous run in this repo — the STEP BRIEF the session agent hands a step agent, the leaf brief a step agent hands a builder, verifier, fixer or live runner, and the ledger format. Use when spawning a step agent or any builder/verifier/fixer/runner, when acting as one, or when resuming one from its ledger.
 ---
 
 # Step agent kit
 
-Roles, waiting and revival rules: the **`long-run`** skill. Role prompts for level-2 agents
-and the propagator: [`role-prompts.md`](role-prompts.md). Ledgers, reports, briefs and
-evidence live in the phase's steps dir: `docs/plans/<phase>-steps/` (e.g.
-`docs/plans/2026-10-21-step6-steps/`); the kickoff names it.
+Roles, report format, models, waiting and commits: **`docs/agent-rules.md`**. The session agent's
+side: the **`long-run`** skill. Ledgers, reports and evidence live in the phase's steps dir
+`docs/plans/<phase>-steps/`; the kickoff names it.
 
-## STEP BRIEF TEMPLATE (session agent → step agent)
+## Brief rules
+
+A brief points; it does not paste.
+- **Must not contain:** rules from `agent-rules.md`, phase-doc or spec text, numbers copied from a
+  record (write "numbers only from `<file>`"), lessons (point to the package `CLAUDE.md` or the
+  phase doc section that holds them).
+- **Over ~1k words is a warning sign:** something was pasted.
+- **Verifiers get the same READ list as the builder**, plus the builder's report labelled "claims
+  to audit". They read the phase doc and spec themselves.
+- Briefs are not saved as files. The report names the brief's READ list.
+- Pass `model` on every `Agent` call (`agent-rules.md` §7), and `effort: "high"` for Sonnet.
+
+## STEP BRIEF (session agent → step agent)
 
 ```
-You are the STEP AGENT for stage <STAGE> ("<plain stage name>") of <PHASE> of the
-chrome-agent-bridge repo (C:\Users\aliev\Projects\chrome-remote-extention; Git Bash shell;
-checks: `npm run typecheck`, `npm test`, `npm run build`). Read CLAUDE.md first — its
-"Runtime gotchas" are measured facts and bind.
-Model: <as the kickoff states>; every agent you spawn: model "<same>".
-GOAL: <one paragraph>.   INPUTS: <phase-doc stage texts verbatim; design-spec sections that
-bind; as-built register so far; prior step reports; PIDs of anything running>.
-EXIT CRITERIA: <checkable list; pass rules written down before anything is measured>.
-WAITING: you hold long waits yourself — run the job in the background, end your turn, get
-re-invoked by its completion; never a foreground sleep loop. A notice that a child is
-"waiting on its own background work" is NOT completion: end your turn and wait for its
-hand-back report. Your builders/verifiers/fixers finish in one go and never wait.
-HOW YOU WORK: a builder does the work (role-prompts.md §Builder; failing test first for
-pure logic). Then an INDEPENDENT verifier (never the builder; treats the builder report as
-claims to audit; re-runs typecheck/test/build from a clean tree, re-derives counts, attacks
-the spec as well as the code, checks the CLAUDE.md invariants, checks that new tests fail
-without the change). FAIL → fixer → the verifier re-checks only the affected items. At most
-2 fix rounds, then escalate. Level-2 agents must NOT spawn agents. Read their outputs and
-the resulting files yourself before accepting.
-LEDGER: keep <steps-dir>/<STAGE>.ledger.md current after every substep. If respawned,
-resume from it.
-AUTHORITY: decide mechanical and stage-local design questions. Put each one in your report
-under "Proposed decisions" in the decisions.md format (below). Never edit decisions.md,
-the as-built register or CLAUDE.md yourself.
-ESCALATE (stop that line of work, report, return): <ESCALATION list + phase additions>.
-OUTPUT: <steps-dir>/<STAGE>.md per the report schema.
-Commit your stage's code/docs via a builder: exact file list (never dist/, never
-bridge.token or .env, never `git add -A`), message
-"<type>(<scope>): <stage> — <what> (verifier: PASS|PASS-with-notes)" with a body that says
-why, plus the session's Co-Authored-By / Claude-Session trailers; on git index.lock, wait
-and retry. Never push.
-Return a ≤ 15-line summary + the report path.
-<SPEC-DISCREPANCY PROTOCOL — verbatim from the kickoff>  <INTEGRITY FLOOR — verbatim>
-<LESSONS relevant to this stage>
+You are the STEP AGENT for stage <STAGE> ("<plain name>") of Step <N> (<plain title>) of the
+chrome-agent-bridge repo. Read docs/agent-rules.md first; it applies in full except the
+deviations below. Your role: §6 Step agent.
+RISK: low | standard → models per agent-rules.md §7.
+GOAL: <one paragraph: what, and why it matters>.
+READ: <phase doc § stage, with its exit-check IDs>, <spec §§ that bind>, <as-built sections of
+earlier stages it builds on>, <prior step reports>. DO NOT READ: <run records, raw logs>.
+EXIT CRITERIA: the phase doc's exit checks <IDs>; <any stage-specific addition>.
+LANE: <files/packages it may change>. Anything outside escalates.
+DEVIATIONS from agent-rules.md: <only the differences, or "none">.
+RUNNING NOW: <PIDs, or "nothing">.
+OUTPUT: <steps-dir>/<STAGE>.md. Commit via the builder, message per agent-rules.md §10, trailer:
+<trailer>.
 ```
 
-Scopes for commit messages: `server`, `extension`, `shared`, `daemon`, `sdk`, `mcp`, `docs`,
-`test`, or none for cross-cutting changes (`feat: …`), as in `git log`.
+## LEAF BRIEF (step agent → builder / verifier / fixer / runner)
 
-## Ledger (`<STAGE>.ledger.md`)
+```
+ROLE: builder | verifier | fixer | live runner — stage <STAGE> of Step <N>, chrome-agent-bridge.
+Read docs/agent-rules.md first (your role: §6 <role>); it applies in full except the deviations.
+GOAL: <one paragraph>.
+READ: <same list as the step brief, narrowed to the task>. <Verifier: + "claims to audit:
+<builder report path>". Fixer: + "findings: <verifier report path> items <n>">.
+EXIT CRITERIA: <exit-check IDs from the phase doc>.
+LANE: <files>.
+DEVIATIONS: <or "none">.
+OUTPUT: <steps-dir>/<STAGE>-<role>[n].md. Commit: yes (trailer: …) | no.
+```
 
-Append-only, one line per milestone: UTC timestamp · substep · state (started / done /
-failed) · artifacts (commit hash for code; path + sha256 for evidence files) · PIDs + log
-paths for anything running · watcher state · next substep. For a long job: launched (PID),
-first health check, watcher started, exit observed, close checks. It is the recovery path
-after outages and respawns. Timestamps come from `date -u`, never estimates.
+## Ledger (`<STAGE>.ledger.md`): stages that hold a wait only
 
-## Step report schema (`<STAGE>.md`)
+Append-only, one line per milestone: UTC time (`date -u`) · substep · state (started / done /
+failed) · artifacts (commit hash; evidence path) · PIDs and log paths · watcher state · next
+substep. It is the recovery path after outages and respawns.
 
-1. **Verdict** — DONE | DONE-PARTIAL | BLOCKED | ESCALATE
-2. **Outputs** — commits, files, evidence paths + sha256; measured numbers (test counts,
-   timings, sizes) with the command that produced them
-3. **Verifier verdict** — PASS | PASS-with-notes | FAIL, path to the verifier's own file
-4. **Deviations from the phase doc** — what, why
-5. **Proposed decisions** — one block each:
-   ```
-   ### YYYY-MM-DD · <plain title>
-   **Decided:** … **Why:** … **Instead of:** … **Revisit if:** … **By:** Claude (proposed)
-   ```
-   Contract decisions with no pre-stated rule are marked "for user review".
-6. **Findings** — pre-registered FAILs reported, never re-tuned; new runtime gotchas worth a
-   `CLAUDE.md` bullet, stated as measured facts
-7. **Handoff** — PIDs, log paths, watcher state, what the next stage needs, what needs the
-   user's keyboard (extension reload, MCP reconnect, live E2E)
+## What a stage leaves in the steps dir
 
-## ESCALATION list (default; the kickoff may extend it)
-
-A step agent escalates instead of deciding on:
-- anything touching a pre-registered rule or a fact of the design of record;
-- an effect outside its own stage (another package — `server/`, `extension/`, `shared/` —,
-  a later stage, a shared script, the wire protocol);
-- any integrity-floor item, or anything on the `long-run` §4 stop list;
-- a `CLAUDE.md` runtime-gotcha invariant that would have to change (e.g. `unwrapResult`
-  treating null OR undefined as failure, the content script as an IIFE, no top-level `await`
-  in the service worker, `webRequest` listeners at the top level, never logging URLs);
-- a guard, timeout or test firing that is not explained, or a recorded "Revisit if"
-  trigger being met;
-- an unexplained port-9234 conflict or an orphan process it did not start;
-- anything that needs the real Chrome profile (extension reload, live E2E) unless granted;
-- a permission or classifier denial;
-- 2 failed fix rounds;
-- a check that cannot be made discriminating.
+`<STAGE>.md` (step report), `<STAGE>-verifier.md` (and `-verifier2.md` after a fix round),
+fixer reports only if a fix round ran, a ledger only for a waiting stage, and evidence the
+phase doc asks for (run records, logs as `.txt`). Nothing else: no brief copies, no raw dumps
+pasted into reports.
