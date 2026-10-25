@@ -440,6 +440,12 @@ windows the wave opened; (5) on any STOP line the runner restores and returns; (
 results into `docs/e2e-test-plan.md` §5 as Run 16, with the run record and the daemon log as `.txt`; a fresh
 verifier re-reads the record against the pre-written text and scans for `scheme://host`, the token, the test
 patterns, the sentinel folder and the profile path by count. A failed row is recorded, never fixed in the wave.
+*Split 2026-10-25 (the user; decisions.md · 2026-10-25 · S5 is split into seven slices; the stopped prep is
+salvaged per slice (#271), · Builders, fixers and live runners run Sonnet at medium effort from S5 on (#270)):* S5
+runs as **S5-sheet → S5-fixtures → S5-helpers → S5-driver → S5-liveA → S5-liveB → S5-record**, one step agent each,
+doers on Sonnet (medium), verifiers Opus. The first S5 attempt (19:05–19:52Z) was stopped in prep; nothing live ran
+and nothing was committed; its files are salvaged outside the repo. Exit checks S5.1–S5.7 bind unchanged: S5.1 is
+met by S5-sheet's commit preceding S5-liveA's first observation.
 - [ ] S5b, only if SW-2 reads "runs to its bound": the fix (failing test first where pure) and its re-measure row.
       **Lane (S5b):** `extension/src/tabs.ts` and its tests; a top-level listener escalates.
 

@@ -55,6 +55,8 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-25 · Lean procedures: rules by pointer, package CLAUDE.md files, risk-tiered models (#230) — this file (Log)
 - 2026-10-25 · Commits carry exactly one trailer and no Claude-Session line (#231) — this file (Log)
 - 2026-10-25 · Gotchas follow the code they bind (#232) — this file (Log)
+- 2026-10-25 · Builders, fixers and live runners run Sonnet at medium effort from S5 on (#270) — this file (Log)
+- 2026-10-25 · S5 is split into seven slices; the stopped prep is salvaged per slice (#271) — this file (Log); its rule for small iterations is in `agent-rules.md` §7
 
 **Product promises: the daemon, the clients and their lifecycle**
 - 2026-10-21 · The actor name carries the MCP's own process id (#2) — `decisions-archive/step6.md`
@@ -173,6 +175,34 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
+
+### 2026-10-25 · S5 is split into seven slices; the stopped prep is salvaged per slice (#271)
+**Decided:** S5 runs as slices, one Opus step agent each, in order: **S5-sheet** (§4.23 rows with expected text,
+SAVE-REFUSE-R and SW-2 included) → **S5-fixtures** (the fixture pages and the CSP server) → **S5-helpers** (the
+TypeScript actor and pass-rule helpers with their rule tests, `recipes/tsconfig.s11.json`) → **S5-driver** (the
+PowerShell wave driver: options-page edit and read-back, toggle read, reload) → **S5-liveA** (reload, loaded-build
+proof, UP-0, SAVE-REFUSE-R, SW-2, the refusals before the attach, the options rows, the toggle-off RECORD row,
+restore) → **S5-liveB** (the upload rows, only with file access on: found on, or G11-3 granted) → **S5-record**
+(the fresh verifier's row-by-row check, Run 16 in §5). The stopped prep builder's uncommitted files (about 5.6k
+lines) are kept outside the repo in `C:\Users\aliev\Projects\step11-s5-salvage\` (the §4.23 draft as a patch);
+each slice's builder may take its own piece from there, which its verifier audits like new work, or rewrite it
+smaller.
+**Why:** the user, 2026-10-25: "current step's builder agent context is over 700k … break up step in smaller
+iterations". The single prep builder (Sonnet, high) wrote 18 files in 45 min with no commit; its brief pointed at
+four sections of a 460 KB `e2e-test-plan.md`. The user chose salvage per slice.
+**Instead of:** restarting S5 as one prep and one live stage; discarding the prep; verifying it whole.
+**Revisit if:** a slice's builder still exceeds its budget (then split further).
+**By:** user (the split and salvage); Claude (the slice boundaries)
+
+### 2026-10-25 · Builders, fixers and live runners run Sonnet at medium effort from S5 on (#270)
+**Decided:** for the rest of Step 11 (and as the standing rule in `docs/agent-rules.md` §7 until the user says
+otherwise) builders, fixers and live runners run Sonnet, effort medium, on every stage; verifiers, step agents and the
+session agent stay Opus; two failed Sonnet fix rounds → a third on Opus.
+**Why:** the user, 2026-10-25, after S5's prep builder passed 700k tokens of context: "We need to change our plan to
+run Sonnet on medium effort"; asked which roles, the user chose the doers, keeping an independent Opus check.
+**Instead of:** #230's Opus doers on standard stages and Sonnet high on low ones; all roles on Sonnet.
+**Revisit if:** Step 11's trial shows more verifier findings or live defects on these stages.
+**By:** user (2026-10-25)
 
 ### 2026-10-25 · S3: the Upload folders box (#269)
 **Decided:** its own textarea and Save on the options page; invalid lines listed by number with a reason (#257's

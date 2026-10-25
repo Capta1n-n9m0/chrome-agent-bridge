@@ -139,6 +139,13 @@ stage **low** or **standard**.
   builders and fixers of standard stages, the lead cleaner and the area cleaners the `cleanup-pass`
   table marks Opus.
 - Headless `claude -p` E2E actors may run Sonnet.
+- **In force from Step 11 S5 (the user, 2026-10-25, #270):** builders, fixers and live runners run **Sonnet,
+  effort medium**, on every stage, low or standard; verifiers, step agents and the session agent stay Opus. Two
+  failed Sonnet fix rounds → a third on Opus, as above. This replaces the two bullets above where they differ.
+- **Small iterations (#271):** a stage whose build would exceed about 600 new lines or one coherent deliverable is
+  split into slices before it starts, one step agent each. A brief names line ranges, never a whole file over ~2k
+  lines (`docs/e2e-test-plan.md` is ~460 KB). A builder that finds its slice larger than briefed stops and reports
+  DONE-PARTIAL with what remains, rather than growing its context.
 - Every report states the model it ran on. Step reports record the verifier's findings per stage, so
   Sonnet-built and Opus-built stages can be compared.
 
