@@ -109,7 +109,7 @@ Details and measured facts are in the package file named; the integrity floor is
 ```bash
 npm install
 npm run build        # daemon/dist/index.js + mcp/dist/index.js + extension/dist/{sw,options,offscreen,content}.js
-npm test             # vitest — 4087 passed, 158 files (`npm test` 2026-10-26, Step 11b S1; recipes/test included)
+npm test             # vitest — 4111 passed, 159 files (`npm test` 2026-10-26, Step 11b S2; recipes/test included)
 npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension (chained with `&&`; see the cross-package gotchas below)
 npm run recipe -- recipes/<file>.ts [args]   # a script against the SDK, run with tsx (= npx tsx recipes/<file>.ts)
 npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10, .s11 cover the others; all six exit 0 since Step 11 S3c — run them: a code stage can break one, as S3 did)

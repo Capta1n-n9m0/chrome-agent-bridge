@@ -185,6 +185,21 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-26 · S2: the keeper is accepted; it re-syncs when the last live call ends; S3a bounds DNR calls (#301)
+**Decided:** S2's keeper (`e7bb081`, 682 lines against a ~500 cap, accepted as complete). Three things go to S3a,
+which may edit the keeper for them: (a) after a rejected rebuild, the keeper retries a clear when the last live call
+ends and is synced again if it succeeds (a successful update with no live call is the "rebuild that succeeds" of
+#292), instead of staying unsynced until the next list edit or a worker restart (S2 verifier V3); (b) a time bound on
+each DNR call, past which the call is refused and the timed-out add's ids are kept for later removal (V2); (c)
+`back`/`forward` hold their tab rule until the load they start has settled, or S3a records why it cannot and Run 17
+measures it. R1's missing test (a rejected install keeps the leftover rules) is added in S3a.
+**Why:** (a) a failed update must not leave the bridge refusing navigations for an unbounded time when nothing is in
+flight, and no security is lost (a call still needs a synced keeper to proceed); (b) a DNR call that never settles
+would hang every covered call; (c) a rule removed before the hop it exists for does nothing.
+**Instead of:** shipping S2's "unsynced until the next edit" (harsher than 0.5's intent); no bound.
+**Revisit if:** Run 17 shows a rule outliving its call.
+**By:** Claude
+
 ### 2026-10-26 · S1: a default-port pattern makes two regex rules; an over-long regex fails closed (#300)
 **Decided:** a pattern with a default port (`host:443`, `host:80`) makes two short regex rules (with and without the
 port, as the URL can carry it) instead of one alternation, each regex capped at 119 characters by a test; a host long

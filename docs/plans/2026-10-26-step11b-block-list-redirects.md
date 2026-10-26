@@ -453,6 +453,15 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   guards; a fuzz found 0 disagreements with `isUrlBlocked` in 7.5 M pairs. Round 1 failed on regexes too large for
   Chrome's memory cap; fixed by #300. Tests 3845/157 → 4087/158, none removed. Report `…-steps/S1.md`.
 
+### S2 · 2026-10-26 · `e7bb081` · verifier PASS-with-notes (one fix round)
+- `safety-dnr-keeper.ts`: per-call id ranges, install before the first side effect, removal on every path, atomic
+  rebuild on a list change, the start-up clear behind `ready`, the unsynced state, fail closed with
+  `stateUnreadableRefusal()`; a disarm does not lift a running call's rules (`sweep()` removes only orphans, #296).
+  After a rejected removal, every later update retries the leftovers. No `chrome.*`, no log.
+- D2.1–D2.4 met; both required mutants red. Tests 4087/158 → 4111/159, none removed. 682 lines (cap ~500), accepted
+  complete. Carried to S3a by #301: re-sync when idle, a DNR time bound, `back`/`forward` timing, R1's test. Report
+  `…-steps/S2.md` (S3a's call shape: `S2-builder.md` §7; await `release()` before reading `refusal()`).
+
 ## Open items
 
 - **Ruled 2026-10-26:** 0.3 (A), 0.4 (C) (#290); S0F's what (#288).
