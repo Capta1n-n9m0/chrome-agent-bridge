@@ -34,3 +34,5 @@ effort · start → end.
 - 2026-10-26T20:15Z · S3b · step agent · Opus · medium · end — DONE, `7580d59`, verifier PASS-with-notes (one fix round); tests 4158/161; #303; extension Key files gain the three DNR modules.
 - 2026-10-26T20:15Z · S4-sheet · step agent · Opus · medium · start
 - 2026-10-26T20:46Z · S4-sheet · step agent · Opus · medium · end — DONE, `336547d` (§4.24, before any observation), verifier PASS-with-notes (two fix rounds); #304.
+- 2026-10-26T20:47Z · S4-helpers · step agent · Opus · medium · start
+- 2026-10-26T23:58Z · S4-helpers · step agent · Opus · medium · end — DONE, `8899cba`, verifier PASS-with-notes (three fix rounds); tests 4472/177; #305; #306 (RD-LOGS: Chrome's own blocked-request lines counted apart, decided before the run).

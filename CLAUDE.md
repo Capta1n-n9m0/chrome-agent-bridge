@@ -109,10 +109,10 @@ Details and measured facts are in the package file named; the integrity floor is
 ```bash
 npm install
 npm run build        # daemon/dist/index.js + mcp/dist/index.js + extension/dist/{sw,options,offscreen,content}.js
-npm test             # vitest — 4158 passed, 161 files (`npm test` 2026-10-27, Step 11b S3b; recipes/test included)
+npm test             # vitest — 4472 passed, 177 files (`npm test` 2026-10-27, Step 11b S4-helpers; recipes/test included)
 npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension (chained with `&&`; see the cross-package gotchas below)
 npm run recipe -- recipes/<file>.ts [args]   # a script against the SDK, run with tsx (= npx tsx recipes/<file>.ts)
-npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10, .s11 cover the others; all six exit 0 since Step 11 S3c — run them: a code stage can break one, as S3 did)
+npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10, .s11, .s11b cover the others; all seven exit 0 at Step 11b S4-helpers — run them: a code stage can break one, as S3 did)
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
 token + port `9234` in its Options. The MCP config points at `<repo>/mcp/dist/index.js`; nobody starts

@@ -479,6 +479,17 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - S3 as a whole: D3.3 (empty diff since `ecd254f`), D3.4, D3.5 (+0 log sites) met. Tests 4135/160 → 4158/161, none
   removed. Run 17: RD-DL-HOP, RD-CAPS-WARN. Report `…-steps/S3b.md`.
 
+### S4-sheet · 2026-10-27 · `336547d` · verifier PASS-with-notes (two fix rounds)
+- §4.24 committed before any observation (D4.1): STOP lines, fixtures and ports (8081, 8083, 8085–8089, 8091; 8090
+  closed), K17 constants table, every 0.10 row as amended, F-rows, Run 16's carried rows as `R17-`, RD-LOGS,
+  RD-RESTORE. #304. Report `…-steps/S4-sheet.md`.
+
+### S4-helpers · 2026-10-27 · `8899cba` · verifier PASS-with-notes (three fix rounds, the third Opus)
+- Every command the sheet names, in `recipes/s11b*` (servers on 8086, 8091, 8087; `B17` subcommands; `s11b-win.ps1`
+  console and window helpers; the `R17` block runner with liveA/liveB, the G11-3 gate, RD-0's fallback, a STOP map),
+  16 test files, `recipes/tsconfig.s11b.json`. Offline only. Tests 4158/161 → 4472/177, none removed. #305, #306.
+  Report `…-steps/S4-helpers.md`.
+
 ## Open items
 
 - **Ruled 2026-10-26:** 0.3 (A), 0.4 (C) (#290); S0F's what (#288).

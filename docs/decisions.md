@@ -185,6 +185,31 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-27 · Before Run 17: Chrome's own blocked-request lines are counted apart in RD-LOGS (#306)
+**Decided:** before any Run 17 observation, RD-LOGS gains a dated note and its helper a tested category: a line Chrome
+itself writes into the worker console for a request DNR blocked (the `net::ERR_BLOCKED_BY_CLIENT` network-error form)
+naming the BLK fixture origin is counted as `chrome-blocked=<n>` and reported, not a STOP; every other occurrence of a
+test pattern — any `[bridge]` line, `daemon.log`, an actor's result, any other console line — stays a STOP as written;
+such Chrome lines are redacted to a label in committed evidence. Built and verified as S4-live's first substep, then
+committed, before the live runner starts.
+**Why:** S4-helpers' verifier (n8) foresaw that blocking the hop — the step's purpose — makes Chrome log it; the scan
+exists to prove product code never logs a pattern (root `CLAUDE.md` invariant), which Chrome's own line does not
+test. Decided before the run, so no result is flattered; the product's log rule is unchanged.
+**Instead of:** a wave whose final scan stops on Chrome's expected behaviour, decided only after seeing it.
+**Revisit if:** a blocked-request line comes from anywhere but Chrome's network-error output.
+**By:** Claude
+
+### 2026-10-27 · S4-helpers accepted; its three proposals adopted (#305)
+**Decided:** S4-helpers as built (`8899cba`; eight builder slices, three over the 600-line cap; one exclude line in
+`recipes/tsconfig.s6.json` outside the lane; a stuck shell of its own builder killed): `B17 stored` sends the stored
+list to a local listener and prints only `STORED match=<yes|no> lines=<n>`; the extension reload runs before the worker
+console is opened; RD-7 does not run without the console.
+**Why:** no hash or list text reaches a capture; a reload would close the console window.
+**Instead of:** printing hashes into a scanned stream.
+**Revisit if:** the worker cannot reach the local listener (untested offline): then `B17 stored` is NOT MEASURED and
+RD-RESTORE falls back to the options page's own read-back.
+**By:** Claude
+
 ### 2026-10-27 · S4-sheet: Run 17's sheet committed; the delayed redirector is a new `s11b-delay` server (#304)
 **Decided:** §4.24 as committed in `336547d` before any observation; RD-5b's held redirect is served by a new
 `recipes/s11b-delay*` server rather than a `--delay` flag on `s9-redirect.py`, which stays unchanged as the phase doc
