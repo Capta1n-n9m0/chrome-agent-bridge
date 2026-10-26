@@ -744,6 +744,24 @@ The block itself is left as written.*
     as an existing file; nothing was uploaded`. Order: `DISARMED` > `DOMAIN_BLOCKED` > `UPLOAD_REFUSED` (folders,
     then file access) > this `BAD_PARAMS`. The file may still change between the check and Chrome's read (accepted,
     #296). The SDK's own preflight (#262) is unchanged and still answers first for an SDK or MCP call.*
+- *Amended 2026-10-26 (Step 11b S3a; phase doc `docs/plans/2026-10-26-step11b-block-list-redirects.md` 0.3–0.6;
+  decisions.md · 2026-10-26 · Step 11b: the rule set stays equal to the block list and fails closed (#292); · `newTab`
+  stays uncovered until the user rules on opening it on `about:blank` (#295); · Stage 0's reconciled proposals adopted;
+  S0F split; the download half is built (#296); · S2: the keeper is accepted; it re-syncs when the last live call ends;
+  S3a bounds DNR calls (#301)). No method, code, event, field or message is added:*
+  - *The block list now stops a covered call's redirect hops, not only its reply. While a `navigate`, `back` or
+    `forward` runs, the extension holds Chrome session rules (`declarativeNetRequest`, the
+    `declarativeNetRequestWithHostAccess` permission) that block the tab's top-level requests to every blocked host,
+    built from the call's own read of the list; they go in after the gate's check before the first side effect and
+    come out after the post-check, on every path. A list edit mid-call replaces them. A hop onto a blocked host is
+    never requested; `navigate` still answers `DOMAIN_BLOCKED` with an existing block message (its post-check reads the
+    blocked URL). `back`/`forward` holding rules wait for the load they start (at most 10 s, never an error) before they
+    answer, so the rule outlives the hop. The human's own browsing, every other method and `newTab` (#295) are
+    unchanged; `downloadStart` follows in S3b.*
+  - *If a rule update fails, takes longer than 5 s, or the list needs more rules than Chrome allows, the covered call
+    is refused before its side effect with the existing state-unreadable answer (`DISARMED {scope:"all"}`,
+    `STATE_UNREADABLE_MESSAGE`), never Chrome's text; after a failed rebuild the running covered calls are refused
+    that way and new ones too, until a rebuild or, once no covered call runs, a clear succeeds.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
