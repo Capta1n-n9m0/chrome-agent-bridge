@@ -730,6 +730,20 @@ The block itself is left as written.*
     in any case) is invalid: the options page marks it with its own reason, which names no path, and the gate's
     matcher never uses it, also when it is already in `storage.local` (fails closed). A folder inside a home stays
     allowed. The `UPLOAD_REFUSED` answer and message are unchanged.*
+- *Amended 2026-10-26 (Step 11b S0F-b; phase doc `docs/plans/2026-10-26-step11b-block-list-redirects.md` 0.11;
+  decisions.md · 2026-10-26 · The user rules Step 11's gate; Step 11 closes (#288) item 3c, changing #284; · Stage 0's
+  reconciled proposals adopted; S0F split; the download half is built (#296)). No method, code, event or field is
+  added:*
+  - *`uploadFiles` refuses a path that is not an existing file, and the page receives no file. After the file-access
+    check (`UPLOAD_REFUSED`, #245 (b)) and before anything touches the page, the service worker fetches each path's
+    `file:` URL in order: only status 200 with a readable first chunk counts as a file. A rejected fetch (missing, or
+    unreadable: Chrome does not tell them apart), status 0 (a folder), and anything else (another status, a failed
+    read, an entry still unanswered when the whole check's one 5 s deadline passes) refuse `BAD_PARAMS`, no `data`, with a fixed message naming the entry's index, never
+    its path: `upload: paths[<i>] does not exist (or Chrome cannot read it); nothing was uploaded`, `upload:
+    paths[<i>] is a folder, not a file — pass a file; nothing was uploaded`, `upload: paths[<i>] could not be checked
+    as an existing file; nothing was uploaded`. Order: `DISARMED` > `DOMAIN_BLOCKED` > `UPLOAD_REFUSED` (folders,
+    then file access) > this `BAD_PARAMS`. The file may still change between the check and Chrome's read (accepted,
+    #296). The SDK's own preflight (#262) is unchanged and still answers first for an SDK or MCP call.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
