@@ -46,7 +46,7 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   `"disarmed" | "armed" | "ignored" | "write-failed"`, the 1 s re-arm guard, `readStoredArmed`, the
   `safetyState` reporter), `safety-call.ts` (one call's gate at receipt, before each first side effect,
   and the post-check), `safety-debugger.ts` (the session registry `detachAll` at disarm),
-  `safety-network.ts` (the ingest filter), `upload-paths.ts` (Step 11: the upload-folder matcher, pure, no log;
+  `safety-network.ts` (the ingest filter), `upload-exists.ts` (Step 11b S0F-b: the pre-attach file check, its pure parts tested), `upload-paths.ts` (Step 11: the upload-folder matcher and, since S0F-a, the home-folder predicate, pure, no log;
   #236, #249, #258), `upload-files.ts` (Step 11: the upload's CDP steps in one session — finder in a
   `Page.createIsolatedWorld` world, `DOM.setFileInputFiles`, the unmark; the shipped strings are closure-free and
   tested), `handlers/upload.ts` (the `uploadFiles` handler: the file-access check before the attach, #245 (b)),
@@ -255,9 +255,10 @@ Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind the
 - **`DOM.setFileInputFiles` needs the extension's "Allow access to file URLs"** (Chromium answers "Not
   allowed" otherwise, `stage0-cdp.txt`): `handlers/upload.ts` reads `isAllowedFileSchemeAccess()` before attaching and
   refuses `UPLOAD_REFUSED` (`NO_FILE_ACCESS_MESSAGE`). A wave never presses it (G11-3). With it on, an upload
-  reached a **background tab** with no focus or lock (Run 16 UP-1). A raw `uploadFiles` of an absent
-  file inside an allowed folder answers `ok`, the page gets a file: only the SDK preflight checks disk (UP-RAW,
-  #284). CDP calls: 15 s bound, unmeasured (#268). With the toggle on, "Not allowed" surfacing as `DEBUGGER_ATTACH` is
+  reached a **background tab** with no focus or lock (Run 16 UP-1). Since Step 11b S0F-b the worker checks each path
+  before the attach (`upload-exists.ts`: a `file:` fetch, only a 200 with a readable first chunk is a file, one 5 s
+  bound for the whole check) and refuses anything else `BAD_PARAMS` naming `paths[i]`, never the path (#288; was
+  UP-RAW's `ok`, #284); missing and unreadable look the same to it; live proof Run 17 F-RAW. CDP calls: 15 s bound, unmeasured (#268). With the toggle on, "Not allowed" surfacing as `DEBUGGER_ATTACH` is
   unmeasured.
 - **The three shipped upload page sources are closure-free literal strings** (`UPLOAD_FINDER_SRC`,
   `UPLOAD_MARK_PAGE_FN`, `UPLOAD_UNMARK_PAGE_FN`): the guard `extension/test/s3-closure-free.test.ts` copies esbuild's

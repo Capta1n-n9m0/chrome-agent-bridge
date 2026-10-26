@@ -439,6 +439,13 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - Tests 3811/154 → 3825/156, none removed; 16 new or changed tests red on the code before; F.1's home and `file:`
   parts met. Report `…-steps/S0F-a.md`. Run 17's F-HOME expects the new reason text.
 
+### S0F-b · 2026-10-26 · `b108482` (spec note), `0202888` · verifier PASS (one fix round)
+- Before the attach the worker fetches each path's `file:` URL (`upload-exists.ts`, the gate's path parser); only a
+  readable 200 is a file, everything else refuses `BAD_PARAMS` naming `paths[i]`, one 5 s bound for the call (#299).
+  F.1's missing-file part met; no path in a message, `data` or log; no log site added.
+- Tests 3825/156 → 3845/157, none removed; ~27 mutants, every fail-open one red. §4.24 placeholder rows F-RAW,
+  F-RAW-2, F-RAW-DIR, F-RAW-ENC, F-RAW-OK for Run 17. Report `…-steps/S0F-b.md`.
+
 ## Open items
 
 - **Ruled 2026-10-26:** 0.3 (A), 0.4 (C) (#290); S0F's what (#288).

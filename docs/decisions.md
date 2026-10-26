@@ -185,6 +185,17 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-26 · S0F-b: only a readable 200 is a file; one 5 s bound for the whole check (#299)
+**Decided:** the pre-attach check (`upload-exists.ts`) counts a path as a file only on a 200 with a readable first
+chunk; a reject, status 0 (a folder), any other status or error and the check's timeout all refuse `BAD_PARAMS`
+naming `paths[i]` only; one 5 s bound covers every path of the call (the verifier found a per-path bound could outrun
+the daemon's 30 s wait and attach after the client gave up). The stage's ~376 lines against a ~300 cap are accepted
+(the excess is tests).
+**Why:** fails closed on anything not proven a file; no path leaves the extension.
+**Instead of:** classifying by outcome with an allow on unknown statuses; a per-path bound.
+**Revisit if:** Run 17's F-RAW rows disagree, or a real file under an allowed folder is refused.
+**By:** Claude
+
 ### 2026-10-26 · S0F-a: the home check is one shared predicate, slightly stricter than Stage 0's table (#298)
 **Decided:** S0F-a's proposals: one predicate in `extension/src/upload-paths.ts` serves the options page and the gate,
 and refuses a home-folder parent itself too (for example `/var/home`), not only the folders inside it; the

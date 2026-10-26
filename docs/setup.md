@@ -809,9 +809,9 @@ folder rule protects against, and the broad-folder warning (#250)):
 - An agent that can also run programs on this computer can copy a file into an allowed folder, or drive the
   options page; the folder rule binds an agent whose only reach is the bridge.
 - A refusal tells an agent which of its paths are not allowed.
-- A raw client that skips the SDK can skip the real-path step. It can also ask for a file that does not
-  exist: the extension cannot see the disk, and a raw upload of a missing file inside an allowed folder
-  answered ok (Run 16 row UP-RAW; decisions.md · 2026-10-26 · S5-liveB … (#284), a question for you).
+- A raw client that skips the SDK can skip the real-path step. Since Step 11b the extension checks
+  that each file exists before the page gets anything and refuses a missing (or unreadable) one, naming only its
+  position in the list (#288; Run 16 row UP-RAW had answered ok).
 - A file changed between the SDK's read and Chrome's read gives a hash that is not what the page got.
 - A refusal raised after the CDP call (you turn the bridge off, or remove the folder, during the call) can
   leave the file in the page.

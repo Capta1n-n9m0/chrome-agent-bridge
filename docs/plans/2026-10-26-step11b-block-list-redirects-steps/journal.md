@@ -22,3 +22,5 @@ effort · start → end.
   - S5 · docs and CLAUDE.md proposals · low · ~45 min
 - 2026-10-26T17:00Z · S0F-a · step agent · Opus · medium · start
 - 2026-10-26T17:24Z · S0F-a · step agent · Opus · medium · end — DONE, `632483b` + `62eee7e`, verifier PASS-with-notes (one fix round); tests 3825/156; #298; extension/mcp CLAUDE.md lines and the root test count updated.
+- 2026-10-26T17:24Z · S0F-b · step agent · Opus · medium · start
+- 2026-10-26T17:54Z · S0F-b · step agent · Opus · medium · end — DONE, `b108482` + `0202888`, verifier PASS (one fix round); tests 3845/157; #299; stale lines fixed in extension/sdk CLAUDE.md and setup.md.
