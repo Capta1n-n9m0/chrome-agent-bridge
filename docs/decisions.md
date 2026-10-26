@@ -180,6 +180,21 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-26 · Stage 0 measures DNR in a separate scratch Chrome on a temporary profile (#294)
+**Decided:** #290's four checks and 0.2's unconfirmed DNR facts are measured on a scratch test extension loaded into a
+**separate Chrome instance started on a fresh temporary `--user-data-dir`** outside the repo (installed Chrome, or
+Chrome for Testing if the installed build will not load an unpacked extension that way), driven over its own CDP
+connection, with fixture servers on 127.0.0.1 only. It is closed by CDP `Browser.close` or its own window, never by
+killing `chrome.exe`; the temporary profile is deleted afterwards. The user's profile, its extensions and its tabs are
+not touched, so no grant is needed (the phase doc's Human gates name only the user's profile).
+**Why:** #290 asks for measurements, not reading; the phase doc forbids loading the scratch extension into the user's
+profile without a grant; a temporary profile is neither the user's profile nor a restart of their Chrome.
+**Instead of:** loading the scratch extension into the user's profile (needs a grant); deferring (1)–(4) to Run 17's
+RECORD rows (too late: (1) or (2) failing must stop the step before any code).
+**Revisit if:** a second Chrome instance disturbs the user's running Chrome in any way, or the measurement cannot be
+made there; then the step agent escalates and the session agent decides.
+**By:** Claude
+
 ### 2026-10-26 · Step 11b: the bridge's answers when a hop is blocked stay as today (#293)
 **Decided (proposed, contract-level, for user review):** phase doc 0.6. `newTab` keeps today's answer (Stage 0
 records it); `navigate` answers `DOMAIN_BLOCKED` with an existing block message and no `data` (if `tab.url` after a
