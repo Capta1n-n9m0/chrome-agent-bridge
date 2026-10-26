@@ -9,8 +9,16 @@ as a dated entry and point back.
 
 ## Open decisions
 
-None. Step 11's were ruled on 2026-10-26 (#288, #289, #290); the lists of earlier steps' open decisions, with
-their rulings, are in the archive entries they cite and in git.
+Step 11b (contract-level; the conservative option applies until the user rules at the gate; Stage 0 attacks them):
+- **#292** 2026-10-26 · Step 11b: the rule set stays equal to the block list and fails closed — options: (a) per-call
+  rules from the gate's own parsed list, fail closed with the existing `DISARMED` refusal (recommended, applied);
+  (b) standing rules for the whole list (needs 0.4 (A)/(B)); (c) fail open when the API rejects (forbidden).
+- **#293** 2026-10-26 · Step 11b: the bridge's answers when a hop is blocked stay as today — options: (a) the existing
+  codes and texts, a blocked download hop recognised by `onErrorOccurred` `ERR_BLOCKED_BY_CLIENT` (recommended,
+  applied); (b) a new `REDIRECT_BLOCKED` code; (c) `NAV_FAILED` with Chrome's text.
+
+Step 11's were ruled on 2026-10-26 (#288, #289, #290); the lists of earlier steps' open decisions, with their rulings,
+are in the archive entries they cite and in git.
 
 ## Standing decisions
 
@@ -171,6 +179,46 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
+
+### 2026-10-26 · Step 11b: the bridge's answers when a hop is blocked stay as today (#293)
+**Decided (proposed, contract-level, for user review):** phase doc 0.6. `newTab` keeps today's answer (Stage 0
+records it); `navigate` answers `DOMAIN_BLOCKED` with an existing block message and no `data` (if `tab.url` after a
+blocked main frame is not the blocked URL, the post-check uses the navigation's committed or attempted URL);
+`downloadStart` answers R14-5c's exact text when its own rules blocked the hop, recognised by a `webRequest.onErrorOccurred`
+`net::ERR_BLOCKED_BY_CLIENT` for an out-of-tab request whose URL the call's list blocks; any other failure keeps
+today's answer.
+**Why:** no new code, method or message: every test, row and client line stays valid.
+**Instead of:** a `REDIRECT_BLOCKED` code (a wire change for no new information); `NAV_FAILED` with Chrome's raw text.
+**Revisit if:** Stage 0 shows the worker's own requests do not reach its `webRequest` (then the flagged fallback of
+0.6 is proposed), or `tab.url` cannot name the blocked URL.
+**By:** Claude (proposed; the conservative option applied)
+
+### 2026-10-26 · Step 11b: the rule set stays equal to the block list and fails closed (#292)
+**Decided (proposed, contract-level, for user review):** phase doc 0.5. The rules are a pure function of the
+`BlockList` the call's own gate read produced; each covered call (`navigate`, `newTab`, `downloadStart`, 0.2) installs
+its rules before its first side effect and removes them after its post-check on every path; a list change rebuilds
+every live call's rules atomically; the worker clears all session rules at start before serving a call; disarm
+clears them; an update that rejects refuses the call with the existing `stateUnreadableRefusal()`, and a failed
+rebuild aborts live covered calls and refuses new ones until a rebuild succeeds. `newTab` with a URL is covered as
+`navigate` is (0.2).
+**Why:** one source of truth with the gate, no stale rule, no new code; fail closed as an unreadable state does (#139).
+**Instead of:** standing rules for the whole list (that is 0.4 (A)/(B), not ruled); a cached copy of the list (two
+sources); failing open.
+**Revisit if:** Stage 0's measurements show per-call install cannot be in force before the navigation starts (#290
+check (2)), or the caps make realistic lists fail closed.
+**By:** Claude (proposed; the conservative option applied)
+
+### 2026-10-26 · Step 11b: the build-level proposals of the phase doc are adopted for the audit (#291)
+**Decided (proposed):** phase doc 0.1 (stage order Stage 0 → S0F → S1 → S2 → S3 → S4 slices → S5, nothing in
+parallel), 0.2's shape (session rules only), 0.7 (no rule for own pages or `file:`; Chrome's refusal confirmed by
+Stage 0 and recorded by RD-7/RD-8), 0.8 (no rule, filter, URL or rejection text logged; at most one counts-only log
+line), 0.9 (what is out of scope), 0.10 (Run 17's rows) and 0.11's how (one shared home predicate in both callers;
+the missing-file check chosen by Stage 0's measurement, the pre-attach check preferred; `file:` rows hidden with the
+blocked reason unless Stage 0 shows a client must tell them apart).
+**Why:** recorded before Stage 0 so the audit can attack them (kickoff §4).
+**Instead of:** deciding after the audit, which would let the audit check nothing.
+**Revisit if:** Stage 0 finds a defect in any of them; the amended form is then recorded as a new entry.
+**By:** Claude
 
 ### 2026-10-26 · Step 11b: the permission and the rule's scope ruled; Step 11's follow-ups become its stage S0F (#290)
 **Decided (user):** 0.3 (A) `declarativeNetRequestWithHostAccess`; 0.4 (C) rules only for the requests of a bridge
