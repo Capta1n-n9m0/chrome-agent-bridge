@@ -2,7 +2,7 @@
 
 - **Date:** 2026-10-25
 - **Branch:** `main` (merged from `feat/agent-bridge`; public on GitHub, MIT, since 2026-09-03)
-- **Status:** **Step 10 (the Step 8 follow-ups) built, E2E-run (Runs 14–15) and closed 2026-10-25 — the user ruled every open decision (#229): all as built, except #227 option (b) and the `saveTo` `kind` text (Step 11's first code stage); next: Step 11 (D3 file upload)** *(updated 2026-10-25, cleanup pass: was "its last stage S8 retires the chunked recipe and updates the docs; the gate waits on the user's open decisions")* ([Step 10 block](#step-10--the-step-8-follow-ups-2026-10-25)); **23 tools, 26 codes, 3273 unit tests green** (`npm test` → 3273 passed, 132 files, S8's tree, 2026-10-25). *Superseded 2026-10-25 (Step 10 S8): was "23 tools, 25 codes, 2720 unit tests green" as the current count, because Step 10's stages landed.* **Step 9 (Phase E safety: the kill switch, the JavaScript switch, blocked sites) built, E2E-run (Run 13) and closed 2026-10-24 — the user ruled all 32 open decisions (#202): all as built, except a new code `JS_DISABLED` (Step 10) and a later network rule against redirects onto blocked sites (#140)** *(updated 2026-10-24: was "not closed — the user's ruling on Run 13 (#192) and 32 open decisions wait at the gate")* ([Step 9 block](#step-9--phase-e-safety-the-kill-switch-the-javascript-switch-blocked-sites-2026-10-24)); **23 tools, 25 codes, 2720 unit tests green** (`npm test` → 2720 passed, 116 files, at `ba6029e`, 2026-10-24). *Superseded 2026-10-24 (Step 9 S5): was "23 tools, 1714 unit tests green (… 85 files, at `eb6b991`)" as the current count, because Step 9's stages Stage 0–S4 landed.* **Step 8 (the SDK surface: locators, typed `Tab`, failure reports, the MCP cursor, first recipes) built and E2E-run (Runs 11–12), 2026-10-23/24, and closed 2026-10-24 (wave W2: 25 decisions ruled, #106–#127)** *(updated 2026-10-24, W2: was "its gate waits on the docs stage S7 and the user's open decisions", corrected the same day by the Step 8 propagator to "the open decisions and G8-3")* ([Step 8 block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026-10-2324)); at its close 23 tools, 1714 unit tests green (`npm test` → 1714 passed, 85 files, at `eb6b991`, 2026-10-24). *Superseded 2026-10-24: was "next: Step 8; 22 tools, 950 unit tests green (… 59 files, on the T6 tree)", because Step 8's stages Stage 0–S6b landed.* **Step 7 (multi-actor tabs) built, E2E-run (Runs 8–10) and closed 2026-10-23** ([Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23)). *Superseded 2026-10-23: was "Step 6 … closed 2026-10-22 — next: Step 7; 21 tools, 542 unit tests green", because Step 7's stages T0–T5b, RELOAD-AUTO and the BG-FLAGS run landed.* **Step 6 (daemon + SDK + MCP as an SDK client) built, E2E-tested live (wave W1) and closed 2026-10-22** ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
+- **Status:** **Step 11 (D3 file upload) built and E2E-run (Run 16, 2026-10-25/26); its docs stage S6 (docs, 2026-10-26) is written; the step's gate waits on the session agent's close and the user's decisions** ([Step 11 block](#step-11--d3-file-upload-2026-10-25)); **24 tools, 27 codes (26 on the wire), 27 router methods, 3811 unit tests green** (`npm test` → 3811 passed, 154 files, S6's tree, 2026-10-26). *Superseded 2026-10-26 (Step 11): was "23 tools, 26 codes, 3273 unit tests green" as the current count, because `browser_upload_file`, `UPLOAD_REFUSED`, `uploadFiles` and their tests landed.* **Step 10 (the Step 8 follow-ups) built, E2E-run (Runs 14–15) and closed 2026-10-25 — the user ruled every open decision (#229): all as built, except #227 option (b) and the `saveTo` `kind` text (Step 11's first code stage); next: Step 11 (D3 file upload)** *(updated 2026-10-25, cleanup pass: was "its last stage S8 retires the chunked recipe and updates the docs; the gate waits on the user's open decisions")* ([Step 10 block](#step-10--the-step-8-follow-ups-2026-10-25)); **23 tools, 26 codes, 3273 unit tests green** (`npm test` → 3273 passed, 132 files, S8's tree, 2026-10-25). *Superseded 2026-10-25 (Step 10 S8): was "23 tools, 25 codes, 2720 unit tests green" as the current count, because Step 10's stages landed.* **Step 9 (Phase E safety: the kill switch, the JavaScript switch, blocked sites) built, E2E-run (Run 13) and closed 2026-10-24 — the user ruled all 32 open decisions (#202): all as built, except a new code `JS_DISABLED` (Step 10) and a later network rule against redirects onto blocked sites (#140)** *(updated 2026-10-24: was "not closed — the user's ruling on Run 13 (#192) and 32 open decisions wait at the gate")* ([Step 9 block](#step-9--phase-e-safety-the-kill-switch-the-javascript-switch-blocked-sites-2026-10-24)); **23 tools, 25 codes, 2720 unit tests green** (`npm test` → 2720 passed, 116 files, at `ba6029e`, 2026-10-24). *Superseded 2026-10-24 (Step 9 S5): was "23 tools, 1714 unit tests green (… 85 files, at `eb6b991`)" as the current count, because Step 9's stages Stage 0–S4 landed.* **Step 8 (the SDK surface: locators, typed `Tab`, failure reports, the MCP cursor, first recipes) built and E2E-run (Runs 11–12), 2026-10-23/24, and closed 2026-10-24 (wave W2: 25 decisions ruled, #106–#127)** *(updated 2026-10-24, W2: was "its gate waits on the docs stage S7 and the user's open decisions", corrected the same day by the Step 8 propagator to "the open decisions and G8-3")* ([Step 8 block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026-10-2324)); at its close 23 tools, 1714 unit tests green (`npm test` → 1714 passed, 85 files, at `eb6b991`, 2026-10-24). *Superseded 2026-10-24: was "next: Step 8; 22 tools, 950 unit tests green (… 59 files, on the T6 tree)", because Step 8's stages Stage 0–S6b landed.* **Step 7 (multi-actor tabs) built, E2E-run (Runs 8–10) and closed 2026-10-23** ([Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23)). *Superseded 2026-10-23: was "Step 6 … closed 2026-10-22 — next: Step 7; 21 tools, 542 unit tests green", because Step 7's stages T0–T5b, RELOAD-AUTO and the BG-FLAGS run landed.* **Step 6 (daemon + SDK + MCP as an SDK client) built, E2E-tested live (wave W1) and closed 2026-10-22** ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
 
 ---
 
@@ -159,7 +159,7 @@ out of.
 | 5 | Offscreen-document keepalive + setup docs | ✅ Done |
 | + | `browser_wait_for` (closed a spec-§7 gap found in final review) | ✅ Done |
 | C | Perception fidelity: shadow DOM + same-origin iframes, hidden-subtree pruning, richer roles, frame-correct coordinates | ✅ Done (E2E-verified 2026-09-03) |
-| D | Action fidelity: trusted typing + `press_key` via CDP `Input.dispatchKeyEvent`; scroll-into-view + viewport validation for trusted input | ✅ D1/D2 done (E2E-verified 2026-09-03); D3 file upload not started |
+| D | Action fidelity: trusted typing + `press_key` via CDP `Input.dispatchKeyEvent`; scroll-into-view + viewport validation for trusted input | ✅ D1/D2 done (E2E-verified 2026-09-03); D3 file upload built as Step 11 and E2E-run in Run 16 (2026-10-26) *(superseded 2026-10-26: was "D3 file upload not started")* |
 | B | Robustness: port-busy surfaced through tools + bind retry; `browser_status`; WS heartbeat; actionable `chrome.debugger` errors; CONN-5 soak | ✅ Done (E2E-verified 2026-09-03) |
 | Step 4 | `browser_evaluate`: CDP `Runtime.evaluate` in the page context + in-page serialiser + per-call server timeout | ✅ Done (E2E-verified 2026-09-07) |
 | Step 5 | Network inspection: always-on `chrome.webRequest` capture into a bounded per-tab `NetworkLog` with `storage.session` write-through; `browser_network_requests` + `browser_network_clear` | ✅ Done (E2E-verified 2026-09-07), including Part N6 `browser_wait_for { networkIdle: true }` (NET-16) |
@@ -168,6 +168,7 @@ out of.
 | Step 8 | SDK surface: locators by the snapshot's rules, `waitFor {locator}`, `evaluate {asRef}`, the typed `Tab` and cursor, failure reports, the `focusFirst` input policy, the Step 6 compatibility path removed, the session marker, `browser_use_active_tab`, the first recipes | Built and E2E-run 2026-10-23/24 (Runs 11–12); closed 2026-10-24 (W2) |
 | Step 9 | Phase E safety: the kill switch (toolbar button, `Alt+Shift+K`, options page), the JavaScript switch, a block list, the own-page block; one gate over every router method; `DISARMED`/`DOMAIN_BLOCKED`; the `Safety:` line and `client.safety()` | Built and E2E-run 2026-10-24 (Run 13); closed 2026-10-24 (#202) *(superseded 2026-10-25: was "gate open for the user (#192)", because #202 ruled it)* |
 | Step 10 | The Step 8 follow-ups: the MCP's trusted tools focus first, the 800-cap warning, `browser_evaluate {saveTo}` + `tab.evaluateToFile`, `JS_DISABLED`, `bb-login.ps1`'s condition wait, `release/step8`, Step 9's re-measurements, a live retire row; the chunked recipe retired | Built and E2E-run 2026-10-25 (Runs 14–15); closed 2026-10-25 (#229) |
+| Step 11 | D3 file upload: `browser_upload_file` / `Tab.upload` / `client.upload` via `DOM.setFileInputFiles`; the human-held Upload folders list on the options page; the code `UPLOAD_REFUSED`; the bridge never opens or acts on `file:` pages; Step 10's `saveTo` follow-ups (#227 (b), the `kind` text) | Built and E2E-run 2026-10-25/26 (Run 16); docs S6; not yet closed |
 
 **Quality state:** 542 unit tests pass in 42 files (`npm test` at D5b commit `033b1bc`,
 2026-10-22); `tsc` typecheck clean across all five packages (`shared daemon sdk mcp extension`);
@@ -188,14 +189,14 @@ block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026
 block](#step-9--phase-e-safety-the-kill-switch-the-javascript-switch-blocked-sites-2026-10-24)).*
 *Updated 2026-10-25 (Step 10 S8): Step 10 — 3273 tests in 132 files (`npm test` on S8's tree; [Step 10
 block](#step-10--the-step-8-follow-ups-2026-10-25)); the recipes typecheck clean under all five
-`recipes/tsconfig*.json`.*
+`recipes/tsconfig*.json`.* *Updated 2026-10-26 (Step 11 S6): Step 11 — 3811 tests in 154 files (`npm test` on S6's tree; [Step 11 block](#step-11--d3-file-upload-2026-10-25)).*
 
-**23 tools** (*superseded 2026-10-24: was 22, because Step 8 S5 added `browser_use_active_tab`*;
+**24 tools** (*superseded 2026-10-26: was 23, because Step 11 S4 added `browser_upload_file`*; *superseded 2026-10-24: was 22, because Step 8 S5 added `browser_use_active_tab`*;
 *superseded 2026-10-23: was 21, because Step 7 T4 added `browser_focus_tab`*):
 `browser_status`, `browser_use_active_tab`, `browser_navigate`, `browser_snapshot`, `browser_screenshot`,
 `browser_click`, `browser_type`, `browser_press_key`, `browser_scroll`, `browser_hover`,
 `browser_select_option`, `browser_back`, `browser_forward`, `browser_list_tabs`, `browser_select_tab`,
-`browser_focus_tab`, `browser_new_tab`, `browser_close_tab`, `browser_wait_for`, `browser_evaluate`, `browser_network_requests`, `browser_network_clear`, `browser_download` (2026-10-06, live-verified: two Blackboard files, 0.4 MB and 7.2 MB, through the bbcswebdav → S3 redirect, sha256-identical to copies fetched another way).
+`browser_focus_tab`, `browser_new_tab`, `browser_close_tab`, `browser_wait_for`, `browser_evaluate`, `browser_network_requests`, `browser_network_clear`, `browser_upload_file` (Step 11), `browser_download` (2026-10-06, live-verified: two Blackboard files, 0.4 MB and 7.2 MB, through the bbcswebdav → S3 redirect, sha256-identical to copies fetched another way).
 
 ### Step 10 — the Step 8 follow-ups (2026-10-25)
 
@@ -257,6 +258,53 @@ and the `saveTo` `kind` text, both in Step 11's first code stage; the `step8` ta
   CAP-1R) and SAVE-REFUSE (a `[chrome.debugger] ` prefix on the wire, #227). SW-1R was undetermined, so
   `activateForCapture`'s waits stay. A popup of a background opener gets no lease because Chrome names
   another tab as its opener (R15-POP-2). Safety state read back equal after every attempt.
+
+### Step 11 — D3 file upload (2026-10-25)
+
+Phase doc `docs/plans/2026-10-25-step11-file-upload.md` (its As built section holds the per-stage register);
+reports, run records and logs in `…-steps/`; Step 11's decisions in `docs/decisions.md` run from "2026-10-25 · Step 11: the order of the stages (#233)" to
+"2026-10-26 · S5 closes: Run 16 stands as recorded; UP-OPT keeps its FAIL with no cause stated (#285)". **Built (S0–S5)
+and E2E-run (Run 16); S6 (docs, 2026-10-26) written; not yet closed** — the session agent's closeout and the user's
+rulings are open: the list is decisions.md's Open decisions section (the contract-level proposals, and the
+profile-name redaction, "2026-10-26 · The user's Chrome profile name reached a committed evidence file; redacted at
+the tip, history for the user (#283)", which must be ruled before any push).
+
+- **What exists:** `browser_upload_file(ref | locator, paths, tab?)`, the SDK's `Tab.upload` and the cursor's
+  `client.upload` put 1–20 local files into a file input (or a label for one, or an element holding exactly
+  one) with `DOM.setFileInputFiles`, in the background, with no focus and no visibility lock (decisions.md · 2026-10-25 · Step 11: the wire method `uploadFiles`, no
+  visibility lock, no focus (#238)).
+  The SDK checks each path and sends its real path; the extension's gate (class `upload`) judges it against the
+  **Upload folders** box on the options page, empty by default and written only by that page (decisions.md · 2026-10-25 · Step 11: upload folders are a human-held allow-list in the
+  extension, empty by default (#236)); a
+  refusal is the code `UPLOAD_REFUSED`, for the folder rule or for Chrome's "Allow access to file URLs" being off
+  (#245 (b), #263). The bridge refuses every tab call on a `file:` page and every navigation to a `file:` URL
+  (`DOMAIN_BLOCKED`, #245 (a)). Step 10's follow-ups also landed: `saveTo` refusals reach the wire unprefixed
+  (#227 option (b)) and the `saveTo` description names `kind`. **27 codes** (26 on the wire), **24 tools**, **27
+  router methods** (`uploadFiles`, class `upload`). How to use it: `docs/setup.md` → Uploading files and Safety.
+- **Tests per stage** (as the phase doc's As built records them):
+
+| Stage | Tests | Files |
+|---|---|---|
+| Baseline (Step 10 close) | 3273 | 132 |
+| S1 — Step 10's ordered follow-ups | 3294 | 133 |
+| S2 — the contract: code, gate, matcher | 3489 | 137 |
+| S4 — the SDK and the MCP | 3532 | 140 |
+| S3 (with S4b) — the handler, the mark, the options page | 3593 | 144 |
+| S3c — a recipes typecheck repair | 3625 | 146 |
+| S5 and S6 — Run 16's helpers; docs (`npm test` on S6's tree) | 3811 | 154 |
+
+- **Live E2E — Run 16** (`docs/e2e-test-plan.md` §4.23, §5 Run 16; `…-steps/S5-liveB.md`): **PASS 19, FAIL 3, NOT
+  MEASURED 3, RECORD 4** (+1 split). The upload worked on a background tab (UP-1); multiple, hidden, shadow, frame,
+  MCP, CSP and patched-page uploads each reached the page by its own hash; a junction was refused; every refusal left
+  0 files and every mark was removed; the file-URL toggle was found on and never pressed (G11-3 not needed);
+  SAVE-REFUSE-R passed; SW-2: the event ends the wait, so no S5b. FAILs: UP-6 and UP-6B (a banner check that cannot
+  tell the product's attach from the wave's own page reads, #284) and UP-OPT (6061 ms against a 5000 ms bound, no
+  cause stated, #285). RECORD UP-RAW: a raw missing-file upload inside an allowed folder answered ok (#284, for the
+  user). S5.5 failed for the first live slice and S5.6 in part (#282): gate stops for the user.
+- **Known limits:** an agent with a shell can put a file into an allowed folder; a refusal tells which of the agent's
+  paths are not allowed, by trial, though it names none; a raw client can skip the real-path step and ask for a missing file; a refusal after the CDP
+  call can leave the file in the page; a `subst` or mapped-drive folder may refuse (not measured live). Drag-and-drop
+  zones, the per-upload confirmation mode and the native file chooser are not built (Step 12 / later).
 
 ### Step 9 — Phase E safety: the kill switch, the JavaScript switch, blocked sites (2026-10-24)
 
@@ -726,8 +774,9 @@ viewport-only snapshot with an "expand" affordance instead of a hard cap.
 and selects the field, then replaces the selection, and never assigns `.value`. **D2 ✅**
 (`c2ceec5`) — measured, not guessed: CDP coordinates need no zoom/DPR scaling; the real bug was the
 missing scroll-into-view, now fixed with an explicit off-screen error. Both E2E-verified
-(§0 "Phase D E2E"). **D3 file upload — not started**: `browser_upload_file` via
-`DOM.setFileInputFiles` (sketched in the plan). Also still open: drag, native-dialog handling,
+(§0 "Phase D E2E"). **D3 file upload ✅** (Step 11, 2026-10-25/26; [§1 Step 11 block](#step-11--d3-file-upload-2026-10-25)):
+`browser_upload_file` / `Tab.upload` via `DOM.setFileInputFiles`, behind the human-held Upload folders list and
+Chrome's file-URL toggle; E2E-run in Run 16 *(superseded 2026-10-26: was "D3 file upload — not started")*. Also still open: drag, native-dialog handling,
 modifier chords for `press_key`, and caret-preserving trusted typing.
 
 **Phase E — Safety.** Built as Step 9 (2026-10-24; [§1 Step 9

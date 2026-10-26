@@ -128,7 +128,7 @@ automation in a window of its own and verifies it; see `docs/e2e-test-plan.md` �
 
 ## 5. Use it
 
-With the daemon running and the extension connected, call the 23 tools from your client. Every tool
+With the daemon running and the extension connected, call the 24 tools from your client. Every tool
 marked *tab* also takes an optional `tab` argument — see [Tabs](#tabs) below; without it the tool
 acts on **this session's tab**.
 
@@ -154,6 +154,7 @@ acts on **this session's tab**.
 | `browser_evaluate(expression, timeoutMs?, asRef?, saveTo?, overwrite?)` *tab* | Run JavaScript in the tab's page context and return the result (shows the debugging banner); `asRef:true` also returns a `[ref=eN]` for an element result, to act on with the other tools; `saveTo` (an absolute file path) writes the value to that file instead and answers only path, size, kind and sha256 — see [Running JavaScript](#running-javascript) |
 | `browser_network_requests(tab?, filter?, types?, failedOnly?, limit?, includeHeaders?, id?)` | List the network requests the tab has made — method, status, type, duration, size, URL — captured continuously with no banner; `id` shows one request's headers and body summary |
 | `browser_network_clear(tab?)` | Forget the recorded network requests, so the next `browser_network_requests` shows only what your next action caused |
+| `browser_upload_file(ref \| locator, paths)` *tab* | Put 1–20 local files (absolute paths) into a file input, or a label or element holding exactly one, as if you had picked them in the file dialog. Refused `UPLOAD_REFUSED` unless each file is in an **Upload folders** folder you allowed and Chrome's **Allow access to file URLs** is on for the extension; the tab is not brought to the front; answers each file's name, size and sha256 — see [Uploading files](#uploading-files) |
 | `browser_download(url, path, overwrite?, timeoutMs?)` | Save a URL to disk with the profile's cookies (fetched by the extension's service worker: no CORS, cross-origin redirects followed). `path` is absolute — a file, or a directory to use the response's filename. Reports size, type and sha256 |
 
 *Superseded 2026-10-22: was 21 tools that all acted on "the active tab", with `browser_select_tab(id)`
@@ -167,7 +168,7 @@ because Step 8 S5 added `browser_use_active_tab`, the `locator` on actions and `
 focus, `browser_focus_tab` "the only tool that changes what you see", and `browser_evaluate` without
 `saveTo`, because Step 10 S2 made the trusted tools focus first (decisions.md · 2026-10-24 · FE and
 `focusFirst` are ratified; the MCP's trusted tools focus first too (#106)) and S4 added `saveTo` (#127).
-Still 23 tools; their names and other parameters are unchanged.*
+At that point 23 tools; their names and other parameters are unchanged.* *Superseded 2026-10-26 (Step 11 S4): was "Still 23 tools", because `browser_upload_file` was added (#241); `browser_click`'s description now also says to use it for a file input.*
 
 Typical loop: `browser_snapshot()` to see refs → act by ref (`browser_click`, `browser_type`)
 → snapshot again to see the result. When the name is already known, act by locator and skip the
@@ -403,7 +404,9 @@ reports off (below).
   `scroll({target?, direction?})`, `selectOption(target, values)`, `locate`, `waitFor`, `evaluate`,
   `evaluateRef`, `evaluateToFile(expression, {path, overwrite?, timeoutMs?})`, `network`,
   `networkClear`, `download(url, path)`, `focus`, `close`, `release`. *Superseded 2026-10-25: the list
-  had no `evaluateToFile`, because Step 10 S4 added it (#127, #205).*
+  had no `evaluateToFile`, because Step 10 S4 added it (#127, #205).* *Superseded 2026-10-26: the list had no
+  `upload(target, paths, {timeoutMs?})`, because Step 11 S4 added it (#240); the client's cursor has `upload` too
+  ([Uploading files](#uploading-files)).*
 
 **Locators.** Every action takes a target: a ref from `tab.snapshot()` (`"e4"`), or a locator object
 (`Locator` in `shared/src/protocol.ts`), resolved in the page by the same walk and the same role and
@@ -597,9 +600,15 @@ write a large value to a file instead.` From a script the same is `await tab.eva
 {path})` ([Writing a script](#writing-a-script)). Measured in Step 10's Run 15 on fixture pages: 1 MiB,
 4 MiB, 2 MiB with astral characters across a slice boundary, a JSON value past the result limits, a
 418 754-byte synthetic export and a 64 MiB primitive each saved with the page's own sha256 (rows SAVE-*);
-a refusal's message then read `[chrome.debugger] …` in front of the text, the code and data right
-(SAVE-REFUSE; decisions.md · 2026-10-25 · S7: SAVE-REFUSE's `[chrome.debugger] ` prefix — the product
-stays for now; a fix is offered (#227)). *Superseded 2026-10-25: was "**Not for bulk data.** … Read bulk data with a
+a refusal the bridge itself raises for `saveTo` (a value refusal, the in-session size cap) reaches you with its text
+unchanged, with no `[chrome.debugger] ` in front (`markOwnRefusal`, `extension/src/debugger-errors.ts`; decisions.md ·
+2026-10-25 · S1: the marked set is the `saveTo` value refusals and the cap; the save leg's breakdowns keep the prefix
+(#254)). The prefix stays on the save leg's `INTERNAL` failures, its transfer `TIMEOUT`, a raw Chrome error and a page
+error; the stringify `PAGE_ERROR` is a value refusal and has none. Run 16's row SAVE-REFUSE-R measured it live and
+passed; the `saveTo` description names the answer's `kind`. *Superseded 2026-10-26 (Step 11 S1; the user ruled #227
+option (b), #229): was "a refusal's message then read `[chrome.debugger] …` in front of the text, the code and data
+right", because Step 10's Run 15 (row SAVE-REFUSE) measured that prefix and it was kept for a while (decisions.md ·
+2026-10-25 · S7: SAVE-REFUSE's `[chrome.debugger] ` prefix — the product stays for now; a fix is offered (#227)).* *Superseded 2026-10-25: was "**Not for bulk data.** … Read bulk data with a
 script … or save a file with `browser_download`", because Step 10 S4 built `saveTo` (decisions.md ·
 2026-10-24 · Bulk data through `browser_evaluate` was a test device only; the MCP gets a `saveTo` path
 (#127)) and S8 retired the chunked recipe that paged Step 8's SDK-7 export through it (53 calls of 8 000
@@ -718,10 +727,100 @@ breakdown (DNS/TLS/TTFB). Also note:
 log. Closing a tab forgets its entries. The log lives in the extension's session storage and is gone
 when Chrome exits or the extension is reloaded.
 
+## Uploading files
+
+`browser_upload_file` (MCP) and `tab.upload()` / `client.upload()` (SDK) put local files into a page's file
+input, as if you had picked them in the file dialog. Chrome itself reads the files (`DOM.setFileInputFiles`
+through the debugger, so the debugging banner shows briefly); no file bytes cross the bridge. The tab is
+not brought to the front, and the call does not take the visibility lock (phase doc 0.6,
+`docs/plans/2026-10-25-step11-file-upload.md`).
+
+**Before the first upload you must do two things in Chrome, once.** Both are yours alone; no agent, tool
+or token holder can do either:
+1. Add the folder(s) the files live in to **Upload folders** on the extension's options page
+   ([Safety → Upload folders](#upload-folders)). The list is empty by default, so every upload is refused
+   until you do.
+2. Turn on **Allow access to file URLs** for the extension: `chrome://extensions` → the extension's
+   *Details*. Chrome refuses `DOM.setFileInputFiles` ("Not allowed") to a client that may not read local
+   files, which for an extension is this toggle (Stage 0 F1, `docs/plans/2026-10-25-step11-file-upload-steps/stage0-cdp.txt`;
+   decisions.md · 2026-10-25 · Stage 0: uploads need Chrome's file access, and the bridge never opens
+   `file:` pages (#245)). Changing the toggle reloads the extension. Run 16 found it already on; with it off the bridge refuses with the second text in the table below.
+
+**From Claude.** `browser_upload_file(ref | locator, paths, tab?)`, with `paths` 1 to 20 absolute file
+paths (more than one only if the input is `multiple`). Its description, as the model reads it
+(`mcp/src/tools/registry.ts:613`):
+
+```text
+Put one or more local files into a file input — an <input type="file">, a label for one, or an element holding exactly one (the hidden input behind an "Attach" button or drop zone) — found by ref or `locator` in this session's tab (the active tab is claimed on first use) or `tab`, as if the user had picked them in the file dialog. `paths` are absolute file paths on this computer; Chrome reads the files itself. The tab is not brought to the front. Every file must lie in a folder the user allowed in Chrome (extension options → Upload folders), and the user must have turned on "Allow access to file URLs" for the extension (chrome://extensions → the extension's Details); otherwise the answer is UPLOAD_REFUSED — then stop and ask the user, and never retry with another path. Shows Chrome's 'is debugging this browser' banner briefly. Never click a file input (browser_click): that opens a native file dialog the bridge cannot see or close. The answer lists each file's name, size and sha256 as read on this computer: it says what Chrome accepted, which is not proof that the page received them — check the page (e.g. browser_snapshot) to confirm.
+```
+
+The answer is `Uploaded <n> file(s) to <target>:` and one line per file, `<name> · <bytes> bytes · sha256
+<hex>`, the name being the real file's basename; it shows no directory. `browser_click`'s description
+now tells the model to use this tool instead of clicking a file input.
+
+**From a script.** `await tab.upload(target, paths, {timeoutMs?})` (`target` is a ref or a
+[locator](#locators); `paths` a string or an array) resolves with `{files: [{name, bytes, sha256}]}`; the
+client's cursor has `client.upload(…)` (`sdk/src/tab.ts`, `sdk/src/client.ts`). Before any call the SDK
+checks each path (absolute, an existing regular file, readable; otherwise `BAD_PARAMS` naming the entry's
+index, never its path, and no call is made) and sends each file's **real path** (`fs.promises.realpath`),
+so a link or junction inside an allowed folder that points out of it is refused by the folder rule. The
+sha256 is of the bytes the client read. The SDK check is a convenience and the real-path step, not the
+boundary; the folder rule is the extension's.
+
+**The answer is not proof.** It says what Chrome accepted. A page that clears its input on `change`, or
+rejects the file in its own script, still gets an ok. Judge success by the page (Run 16 judged every upload
+row by the page's own reporter, by hash).
+
+**Which element receives the files.** An `<input type="file">`; a `<label>` for one; or an element that
+holds exactly one (the hidden input behind an "Attach" button or a drop zone; open shadow roots and
+same-origin frames included). Anything else is refused `BAD_PARAMS` before the attach, and so are a disabled
+input, a folder input (`webkitdirectory`), more paths than a single-file input takes, and two file inputs under
+one element. No paths or more than 20 are refused `BAD_PARAMS` by the SDK's check before anything is sent (the MCP's
+input schema rejects them first, and the caller sees the MCP SDK's "Input validation error: Invalid arguments for
+tool browser_upload_file" instead of the code); a raw client sending them gets `UPLOAD_REFUSED` at the gate. `accept` is not enforced.
+
+**The refusal: `UPLOAD_REFUSED`.** It means the bridge will not upload, for one of two causes:
+- a file is **not inside any folder you listed** under Upload folders (an empty list too), or
+- Chrome has **not allowed this extension file access** ("Allow access to file URLs" is off).
+
+It is not exhaustive: malformed paths (relative, `..` parts, network and device paths, reserved names) also
+refuse at the gate, which a raw client can reach (from the SDK or the MCP a relative path is `BAD_PARAMS` from
+the preflight, and `..` is resolved by `realpath` before sending). A folder on a `subst` or mapped drive may
+also refuse, because the file's real path may then resolve past the drive letter and not be inside the folder
+you typed (not measured live; S4 verifier). The text depends on
+where it is read:
+
+| Where | Text | Source |
+|---|---|---|
+| Folder rule, on the wire | `That file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders); the bridge will not upload it. Ask the user.` | `extension/src/safety.ts:224` |
+| File access off, on the wire | `Chrome does not allow this extension to read local files (chrome://extensions → Chrome Agent Bridge → Details → Allow access to file URLs), so the bridge cannot upload. Ask the user.` | `extension/src/upload-files.ts:37` |
+| The one line the SDK's `safetyRefusalLine` and the MCP show, either cause | `UPLOAD_REFUSED: the bridge will not upload that file — either it is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), or the user has not turned on "Allow access to file URLs" for the extension (chrome://extensions → the extension's Details). Stop and ask the user; do not retry with another path.` | `sdk/src/error.ts:136` |
+
+The refusal is a safety refusal like `DOMAIN_BLOCKED`: no failure report, no screenshot; a script should stop
+and ask, not retry ([Safety → For scripts](#for-scripts)). Other refusals an upload can meet: a blocked site,
+a tab showing a `file:` page and the bridge's own pages answer `DOMAIN_BLOCKED`, the kill switch `DISARMED`.
+Turning JavaScript off does not stop an upload.
+
+**Known limits** (recorded, not fixed; phase doc Open items; decisions.md · 2026-10-25 · Stage 0: who the
+folder rule protects against, and the broad-folder warning (#250)):
+- An agent that can also run programs on this computer can copy a file into an allowed folder, or drive the
+  options page; the folder rule binds an agent whose only reach is the bridge.
+- A refusal tells an agent which of its paths are not allowed.
+- A raw client that skips the SDK can skip the real-path step. It can also ask for a file that does not
+  exist: the extension cannot see the disk, and a raw upload of a missing file inside an allowed folder
+  answered ok (Run 16 row UP-RAW; decisions.md · 2026-10-26 · S5-liveB … (#284), a question for you).
+- A file changed between the SDK's read and Chrome's read gives a hash that is not what the page got.
+- A refusal raised after the CDP call (you turn the bridge off, or remove the folder, during the call) can
+  leave the file in the page.
+- Never click a file input: that opens a native dialog the bridge cannot see. Drag-and-drop zones with no
+  file input behind them, and a per-upload confirmation mode, are not built.
+- An upload to a tab in the background works: Run 16 row UP-1 received the file with no focus.
+
 ## Safety
 
 Since Step 9 (Phase E), three controls in Chrome let you stop agents, take JavaScript away from them,
-or keep them off chosen sites. They are enforced inside the extension, so they hold whatever a client,
+or keep them off chosen sites; since Step 11 a fourth setting, [Upload folders](#upload-folders), decides
+which folders agents may upload files from (none by default). They are enforced inside the extension, so they hold whatever a client,
 the daemon or anyone holding the token does: no tool, SDK call or daemon method can change them; only
 you can, in Chrome (decisions.md · 2026-10-24 · Phase E's design: the kill switch, the disarmed state,
 blocked sites, the JavaScript switch). The defaults — on, JavaScript allowed, no blocked sites — behave
@@ -883,6 +982,71 @@ measured it on a threaded test server (decisions.md · 2026-10-25 · S1: Run 14'
 recorded (#210)).* Finally, a blocked site framed inside an allowed page is
 not in that page's snapshot (cross-origin frames are never walked), but **it shows in a screenshot** of
 the allowed page.
+
+### Upload folders
+
+Since Step 11, a fourth setting lives beside the block list: the options page's **Upload folders** box. It
+holds the folders agents may upload files from ([Uploading files](#uploading-files)). It is **empty by
+default, so every upload is refused until you add a folder**. Like the other settings it is read from
+`storage.local` per call and only the options page writes it (**Save upload folders**); no wire, daemon, SDK
+or MCP method can read or change it (decisions.md · 2026-10-25 · S3: the Upload folders box (#269)).
+
+The box's label is `Folders agents may upload files from, one absolute path per line (empty: no uploads)`
+(`extension/options.html:51`). The page shows this warning above it
+(`extension/src/options-model.ts:100`):
+
+```text
+An agent may upload any file inside these folders to any site it can open. Allow only folders that hold files you mean to share. Never allow your home folder, or any folder that holds bridge.token or a .ssh folder. An agent that can also run programs on this computer can put any file into an allowed folder.
+```
+
+One absolute folder path per line, from the drive letter (`C:\Users\you\Uploads`) or from `/`. A blank line
+and a line starting with `#` are ignored; lines are taken exactly as typed (a line that starts or ends with a
+space is invalid); one trailing separator is allowed. A file is allowed only when its real path lies
+strictly inside a listed folder at a separator boundary (`C:\Up\x` is not inside `C:\Uploads`); drive-letter
+paths compare without regard to case, POSIX paths exactly. A folder's subfolders count.
+
+The page marks each invalid line by its number with one of these reasons (`options-model.ts:103-107`), and
+the line is not used:
+- `a whole drive or the filesystem root is never allowed`
+- `starts or ends with a space: a folder is taken exactly as typed`
+- `not an absolute folder path: write it from the drive letter (C:\…) or from / (/home/…)`
+- `not an allowed folder path: no network (\\server) or device paths, no . or .. parts, no doubled separators, no backslash in a / path, no <>"|?* characters or reserved names (CON, NUL, …)`
+
+A valid line that is risky is **warned, not refused** (decisions.md · 2026-10-25 · Stage 0: who the folder
+rule protects against, and the broad-folder warning (#250)); the page shows these next to the line
+(`options-model.ts:109-110`):
+- `a home folder, or a folder that holds home folders: every file in it (keys, tokens, documents) could be uploaded`
+- `a .ssh folder, or a folder inside one: it holds private keys`
+
+Under the box a summary reads `No upload folder: every upload is refused.` or the count, `1 upload folder.` or
+`<n> upload folders.`, and, when lines are invalid, adds `1 invalid line is not used (marked below).` or `<n> invalid
+lines are not used (marked below).` (`options-model.ts:163-165`). If the saved folders change elsewhere while you
+edit, the page says:
+
+`The saved folders were changed elsewhere while you were editing; Save replaces them with the text shown here.`
+
+(`options.ts:93`).
+
+What the folder rule does not stop: an agent with a shell on this computer can copy a file into an allowed
+folder or drive the options page itself. Allow only folders that hold what you mean to share, never your
+home folder or a folder with `bridge.token` or `.ssh`. If the setting cannot be read (a wrong-typed value),
+the bridge fails closed as for the other settings: every call is refused `DISARMED` ([When the state cannot
+be read or saved](#when-the-state-cannot-be-read-or-saved)).
+
+### The bridge never opens local files
+
+Since Step 11 (decisions.md · 2026-10-25 · Stage 0: uploads need Chrome's file access, and the bridge never
+opens `file:` pages (#245); · S2: the `file:` rule's edges (#259)): with **Allow access to file URLs** on, a
+tab could show a `file:` page and the bridge would read any local file past the folder rule. So, whether the
+toggle is on or off, the bridge refuses every tab call on a tab showing a `file:` page (`closeTab` and
+`focusTab` included), and every `browser_navigate` / `browser_new_tab` to a `file:` URL, with
+`DOMAIN_BLOCKED`:
+- `This tab shows a local file (a file: page), which the bridge never reads or acts on.` (`extension/src/safety.ts:217`)
+- `The bridge never opens local files (file: URLs).` (`extension/src/safety.ts:219`)
+
+`browser_list_tabs` still lists a `file:` tab with its URL (the refusal covers calls, not the listing), and a
+`browser_download` to a `file:` URL keeps its own `BAD_PARAMS`. You can still open a `file:` page yourself;
+agents just cannot act on it.
 
 ### The bridge never opens its own pages
 

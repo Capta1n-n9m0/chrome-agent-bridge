@@ -40,6 +40,8 @@ The SDK finds, starts or hands over the daemon itself; the token comes from `BRI
 | `s10-r15.ps1` | Run 15's block runner (`-Block preflight`, `build`, `servers`, … one block per call, in the sheet's order); every printed line also appended to `$env:S10_OUT\r15-raw.txt`. |
 | `s10-win.ps1` | Step 10's UI Automation (dot-sources `s9-win.ps1`): the S10 fixture titles, R15-3's placement guard, `Close-S10Foreign`, the SAVE-64 memory sampler's start/stop. |
 | `s10-mem.ps1` | SAVE-64's memory sampler: the private memory of every `--extension-process` `chrome.exe`, every `-PollMs`, to `-Out`; reads process counters only. |
+| `s11.ts`, `s11-rules.ts`, `s11-evidence.ts`, `s11-csp.py` | Step 11's live wave (Run 16, `docs/e2e-test-plan.md` §4.23; order in `docs/plans/2026-10-25-step11-file-upload-steps/S5-sheet.md`): the SDK-side actor (`Tab.upload` and `browser_upload_file` rows), its pure pass rules, the committed-evidence scanner (counts only) and the CSP fixture server. |
+| `s11-r16.ps1`, `s11-r16-plan.ts`, `s11-r16-opt.ts`, `s11-win.ps1`, `s11-win-rules.ts` | Run 16's block runner (`-Block liveA` / `liveB` / one block), its pure plan, UP-OPT's judge, and the UI Automation for the Upload folders box (dot-sources `s10-win.ps1`; reads the box as a line count and sha256 only). |
 | `s10-ret1.ts`, `s10-ret1.ps1` | RET-1 (a killed Chrome retires N ≥ 1 held handles): the SDK holder and its driver, which **kills and relaunches the user's real Chrome** — only under the user's grant G10-2 (run in Run 15 as RET-1R under #221/#222). |
 
 *Retired 2026-10-25 (Step 10 S8): `blackboard/assemble-mcp.ts` (rebuilt SDK-7's MCP leg from an actor's transcript into
@@ -71,5 +73,6 @@ written.*
 npx tsc --noEmit -p recipes/tsconfig.s6.json   # the S6 files (tsconfig.json and tsconfig.fe.json cover the older ones)
 npx tsc --noEmit -p recipes/tsconfig.s9.json   # the Step 9 S4 files (and Step 10 S1's additions to them)
 npx tsc --noEmit -p recipes/tsconfig.s10.json  # the Step 10 S7 files
+npx tsc --noEmit -p recipes/tsconfig.s11.json  # the Step 11 S5 files
 npx vitest run recipes/                        # recipes/test/*.test.ts (part of `npm test`)
 ```

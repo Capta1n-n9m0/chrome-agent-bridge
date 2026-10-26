@@ -20,7 +20,7 @@ All documentation lives in [`docs/`](docs/).
 
 ## Status
 
-**23 tools**, implemented and **E2E-validated** against the real default profile: Phases A–D
+**24 tools**, implemented and **E2E-validated** against the real default profile: Phases A–D
 (connection, navigation, perception, action fidelity, robustness) plus `browser_evaluate` and
 network inspection (`browser_network_requests`, `browser_network_clear`, and
 `browser_wait_for({networkIdle:true})`). Since Step 6, a shared localhost daemon sits between the
@@ -43,11 +43,19 @@ front of its window first, as a script's already did; an action on an element pa
 large value to a file and answers only its path, size and sha256, so bulk data never passes through
 Claude's context; and "JavaScript is off" has its own error code, `JS_DISABLED`.
 
-3273 unit tests green in 132 files (`npm test` 2026-10-25 on Step 10 S8's tree). The Step 6 daemon split was E2E-tested in
+**Step 11 (file upload).** `browser_upload_file` (and `tab.upload()` in a script) puts local files into a page's
+file input, as if you had picked them in the file dialog. It is off until you allow it in Chrome: add the
+folders agents may upload from to **Upload folders** on the extension's options page, and turn on **Allow access
+to file URLs** for the extension. A file outside those folders is refused `UPLOAD_REFUSED`, and the bridge never
+opens or acts on `file:` pages. See [`docs/setup.md` → Uploading files](docs/setup.md#uploading-files).
+
+3811 unit tests green in 154 files (`npm test` 2026-10-26 on Step 11 S6's tree). The Step 6 daemon split was E2E-tested in
 wave W1 (2026-10-22), Step 7's multi-actor tabs in Runs 8–10 (2026-10-22/23), Step 8 in Runs 11–12
 (2026-10-23/24), Step 9's safety controls in Run 13 (2026-10-24; 24 rows passed, 7 failed — none
-shown to be a product defect; ratified by the user, #202), and Step 10 in Runs 14–15 (2026-10-25; Run 15:
-27 passed, 3 failed, none a product defect). Before that, live
+shown to be a product defect; ratified by the user, #202), Step 10 in Runs 14–15 (2026-10-25; Run 15:
+27 passed, 3 failed, none a product defect), and Step 11's upload in Run 16 (2026-10-26; 19 passed, 3 failed,
+3 not measured, 4 recorded; two failures are a banner check that cannot tell the product from the wave's own
+page reads, one is an options-page timing bound with no cause stated). Before that, live
 in-browser runs of 29 cases (2026-06-04), Phase C (13), Phase D (7) and
 Phase B (6) on 2026-09-03, the evaluate pass (20 of 22) and the network pass (15 of 15) on
 2026-09-07 — 6 runtime bugs found & fixed across them. Details in
