@@ -297,7 +297,7 @@ $Blocks['save-refuse-r'] = {
   try { [void](Invoke-S16Node @('saverefuse-mcp')) } finally { End-S16Actor }
 }
 $Blocks['sw-2'] = {
-  Step-S16 'front' { Set-S11Front $global:W 'SW-2'; Enter-S11Guards $global:W 'SW-2' }
+  Step-S16 'front' { Set-S11Place $global:W; Set-S11Front $global:W 'SW-2'; Enter-S11Guards $global:W 'SW-2' }
   [void](Invoke-S16Node @('sw2'))
 }
 $Blocks['up-1'] = { Invoke-S16Row @('up1') 'UP-1' -Front }

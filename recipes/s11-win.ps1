@@ -390,6 +390,40 @@ function Invoke-S11Race([ValidateSet('A', 'B')][string]$Which, [long]$Btn, [long
   Test-S9DaemonSafety ([bool]$global:S11Found.armed) ([bool]$global:S11Found.evaluate) ([int]$global:S11Found.count) $id 5000
 }
 
+# ---- placement of the wave's own window ---------------------------------------------------------------------------------------
+# S5-liveA set-up fix (#281 (c)): W's monitor work area cut clear of every taskbar window (an auto-hidden taskbar's 2 px strip
+# at y 1078..1126 included). Mirrors s11-win-rules.ts clearPlacement (same cases in test/s11-liveA-fixes.test.ts). $Trays holds
+# "class left top right bottom" strings (S9Geo ShellTrays). Returns left/top/right/bottom. Placement only: no guard changes.
+function Get-S11ClearRect($Work, [string[]]$Trays, [int]$Margin = 8) {
+  $r = @{ left = [int]$Work.left; top = [int]$Work.top; right = [int]$Work.right; bottom = [int]$Work.bottom }
+  foreach ($t in $Trays) {
+    $p = "$t".Split(' '); if ($p.Count -ne 5) { continue }
+    $tl = [int]$p[1]; $tt = [int]$p[2]; $tr = [int]$p[3]; $tb = [int]$p[4]
+    if ($p[0] -ne 'Shell_TrayWnd' -and $p[0] -ne 'Shell_SecondaryTrayWnd') { continue }
+    $ow = [Math]::Min($r.right, $tr) - [Math]::Max($r.left, $tl); $oh = [Math]::Min($r.bottom, $tb) - [Math]::Max($r.top, $tt)
+    if ($ow -le 0 -or $oh -le 0) { continue }
+    if (($tr - $tl) -ge ($tb - $tt)) {
+      if (($tt + $tb) / 2 -ge ($r.top + $r.bottom) / 2) { $r.bottom = [Math]::Min($r.bottom, $tt - $Margin) } else { $r.top = [Math]::Max($r.top, $tb + $Margin) }
+    } elseif (($tl + $tr) / 2 -ge ($r.left + $r.right) / 2) { $r.right = [Math]::Min($r.right, $tl - $Margin) } else { $r.left = [Math]::Max($r.left, $tr + $Margin) }
+  }
+  [pscustomobject]$r
+}
+# Restores W if maximized (a maximized frame overhangs its monitor by 8 px and touched both taskbars in the first run), then moves
+# it into its monitor's work area cut clear of the taskbars. Only the wave's own window; prints numbers only.
+function Set-S11Place([long]$Hwnd) {
+  Assert-S11Own $Hwnd 'place'
+  [void][S9Win]::ShowWindow([IntPtr]$Hwnd, 9)
+  $state = [S9Geo]::WorkOf([IntPtr]$Hwnd)
+  $res = Get-S11ClearRect ([pscustomobject]@{ left = $state.Left; top = $state.Top; right = $state.Right; bottom = $state.Bottom }) @([S9Geo]::ShellTrays())
+  [void][S9Geo]::MoveWindow([IntPtr]$Hwnd, $res.left, $res.top, $res.right - $res.left, $res.bottom - $res.top, $true)
+  Start-Sleep -Milliseconds 300
+  Say9 "PLACE W work area [$($state.Left),$($state.Top),$($state.Right),$($state.Bottom)] cut clear of the taskbars to [$($res.left),$($res.top),$($res.right),$($res.bottom)]"
+}
+# One diagnostic line's text for an occluder: rect, owner and root-owner kind, style flags. No title.
+function Format-S11Occluder($x) {
+  "rect=[$($x.rect.left),$($x.rect.top),$($x.rect.right),$($x.rect.bottom)] owner=$($x.owner) rootOwner=$($x.rootOwner) topmost=$($x.styles.topmost) popup=$($x.styles.popup) toolwindow=$($x.styles.toolwindow) noactivate=$($x.styles.noactivate)"
+}
+
 # ---- guards: the cursor park and the occluders -------------------------------------------------------------------------------
 # Parks the cursor in W's page area (s9-win Park-S9Cursor; needs $global:W = the wave's front window), checks it lies in W, then
 # lists the occluders above $Hwnd. Foreign occluders (not owned by W/E/D/O) fail; an owned one is exempt only when it covers none
@@ -407,7 +441,7 @@ function Enter-S11Guards([long]$Hwnd, [string]$Why, [object[]]$ReadRects = @()) 
     $mine = ($drv -contains $x.owner) -or ($drv -contains $x.rootOwner)
     $hit = $false
     foreach ($q in $ReadRects) { if ($x.rect.left -lt $q.right -and $q.left -lt $x.rect.right -and $x.rect.top -lt $q.bottom -and $q.top -lt $x.rect.bottom) { $hit = $true } }
-    if (-not ($mine -and $ReadRects.Count -gt 0 -and -not $hit)) { $foreign++; $cls = $x.cls; $procName = $x.process; Say9 "OCCLUDER foreign cls=$cls process=$procName" }
+    if (-not ($mine -and $ReadRects.Count -gt 0 -and -not $hit)) { $foreign++; $cls = $x.cls; $procName = $x.process; Say9 "OCCLUDER foreign cls=$cls process=$procName"; $res = Format-S11Occluder $x; Say9 "OCCLUDER detail $res" }
   }
   Say9 "GUARD occluders total=$($occ.Count) foreign=$foreign ($Why)"
   if ($foreign -gt 0) { Stop9 "GUARD $foreign foreign occluder(s) above window $Hwnd ($Why)"; return $false }

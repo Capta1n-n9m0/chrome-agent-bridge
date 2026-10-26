@@ -4,6 +4,7 @@
 // restoreCheck's line holds a box name, a count and equal/DIFFERENT.
 import { createHash } from "node:crypto";
 import { EMPTY_SHA256 } from "./s11-rules.js";
+import { overlapArea, TASKBAR_CLASSES, type ShellWindow } from "./s9-rules.js";
 
 export const sha256Utf8 = (text: string): string => createHash("sha256").update(Buffer.from(text, "utf8")).digest("hex");
 /** Non-blank lines (the PowerShell side counts `-split "\r?\n"` with Trim() -ne ''). */
@@ -188,4 +189,27 @@ export function scanPs1Output(src: string): string[] {
     }
   });
   return bad;
+}
+
+// ── SW-2's placement of the wave's own window (S5-liveA set-up fix, #281 (c)) ─────────────────────────────────────────────────
+/**
+ * The rect for W: its monitor's work area, cut clear of every shell taskbar window that overlaps it with a positive area (an
+ * auto-hidden taskbar's 2 px strip included: Windows reports it at y 1078..1126 on a 1080-px monitor), plus `margin` px on the
+ * cut edge. A horizontal taskbar in the lower half cuts the bottom, in the upper half the top; a vertical one cuts the left or
+ * right. A taskbar that does not overlap the area changes nothing. Placement only: the occlusion guard is not touched.
+ * recipes/s11-win.ps1 Get-S11ClearRect mirrors this; recipes/test/s11-liveA-fixes.test.ts runs both on the same cases.
+ */
+export function clearPlacement(work: Rect, taskbars: ShellWindow[], margin = 8): Rect {
+  const r = { ...work };
+  for (const t of taskbars) {
+    if (!TASKBAR_CLASSES.includes(t.cls) || overlapArea(r, t.rect) <= 0) continue;
+    const tw = t.rect.right - t.rect.left;
+    const th = t.rect.bottom - t.rect.top;
+    if (tw >= th) {
+      if ((t.rect.top + t.rect.bottom) / 2 >= (r.top + r.bottom) / 2) r.bottom = Math.min(r.bottom, t.rect.top - margin);
+      else r.top = Math.max(r.top, t.rect.bottom + margin);
+    } else if ((t.rect.left + t.rect.right) / 2 >= (r.left + r.right) / 2) r.right = Math.min(r.right, t.rect.left - margin);
+    else r.left = Math.max(r.left, t.rect.right + margin);
+  }
+  return r;
 }

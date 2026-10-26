@@ -338,19 +338,27 @@ function Get-S9PinState([long]$Hwnd) {
   $b.Count -ge 1
 }
 
+# Chrome 156's toolbar action name has a second line ("Has access to this site", recipes/CLAUDE.md): only the first line is the title
+# (S5-liveA set-up fix, #281). The further lines are counted, never printed.
+function Get-S9FirstLine([string]$Text) {
+  $parts = @("$Text" -split "`r?`n")
+  [pscustomobject]@{ First = "$($parts[0])"; More = ($parts.Count - 1) }
+}
+
 function Get-S9ActionTitle([long]$Hwnd) {
   $b = Find-S9ActionButtons $Hwnd
   if ($b.Count -ne 1) { Say9 "ACTION buttons found: $($b.Count) (need exactly 1)"; return $null }
-  $n = $b[0].Current.Name; $help = $b[0].Current.HelpText
-  Say9 ("ACTION name ""$n""" + $(if ($help) { " help ""$help""" } else { '' }) + " class '$($b[0].Current.ClassName)'")
-  $n
+  $nl = Get-S9FirstLine $b[0].Current.Name; $hl = Get-S9FirstLine $b[0].Current.HelpText
+  $more = $nl.More + $hl.More
+  Say9 ("ACTION name ""$($nl.First)""" + $(if ($hl.First) { " help ""$($hl.First)""" } else { '' }) + $(if ($more -gt 0) { " (+$more further line(s) not shown)" } else { '' }) + " class '$($b[0].Current.ClassName)'")
+  $nl.First
 }
 
 function Wait-S9ActionTitle([long]$Hwnd, [string]$Expect, [int]$TimeoutMs = 2000) {
   $t0 = Get-Date; $n = ''
   do {
     $b = Find-S9ActionButtons $Hwnd
-    if ($b.Count -eq 1) { $n = $b[0].Current.Name; if ($n -eq $Expect -or $n.StartsWith($Expect)) { break } }
+    if ($b.Count -eq 1) { $n = (Get-S9FirstLine $b[0].Current.Name).First; if ($n -eq $Expect -or $n.StartsWith($Expect)) { break } }
     Start-Sleep -Milliseconds 50
   } until (((Get-Date) - $t0).TotalMilliseconds -gt $TimeoutMs)
   $ms = [int]((Get-Date) - $t0).TotalMilliseconds
