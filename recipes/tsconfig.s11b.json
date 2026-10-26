@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["node", "chrome"], "lib": ["ES2022", "DOM", "DOM.Iterable"] },
+  "include": ["s11b-rules.ts", "test/s11b-servers.test.ts", "test/s11b-hits.test.ts", "test/s11b-rules.test.ts", "test/s11b-console.test.ts", "test/s11b-judges.test.ts", "test/s11b-scan.test.ts", "s11b.ts", "test/s11b-cli.test.ts", "test/s11b-sdk.test.ts", "s11b-win-rules.ts", "test/s11b-win-rules.test.ts", "test/s11b-win-static.test.ts", "s11b-r17-plan.ts", "test/s11b-r17-plan.test.ts", "test/s11b-r17-static.test.ts", "test/s11b-h8.test.ts", "test/s11b-h8-static.test.ts", "test/s11b-fix-rules.test.ts", "test/s11b-fix-static.test.ts"]
+}
