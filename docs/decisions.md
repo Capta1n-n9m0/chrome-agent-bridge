@@ -185,6 +185,16 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-27 · S4-sheet: Run 17's sheet committed; the delayed redirector is a new `s11b-delay` server (#304)
+**Decided:** §4.24 as committed in `336547d` before any observation; RD-5b's held redirect is served by a new
+`recipes/s11b-delay*` server rather than a `--delay` flag on `s9-redirect.py`, which stays unchanged as the phase doc
+prefers. RD-5b comes from Stage 0 F9, adopted by #296 item 9. RD-0's build proof prefers `chrome.runtime.getManifest()`
+in the worker console by UI Automation; the sheet's behaviour-only fallback is allowed if that helper fails.
+**Why:** a recorded helper stays untouched; a new server is its own tested file.
+**Instead of:** changing `s9-redirect.py`, which Run 14's record depends on.
+**Revisit if:** the helper slice finds a reason to share code with `s9-redirect.py`.
+**By:** Claude
+
 ### 2026-10-27 · S3b: a blocked download hop is recognised strictly within 300 ms; the caps warning's thresholds (#303)
 **Decided:** S3b's two proposals (`…-steps/S3b.md` §5): a hop counts only for tab −1, `xmlhttprequest`, the own
 initiator, `ERR_BLOCKED_BY_CLIENT` and a URL the call's own list blocks, within 300 ms of that call's rejected `fetch`
