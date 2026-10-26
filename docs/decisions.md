@@ -36,6 +36,8 @@ conservative rule and they wait for the user at the gate).** Each entry is in th
 - 2026-10-25 · S4: the client line for `UPLOAD_REFUSED` names both causes (#263) — with #257's texts; wording #264.
 - 2026-10-25 · S3: the failure-path unmark runs without the safety gate (#266) — safety-side.
 - 2026-10-25 · S3: the upload's wire texts and its 15 s CDP bound (#268) — with #257.
+- 2026-10-26 · The user's Chrome profile name reached a committed evidence file; redacted at the tip, history for the user (#283) — **before any push**.
+- 2026-10-26 · S5-liveB: the upload works on a background tab; UP-6/UP-6B's banner FAIL is not product evidence; a raw missing-file upload answers ok (#284) — UP-RAW.
 
 ## Standing decisions
 
@@ -175,6 +177,38 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
+
+### 2026-10-26 · S5-liveB: the upload works on a background tab; UP-6/UP-6B's banner FAIL is not product evidence; a raw missing-file upload answers ok (#284)
+**Decided:** liveB's record stands (`S5-liveB.md`; verifier PASS-with-notes; S5.2–S5.6 hold for liveB; one run, exit
+0, no STOP): PASS UP-1…UP-5, UP-8 (CSP), UP-9 (junction refused), UP-PATCH, UP-TWICE, UP-7J, UP-RESTORE, UP-LOGS;
+FAIL UP-6B (its five refusal clauses pass; only the banner clause fails); RECORD UP-RAW, UP-NAV, UP-STALE; NOT
+MEASURED UP-DEVT, UP-RACE-A, UP-RACE-B. Every upload row judged by the page reporter's hash; every refusal left 0
+files; every final mark count 0. **UP-1, read off 0.6's table: the page received the file on a background tab — no
+focus, no proposed decision**; the tool description may now say so (#262's Revisit-if; S6). UP-6 (liveA) and UP-6B
+keep their FAIL as recorded, but no product defect is filed: the banner check cannot tell the product's attach from
+the wave's own page reads, which also attach the debugger inside its sampling window (verifier F1). **UP-RAW:** a raw
+`uploadFiles` (no SDK preflight) of a path inside an allowed folder whose file does not exist answered `ok`, and the
+page holds one file — the extension cannot see the disk, so only the SDK preflight refuses a missing file; listed for
+the user as a contract question (whether the extension should refuse, e.g. by Chrome's answer, or the limit stands
+beside 0.4's "a raw client can skip the real-path step").
+**Why:** the verifier's findings F1–F4; a failed row is recorded, never retuned; a row whose check cannot
+discriminate is not evidence of a defect.
+**Instead of:** filing UP-6 as a product defect; re-running UP-6B with a different banner check (a changed pass rule).
+**Revisit if:** a banner check that excludes the wave's own attaches is written as a new, pre-registered row.
+**By:** Claude (UP-RAW for user review, listed under Open decisions)
+
+### 2026-10-26 · The user's Chrome profile name reached a committed evidence file; redacted at the tip, history for the user (#283)
+**Decided:** line 1 of `…-steps/S5-liveB-console.txt`, committed in `262619f` (not pushed), was a DevTools window title
+carrying the Chrome profile's display name. The session agent replaced that line with a redaction note in the next
+commit; no other tracked file holds it (`git grep`, 0). The history still holds it in `262619f`: before any push
+(G11-1), the user chooses between rewriting the unpushed history (a local rewrite of Step 11's unpushed commits) and
+pushing with the redaction commit only. Live runners' console captures drop window-title lines from now on (S6/the
+next wave's helpers).
+**Why:** the repo is public and evidence never shows anything from the user's profile (agent-rules §2); the phase
+doc's STOP rules list a title in committed evidence as a gate stop. Rewriting history is the user's (agent-rules §3).
+**Instead of:** rewriting history now without the user; leaving the line at the tip.
+**Revisit if:** — .
+**By:** Claude (the redaction); user (the history, at G11-1)
 
 ### 2026-10-26 · S5-liveA closes with S5.5 and part of S5.6 failed as recorded; helper fixes before liveB (#282)
 **Decided:** liveA's record stands (both runs; `S5-liveA.md` §3): PASS UP-L1, UP-0, UP-7 (a–c), SAVE-REFUSE-R (SDK and
