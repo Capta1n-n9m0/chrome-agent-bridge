@@ -3,7 +3,7 @@
 Model: Opus 5.5 (verifier, default effort). UTC start 2026-10-26T05:27:46Z, end 05:34Z (`date -u`). Read-only. Nothing
 live ran, and I started no Chrome, daemon or server. I edited only this report and committed nothing. Scratch files are
 in the session scratchpad, outside the repo: the extracted section, the scan script, and the profile name read from
-`262619f`, which is never printed.
+`dbe6022`, which is never printed.
 
 ## 1. Verdict
 
@@ -47,13 +47,13 @@ those two checks.
 | S5.3 | **held** | Both live verifiers were fresh Opus. VA compared 22 constants with 0 differences. VB found 17 error constants equal, and its 4 "differ" are the K-opt rows. The page judges are `uploadPageJudge` and `refusalPageJudge` (`recipes/s11.ts:53,76,505`). The record holds verdicts, not texts (VA N3). |
 | S5.4 | **held** | liveA's found state (REC:8) equals run 2's read-back (REC:226–229). liveB's found state (REC:249) equals REC:400–403. liveB's found state also equals liveA's end state. Run 1's stop path shows the stored state and daemon equal (REC:166, 170), and its `RESTORE FAILED` comes from the title check (#281). Only the empty-text hash is printed. |
 | S5.5 | **FAILED (liveA)**, held (liveB) | The STOP counts per file are: REC 5 (lines 143, 148, 171, 172, 179), FA 4 (lines 2, 4, 6, 8), FB 4 (the same as FA), and 0 in FA2, DA, DB, the console and the occluders file. FA:2 and FA:6 have no return. The ledger entry at 04:50Z is a back-fill. The REC lines match the 04:20:42Z return. The non-STOP guard lines (REC:142, 184) do not add any unreturned line. |
-| S5.6 | **FAILED in part (liveA)**, held (liveB) | Every SCAN count is 0 (REC:231–236, 405–410). Run 1 has no console capture (#282, VA F2). Also, the title line committed in `262619f` is a gate item (#283). See NIT-4. |
+| S5.6 | **FAILED in part (liveA)**, held (liveB) | Every SCAN count is 0 (REC:231–236, 405–410). Run 1 has no console capture (#282, VA F2). Also, the title line committed in `dbe6022` is a gate item (#283). See NIT-4. |
 | S5.7 | **held** | REC:188 shows the warm-up recorded and excluded. REC:185–190 shows 1 warm-up plus 3 measured trials with d = [-24, 95, 68], all ≤ 300 ms in 3/3, which phase doc 0.14 (c) reads as "the event ends the wait", so there is no S5b. Run 1 ran no trial (REC:143). #277's NOT-MEASURED edge cases are not met. |
 
 ## 4. Leak scan, by count only
 
 `scan.mjs` (in the scratchpad) reads the token from `bridge.token` and the profile display name from
-`git show 262619f:…/S5-liveB-console.txt` line 1. It prints neither. It covers 21 files: `S5-run-record.md`, the 18
+`git show dbe6022:…/S5-liveB-console.txt` line 1. It prints neither. It covers 21 files: `S5-run-record.md`, the 18
 `S5-liveA*`/`S5-liveB*` files, the extracted section and `S5-record-builder.md`. Results:
 
 - **Token, profile display name and sentinel** (the `s11-` + 12-hex shape): 0 in all 21 files.
@@ -101,6 +101,6 @@ those two checks.
 ## 6. Deviations, proposed decisions, handoff
 
 There were no deviations and I propose no decisions. MINOR-1 to MINOR-5 are for the step agent to fix before the
-commit. S5.5 and S5.6 (liveA) and the history of `262619f` (#283) remain items for the user at the gate.
+commit. S5.5 and S5.6 (liveA) and the history of `dbe6022` (#283) remain items for the user at the gate.
 
 Redacted 2026-10-26 by the S5-record fixer (round 2): profile-path forms and the username replaced by placeholders (verifier2 NEW-1); nothing else changed.

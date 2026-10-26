@@ -1,6 +1,6 @@
 # Step 11 — D3 file upload (`browser_upload_file`, `Tab.upload`)
 
-**Date:** 2026-10-25 · **Status:** Built, Run 16 recorded, docs done (2026-10-26); **waiting for the user at the gate** (§ As built, Gate checklist) — kickoff `docs/plans/next-session-prompt.md`
+**Date:** 2026-10-25 · **Status:** ✅ Closed 2026-10-26 — the user ruled the gate (decisions-archive/step11.md · 2026-10-26 · The user rules Step 11's gate; Step 11 closes (#288)); next: Step 11b (`docs/plans/2026-10-26-step11b-block-list-redirects.md`)
 **Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change (§5 layer contract, §6 the human, §10 protocol and codes, with the Step 9 and
 Step 10 dated notes) · **Roadmap:** `docs/progress-and-roadmap.md` §5 (Phase D, D3 file upload; "not started" at the kickoff, ✅ since Step 11) ·
@@ -557,9 +557,10 @@ measurement; and, from Steps 6–10, still binding: everything in `docs/agent-ru
 ## As built
 
 One block per stage, written by the session agent at the stage close (format: `docs/docs-writing-guide.md` § Phase
-doc header); at the phase close, the gate checklist (item → met? → evidence).
+doc header); at the phase close, the gate checklist (item → met? → evidence). Blocks are in stage order (S3c ran
+during S5). *Note 2026-10-26:* seven Step 11 commits say "verifier: pending"; their verdicts are the ones in their blocks.
 
-### Gate checklist · 2026-10-26 · **not met — Step 11 waits for the user**
+### Gate checklist · 2026-10-26 · **met by the user's ruling (#288)**
 | Item | Met? | Evidence |
 |---|---|---|
 | Every-stage checks (tests = before + n, typecheck, build, no tracked change, new tests red before) | yes | each stage's verifier; tests 3273/132 → 3811/154 (S6's `npm test`); S3's break of a recipes typecheck found later and fixed in S3c (#275, #276) |
@@ -569,20 +570,15 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 | S3.1–S3.4 | yes | `S3.md`, `S3-verifier2.md` |
 | S4.1–S4.4 (+S4b) | yes | `S4.md`, `S4b.md` |
 | S5.1–S5.4, S5.7 | yes | `S5-record.md` (whole run) |
-| **S5.5** | **no** (liveA) | two preflight STOPs relaunched instead of returned, no effect (#282) — a STOP rule ("a live runner continuing past a STOP line") |
-| **S5.6** | **part** (liveA) | worker console not captured in liveA's first run: NOT MEASURED for UP-L1, UP-6, UP-7, SAVE-REFUSE-R (#282) |
+| **S5.5** | **no** (liveA); accepted by the user (#288) | two preflight STOPs relaunched instead of returned, no effect (#282); the user accepted the record |
+| **S5.6** | **part** (liveA); accepted (#288) | worker console not captured in liveA's first run: NOT MEASURED for UP-L1, UP-6, UP-7, SAVE-REFUSE-R (#282); re-run with the console in Run 17 (Step 11b 0.10) |
 | S6.1 | yes | `S6.md` (25 texts byte-identical) |
-| STOP rule: a title in committed evidence | **triggered** | the profile's display name in `262619f` (unpushed), redacted at the tip; the history is the user's (#283) |
+| STOP rule: a title in committed evidence | triggered, cleared | the profile's display name in `dbe6022` (was `262619f`); the user ruled a rewrite: the nine unpushed commits rewritten before the push, ids mapped in #288 |
 | G11-0 | met | #229 |
-| G11-1 (push/tag) | not asked | nothing pushed; 48 commits ahead of `origin/main` at `bce321b` (`git log origin/main..HEAD`) |
+| G11-1 (push/tag) | granted (#288) | pushed with the close-out commit |
 | G11-2 (non-fixture upload) | not needed | fixture pages only (S5-record scan) |
 | G11-3 (file-URL toggle) | not needed | found ON by UP-0, never pressed |
-| Open decisions | waiting | `docs/decisions.md` → Open decisions (Step 11) |
-
-### S6 — Docs · 2026-10-26 · verifier: PASS-with-notes (third check) · commit `bd755aa` · models: builder and fixers Sonnet 5.5 (medium), verifiers Opus 5.5
-- `docs/setup.md` (+170/−7: Uploading files, Upload folders, the `file:` refusal, 24 tools), `README.md`,
-  `recipes/README.md`, the roadmap; S6.1 met. Package `CLAUDE.md` proposals applied by the session agent (#287).
-  Carried: the tool description's background-tab sentence (a code stage).
+| Open decisions | ruled (#288, #289, #290) | 3b, 3c, 3d changed; built in Step 11b S0F |
 
 ### Stage 0 — Spec audit · 2026-10-25 · verifier: PASS-with-notes · commits `b962460`, `deaffd1` · models: step agent, auditor, verifier Opus 5.5
 - **Z.1 met.** Step 8, 9 and 10 contracts re-executed on port 0 from a `git archive` copy: held. Counts recomputed
@@ -622,12 +618,42 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   handler is unreachable with a refused path"; the gate's view carries `paths` and the parsed folders; extension
   tests are not type-checked (tsconfig covers `src` only).
 
+### S3 — The extension: handler, mark, options page · 2026-10-25 · verifier: PASS-with-notes (second check) · commits `7e12707`, `d4718ca` · models: all Opus 5.5
+- **S3.1–S3.4 met**, with #245 (b), #246, #247, #248: the handler replaces S2's stub; target rule and mark in
+  `content/upload-target.ts`; CDP steps in `upload-files.ts` (isolated world); the toggle read before the attach;
+  the Upload folders box, the only writer. New tests red on the pre-change source; 18 verifier mutants red;
+  `a11y.ts`/`snapshot.ts`/`locate.ts` diff against `eac8324` empty; log-scan count unchanged. Tests 3532/140 →
+  3593/144 at `d4718ca` (S4b's +2 included). Nothing measured in Chrome yet.
+- **Findings, both checks:** CRITICAL 0, MAJOR 0, MINOR 2 (the sweep targeted the tab, not the marked document —
+  fixed; S5's row list short — carried), NIT 7 (3 fixed, 4 recorded; `S3.md` §3).
+- **Decisions:** #266–#269.
+- **Contracts (binding forward):** S5's §4.23 must cover the twelve rows of `…-steps/S3.md` §7 besides 0.12's; not
+  measured until then: `createIsolatedWorld` without `Page.enable`, Chrome refusing a stale `documentId`, a tab whose
+  content script predates the reload, a "Not allowed" with the toggle on surfacing as `DEBUGGER_ATTACH`.
+
+### S4 — The SDK and the MCP · 2026-10-25 · verifier: PASS-with-notes · commit `acbb042` (its message says "verifier: pending"; the verdict is this line's) · models: all Opus 5.5
+- **S4.1–S4.4 met** (verifier on a `git archive` copy): preflight refusals make zero calls; `fs.promises.realpath`
+  sent; sha256 equals the file's; eight values; types pinned; baseline +1 tool; no directory in any answer;
+  `browser_click`'s focus sentence still last; over real `ws` on port 0 `uploadFiles` carries a numeric `tabId` and
+  the real paths, `TAB_HELD` on another client's tab, the lock never taken. 10 of 11 verifier mutants red. Tests
+  3489/137 → 3532/140. 24 tools.
+- **Verifier:** CRITICAL 0, MAJOR 0, MINOR 2, NIT 4 (`S4-verifier.md`). Not tested: an unreadable file; a folder on a
+  `subst` or mapped drive (the real path may resolve past the drive letter) — S5/S6 notes.
+- **Decisions:** #261–#263; #263 orders S4b (the client line names both causes), after S3.
+
+### S4b — The `UPLOAD_REFUSED` client line names both causes · 2026-10-25 · verifier: PASS-with-notes · commit `01f60b2` · models: all Opus 5.5
+- The SDK line names the folder rule and the file-URL toggle (#263, #264); three tests that pinned the old line carry
+  dated notes, two added; the old `error.ts` turns 8 red. `npm test` 3585 / 143 at `01f60b2` (S3's commits included).
+- **Verifier:** CRITICAL 0, MAJOR 0, MINOR 1 (spec §10 still one-cause: amended by the session agent), NIT 2 (the
+  "either … or" reads exhaustive — malformed paths and `subst`/mapped drives also refuse: one sentence for S6; the
+  line says "the extension's Details", the extension's own message names the product).
+
 ### S3c — A recipes typecheck broken since S3 · 2026-10-25 · verifier: PASS-with-notes · commit `214c821` · models: builder Sonnet 5.5 (medium), verifier Opus 5.5
 - `recipes/tsconfig.s10.json` exited 2 since `7e12707` (TS2339 at `upload-files.ts:133-134`; S3's verifiers ran only
   the root typecheck); an erased `import type` fixes it (#276). All recipes configs exit 0; `dist/` byte-identical;
   tests unchanged 3625/146. Verifier: NIT 1 (keep the `type` keyword).
 
-### S5 — Run 16 (live), in slices · 2026-10-25 → 26 · verifiers: per slice PASS-with-notes, liveA FAIL (bookkeeping, #282) · commits `36cfc43` … `4071287` · models: doers Sonnet 5.5 (medium) from here (#270), verifiers and step agents Opus 5.5
+### S5 — Run 16 (live), in slices · 2026-10-25 → 26 · verifiers: per slice PASS-with-notes, liveA FAIL (bookkeeping, #282) · commits `36cfc43` … `bd301ce` · models: doers Sonnet 5.5 (medium) from here (#270), verifiers and step agents Opus 5.5
 - **Course:** the first attempt (one prep builder, Sonnet high) was stopped at 19:52Z past 700k tokens of context with
   nothing committed; the user moved doers to Sonnet medium (#270) and asked for smaller iterations (#271). S5 then ran
   as S5-sheet → S5-fixtures → S3c (a recipes typecheck S3 broke, #275–#276) ∥ S5-rules → S5-actor → S5-win →
@@ -645,38 +671,15 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - **Decisions:** #270–#285. **Contracts (binding forward):** Run 16's helpers (`recipes/s11*`) and the salvage
   folder `C:\Users\aliev\Projects\step11-s5-salvage\` (outside the repo; may be deleted by the user).
 
-### S4 — The SDK and the MCP · 2026-10-25 · verifier: PASS-with-notes · commit `acbb042` (its message says "verifier: pending"; the verdict is this line's) · models: all Opus 5.5
-- **S4.1–S4.4 met** (verifier on a `git archive` copy): preflight refusals make zero calls; `fs.promises.realpath`
-  sent; sha256 equals the file's; eight values; types pinned; baseline +1 tool; no directory in any answer;
-  `browser_click`'s focus sentence still last; over real `ws` on port 0 `uploadFiles` carries a numeric `tabId` and
-  the real paths, `TAB_HELD` on another client's tab, the lock never taken. 10 of 11 verifier mutants red. Tests
-  3489/137 → 3532/140. 24 tools.
-- **Verifier:** CRITICAL 0, MAJOR 0, MINOR 2, NIT 4 (`S4-verifier.md`). Not tested: an unreadable file; a folder on a
-  `subst` or mapped drive (the real path may resolve past the drive letter) — S5/S6 notes.
-- **Decisions:** #261–#263; #263 orders S4b (the client line names both causes), after S3.
-
-### S3 — The extension: handler, mark, options page · 2026-10-25 · verifier: PASS-with-notes (second check) · commits `7e12707`, `d4718ca` · models: all Opus 5.5
-- **S3.1–S3.4 met**, with #245 (b), #246, #247, #248: the handler replaces S2's stub; target rule and mark in
-  `content/upload-target.ts`; CDP steps in `upload-files.ts` (isolated world); the toggle read before the attach;
-  the Upload folders box, the only writer. New tests red on the pre-change source; 18 verifier mutants red;
-  `a11y.ts`/`snapshot.ts`/`locate.ts` diff against `eac8324` empty; log-scan count unchanged. Tests 3532/140 →
-  3593/144 at `d4718ca` (S4b's +2 included). Nothing measured in Chrome yet.
-- **Findings, both checks:** CRITICAL 0, MAJOR 0, MINOR 2 (the sweep targeted the tab, not the marked document —
-  fixed; S5's row list short — carried), NIT 7 (3 fixed, 4 recorded; `S3.md` §3).
-- **Decisions:** #266–#269.
-- **Contracts (binding forward):** S5's §4.23 must cover the twelve rows of `…-steps/S3.md` §7 besides 0.12's; not
-  measured until then: `createIsolatedWorld` without `Page.enable`, Chrome refusing a stale `documentId`, a tab whose
-  content script predates the reload, a "Not allowed" with the toggle on surfacing as `DEBUGGER_ATTACH`.
-
-### S4b — The `UPLOAD_REFUSED` client line names both causes · 2026-10-25 · verifier: PASS-with-notes · commit `01f60b2` · models: all Opus 5.5
-- The SDK line names the folder rule and the file-URL toggle (#263, #264); three tests that pinned the old line carry
-  dated notes, two added; the old `error.ts` turns 8 red. `npm test` 3585 / 143 at `01f60b2` (S3's commits included).
-- **Verifier:** CRITICAL 0, MAJOR 0, MINOR 1 (spec §10 still one-cause: amended by the session agent), NIT 2 (the
-  "either … or" reads exhaustive — malformed paths and `subst`/mapped drives also refuse: one sentence for S6; the
-  line says "the extension's Details", the extension's own message names the product).
+### S6 — Docs · 2026-10-26 · verifier: PASS-with-notes (third check) · commit `0a74608` · models: builder and fixers Sonnet 5.5 (medium), verifiers Opus 5.5
+- `docs/setup.md` (+170/−7: Uploading files, Upload folders, the `file:` refusal, 24 tools), `README.md`,
+  `recipes/README.md`, the roadmap; S6.1 met. Package `CLAUDE.md` proposals applied by the session agent (#287).
+  Carried: the tool description's background-tab sentence (a code stage).
 
 ## Open items
 
+- *Ruled 2026-10-26 (#288): every item below accepted, except #250 (a home folder is refused), #259 (`file:` rows
+  hidden) and UP-RAW (a missing file refused by the extension), changed and built in Step 11b S0F.*
 - Contract-level, ruled at Stage 0 by the conservative rule and listed for the user at the gate: 0.3 (paths only),
   0.4 (the human-held folder list, empty by default, the real-path step), 0.5 (class `upload`, the code
   `UPLOAD_REFUSED` and its text), 0.6 (`uploadFiles`'s wire shape, no lock, no focus), 0.8 (`Tab.upload`'s

@@ -103,9 +103,10 @@ our docs, tests and code first, then at most one targeted web search for an exte
 
 ## 6. Roles
 
-- **Step agent:** owns one stage: builder → independent verifier → fixer, at most 2 fix rounds, 3 on a
-  low-risk stage (§7); a fresh verifier re-checks only the affected items after each. Reads its children's reports and the resulting files
-  before accepting. Does not build or commit itself. Keeps the ledger only if the stage holds a wait.
+- **Step agent:** owns one stage: builder → independent verifier → fixer, at most two fix rounds and a third only by
+  an Opus fixer (§7); a fresh verifier re-checks only the affected items after each. Reads its children's reports and
+  the resulting files before accepting. Does not build or commit itself: after the verdict it starts a committer.
+  Keeps the ledger only if the stage holds a wait.
 - **Builder:** do exactly the task. Pure logic: the failing test first. Run `npm run typecheck`,
   `npm test`, `npm run build` and quote the result lines with counts. `chrome.*` glue is not
   unit-tested; it gets rows in `docs/e2e-test-plan.md` in the same stage.
@@ -123,45 +124,44 @@ our docs, tests and code first, then at most one targeted web search for an exte
   after restoring the safety state if it touched it. It may fix a helper only between rows, never past
   a STOP line. Every live wave leaves the safety state as it found it, read back by count and hash,
   never printed.
+- **Committer:** one task: stage the exact file list the brief names, commit with the verifier's verdict in the
+  message (§10), report the hash. No other edit.
 - **Lead cleaner / area cleaner:** `cleanup-pass` skill (roles, areas, models, report form).
-- Leaf agents (builder, verifier, fixer, runner, area cleaner) never spawn agents.
+- Leaf agents (builder, verifier, fixer, runner, committer, area cleaner) never spawn agents.
 
-## 7. Models
+## 7. Models and effort
 
-Risk decides the model (decisions.md · 2026-10-25 · Lean procedures … (#230)). The phase doc marks each
-stage **low** or **standard**.
-- **Low risk:** the stage touches no contract file (wire protocol, SDK public surface, MCP schemas,
-  error codes) and nothing on the safety side (the gate, the token, the bind, logging, the manifest):
-  docs, recipes and fixtures, test-only additions, internal refactors.
-- **Builder and fixer on a low-risk stage: Sonnet, effort high.** If two Sonnet fix rounds fail, a
-  third fix round runs on Opus; if that fails, §3 item 9.
-- **Everything else on Opus:** session and step agents, every verifier, Stage-0 audits, live runners,
-  builders and fixers of standard stages, the lead cleaner and the area cleaners the `cleanup-pass`
-  table marks Opus.
-- Headless `claude -p` E2E actors may run Sonnet.
-- **In force from Step 11 S5 (the user, 2026-10-25, #270):** builders, fixers and live runners run **Sonnet,
-  effort medium**, on every stage, low or standard; verifiers, step agents and the session agent stay Opus. Two
-  failed Sonnet fix rounds → a third on Opus, as above. This replaces the two bullets above where they differ.
+Risk decides the model (decisions.md · 2026-10-26 · How agents are run from Step 11b on (#289)). The phase doc marks
+each stage **low** or **standard**.
+- **Standard risk:** the stage touches a contract file (wire protocol, SDK public surface, MCP schemas, error codes)
+  or the safety side (the gate, the token, the bind, logging, the manifest). **Low risk:** docs, recipes and fixtures,
+  test-only additions, internal refactors.
+- **Opus** builds and fixes contract and safety code (standard stages), runs **every verifier**, and is the session
+  agent, the step agents, the Stage-0 audits, the lead cleaner and the area cleaners the `cleanup-pass` table marks Opus.
+- **Sonnet** builds and fixes recipes, fixtures, docs and other low-risk code, runs the **live runners** and the
+  committers, and the area cleaners the `cleanup-pass` table marks Sonnet. Headless `claude -p` E2E actors may run Sonnet.
+- **Effort is medium for every agent**, Opus and Sonnet alike. Every brief states `effort`, and every `Agent` call
+  passes `effort` and `model` explicitly; none is left to a default.
+- **Fix rounds:** at most two per stage. A third runs only on an Opus fixer; if that fails, §3 item 9.
+- **Committer:** a fresh agent the step agent starts after the verifier's verdict (§10); Sonnet.
 - **Small iterations (#271):** a stage whose build would exceed about 600 new lines or one coherent deliverable is
-  split into slices before it starts, one step agent each. A brief names line ranges, never a whole file over ~2k
-  lines (`docs/e2e-test-plan.md` is ~460 KB). A builder that finds its slice larger than briefed stops and reports
-  DONE-PARTIAL with what remains, rather than growing its context.
-- Every report states the model it ran on. Step reports record the verifier's findings per stage, so
-  Sonnet-built and Opus-built stages can be compared.
+  split into slices before it starts, one step agent each. A brief names line ranges, never a whole file too large to
+  read whole (the e2e plan), and states the slice's size cap. A builder that finds its slice larger than briefed stops
+  and reports DONE-PARTIAL with what remains, rather than growing its context.
+- Every report states the model and effort it ran on. Step reports record the verifier's findings per stage.
 
 ## 8. Waiting, and fresh agents
 
 - The step agent holds long waits: run the job with `run_in_background` (or a silent watcher on a PID
   or `.done` marker, polling at most every 120 s). Never a foreground sleep loop. Builders, verifiers and
   fixers finish in one go and never wait.
-- **A step agent never ends its turn while a child agent runs** (#286): a child's hand-back that arrives
-  after its parent ended the turn goes past the parent (Step 11 S5-liveA's first step agent). The Agent
-  tool may start a child in the background whatever the brief says; then wait on the child's report file
-  with a bounded wait. Only the session agent ends its turn on a running child.
+- **A step agent never ends its turn while a child agent runs** (#286, permanent). In Claude Code the Agent tool may
+  start a child in the background whatever the brief says: the step agent waits for the completion notification, or
+  polls the child's report file with a bounded wait (Monitor or an until-loop), and never ends its turn meanwhile.
+  Only the session agent ends its turn on a running child.
 - A notice that a child is "waiting on its own background work" is **not** completion: wait for its real
   hand-back.
-- A child kills any shell command it left hanging before it reports (Step 11: a mistyped heredoc spun
-  ~1.5k CPU-seconds as an orphan).
+- A child kills any shell command it left hanging before it reports.
 - **Fresh agents, never resumed ones** (decisions.md · 2026-10-25 · Fresh agents instead of resumed
   ones (#225)): a stage that must continue goes to a new agent reading the ledger or report. A child
   whose transcript has not grown for an hour is stopped, checked for orphans, and its work handed to a
@@ -171,8 +171,8 @@ stage **low** or **standard**.
 ## 9. Report
 
 Write the report to the path in your brief, then return at most ~15 lines plus that path. Keep it to
-what the next reader needs: **about 1.5k words at most**; logs and raw output go to evidence files
-and are linked, never pasted.
+what the next reader needs: **at most 1,500 words for builders, fixers and runners, 2,500 for verifiers**; logs and
+raw output go to evidence files and are linked, never pasted.
 
 Area cleaners return numbered findings instead (`cleanup-pass` skill); everyone else uses these sections:
 

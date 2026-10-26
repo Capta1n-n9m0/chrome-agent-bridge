@@ -3,7 +3,7 @@
 Step 11 (D3 file upload), stage S5 (Run 16, live), slice S5-liveB. Risk: standard (the user's real Chrome, fixture
 pages only). Step agent: Opus 5.5, 2026-10-26 04:54Z → 05:20Z. Steps per decisions.md · 2026-10-26 · S5-liveA closes
 with S5.5 and part of S5.6 failed as recorded; helper fixes before liveB (#282). Numbers come from
-`S5-run-record.md` (the part appended by `262619f`), `S5-liveB-verifier.md` and the commands they quote.
+`S5-run-record.md` (the part appended by `dbe6022`), `S5-liveB-verifier.md` and the commands they quote.
 
 ## 1. Verdict
 
@@ -17,7 +17,7 @@ Verifier: **PASS-with-notes** (`S5-liveB-verifier.md`). liveB ran once, exit 0, 
   `scheme://` matches, not a bare `://`; the CLICK print uses the name's first line; `Save-S16Console` saves the worker
   console on any stop before UP-LOGS. `npm test` 3803 → 3811 (153 → 154 files); 6 of 8 new tests fail on the pre-fix
   code (the other 2 guard behaviour that was already right), re-run by the verifier in a fresh worktree.
-- `262619f` — the liveB record lines, `S5-liveB-framing.txt` (cumulative: lines 2–8 are liveA's 04:18Z run),
+- `dbe6022` — the liveB record lines, `S5-liveB-framing.txt` (cumulative: lines 2–8 are liveA's 04:18Z run),
   `S5-liveB-console.txt`, `S5-liveB-daemon.txt`, the runner and fixer reports, the ledger. Evidence scans exit 0.
 - This report, `S5-liveB-verifier.md` and the ledger's last lines: committed after this report.
 
@@ -81,7 +81,7 @@ The committed framing equals the raw file (`diff` exit 0, verifier). S5.5 holds 
   framing, not the record's first liveB line (UP-L1 is liveA's). **N3** — the runner's "verbatim" lines carry three
   added notes; counts off by one.
 - **NIT N2 (escalated)** — `S5-liveB-console.txt:1` is the DevTools window title, which carries the Chrome profile's
-  display name: user-identifying text in evidence for a public repo (agent-rules §2). It is committed in `262619f`,
+  display name: user-identifying text in evidence for a public repo (agent-rules §2). It is committed in `dbe6022`,
   not pushed (main is 42 commits ahead of origin). Redacting it needs a ruling: a new commit hides it from the tip
   only; a history rewrite is §3 item 3. Not done by this slice.
 - Held: S5.2, S5.3, S5.4, S5.5, S5.6 (console capture began 05:01:23.9Z, before UP-0 at 05:01:26.0Z, and covers every
@@ -124,7 +124,7 @@ review)
 
 ### 2026-10-26 · The profile display name in `S5-liveB-console.txt:1`
 **Decided (proposed):** before any push, the session agent rules between a redaction commit of that one line
-(content otherwise unchanged; the scan rules gain the DevTools title) and a history rewrite of `262619f` (needs the
+(content otherwise unchanged; the scan rules gain the DevTools title) and a history rewrite of `dbe6022` (needs the
 user, §3 item 3). **Why:** agent-rules §2, public repo. **Instead of:** leaving it. **Revisit if:** — **By:** Claude
 (proposed)
 

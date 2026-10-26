@@ -1,7 +1,7 @@
 # S5-liveB verifier report (Run 16, liveB)
 
 Model: Claude Opus 5.5. UTC start 2026-10-26T05:05:06Z, end 05:17Z. I only read and ran checks: I drove no Chrome,
-started no daemon or server and committed nothing. The evidence is commit `262619f`, and the set-up fixes are
+started no daemon or server and committed nothing. The evidence is commit `dbe6022`, and the set-up fixes are
 `341491e`.
 
 ## 1. Verdict: PASS-with-notes
@@ -11,7 +11,7 @@ change no pass rule and no guard, and their tests fail on the pre-fix code. All 
 matters for S5-record: **F1, the banner clause is not discriminating.** UP-6B's banner FAIL (and liveA's UP-6) is most
 likely caused by the wave's own `evaluate` reads, so it is not evidence of a product defect.
 
-## 2. Rows (record = the lines `262619f` appended to `S5-run-record.md`; rules from `docs/e2e-test-plan.md` §4.23)
+## 2. Rows (record = the lines `dbe6022` appended to `S5-run-record.md`; rules from `docs/e2e-test-plan.md` §4.23)
 
 | Row | Record | Mine | Reason |
 |---|---|---|---|

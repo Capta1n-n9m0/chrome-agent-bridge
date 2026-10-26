@@ -11,7 +11,7 @@
  *   than one path for an input without `multiple`.
  * - The **one-off mark** (`markUploadTarget`): `UPLOAD_MARK_ATTR` set to the call's fresh value on the chosen input,
  *   after every stray upload mark (any value, an earlier call's) is swept from the document; the service worker's
- *   CDP finder (`upload-cdp.ts`, in an isolated world) finds it and removes it. `unmarkUpload` is the
+ *   CDP finder (`upload-files.ts`, in an isolated world) finds it and removes it. `unmarkUpload` is the
  *   best-effort sweep of this call's mark on every failure path.
  *
  * Never a path, a file name or the mark value in a message or a log. Self-contained at runtime (IIFE).

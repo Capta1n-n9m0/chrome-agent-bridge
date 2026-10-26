@@ -52,7 +52,7 @@ the repo does not hold. Never status.
 
 If the session changed docs, `CLAUDE.md` files or skills, run the **`cleanup-pass`** skill
 (quick pass; a full pass at a phase close). It runs after §1–§5, so it checks the updated records.
-At a phase close, `phase-kickoff` follows it, before the commit.
+At a phase close, `phase-kickoff` follows it, before the commit. If the phase stops at an unmet gate, the kickoff waits for the user's ruling (`long-run` §5).
 
 ## 7. Commit
 

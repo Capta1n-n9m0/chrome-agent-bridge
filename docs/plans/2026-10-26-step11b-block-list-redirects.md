@@ -1,6 +1,6 @@
 # Step 11b — The block list stops redirected requests (`declarativeNetRequest` session rules)
 
-**Date:** 2026-10-26 · **Status:** Draft, written at Step 11's close-out; waits for Step 11's gate and the user's rulings on 0.3 and 0.4 (kickoff `docs/plans/next-session-prompt.md`)
+**Date:** 2026-10-26 · **Status:** Ready to start — Step 11's gate, 0.3 and 0.4 ruled 2026-10-26 (#288, #289, #290); not started (kickoff `docs/plans/next-session-prompt.md`)
 **Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change (§6.5 the human, §10 protocol and codes, with the Step 9–11 dated notes) ·
 **Roadmap:** decisions.md · 2026-10-24 · The roadmap after Step 8 (#129), as amended by · 2026-10-25 · The user rules on
@@ -16,6 +16,11 @@ it a number, so it is **Step 11b**; Step 12 (Phase F) keeps its number · **Step
 > (the permission) and 0.4 (which requests the rule covers), before Stage 0 (human gate G11b-0). If either ruling is
 > missing, the session agent stops before Stage 0, writes one line in the run journal and asks the user. Modelled on
 > how Step 11 made Step 10's rulings its precondition.
+
+*Met 2026-10-26: the user ruled Step 11's gate (decisions.md · 2026-10-26 · The user rules Step 11's gate; Step 11
+closes (#288)), 0.3 (A) and 0.4 (C) (#290), and how agents run (#289). #288's three code changes join this step as
+stage S0F (0.11); #290 adds four DNR checks to Stage 0, at the user's request to be careful that DNR does this job
+under MV3.*
 
 ## Why
 
@@ -43,7 +48,9 @@ ratified that, and #229 placed it here.
 - The bridge's answers do not change: the codes, messages and `data` of SAFE-5b and R14-5c stay as recorded; only the
   server-side count changes. No new code, method, tool or SDK signature (27 codes, 27 router methods, 24 tools stay).
 - One new manifest permission, `declarativeNetRequestWithHostAccess` (0.3), pinned by `manifest.test.ts`.
-- The human's own browsing does not change (0.4 (C), recommended), unless the user rules the wider option.
+- The human's own browsing does not change (0.4 (C), ruled).
+- Step 11's follow-ups (S0F, 0.11): a home folder or a folder holding home folders is refused as an Upload folder; an
+  upload of a missing file is refused by the extension, the page receiving nothing; a `file:` tab is listed hidden.
 
 ## Decisions
 
@@ -54,7 +61,7 @@ recorded by the session agent in `docs/decisions.md` before Stage 0 so the audit
 
 ### 0.1 Precondition, name and order (proposed)
 
-The box at the top. Order: Stage 0 → S1 (the rule builder, pure) → S2 (the rule keeper, pure) → S3 (the wiring and the
+The box at the top. Order: Stage 0 → S0F (Step 11's follow-ups, 0.11) → S1 (the rule builder, pure) → S2 (the rule keeper, pure) → S3 (the wiring and the
 manifest) → S4 Run 17 in slices → S5 docs. No stage runs in parallel: S2 consumes S1's output, S3 both.
 
 ### 0.2 What is built (user — the what; proposed — the shape)
@@ -76,7 +83,7 @@ own `fetch` from the service worker; the `tabIds` condition (expected session-on
 tab); `initiatorDomains` against a `chrome-extension://` initiator; the resource type of a worker `fetch`; the regex
 rule cap and RE2 syntax; what `navigate`'s tab URL is after a blocked main frame.
 
-### 0.3 The new permission and the manifest test (proposed — contract-level, **user-gated**)
+### 0.3 The new permission and the manifest test (user — (A), #290)
 
 - **(A) `declarativeNetRequestWithHostAccess` (recommended).** Rules act only where the extension has host access; it
   has `<all_urls>` already, so it adds no install warning. #140 named it.
@@ -89,7 +96,7 @@ the one permission, with a dated header note citing this decision, and adds a te
 `declarative_net_request` (static rule sets) is absent. Adding the permission requires one extension reload, done by
 `recipes/reload-extension.ps1` (#65); an unpacked extension shows no permission prompt.
 
-### 0.4 Which requests the rule covers (proposed — contract-level, **user-gated**)
+### 0.4 Which requests the rule covers (user — (C), #290)
 
 The question is whether the block list becomes a firewall for the human's own browsing.
 - **(A) Every request in the profile.** One rule set with no tab condition: the human's tabs, every page's
@@ -108,7 +115,7 @@ The question is whether the block list becomes a firewall for the human's own br
   except a human's tab that a bridge `navigate` is loading during that call. Later loads the page itself starts (a
   script redirect, a click) are not covered: the gate's per-call checks still refuse every later call on that tab.
 
-*Recommendation:* (C). The conservative choice is the narrowest rule that does #140's job and changes no answer and no
+*Ruled (C)* (#290). The conservative choice is the narrowest rule that does #140's job and changes no answer and no
 human-visible behaviour. (A) is offered as the alternative if the user wants the list to be a firewall for the whole
 profile; it would add an options-page sentence and a live row on a tab the wave opened by hand.
 
@@ -212,15 +219,43 @@ target origin is its second argument); fixture ports picked by `netstat` at S4-s
   expectation flips to 0 hits, written before the run.
 - **RD-7** (RECORD) the redirect server pointed at this extension's `options.html`: the answer and the page as Chrome
   leaves them. **RD-8** (RECORD) pointed at a `file:` URL of a wave-made file: same.
+- **F-HOME** (S0F) the options page refuses `C:\Users\fixture-home` and `C:\Users` as invalid lines, nothing stored by
+  typing; **F-RAW** (S0F, re-runs UP-RAW) a raw `uploadFiles` of a missing file inside an allowed folder: the
+  pre-written refusal, page reporter 0 files; **F-FILETAB** (S0F) a `file:` tab the wave opened by hand is listed with
+  `hidden` and no `url`, and every call on it is refused.
+- **Carried from Run 16 (#288):** UP-L1, UP-6, UP-7 and SAVE-REFUSE-R re-run with the worker console captured from
+  before the first row; UP-OPT; UP-RACE-A with per-call times; UP-DEVT with DevTools proven open. New rows with their
+  own ids, Run 16's record untouched.
 - **RD-LOGS** `daemon.log`, the worker console and actor output: 0 for the token, the test patterns, a non-fixture
   `scheme://host`, by count. **RD-RESTORE** the found state read back by hash.
 - SAFE-5b's and R14-5c's records are untouched; these rows are new.
 
+### 0.11 Step 11's follow-ups — stage S0F (user — the what, #288; proposed — the how)
+
+- **Home folders refused (#288 3b, changes #250).** `holdsHome` (`extension/src/options-model.ts`) today warns; the line
+  becomes **invalid** with its own reason text (naming no path), counted with the invalid lines, never stored as a used
+  folder. The gate's matcher (`extension/src/upload-paths.ts`) applies the same rule to the stored lines, so a home line
+  already in storage is never used (fails closed): one shared pure predicate, failing tests first, both callers. The
+  `.ssh` warning stays a warning. The options page's standing text and `docs/setup.md` say so.
+- **A missing file is an error (#288 3c, changes #284).** The extension refuses an upload whose file does not exist,
+  and the page receives no file. Stage 0 measures two ways, preferring the first: (i) **before** the attach, a check of
+  each path from an extension context (the offscreen document; `file:` access is already required by #245 (b)),
+  reading no more of the file than the check needs; (ii) **after** `DOM.setFileInputFiles`, reading one byte of each
+  `File` in the isolated world (a missing file's read rejects), then clearing the input with
+  `DOM.setFileInputFiles {files: []}` — (ii) lets the page see a `change` event, so it is the fallback only. The answer
+  is `BAD_PARAMS` with a fixed message naming the entry's index, never the path (as the SDK preflight, #262). If
+  neither works, that is a recorded finding for the user (not a STOP), and UP-RAW stays a documented limit.
+- **`file:` tabs listed hidden (#288 3d, changes #259).** A `listTabs` row and every tab event of a `file:` tab drop
+  `title` and `url` and carry `hidden`, as a blocked tab's do (#134, `extension/src/handlers/tabs.ts`); the `hidden`
+  reason reuses the blocked one unless Stage 0 shows a client needs to tell them apart (then a new `HiddenReason` value
+  is a proposed decision). `navigate`/`newTab` to `file:` is already refused (#245 (a)).
+
 ## Stages
 
 **Lane** is the explicit grant a step agent needs (`docs/agent-rules.md` §3 item 5). **Risk** per `agent-rules.md` §7:
-every code stage here is on the safety side, so **standard**. Builders, fixers and live runners run Sonnet at medium
-effort, verifiers and step agents Opus (#270). Each code stage stays under about 600 new lines (#271); a builder that
+every code stage here is on the safety side, so **standard**. Models and effort by `agent-rules.md` §7 as ruled
+2026-10-26 (#289): Opus builds and fixes the code stages (all safety code here) and runs every verifier and step agent;
+Sonnet builds the live helpers and docs and runs the live runner; **every agent at medium effort, passed explicitly**. Each code stage stays under about 600 new lines (#271); a builder that
 finds more stops DONE-PARTIAL. **Verifier focus** adds to `agent-rules.md` §6 and the stage's exit checks.
 
 ### Stage 0 — Spec audit (1.5 h, first, alone; risk: standard)
@@ -234,10 +269,29 @@ finds more stops DONE-PARTIAL. **Verifier focus** adds to `agent-rules.md` §6 a
       `chrome-extension://` initiator, the worker `fetch`'s resource type, the regex cap and syntax, `tab.url` after a
       blocked main frame, `onErrorOccurred` for the worker's own request. Each fact is recorded with how it was
       obtained. Re-running Step 9's and Step 11's binding contracts on port 0.
+- [ ] **#290's four MV3 checks, measured, never read off a page:** (1) a session rule with `tabIds` and
+      `resourceTypes: ["main_frame"]` blocks a redirect hop of a navigation started by `chrome.tabs.update`; (2) the rule
+      is in force when `updateSessionRules` resolves, before the navigation starts; (3) whether a rule matches the
+      worker's own `fetch` (the download half, 0.4's last paragraph); (4) the rule and regex limits against the
+      largest list the matcher accepts. **(1) or (2) failing is a STOP for the user** (DNR cannot do this step's job).
+- [ ] S0F's how (0.11): which of 3c's two checks works (measured), the `hidden` reason, the shared home predicate's case
+      table (Windows and POSIX, the parents `X:\Users`, `/home`, `/Users`, `/root`).
 - [ ] S1's translation case table drafted from `safety-match.test.ts`'s 50 cases plus the port, IP and `*.` cases.
 **Lane:** the steps dir; a scratch test extension outside the repo; read-only elsewhere; port 0 only.
 **Verifier focus:** re-execute five findings; each DNR fact's evidence is a measurement or a cited source, never a
 belief; 0.4 (C)'s conditions confirmed or the download half's fallback proposed.
+
+### S0F — Step 11's follow-ups (2 h, after Stage 0; risk: standard; ≤ ~500 lines; split if larger, §7)
+- [ ] 0.11's three changes, failing tests first: the shared home-folder predicate and both callers; the missing-file
+      refusal by Stage 0's chosen check (its pure part tested; the `chrome.*` glue by Run 17's rows); `file:` rows and
+      events hidden. Carried from Step 11 (#287): `browser_upload_file`'s description gains the background-tab sentence
+      UP-1 allows, re-baselining that one schema entry (#214) and setup.md's quote.
+- [ ] Spec §10 dated note for the `file:` row hiding and the missing-file refusal, before the code commit.
+**Lane:** `extension/src/{options-model,upload-paths,safety,safety-call}.ts`, `extension/src/handlers/{upload,tabs}.ts`,
+`extension/src/content/upload-*.ts`, `extension/src/offscreen*.ts` if 3c (i), `mcp/src/tools*` (the description only),
+their tests, the #214 baseline, `docs/setup.md` (the quoted lines only), the spec §10 note. **Verifier focus:** a home
+line in storage is never used (a mutant that checks only the options page goes red); a missing file leaves the page
+with 0 files on the chosen path; no path in any message or log; `listTabs` of a `file:` tab carries no `url`.
 
 ### S1 — The rule builder, pure (1.5 h, after Stage 0; risk: standard; ≤ ~400 lines)
 - [ ] `extension/src/safety-dnr.ts`: `rulesOf(list: BlockList, scope, idBase)` → DNR rules; no `chrome.*`, no log.
@@ -295,7 +349,10 @@ build` exit 0; `git status --short` clean of tracked changes after the build; ev
 before the stage (the verifier proves it).
 
 - **Z.1** (Stage 0) findings ranked with command and output; each DNR fact of 0.2 measured or cited with its source;
+  #290's four checks measured;
   counts recomputed; every (proposed) decision attacked; Step 9's and Step 11's contracts re-run on port 0.
+- **F.1** (S0F) the home predicate's table passes in both callers; a home line in storage unused; the missing-file
+  refusal's pure part green; `file:` rows hidden in `listTabs` and events; no path in a message (the log-sentinel test).
 - **D1.1** (S1) the case table (≥ 60 cases: the 50 of `safety-match.test.ts` plus ports, IPs, `*.`) passes; the
   equivalence test covers every case; three mutants red; the RE2 guard and the cap test pass.
 - **D2.1** (S2) a rule removed on each of five paths (success, refusal, error, timeout, disarm), counted by the fake;
@@ -314,7 +371,7 @@ before the stage (the verifier proves it).
 
 ## Human gates
 
-- **G11b-0** — Step 11's gate ruled, and 0.3 and 0.4 ruled (the box at the top).
+- **G11b-0** — Step 11's gate ruled, and 0.3 and 0.4 ruled (the box at the top). **Met 2026-10-26** (#288, #290).
 - **G11b-1** — any push or tag; nothing of Step 11b is pushed without a fresh grant.
 - **G11b-2** — any live row on a real site or with the user's credentials; Run 17 uses fixture servers on
   127.0.0.1 / `localhost` only.
@@ -352,11 +409,10 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 
 ## Open items
 
-- **For the user before Stage 0 (G11b-0):** 0.3 (the permission; recommended (A)) and 0.4 (the scope; recommended
-  (C), the profile-wide (A) offered).
+- **Ruled 2026-10-26:** 0.3 (A), 0.4 (C) (#290); S0F's what (#288).
 - **Contract-level, conservative rule applied, listed for the user at the gate:** 0.5 (fail closed with the existing
   `DISARMED` refusal), 0.6 (answers unchanged; how a blocked download hop is recognised).
-- **Settled only by Stage 0:** whether DNR applies to the worker's own `fetch` (the download half), `tab.url` after a
+- **Settled only by Stage 0:** #290's four checks; 3c's check (0.11); whether DNR applies to the worker's own `fetch` (the download half), `tab.url` after a
   blocked main frame, the regex cap. Each changes a stage item, not the decisions above, unless a STOP rule fires.
 
 ## Follow-ups

@@ -54,10 +54,8 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   `relay-sender.ts` (the offscreen sender check); `badge.ts` (badge/title by state, `BadgeController.press`;
   `chrome.action` injected, unit-tested) logs one fixed line per press (`toggleLogLine`); `options.ts` +
   `extension/options.html` are page glue (DOM + `chrome.storage.local`, the Safety, Blocked sites and Upload folders
-  boxes), not unit-tested, read statically by `safety-writers.test.ts`. Tests that guard them:
-  `extension/test/log-scan.test.ts` (+ `log-allowlist.ts`, 54 log sites) and `log-sentinel.test.ts` (no
-  pattern/URL/token in any log), `safety-writers.test.ts` (only the toggle and the options page write the
-  safety keys), `manifest.test.ts`.
+  boxes), not unit-tested, read statically by `safety-writers.test.ts`. Guards: `log-scan.test.ts`
+  (+ `log-allowlist.ts`, 54 log sites), `log-sentinel.test.ts`, `safety-writers.test.ts`, `manifest.test.ts`.
 
 ## Runtime gotchas
 
@@ -226,19 +224,16 @@ Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind the
   S4b `JS_DISABLED` with no `data`, measured live in Run 15 JSD; #202, #219).
 - **The block list is not a network firewall.** A redirect hop of a bridge `navigate` or `downloadStart`
   onto a blocked host is still requested; the post-check refuses the reply and a download drops its bytes
-  (`downloadStart` checks its own URL, then `res.url`, #140, #154). The post-redirect download check is
-  measured live: a download redirected onto a blocked host was refused `DOMAIN_BLOCKED` in 76 ms with no file, and
-  the server saw the hop and the target each requested once (Run 14 R14-5c, on the threaded `s9-redirect.py`;
-  S1.md Findings 4).
+  (`downloadStart` checks its own URL, then `res.url`, #140, #154). Measured live: a download redirected onto a
+  blocked host was refused `DOMAIN_BLOCKED` with no file (Run 14 R14-5c, threaded `s9-redirect.py`).
   A cross-origin frame of a blocked host shows in screenshots (stage0-audit F16, by reading).
 - **Never log a pattern, URL or title from the safety code.** Nor a URL from anywhere else in the service worker: URLs
   carry tokens, the network code prints counts only (`[bridge] network: rehydrated N entries`), and the same rule holds for
   header values and bodies. The gate, matcher and state modules have no
   log call; a press logs one fixed line (`badge.ts` `toggleLogLine`); the daemon logs booleans and the
   count (`intercept.ts` `safetyLogLine`). `log-scan.test.ts` allowlists every log site (54 at S2b — extension
-  15, daemon 33, sdk 0, mcp 6) and `log-sentinel.test.ts` runs the real daemon on port 0 (#187). Run 13:
-  `daemon.log` 210 lines and the worker console 0 for the token, non-fixture `://` and the test patterns
-  (SAFE-10).
+  15, daemon 33, sdk 0, mcp 6) and `log-sentinel.test.ts` runs the real daemon on port 0 (#187). Run 13 SAFE-10:
+  the daemon log and the worker console held no token, non-fixture `://` or test pattern.
 - **The disarm reaches running work fast, Chrome's banner does not.** A running trusted `type` ended `DISARMED`
   5–14 ms after the press; the "is debugging this browser" banner lingered 3–14 s (Run 13 SAFE-4 (b)) and was gone
   between +4.7 and +5.0 s in Run 14 R14-4b, the session detached (#210). A running `waitFor` was refused 54–92 ms
@@ -249,20 +244,25 @@ Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind the
   unknown, #285). After a `write-failed` disarm the page shows the stored state while the badge says OFF (S2b
   verifier F4, by construction): the badge is the indicator.
 
+- **The gate refuses `file:` pages whatever the file-URL toggle says** (Step 11): every tab call on a tab showing a
+  `file:` URL (`closeTab`, `focusTab` included) and every `navigate`/`newTab` to one is `DOMAIN_BLOCKED`
+  (`FILE_PAGE_MESSAGE`, `FILE_URL_MESSAGE`; order own page > `file:` > block list; a wrapper deeper than the unwrap bound
+  counts as `file:`); `listTabs` rows of a `file:` tab stay listed (#245 (a), #259; `safety-gate.test.ts`).
+  `downloadStart` to a `file:` URL keeps its handler's `BAD_PARAMS` (`safety.ts` comment). For class `upload` the
+  folder rule runs at receipt even for a gone tab, so a refused path never reaches the handler (#260).
+
 ### Uploads (Step 11)
-- **The gate refuses `file:` pages whatever the file-URL toggle says**: every tab call on a tab showing a `file:` URL
-  (`closeTab`, `focusTab` included) and every `navigate`/`newTab` to one is `DOMAIN_BLOCKED` (`FILE_PAGE_MESSAGE`,
-  `FILE_URL_MESSAGE`; order own page > `file:` > block list; a wrapper deeper than the unwrap bound counts as `file:`);
-  `listTabs` rows of a `file:` tab stay listed (#245 (a), #259; `safety-gate.test.ts`). For class `upload` the folder
-  rule runs at receipt even for a gone tab, so a refused path never reaches the handler (#260).
 - **`DOM.setFileInputFiles` needs the extension's "Allow access to file URLs"** (Chromium answers "Not
   allowed" otherwise, `stage0-cdp.txt`): `handlers/upload.ts` reads `isAllowedFileSchemeAccess()` before attaching and
   refuses `UPLOAD_REFUSED` (`NO_FILE_ACCESS_MESSAGE`). A wave never presses it (G11-3). With it on, an upload
   reached a **background tab** with no focus or lock (Run 16 UP-1). A raw `uploadFiles` of an absent
   file inside an allowed folder answers `ok`, the page gets a file: only the SDK preflight checks disk (UP-RAW,
-  #284). CDP calls: 15 s bound, unmeasured (#268).
-- **The upload finder ships as a closure-free literal string**: its guard test copies esbuild's options instead of
-  reading `build.mjs`, so `keepNames: true` there would pass the tests and ship a finder calling `__name` (S3 verifier 2
-  NIT A). Extension tests are not type-checked (tsconfig covers `src`; S2.md §6).
+  #284). CDP calls: 15 s bound, unmeasured (#268). With the toggle on, "Not allowed" surfacing as `DEBUGGER_ATTACH` is
+  unmeasured.
+- **The three shipped upload page sources are closure-free literal strings** (`UPLOAD_FINDER_SRC`,
+  `UPLOAD_MARK_PAGE_FN`, `UPLOAD_UNMARK_PAGE_FN`): the guard `extension/test/s3-closure-free.test.ts` copies esbuild's
+  options instead of reading `build.mjs`, so `keepNames: true` there would pass the tests and ship a source calling
+  `__name` (S3 verifier 2 NIT A; same cause as tsx in `recipes/CLAUDE.md`). Extension tests are not type-checked
+  (tsconfig covers `src`; S2.md §6).
 
 The session marker's 2 s bound and the handle retirement on a Chrome restart are in `daemon/CLAUDE.md`.

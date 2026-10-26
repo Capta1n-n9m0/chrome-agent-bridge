@@ -16,10 +16,13 @@ A brief points; it does not paste.
   record (write "numbers only from `<file>`"), lessons (point to the package `CLAUDE.md` or the
   phase doc section that holds them).
 - **Over ~1k words is a warning sign:** something was pasted.
+- **Size:** name line ranges and state the slice's size cap (`agent-rules.md` §7); a builder over it reports
+  DONE-PARTIAL. Do not ask for foreground children: the Agent tool may start any child in the background, and
+  `agent-rules.md` §8 says how to wait.
 - **Verifiers get the same READ list as the builder**, plus the builder's report labelled "claims
   to audit". They read the phase doc and spec themselves.
 - Briefs are not saved as files. The report names the brief's READ list.
-- Pass `model` on every `Agent` call (`agent-rules.md` §7), and the `effort` §7 names for Sonnet.
+- Pass `model` and `effort` on every `Agent` call, and state both in the brief (`agent-rules.md` §7).
 
 ## STEP BRIEF (session agent → step agent)
 
@@ -27,7 +30,7 @@ A brief points; it does not paste.
 You are the STEP AGENT for stage <STAGE> ("<plain name>") of Step <N> (<plain title>) of the
 chrome-agent-bridge repo. Read docs/agent-rules.md first; it applies in full except the
 deviations below. Your role: §6 Step agent.
-RISK: low | standard → models per agent-rules.md §7.
+RISK: low | standard → model and effort per agent-rules.md §7 (pass both on every Agent call).
 GOAL: <one paragraph: what, and why it matters>.
 READ: <phase doc § stage, with its exit-check IDs>, <spec §§ that bind>, <as-built sections of
 earlier stages it builds on>, <prior step reports>. DO NOT READ: <run records, raw logs>.
@@ -35,20 +38,21 @@ EXIT CRITERIA: the phase doc's exit checks <IDs>; <any stage-specific addition>.
 LANE: <files/packages it may change>. Anything outside escalates.
 DEVIATIONS from agent-rules.md: <only the differences, or "none">.
 RUNNING NOW: <PIDs, or "nothing">.
-OUTPUT: <steps-dir>/<STAGE>.md. Commit via the builder, message per agent-rules.md §10, trailer:
-<trailer>.
+OUTPUT: <steps-dir>/<STAGE>.md. Commit via a committer you start after the verifier's verdict, message per
+agent-rules.md §10, trailer: <trailer>.
 ```
 
 ## LEAF BRIEF (step agent → builder / verifier / fixer / runner)
 
 ```
-ROLE: builder | verifier | fixer | live runner — stage <STAGE> of Step <N>, chrome-agent-bridge.
+ROLE: builder | verifier | fixer | live runner | committer — stage <STAGE> of Step <N>, chrome-agent-bridge.
 Read docs/agent-rules.md first (your role: §6 <role>); it applies in full except the deviations.
 GOAL: <one paragraph>.
 READ: <same list as the step brief, narrowed to the task>. <Verifier: + "claims to audit:
 <builder report path>". Fixer: + "findings: <verifier report path> items <n>">.
-EXIT CRITERIA: <exit-check IDs from the phase doc>.
-LANE: <files>.
+EXIT CRITERIA: <exit-check IDs from the phase doc>. SIZE CAP: <lines, for a builder>.
+MODEL / EFFORT: <model>, medium (§7).
+LANE: <files>. Committer: the exact file list and the verdict to carry.
 DEVIATIONS: <or "none">.
 OUTPUT: <steps-dir>/<STAGE>-<role>[n].md. Commit: yes (trailer: …) | no.
 ```
@@ -61,7 +65,7 @@ substep. It is the recovery path after outages and respawns.
 
 ## What a stage leaves in the steps dir
 
-`<STAGE>.md` (step report), `<STAGE>-verifier.md` (and `-verifier2.md` after a fix round),
-fixer reports only if a fix round ran, a ledger only for a waiting stage, and evidence the
-phase doc asks for (run records, logs as `.txt`). Nothing else: no brief copies, no raw dumps
+`<STAGE>.md` (step report); the leaf reports `<STAGE>-<role>[n].md` for builder, verifier, fixer and
+runner (`-verifier2.md` after a fix round; Stage 0 is `Stage0` and its evidence `stage0-…`); a ledger only
+for a waiting stage; and evidence the phase doc asks for (run records, logs as `.txt`). Nothing else: no brief copies, no raw dumps
 pasted into reports.

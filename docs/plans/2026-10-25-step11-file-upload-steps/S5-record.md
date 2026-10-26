@@ -30,7 +30,7 @@ them and decides nothing.
 | S5.3 | held | fresh Opus live verifiers compared the judge's constants with §4.23 (liveA 22/0 differ; liveB 17 error constants equal); every upload row judged by the page's hash. |
 | S5.4 | held | read-backs equal to UP-0: REC:226–229 (liveA run 2), REC:400–403 (liveB); run 1's `RESTORE FAILED` came from the title-check defect with stored state and daemon equal (#281). |
 | S5.5 | **failed (liveA)**, held (liveB) | FA:2 and FA:6 (liveA run 1 preflight STOPs) have no return in the ledger (VA F1, #282). REC STOP lines match the 04:20:42Z return. liveB had no STOP. |
-| S5.6 | **failed in part (liveA)**, held (liveB) | every SCAN count 0 (REC:231–236, 405–410); liveA run 1 had no worker console capture at all (#282, VA F2). The title line committed in `262619f` is #283's gate item. |
+| S5.6 | **failed in part (liveA)**, held (liveB) | every SCAN count 0 (REC:231–236, 405–410); liveA run 1 had no worker console capture at all (#282, VA F2). The title line committed in `dbe6022` is #283's gate item. |
 | S5.7 | held | warm-up recorded and excluded (REC:188); 3/3 trials ≤ 300 ms → "the event ends the wait" (REC:189–190); no S5b. |
 
 ### Run 16 tally (the section's Counts line; re-derived by verifiers 1, 2 and 3)
@@ -108,5 +108,5 @@ the bound. **Revisit if:** a new pre-registered row times O2's update more than 
 ## 7. Handoff
 
 No processes started; nothing running. Gate items for the user, unchanged: S5.5 and S5.6 (liveA) failed (#282); the
-profile name in `262619f`'s history (#283, before any push, G11-1); UP-RAW's contract question (#284). Re-registering
+profile name in `dbe6022`'s history (#283, before any push, G11-1); UP-RAW's contract question (#284). Re-registering
 UP-RACE-A and UP-DEVT as new rows is open (`S5-liveB.md` §9). Next: S6 (docs), after the session agent's ruling.

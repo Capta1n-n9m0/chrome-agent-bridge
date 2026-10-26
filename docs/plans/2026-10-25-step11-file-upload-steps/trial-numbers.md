@@ -9,7 +9,7 @@ could not measure is in the last section.
 | Item | Step 10 | Step 11 | Source |
 |---|---|---|---|
 | Window start (UTC) | 2026-10-24 19:21:34 (steps-dir start commit `55ee4de`, 23:21:34 +0400) | 2026-10-25 16:16 (journal line 1) | `git log --format=%ci --reverse -- <steps dir>`; `journal.md` |
-| Window end (UTC) | 2026-10-25 12:56:40 (close-out commit `eac8324`, 16:56:40 +0400) | 2026-10-26 06:19 (journal's last line; last commit `bce321b` 10:18 +0400) | same |
+| Window end (UTC) | 2026-10-25 12:56:40 (close-out commit `eac8324`, 16:56:40 +0400) | 2026-10-26 06:19 (journal's last line; last commit `38e237b` 10:18 +0400) | same |
 | Wall time | 17 h 35 min | 14 h 03 min | arithmetic on the two rows above |
 | Step 10 clock source | git commit times only: its `journal.md` carries dates, no times, and its ledgers are per stage | the journal's UTC lines | `grep -n "^## " journal.md` |
 

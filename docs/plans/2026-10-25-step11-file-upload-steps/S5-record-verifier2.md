@@ -2,7 +2,7 @@
 
 Model: Opus 5.5 (verifier, default effort). UTC start 2026-10-26T05:36:24Z, end 05:40Z (`date -u`). Read-only. Nothing
 live ran. I edited only this report and committed nothing. Scratch files (the extracted section `run16-v2.md`, the
-profile display name `pname2.txt` read from `262619f`, the count-only `scan.mjs`) are in the session scratchpad,
+profile display name `pname2.txt` read from `dbe6022`, the count-only `scan.mjs`) are in the session scratchpad,
 outside the repo. Nothing in them is printed here.
 
 ## 1. Verdict
@@ -55,7 +55,7 @@ fixer's two proposed decisions claim nothing the record does not show.
 ## 5. Leak scan, by count only, over the four files this slice commits
 
 `scan.mjs` reads the token from `bridge.token` and the display name from `pname2.txt`. That file is line 1 of
-`git show 262619f:…/S5-liveB-console.txt` with the leading `DevTools - ` removed, and it is byte-equal (`cmp`) to the
+`git show dbe6022:…/S5-liveB-console.txt` with the leading `DevTools - ` removed, and it is byte-equal (`cmp`) to the
 first verifier's `pname.txt`. The script prints neither value. I also ran a separate `grep -c -F` with the token in a
 shell variable.
 
@@ -91,4 +91,4 @@ shell variable.
 
 There were no deviations and I propose no decisions. For the step agent: one fix round on NEW-1 (and NIT-A if
 convenient), then a re-scan of `S5-record-verifier.md` that must show profile 0 and username 0. Gate items for the
-user are unchanged: S5.5 and S5.6 failed in part (liveA), and the history of `262619f` (#283).
+user are unchanged: S5.5 and S5.6 failed in part (liveA), and the history of `dbe6022` (#283).

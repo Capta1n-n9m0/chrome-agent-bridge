@@ -1,7 +1,6 @@
 # Wave handoff — anatomy
 
-Distilled from the exp3 paper revision loop (2026-08 → 2026-10, `paper/revision-1/handoffs.md`
-on `expr`); ported here 2026-10-21. New prompts go to `docs/plans/handoffs.md`, newest first.
+New prompts go to `docs/plans/handoffs.md`, newest first.
 
 ## Archive entry
 
@@ -55,7 +54,7 @@ whole session diff. Put a **How this session runs** block right after the openin
 ### Proposed decisions — for the user      (format: docs/agent-rules.md §5, plus Options and a Recommendation)
 ```
 
-## Lessons carried from the exp3 waves
+## Sizing and scope
 
 - Size the wave before writing it: a wave that edits a lot gets step agents and verifiers,
   not a single session.

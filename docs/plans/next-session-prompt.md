@@ -16,16 +16,16 @@ waits for me is `docs/agent-rules.md` §3 and the phase doc's Human gates.
 
 ## 1. First checks (in order; one journal line each, dated UTC)
 
-1. **Precondition — Step 11's gate is ruled.** Step 11 stopped at its gate (`docs/plans/2026-10-25-step11-file-upload.md`
-   § As built, Gate checklist): S5.5 and S5.6 (part) failed for liveA (decisions.md · 2026-10-26 · S5-liveA closes with
-   S5.5 and part of S5.6 failed as recorded; helper fixes before liveB (#282)); the history of commit `262619f`
-   (decisions.md · 2026-10-26 · The user's Chrome profile name reached a committed evidence file; redacted at the tip,
-   history for the user (#283)); and every entry under `docs/decisions.md` → Open decisions (Step 11). Also ruled
-   before Stage 0: the phase doc's decisions 0.3 (the permission) and 0.4 (which requests the rule covers), marked
-   **user-gated**. If any is unruled, write one journal line and stop: ask me.
-2. **The ruling's work first.** If my rulings order work on Step 11 (e.g. the archive move of its decisions, a
-   history rewrite, a re-measured row, `browser_upload_file`'s background-tab sentence), it runs as this step's first
-   stage, before Stage 0's code citations, and its text goes into the phase doc as a dated note.
+1. **Precondition — met 2026-10-26.** I ruled Step 11's gate and closed it (decisions-archive/step11.md · 2026-10-26 ·
+   The user rules Step 11's gate; Step 11 closes (#288)), ruled 0.3 (A) and 0.4 (C) (decisions.md · 2026-10-26 ·
+   Step 11b: the permission and the rule's scope ruled; Step 11's follow-ups become its stage S0F (#290)) and how
+   agents run (decisions.md · 2026-10-26 · How agents are run from Step 11b on; #286 stands; the cleanup pass's
+   proposals applied (#289)). Confirm `docs/decisions.md` → Open decisions reads "None"; if not, write one journal line
+   and stop: ask me.
+2. **The ruling's work: stage S0F**, after Stage 0 and before S1 (phase doc 0.11): a home folder refused as an Upload
+   folder, a missing file refused by the extension, `file:` tabs listed hidden, and `browser_upload_file`'s
+   background-tab sentence. Stage 0 also measures #290's four MV3 checks — I asked for care that Chrome's network rules
+   really do this job; (1) or (2) failing is a STOP for me — and Run 17 carries Run 16's re-measured rows (0.10).
 3. **Environment, re-checked and dated**, by an agent, not in your context: `git log -1`, `git status --short`
    (clean), `npm test` count, `npm run typecheck`, every `recipes/tsconfig*.json`, `npm run build` (exit 0, no tracked
    change); port 9234 free or held by `daemon/dist/index.js`; ports the phase doc's live rows use; counts by `node
@@ -35,20 +35,20 @@ waits for me is `docs/agent-rules.md` §3 and the phase doc's Human gates.
 
 ## 2. Binding documents, in reading order
 
-1. **`docs/agent-rules.md`** — every agent's rules, yours included. Note §7 (doers Sonnet at medium effort, verifiers
-   and step agents Opus, slices over ~600 lines; decisions.md · 2026-10-25 · Builders, fixers and live runners run
-   Sonnet at medium effort from S5 on (#270), · S5 is split into seven slices; the stopped prep is salvaged per slice
-   (#271)) and §8 (a step agent never ends its turn on a running child; decisions.md · 2026-10-26 · Step agents never
-   end their turn on a running child; commits carry the verifier's verdict (#286)).
+1. **`docs/agent-rules.md`** — every agent's rules, yours included. Note §7 as ruled in #289 (Opus builds and fixes
+   contract and safety code — every code stage here — and runs every verifier; Sonnet does recipes, fixtures, docs and
+   live runners; **every agent at medium effort, `model` and `effort` passed explicitly in every Agent call**; slices
+   per #271) and §8 (a step agent never ends its turn on a running child; #286, permanent).
 2. **The phase doc `docs/plans/2026-10-26-step11b-block-list-redirects.md`**, all of it: its Decisions ((user) and
    (proposed)), the stages with lane, risk, size cap and verifier focus, the pre-registered exit checks, Human gates,
-   STOP rules and forbidden fixes, and § As built, which you fill. It is a draft written at Step 11's close-out: Stage 0
-   attacks it, and its unsettled items (whether Chrome's network rules reach the extension's own `fetch`, the
+   STOP rules and forbidden fixes, and § As built, which you fill. 0.3, 0.4 and 0.11's what are ruled; Stage 0 attacks
+   the rest, and its unsettled items (whether Chrome's network rules reach the extension's own `fetch`, the
    per-tab conditions, what `newTab` answers on a redirect) are Stage 0's to measure.
 3. **The `long-run` skill** (your contract) and the **`step-agent` skill** (brief templates).
 4. **Design of record** `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md` §6 and §10 with their Step 9–11 notes.
 5. **Contracts this step builds on:** `docs/plans/2026-10-24-step9-phase-e-safety-asbuilt.md` "Contracts (binding
-   forward)"; `docs/plans/2026-10-25-step11-file-upload.md` § As built (the `file:` refusal, #245); `extension/CLAUDE.md`
+   forward)"; `docs/plans/2026-10-25-step11-file-upload.md` § As built (the `file:` refusal, #245; Step 11's entries in
+   `docs/decisions-archive/step11.md`); `extension/CLAUDE.md`
    § Safety gate and § Uploads (loads by itself when an agent opens a file there).
 6. **`docs/decisions.md`:** Open and Standing decisions, then the entries the phase doc cites.
 7. `docs/setup.md` (Safety) and `docs/e2e-test-plan.md` — never read whole (about 460 KB): grep for the sections a

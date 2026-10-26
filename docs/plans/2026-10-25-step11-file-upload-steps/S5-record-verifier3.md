@@ -2,7 +2,7 @@
 
 Model: Opus 5.5 (verifier), low effort. UTC start 2026-10-26T05:40:41Z, end 05:42:35Z (`date -u`). Read-only. Nothing
 live ran. I edited only this report and committed nothing. Scratch files (the extracted section `run16-v3.md`, the
-word streams, the profile name `pname3.txt` read from `262619f`, the count-only `scan3.mjs` and its control writer
+word streams, the profile name `pname3.txt` read from `dbe6022`, the count-only `scan3.mjs` and its control writer
 `ctl3.mjs`) are in the session scratchpad, outside the repo. No value from them is printed here.
 
 ## 1. Verdict
@@ -45,7 +45,7 @@ fixer's own report.
 ## 4. Final leak scan, by count only
 
 `scan3.mjs` reads the token from `bridge.token` and the display name from `pname3.txt`. That file is line 1 of
-`git show 262619f:…/S5-liveB-console.txt` with `DevTools - ` removed, and it is byte-equal (`cmp`) to verifier 1's
+`git show dbe6022:…/S5-liveB-console.txt` with `DevTools - ` removed, and it is byte-equal (`cmp`) to verifier 1's
 `pname.txt` and to verifier 2's `pname2.txt` once the newline is stripped. Profile forms are the Windows backslash,
 forward slash, escaped backslash and Git-Bash forms, plus a `Users[\/]+<name>` regex (any slash/escape run). The
 username is matched case-insensitively. The sentinel is `s11-[0-9a-f]{12}`. Non-fixture means any `scheme://host`
@@ -83,5 +83,5 @@ file as written.
 ## 6. Deviations, proposed decisions, handoff
 
 There were no deviations, and I propose no decisions. The slice's files are clean to commit as far as this scan
-reaches. The user's gate items are unchanged: S5.5 and S5.6 failed in part (liveA), and the history of `262619f` is
+reaches. The user's gate items are unchanged: S5.5 and S5.6 failed in part (liveA), and the history of `dbe6022` is
 still to be decided (#283).

@@ -1,7 +1,7 @@
 # State cleaner report — cleanup pass 2026-10-26
 
 **Model:** Sonnet 5.5 (claude-sonnet-5-5), area cleaner (State). Read only; the only file written is this one. No `npm test` was run.
-**Scope read:** `git diff 965b1af..HEAD` (48 commits, `bce321b` at the tip); root `CLAUDE.md` § Current state and Commands;
+**Scope read:** `git diff 965b1af..HEAD` (48 commits, `38e237b` at the tip); root `CLAUDE.md` § Current state and Commands;
 the phase doc `docs/plans/2026-10-25-step11-file-upload.md` (header, § As built, Gate checklist, Open items, Follow-ups);
 `docs/progress-and-roadmap.md` (header, §1 Step 11 block and table row, §5); `README.md`; `docs/setup.md` (counts and
 status text); the spec's status block; the package `CLAUDE.md` diffs; `recipes/README.md`; `docs/plans/next-session-prompt.md`;
@@ -13,7 +13,7 @@ status text); the spec's status block; the package `CLAUDE.md` diffs; `recipes/R
   `docs/setup.md:131`, `mcp/CLAUDE.md`, `shared/CLAUDE.md`, `extension/CLAUDE.md:40`, the roadmap and spec §10.
 - Test count 3811 / 154 files (`CLAUDE.md:117`, `README.md`, roadmap, phase doc gate checklist) is the last recorded `npm test`:
   `S6-builder.md:57`, `S6-verifier.md:14`, `journal.md:75`, and the chain 3273 → 3294 → 3489 → 3532 → 3593 → 3625 → 3811 in the
-  phase doc and the roadmap table. Nothing after `bd755aa` changed code or tests. The doc-check line is not stale.
+  phase doc and the roadmap table. Nothing after `0a74608` changed code or tests. The doc-check line is not stale.
 - Run 16 numbers (30 rows, PASS 19 / FAIL 3 / NOT MEASURED 3 / RECORD 4, +1 split) agree between §5 Run 16 "Counts", root
   `CLAUDE.md`, phase doc S5 block, roadmap and `README.md`. The two liveB tallies in §5's "Differences" paragraph add up to the same totals.
 - No text says Step 11 is closed. The root block, phase doc status, gate checklist ("not met"), roadmap table row ("not yet closed")
@@ -27,8 +27,8 @@ status text); the spec's status block; the package `CLAUDE.md` diffs; `recipes/R
    (§1 Step 11 block).
    Header: "its docs stage S6 (docs, 2026-10-26) is written; the step's gate waits on the session agent's close and the user's
    decisions". Block: "S6 (docs, 2026-10-26) written; not yet closed — the session agent's closeout and the user's rulings are open".
-   Commit `bce321b` ("Step 11 close-out to the gate"), decisions #287 and the phase doc gate checklist record that the closeout
-   happened and the gate waits only on the user (open decisions, S5.5 / S5.6 for liveA #282, `262619f` #283, G11-1).
+   Commit `38e237b` ("Step 11 close-out to the gate"), decisions #287 and the phase doc gate checklist record that the closeout
+   happened and the gate waits only on the user (open decisions, S5.5 / S5.6 for liveA #282, `dbe6022` #283, G11-1).
    Fix: replace both phrases with "waits for the user at its gate (S5.5 and S5.6 in part for liveA, #282; the profile-name commit,
    #283; the open decisions)", with a dated "Updated" note in the style of the file. Mechanical.
 
@@ -81,9 +81,9 @@ status text); the spec's status block; the package `CLAUDE.md` diffs; `recipes/R
    #140 step, then Step 12.*" Mechanical.
 
 10. **The gate checklist's commit count is a moving number.** Phase doc `:577`: "nothing pushed; 47 commits ahead of `origin/main` at the close-out
-    (`git log origin/main..HEAD`)". `git log origin/main..HEAD --oneline | wc -l` now gives 48 (the close-out commit `bce321b` is
+    (`git log origin/main..HEAD`)". `git log origin/main..HEAD --oneline | wc -l` now gives 48 (the close-out commit `38e237b` is
     included; the count of 47 was taken before it). Root `CLAUDE.md` says only "Nothing pushed (G11-1)", which holds (`origin/main` is
-    `965b1af`). Fix: write "48 commits ahead of `origin/main` at `bce321b`", or drop the number. Mechanical, NIT.
+    `965b1af`). Fix: write "48 commits ahead of `origin/main` at `38e237b`", or drop the number. Mechanical, NIT.
 
 11. **Seven Step 11 commit messages say "verifier: pending"; only S4's is noted in the phase doc.** `git log`: `eefb4d8` (S1), `ac31655`, `5827f32`,
     `8ab6923` (S2), `7e12707`, `d4718ca` (S3), `01f60b2` (S4b) all end "(verifier: pending)". The phase doc's S4 block says "its message says

@@ -105,5 +105,11 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   tab comes to the front of its window, the window is focused, and it stays there; the SDK never sends
   `focusEmulation` (decisions.md · 2026-10-23 · The background-input policy (#89); · FE's rows and outcome
   table, amended before anything is measured (#78)).
+- **`prepareUpload` must use `fs.promises.realpath`, not `fs.realpathSync`** (`sdk/src/upload.ts`; Stage 0 F8): it
+  resolves a link or junction and canonicalises case and 8.3 names, where `realpathSync` keeps the given form, so the
+  extension's folder rule could judge the wrong location. Not measured: an unreadable file (`EACCES`) and a folder on
+  a `subst` or mapped drive. This preflight is also the only check that a file exists: a raw `uploadFiles` of an
+  absent file in an allowed folder answers `ok` (UP-RAW, `extension/CLAUDE.md`, Uploads; decisions.md · #284); the
+  user ruled (#288, 2026-10-26) that Step 11b makes a missing file an extension-side error.
 
 The daemon's own lifecycle (outliving its session, the bind being the lock) is in `daemon/CLAUDE.md`; the `saveTo` store is in `extension/CLAUDE.md`; the MCP's trusted tools focus first too (`mcp/CLAUDE.md`).

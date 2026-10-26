@@ -80,7 +80,7 @@ One log, `docs/decisions.md`, newest first:
 
 - **Cite a decision by date and title**, for example "decisions.md · 2026-10-21 · Steps 6–8
   run under the long-run contract". The `#N` number is optional and only helps sorting.
-  Never cite a decision by number alone.
+  A number alone is enough where the sentence states the decision; otherwise cite date + title.
 - Subagents never write to `decisions.md`. Their reports carry **Proposed decisions** in
   this format, and the session agent records the ones the user (or the delegated rule)
   accepts.

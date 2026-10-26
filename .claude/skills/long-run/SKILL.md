@@ -40,7 +40,9 @@ owned by one step agent.
 - Every agent is fresh and shares no context. Anything worth keeping lands in a report, the
   journal or the phase doc **during the stage**.
 - **Briefs stay small** (`step-agent` skill): they point to files and never paste rules, spec or
-  plan text, or numbers. Over ~1k words means something was pasted.
+  plan text, or numbers.
+- You may end your turn on a running step agent (`agent-rules.md` §8); a hand-back that does not come is
+  revival (§4). Pass `model` and `effort` explicitly on every `Agent` call (`agent-rules.md` §7).
 
 ## 3. Decisions while the user is away
 
@@ -62,7 +64,8 @@ Never redo completed substeps.
 ## 5. End of phase
 
 1. The gate checklist, item by item, in the phase doc's § As built. An unmet item means the phase
-   is not closed.
+   is not closed: run the closeout and a full cleanup pass, and write the next kickoff only after the
+   user's ruling, or for the next step if the user said so.
 2. The **`session-closeout`** skill. Its order is the one order: records and Current state, then a
    **full** `cleanup-pass` (it also checks what later plans, `docs/setup.md` and the `CLAUDE.md` files
    assumed that the as-built broke), then **`phase-kickoff`** for the next step, then the commit.

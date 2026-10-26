@@ -57,10 +57,10 @@ Model: Claude Opus 5.5 (claude-opus-5-5). Scope: `git diff 965b1af..HEAD`. Read 
 4. **`docs/progress-and-roadmap.md:265–266` gives a range of Step 11 decisions that stops before the last two.**
    - Evidence: the roadmap says Step 11's decisions "run from … (#233) to '2026-10-26 · S5 closes: Run 16 stands as
      recorded; UP-OPT keeps its FAIL with no cause stated (#285)'". The log now ends at "2026-10-26 · S6 accepted;
-     Step 11 stops at the gate (#287)" (`docs/decisions.md:182`), added in `bce321b` after the roadmap's last edit
-     (`bd755aa`).
+     Step 11 stops at the gate (#287)" (`docs/decisions.md:182`), added in `38e237b` after the roadmap's last edit
+     (`0a74608`).
    - The same paragraph also says "the session agent's closeout and the user's rulings are open", but the closeout
-     to the gate ran in `bce321b`. That part belongs to the State area.
+     to the gate ran in `38e237b`. That part belongs to the State area.
    - Fix: change the end of the range to #287.
    - Mechanical.
 

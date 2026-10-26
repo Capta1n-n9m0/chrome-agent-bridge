@@ -61,8 +61,6 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   block 9; S4.md §10 finding 1).
 - **Chrome 156 shows a second line under the extension's action title** ("Has access to this site"; Run 13
   record SAFE-1 (4), SAFE-9): read only the first line when checking the title by UI automation.
-- **Chrome 156 titles the service worker's DevTools window `DevTools`**, with no extension URL (Run 13
-  SAFE-10 set-up, #195).
 - **`chrome.exe --new-window chrome://…` opens a New Tab page, not the page** (Run 8 set-up fix 4;
   RELOAD-AUTO F1). Type the URL into the omnibox of a window the driver opened instead.
 - **The extension reload is scripted: `recipes/reload-extension.ps1`** (decisions.md · 2026-10-23 ·
@@ -118,20 +116,22 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   Chrome-owned topmost, no-activate popup (`Chrome_WidgetWin_1`, 223×25 px at the window's top right, owned by the
   options window) appears over it (Run 14 Return 3; Run 15 Return 3 and attempt 4; S1.md Findings 2, S7.md
   Findings 4); R15-3R exempted it only because a driver window owned it and it covered none of the read elements
-  (#224). Park the cursor and print occluder diagnostics before a click that a guard protects (decisions.md ·
-  2026-10-25 · S1: Run 14's wave mechanics are kept for Run 15 (#213)).
-- **Run 16's live-run facts (Step 11 S5, 2026-10-26).** A DevTools window title carries the Chrome profile's display
-  name (`DevTools - <profile>`): a worker-console capture's first line leaked it into a commit (redacted, #283) —
-  drop window-title lines from captures, and name a scan pattern (a profile path) in a report only by a placeholder
-  (S5-record fix round 2). Port 8080 may be held by VS Code (`Code.exe`), so Run 16 served its fixtures on 8081 (#273).
-  A maximized Chrome window's frame overhangs its monitor by 8 px and meets an auto-hidden taskbar's 2 px strip: an
-  occluder guard over it stops on the taskbars — place the wave's window inside the work area (S5-liveA,
-  `S5-liveA-occluders.txt`). `python` is on Git Bash's PATH but not the PowerShell tool's: start a runner that needs
-  it from Git Bash (S5-liveA run 1). A `STOP:` printed inside a restore must end the wave (`s11-r16.ps1`, #279).
-  The daemon exits after 600 s idle between a STOP and a re-run; the next client spawns it with the same build id.
+  (#224). A maximized Chrome window's frame overhangs its monitor by 8 px and meets that 2 px strip, so a guard over it
+  stops on the taskbars: place the wave's window inside the work area (Run 16 S5-liveA, `S5-liveA-occluders.txt`).
+  Park the cursor and print occluder diagnostics before a click that a guard protects (decisions.md · 2026-10-25 · S1:
+  Run 14's wave mechanics are kept for Run 15 (#213)).
+- **A window title can carry the Chrome profile's display name, so captures drop title lines.** A DevTools window's
+  title read plain `DevTools`, with no extension URL, in Run 13 (SAFE-10 set-up, #195), and `DevTools - <profile>` in
+  Run 16 (the first line of a worker-console capture leaked it into a commit,
+  redacted, #283). Live runners' console captures drop window-title lines, and a report names a scan pattern (a
+  profile path) only by a placeholder (S5-record fix round 2).
+- **Port 8080 may be held by VS Code (`Code.exe`)**, so Run 16 served its fixtures on 8081 (#273). `python` is on Git
+  Bash's PATH but not the PowerShell tool's: start a runner that needs it from Git Bash (S5-liveA run 1).
+- **A `STOP:` printed inside a restore must end the wave** (`s11-r16.ps1`, #279). The daemon exits after 600 s idle
+  between a STOP and a re-run; the next client spawns it with the same build id.
 - **Expected texts are tied to the product's constants, and re-read from the code before a row is committed.** Run 13's
   SAFE-9 and SAFE-10 expected texts were wrong, not the product (the `safety state:` log line precedes `extension
-  resync` by design; Chrome 156 titles the worker's DevTools window `DevTools`), and both rows stayed FAIL because
+  resync` by design; Chrome 156 titled the worker's DevTools window `DevTools`), and both rows stayed FAIL because
   expected text is never edited after its run (decisions.md · 2026-10-24 · S4: Dated notes on §4.20 for two
   expected-text errors (#195)). `recipes/test/s9-rules.test.ts` and `s10-rules.test.ts` compare every expected text
   with the committed constant it was copied from, so a wording change fails there first.

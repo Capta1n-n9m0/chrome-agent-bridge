@@ -63,7 +63,7 @@ generic shape `s11-` + 12 hex, since the per-run one is gone; profile forms `<us
 The 7 prose files' "other" hits are the placeholders `scheme://`, `file:///` and `extension://...` in prose: my
 separate count of exactly those literals equals each file's "other" (2, 3, 4, 1, 2, 2, 3). The exit 2 of the recipe is
 those prose files (same as VA F4's cause; no new URL). `S5-liveB-console.txt` has 0 `DevTools - ` lines at HEAD; commit
-`262619f` still holds 1 (`git show 262619f:… | grep -c`), as #283 says.
+`dbe6022` still holds 1 (`git show dbe6022:… | grep -c`), as #283 says.
 
 ## 4. Deviations
 

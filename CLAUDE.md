@@ -11,31 +11,27 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-26, Step 11 built and E2E-run; waiting for the user at its gate)
+## Current state (2026-10-26, Step 11 closed; next: Step 11b, not started)
 
-- **Shipped:** Steps 1–10 (Step 10 closed 2026-10-25, #229; its as-built
-  `docs/plans/2026-10-24-step10-step8-follow-ups-asbuilt.md`). Public on GitHub (MIT). **24 tools, 27 codes (26 on the
-  wire), 27 router methods** (the test count: Commands).
-- **Step 11 — D3 file upload — built, E2E-run (Run 16) and documented 2026-10-25/26, not closed**: phase doc
-  `docs/plans/2026-10-25-step11-file-upload.md` (§ As built, Gate checklist). `Tab.upload` / `client.upload` and
-  `browser_upload_file` put local files into a page's file input through CDP `DOM.setFileInputFiles`; only files in
-  the human's Upload folders (options page, empty by default) and only with Chrome's "Allow access to file URLs" on,
-  else `UPLOAD_REFUSED`; the gate refuses `file:` pages for every method (#245). Also S1: the bridge's own `saveTo`
-  refusals unprefixed inside a debugger session (#246). Run 16: 30 rows, PASS 19 / FAIL 3 / NOT MEASURED 3 / RECORD 4;
-  the upload reaches a background tab with no focus (UP-1); SW-2 closed the ~1.5 s capture question (the event ends
-  the wait). **The gate stops** on S5.5 and S5.6 (part) for liveA (#282) and on a profile-name window title in the
-  unpushed commit `262619f` (redacted at the tip, #283); Open decisions list the rest (#235–#238, #240, #241, #243,
-  #245, #247, #250, #254, #257, #259, #261, #263, #264, #266, #268, #284). Nothing pushed (G11-1).
-- **Lean procedures (#230), amended in Step 11 (#270, #271, #286):** the rules are in `docs/agent-rules.md` §7, §8,
-  §10; the trial against Step 10: `docs/plans/2026-10-25-lean-procedures.md` § Trial, Results (tokens 0.54 of Step 10's; more first-check findings on Sonnet-built slices).
+- **Shipped:** Steps 1–11 (Step 11, D3 file upload, closed 2026-10-26 on the user's ruling, #288; phase doc
+  `docs/plans/2026-10-25-step11-file-upload.md`, decisions in `docs/decisions-archive/step11.md`). Public on GitHub
+  (MIT), pushed. **24 tools, 27 codes (26 on the wire), 27 router methods** (the test count: Commands).
+- **Step 11 in one line:** `Tab.upload` / `client.upload` / `browser_upload_file` put local files into a page's file
+  input through CDP `DOM.setFileInputFiles`, only from the human's Upload folders and only with "Allow access to file
+  URLs" on, else `UPLOAD_REFUSED`; the gate refuses every call on a `file:` page (#245). Run 16: the upload works on a
+  background tab with no focus.
+- **How agents run (#289):** Opus builds contract and safety code and runs every verifier; Sonnet does recipes,
+  fixtures, docs and live runners; every agent at medium effort, passed explicitly; a step agent never ends its turn
+  on a running child (#286). Rules: `docs/agent-rules.md` §6–§8, §10.
 - **Reloads need no human:** `recipes/reload-extension.ps1` (#65; one re-run on exit 2, #99). The loaded extension is
   the Step 11 build (Run 16); interactive sessions using the bridge need `/mcp` or a fresh session.
-- **Resume:** the user rules Step 11's gate (the open decisions, the S5.5/S5.6 failures, the history of `262619f`,
-  G11-1). **Next** (#129 as amended by #229): the block list stops redirected requests (#140) — kickoff
-  `docs/plans/next-session-prompt.md`; then **Step 12** — Phase F (`args` for `browser_evaluate`, console capture,
-  keep-attached debugger, and with it the native file chooser). Carried: `browser_upload_file`'s background-tab
-  sentence (#287); a popup of a background opener gets no lease (#226); the MCP trusted tools' focus/input race. Live
-  waves run autonomously (#33).
+- **Resume: Step 11b** — the block list stops redirected requests (#140), with 0.3 (A) and 0.4 (C) ruled (#290);
+  phase doc `docs/plans/2026-10-26-step11b-block-list-redirects.md`, kickoff `docs/plans/next-session-prompt.md`. Its
+  first code stage S0F builds Step 11's three changes (#288: a home folder refused as an Upload folder, a missing file
+  refused by the extension, `file:` tabs listed hidden) and the tool's background-tab sentence; Stage 0 measures
+  #290's four MV3 checks first. Then **Step 12** — Phase F (`args` for `browser_evaluate`, console capture,
+  keep-attached debugger, the native file chooser). Carried: a popup of a background opener gets no lease (#226); the
+  MCP trusted tools' focus/input race. Live waves run autonomously (#33).
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
 
