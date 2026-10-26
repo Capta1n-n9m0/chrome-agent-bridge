@@ -150,22 +150,15 @@ Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind the
   (Run 8 BG-4: text after 3746 ms, idle after 552 ms, the tab hidden throughout).
   Trusted input does not (next bullet); `fullPage` (CDP) on a hidden or minimized tab is unmeasured
   (T5b F9).
-- **Trusted CDP input into a background tab answers `ok` and does nothing.** `browser_click`/`type
-  {trusted:true}` on a hidden tab returned in 5–10 ms with nothing received by the page; after
-  `focusTab` the same call worked (Run 8 BG-1/BG-2). Chrome's `--disable-renderer-backgrounding
-  --disable-backgrounding-occluded-windows --disable-background-timer-throttling` do not change it (ok
-  in 12–15 ms, nothing received; Run 10 BGF-1/BGF-2, one trial each; decisions.md · 2026-10-23 ·
-  Chrome's anti-throttling flags do not fix background input). **Focus emulation does not fix it
-  either** (Step 8 stage FE, Run 11, 2026-10-23): with `focusEmulation: true` (attach →
-  `Emulation.setFocusEmulationEnabled` on → input → off in a `finally`, one debugger session;
-  `extension/src/trusted-input.ts`) the result said `focusEmulation: "on"` (FE-0), yet a trusted click
-  reached the page 0/3, typing 2/3 (trial 3 got `ped`: the first five characters lost) and a key press
-  0/3 (FE-1…FE-3); the control without it 0/12 (FE-5); nothing the human sees changed (FE-4 9/9). While
-  it is on, the **target page reads `visible`** (3–7 ms into the call, `hidden` again 14–39 ms in), so
-  a page-side visibility check is no proof of what the human saw. Hence the policy `"focusFirst"`: the SDK's and the MCP's trusted input call `focusTab` first (`sdk/CLAUDE.md`, `mcp/CLAUDE.md`). An untrusted action whose content path fails is escalated to CDP by the extension itself, out
-  of the SDK's sight, so on a background tab it can still answer `ok` and do nothing; pass `trusted`
-  or call `focus()` when it must land. A clipboard write in `evaluate` likewise needs `focusTab` (BG-3:
-  `NotAllowedError … Document is not focused`).
+- **Trusted CDP input into a background tab answers `ok` and does nothing** (5–10 ms, nothing received; after
+  `focusTab` it worked — Run 8 BG-1/BG-2). Chrome's anti-throttling flags do not change it (Run 10 BGF-1/2). Focus
+  emulation (`trusted-input.ts`: `Emulation.setFocusEmulationEnabled` on → input → off, one session) does not fix it
+  either: click 0/3, typing 2/3 with characters lost, key 0/3, control 0/12, the human's view unchanged 9/9 (Run 11
+  FE-0…FE-5), and while it is on the target page reads `visible`, so a page-side visibility check proves nothing.
+  Hence `"focusFirst"`: the SDK's and the MCP's trusted input call `focusTab` first (`sdk/CLAUDE.md`, `mcp/CLAUDE.md`).
+  An untrusted action whose content path fails is escalated to CDP out of the SDK's sight, so it can still answer `ok`
+  and do nothing on a background tab; pass `trusted` or `focus()` when it must land. A clipboard write in `evaluate`
+  needs `focusTab` too (BG-3 `NotAllowedError … Document is not focused`). (Uploads differ: Run 16 UP-1, below.)
 - **The switch sequence, and why it never focuses the window** (`tabs.ts: activateForCapture`, plan
   0.5): minimized → `WINDOW_MINIMIZED` before switching; reserve a capture slot (Chrome allows 2
   `captureVisibleTab` calls/s; 500 ms spacing, one quota retry); activate the target; wait for
@@ -176,16 +169,12 @@ Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind the
   its alias `selectTab` was removed in Step 8 S2b; the MCP's trusted tools call it since Step 10 S2 and add no
   focus of their own). Never add focus to the capture, and never lower the
   1000 ms or 50 ms waits without a measurement.
-- **The switch flash is ~1.5 s, not a frame.** Measured page-side from `visibilitychange` timestamps on
-  the human's tab: hidden +5–6 ms after the call, visible again after 1509/1486/1493 ms (Run 8
-  SCREEN-1, median 1493 ms) and 1588/1557/1556 ms (Run 9 R9-SCREEN-1, median 1557 ms). That is about
-  the 1000 ms wait running to its limit + 50 ms + the capture, which suggests `onActivated` does not
-  end the wait (unconfirmed; Run 8 finding 3). Three concurrent captures serialised with no quota error
-  (Run 8 SCREEN-3, Run 9 R9-SCREEN-3). The code says the listener does end it (Step 10 Stage 0 F3, by reading
-  `showTab`); the live differential row SW-1R (background-tab capture minus front-tab capture) stayed
-  undetermined — d = 101, 1276, 1421 ms, trial 1's front capture taking 870 ms against 287/218 ms, a first-call
-  or capture-slot cost — so the waits stay (Run 15; decisions.md · 2026-10-25 · S7: Run 15 stands as recorded;
-  its follow-ups (#226) item 1). A later differential row needs a discarded warm-up trial (S7.md Findings 6).
+- **`onActivated` ends the capture wait; the human's tab is hidden ~1.5 s per switch capture.** Page-side
+  `visibilitychange` on the human's tab: hidden +5–6 ms, visible again after a median 1493 ms (Run 8 SCREEN-1) and
+  1557 ms (Run 9 R9-SCREEN-1). The differential row SW-2 (background-tab capture minus front-tab capture, one
+  discarded warm-up — the first capture costs ~800 ms more) read d = −24, 95, 68 ms in 3/3, so the wait does not run
+  to its 1000 ms bound (Run 16; decisions.md · 2026-10-26 · S5-liveA closes … (#282)); the waits stay as they are.
+  Three concurrent captures serialised with no quota error (Run 8 SCREEN-3, Run 9 R9-SCREEN-3).
 - **A capture of a tab in a fully covered (occluded) window hangs.** `captureVisibleTab` did not return
   and the call ended in `TIMEOUT` after 35 s (Run 8 SCREEN-5 first attempt); before T5b the target tab
   then stayed in front ≥ 49 s. Since T5b the chain bound restores the previous tab at 30 s: measured
@@ -250,19 +239,30 @@ Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind the
   15, daemon 33, sdk 0, mcp 6) and `log-sentinel.test.ts` runs the real daemon on port 0 (#187). Run 13:
   `daemon.log` 210 lines and the worker console 0 for the token, non-fixture `://` and the test patterns
   (SAFE-10).
-- **The disarm reaches running work fast, Chrome's banner does not.** A running trusted `type` ended
-  `DISARMED` 14 ms after the press (578 of 1000 characters typed), but the "is debugging this browser"
-  banner was still shown 3 s later and gone by +14 s (Run 13 SAFE-4 (b), FAIL, Chrome-owned). Re-measured in
-  Step 10's Run 14 (R14-4b): the `type` ended 5 ms after the press (571 of 1000 typed), the banner was gone between
-  +4.7 s and +5.0 s and did not return, and a trusted call after the re-arm worked on the same tab, so the debugger
-  session was detached (a record, no bound; S1.md Findings 3; decisions.md · 2026-10-25 · S1: Run 14's results
-  stand as recorded (#210)). A running `waitFor` was refused 54–92 ms after the press (SAFE-4 (a), 4c).
-- **An options page in a background window did not show a `storage.onChanged` re-arm until brought to
-  the front** (Run 13 SAFE-3, FAIL; cause undetermined — UIA staleness or deferred rendering). Re-measured
-  with the options window visible beside the driver window, not covered: it showed `Bridge armed.` 31 ms after
-  the re-arm, without a reload (Run 15 R15-3R, PASS under the user's occluder exemption; decisions.md · 2026-10-25 ·
-  R15-3R: the guard ignores a popup owned by the wave's own window that covers nothing the row reads (#224)). After a `write-failed` disarm the options page shows the stored state ("Bridge armed.")
-  while the badge says OFF and every call is refused — the memory disarm is not visible to the page (S2b
-  verifier F4, by construction, not producible live). The badge is the indicator.
+- **The disarm reaches running work fast, Chrome's banner does not.** A running trusted `type` ended `DISARMED`
+  5–14 ms after the press; the "is debugging this browser" banner lingered 3–14 s (Run 13 SAFE-4 (b)) and was gone
+  between +4.7 and +5.0 s in Run 14 R14-4b, the session detached (#210). A running `waitFor` was refused 54–92 ms
+  after the press. A banner seen in a row's sampling window may therefore be an earlier attach's (Run 16 UP-6, #284).
+- **An options page follows a `storage.onChanged` change only while visible**: in a covered background window it
+  did not show a re-arm until brought to the front (Run 13 SAFE-3); visible beside the driver it showed `Bridge
+  armed.` 31 ms after (Run 15 R15-3R, #224); a second options window took 6061 ms in Run 16 UP-OPT (FAIL, cause
+  unknown, #285). After a `write-failed` disarm the page shows the stored state while the badge says OFF (S2b
+  verifier F4, by construction): the badge is the indicator.
+
+### Uploads (Step 11)
+- **The gate refuses `file:` pages whatever the file-URL toggle says**: every tab call on a tab showing a `file:` URL
+  (`closeTab`, `focusTab` included) and every `navigate`/`newTab` to one is `DOMAIN_BLOCKED` (`FILE_PAGE_MESSAGE`,
+  `FILE_URL_MESSAGE`; order own page > `file:` > block list; a wrapper deeper than the unwrap bound counts as `file:`);
+  `listTabs` rows of a `file:` tab stay listed (#245 (a), #259; `safety-gate.test.ts`). For class `upload` the folder
+  rule runs at receipt even for a gone tab, so a refused path never reaches the handler (#260).
+- **`DOM.setFileInputFiles` needs the extension's "Allow access to file URLs"** (Chromium answers "Not
+  allowed" otherwise, `stage0-cdp.txt`): `handlers/upload.ts` reads `isAllowedFileSchemeAccess()` before attaching and
+  refuses `UPLOAD_REFUSED` (`NO_FILE_ACCESS_MESSAGE`). A wave never presses it (G11-3). With it on, an upload
+  reached a **background tab** with no focus or lock (Run 16 UP-1). A raw `uploadFiles` of an absent
+  file inside an allowed folder answers `ok`, the page gets a file: only the SDK preflight checks disk (UP-RAW,
+  #284). CDP calls: 15 s bound, unmeasured (#268).
+- **The upload finder ships as a closure-free literal string**: its guard test copies esbuild's options instead of
+  reading `build.mjs`, so `keepNames: true` there would pass the tests and ship a finder calling `__name` (S3 verifier 2
+  NIT A). Extension tests are not type-checked (tsconfig covers `src`; S2.md §6).
 
 The session marker's 2 s bound and the handle retirement on a Chrome restart are in `daemon/CLAUDE.md`.

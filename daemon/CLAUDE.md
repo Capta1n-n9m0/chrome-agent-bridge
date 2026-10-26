@@ -13,7 +13,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   one owner per tab, `TAB_HELD {owner, since}`), `lock.ts` (`VisibilityLock`: FIFO, `LOCK_TIMEOUT
   {holder}`, released on completion, deadline or disconnect), `methods.ts` (the one method-class
   table — a new extension method must enter it; `REMOVED_METHODS`: `selectTab` → `UNKNOWN_METHOD`; Step 10's
-  `evaluateSaveStart`/`Chunk`/`End` are tab methods, lease-checked, no lock, #205),
+  `evaluateSaveStart`/`Chunk`/`End` and Step 11's `uploadFiles` are tab methods, lease-checked, no lock, #205, #238),
   `intercept.ts` (`TabLayer`: resolve, lease check, lock, forward with `tabId`; events → handles; the
   opener rule and `leaseGranted`; `tab is required`; `retireAll` on a changed session marker; Step 9: keeps the extension's last
   `safetyState` (null until reported, from each new extension hello until that socket reports, and after the socket closes;

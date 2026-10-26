@@ -22,6 +22,10 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `transport.ts` (the `ws` socket), `spawn.ts`,
   `paths.ts` (daemon path, `BRIDGE_DAEMON`), `token.ts` (`resolveToken`, also used by the daemon),
   `download.ts` (`browser_download`'s client half: target path, chunked pull, atomic write, sha256),
+  `upload.ts` (Step 11: `prepareUpload` — each path absolute, an existing readable regular file, else `BAD_PARAMS`
+  naming the entry's index, never the path; sends `fs.promises.realpath`; size and sha256 from one read; also on the
+  `@bridge/sdk/download` subpath, #261) behind `Tab.upload` / `client.upload` (types `UploadOptions`, `UploadResult`;
+  the eight values unchanged, #240); `error.ts`'s `UPLOAD_REFUSED` line names both causes (#263, #264),
   `format/{snapshot,network}.ts` (the pure text formatters, moved from the extension in Step 7 T4,
   byte-identical to the baseline `sdk/test/fixtures/baseline-51de800.json`), exported as the
   `@bridge/sdk/format` subpath (`sdk/package.json` `exports["./format"]`) and from `index.ts`.

@@ -152,10 +152,16 @@ stage **low** or **standard**.
 ## 8. Waiting, and fresh agents
 
 - The step agent holds long waits: run the job with `run_in_background` (or a silent watcher on a PID
-  or `.done` marker, polling at most every 120 s), end the turn, get re-invoked on exit. Never a
-  foreground sleep loop. Builders, verifiers and fixers finish in one go and never wait.
-- A notice that a child is "waiting on its own background work" is **not** completion: end your turn
-  and wait for its real hand-back.
+  or `.done` marker, polling at most every 120 s). Never a foreground sleep loop. Builders, verifiers and
+  fixers finish in one go and never wait.
+- **A step agent never ends its turn while a child agent runs** (#286): a child's hand-back that arrives
+  after its parent ended the turn goes past the parent (Step 11 S5-liveA's first step agent). The Agent
+  tool may start a child in the background whatever the brief says; then wait on the child's report file
+  with a bounded wait. Only the session agent ends its turn on a running child.
+- A notice that a child is "waiting on its own background work" is **not** completion: wait for its real
+  hand-back.
+- A child kills any shell command it left hanging before it reports (Step 11: a mistyped heredoc spun
+  ~1.5k CPU-seconds as an orphan).
 - **Fresh agents, never resumed ones** (decisions.md · 2026-10-25 · Fresh agents instead of resumed
   ones (#225)): a stage that must continue goes to a new agent reading the ledger or report. A child
   whose transcript has not grown for an hour is stopped, checked for orphans, and its work handed to a
@@ -181,7 +187,7 @@ Area cleaners return numbered findings instead (`cleanup-pass` skill); everyone 
 
 ## 10. Commits
 
-Commit only when your brief says so (normally via the stage's builder). Exact file list; never
+Commit only when your brief says so (normally via the stage's builder, after the verifier's verdict, so the message carries it — #286). Exact file list; never
 `git add -A`, `dist/`, `bridge.token`, `.env`, `exports/`, screenshots or a wave's scratch files.
 Message `<type>(<scope>): <what>`; types `feat`, `fix`, `docs`, `test`, `chore`; scopes `server`,
 `extension`, `shared`, `daemon`, `sdk`, `mcp`, `docs`, `test`, `e2e` or none. A stage commit names the

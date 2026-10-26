@@ -1,6 +1,6 @@
 # Step 11 — D3 file upload (`browser_upload_file`, `Tab.upload`)
 
-**Date:** 2026-10-25 · **Status:** Running — Stage 0 done 2026-10-25 (kickoff `docs/plans/next-session-prompt.md`)
+**Date:** 2026-10-25 · **Status:** Built, Run 16 recorded, docs done (2026-10-26); **waiting for the user at the gate** (§ As built, Gate checklist) — kickoff `docs/plans/next-session-prompt.md`
 **Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change (§5 layer contract, §6 the human, §10 protocol and codes, with the Step 9 and
 Step 10 dated notes) · **Roadmap:** `docs/progress-and-roadmap.md` §5 (Phase D, "D3 file upload — not started") ·
@@ -558,6 +558,31 @@ measurement; and, from Steps 6–10, still binding: everything in `docs/agent-ru
 
 One block per stage, written by the session agent at the stage close (format: `docs/docs-writing-guide.md` § Phase
 doc header); at the phase close, the gate checklist (item → met? → evidence).
+
+### Gate checklist · 2026-10-26 · **not met — Step 11 waits for the user**
+| Item | Met? | Evidence |
+|---|---|---|
+| Every-stage checks (tests = before + n, typecheck, build, no tracked change, new tests red before) | yes | each stage's verifier; tests 3273/132 → 3811/154 (S6's `npm test`); S3's break of a recipes typecheck found later and fixed in S3c (#275, #276) |
+| Z.1 (Stage 0) | yes | `…-steps/Stage0.md`, `Stage0-verifier.md` |
+| R.1, R.2 (S1) | yes | `S1.md`; R.2's pre-written rows in §4.23 (`36cfc43`) before Run 16 |
+| S2.1–S2.5 | yes | `S2.md` continuation, `S2-verifier2.md` |
+| S3.1–S3.4 | yes | `S3.md`, `S3-verifier2.md` |
+| S4.1–S4.4 (+S4b) | yes | `S4.md`, `S4b.md` |
+| S5.1–S5.4, S5.7 | yes | `S5-record.md` (whole run) |
+| **S5.5** | **no** (liveA) | two preflight STOPs relaunched instead of returned, no effect (#282) — a STOP rule ("a live runner continuing past a STOP line") |
+| **S5.6** | **part** (liveA) | worker console not captured in liveA's first run: NOT MEASURED for UP-L1, UP-6, UP-7, SAVE-REFUSE-R (#282) |
+| S6.1 | yes | `S6.md` (25 texts byte-identical) |
+| STOP rule: a title in committed evidence | **triggered** | the profile's display name in `262619f` (unpushed), redacted at the tip; the history is the user's (#283) |
+| G11-0 | met | #229 |
+| G11-1 (push/tag) | not asked | nothing pushed; 47 commits ahead of `origin/main` at the close-out (`git log origin/main..HEAD`) |
+| G11-2 (non-fixture upload) | not needed | fixture pages only (S5-record scan) |
+| G11-3 (file-URL toggle) | not needed | found ON by UP-0, never pressed |
+| Open decisions | waiting | `docs/decisions.md` → Open decisions (Step 11) |
+
+### S6 — Docs · 2026-10-26 · verifier: PASS-with-notes (third check) · commit `bd755aa` · models: builder and fixers Sonnet 5.5 (medium), verifiers Opus 5.5
+- `docs/setup.md` (+170/−7: Uploading files, Upload folders, the `file:` refusal, 24 tools), `README.md`,
+  `recipes/README.md`, the roadmap; S6.1 met. Package `CLAUDE.md` proposals applied by the session agent (#287).
+  Carried: the tool description's background-tab sentence (a code stage).
 
 ### Stage 0 — Spec audit · 2026-10-25 · verifier: PASS-with-notes · commits `b962460`, `deaffd1` · models: step agent, auditor, verifier Opus 5.5
 - **Z.1 met.** Step 8, 9 and 10 contracts re-executed on port 0 from a `git archive` copy: held. Counts recomputed

@@ -59,6 +59,7 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-25 · Gotchas follow the code they bind (#232) — this file (Log)
 - 2026-10-25 · Builders, fixers and live runners run Sonnet at medium effort from S5 on (#270) — this file (Log)
 - 2026-10-25 · S5 is split into seven slices; the stopped prep is salvaged per slice (#271) — this file (Log); its rule for small iterations is in `agent-rules.md` §7
+- 2026-10-26 · Step agents never end their turn on a running child; commits carry the verifier's verdict (#286) — this file (Log); `agent-rules.md` §8, §10
 
 **Product promises: the daemon, the clients and their lifecycle**
 - 2026-10-21 · The actor name carries the MCP's own process id (#2) — `decisions-archive/step6.md`
@@ -177,6 +178,32 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
+
+### 2026-10-26 · S6 accepted; Step 11 stops at the gate (#287)
+**Decided:** S6 (`bd755aa`, verifier PASS-with-notes after two Sonnet fix rounds) is accepted: `docs/setup.md`
+(Uploading files; Upload folders; the `file:` refusal; 24 tools; 25 quoted texts byte-identical to the code),
+`README.md`, `recipes/README.md`, the roadmap. The session agent applied `S6-claude-md-proposals.md` to the package
+`CLAUDE.md` files (placed by #232; `extension/CLAUDE.md` kept within its budget by tightening three bullets).
+Step 11 is **built and documented but not closed**: the gate stops on S5.5 and S5.6 (part) for liveA (#282) and waits
+for the open decisions. One code item is carried to the next code stage: `browser_upload_file`'s description gains
+the background-tab sentence Run 16 UP-1 allows (#262, #284), re-baselining that schema entry and setup.md's quote.
+**Why:** the phase doc's gate checklist (§ As built) and STOP rules.
+**Instead of:** closing Step 11 with failed checks.
+**Revisit if:** the user rules the gate items.
+**By:** Claude
+
+### 2026-10-26 · Step agents never end their turn on a running child; commits carry the verifier's verdict (#286)
+**Decided:** `docs/agent-rules.md` §8: a step agent never ends its turn while a child agent runs (it waits on the
+child's report file with a bounded wait if the tool started the child in the background); a child kills any shell
+command it left hanging. §10: the builder commits after the verifier's verdict so the message carries it.
+**Why:** measured in Step 11: S5-liveA's first step agent ended its turn and its runner's hand-back went past it (a
+fresh agent had to resume); S6 and S5-record saw the Agent tool start children in the background although briefs
+asked foreground; an orphan `python -` from a fixer's mistyped heredoc spun ~1.5k CPU-seconds; S1–S4's commits said
+"verifier: pending" (journal trial note, 19:02Z). Not changed, for the user: briefs pass no `effort` for Opus
+verifiers, and three verifiers reported running at "low".
+**Instead of:** ending the turn and relying on re-invocation (#225's revival still covers a lost hand-back).
+**Revisit if:** the harness re-invokes a parent on a child's hand-back reliably.
+**By:** Claude (process; for user review with the lean-procedures trial)
 
 ### 2026-10-26 · S5 closes: Run 16 stands as recorded; UP-OPT keeps its FAIL with no cause stated (#285)
 **Decided:** Run 16 (`docs/e2e-test-plan.md` §5, `4071287`; verifier PASS-with-notes) stands: 30 rows, PASS 19 / FAIL 3

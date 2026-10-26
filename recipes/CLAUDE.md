@@ -20,9 +20,11 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   redirect server, threaded since Step 10 S1), `s9-r14.ps1` (Step 10 S1, Run 14's block runner),
   `s10.ts`/`s10-rules.ts`/`s10-r15.ps1`/`s10-win.ps1`/`s10-mem.ps1`/`s10-ret1.ts`/`s10-ret1.ps1` (Step 10 S7, Run 15;
   `s10-ret1.*` kills and relaunches the user's Chrome, only under a grant), `test/` (part of `npm test`),
-  `tsconfig{,.fe,.s6,.s9,.s10}.json` (recipes are not in `npm run
-  typecheck`: `npx tsc --noEmit -p recipes/tsconfig.s6.json`). Step 10's fixtures for the bridge are
-  `test-fixtures/s10-{cap,mcpf,save}.html`.
+  `s11.ts` (SDK actor) / `s11-rules.ts` (pass rules and expected texts) / `s11-evidence.ts` (leak counts) /
+  `s11-csp.py` / `s11-r16.ps1` + `s11-r16-plan.ts`, `s11-r16-opt.ts` (block runner) / `s11-win.ps1` + `s11-win-rules.ts`
+  (Step 11 S5, Run 16), `tsconfig{,.fe,.s6,.s9,.s10,.s11}.json` (recipes are not in `npm run typecheck`: `npx tsc
+  --noEmit -p recipes/tsconfig.s6.json`; all six exit 0 since S3c). Fixtures: `test-fixtures/s10-{cap,mcpf,save}.html`,
+  `test-fixtures/s11-{upload,frame,patched}.*`.
 
 ## Runtime gotchas (live runs, Windows tooling, driving Chrome from the outside)
 - **Windows PowerShell 5.1 mangles `—`** (U+2014): it decodes program output with the console code
@@ -118,6 +120,15 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   Findings 4); R15-3R exempted it only because a driver window owned it and it covered none of the read elements
   (#224). Park the cursor and print occluder diagnostics before a click that a guard protects (decisions.md ·
   2026-10-25 · S1: Run 14's wave mechanics are kept for Run 15 (#213)).
+- **Run 16's live-run facts (Step 11 S5, 2026-10-26).** A DevTools window title carries the Chrome profile's display
+  name (`DevTools - <profile>`): a worker-console capture's first line leaked it into a commit (redacted, #283) —
+  drop window-title lines from captures, and name a scan pattern (a profile path) in a report only by a placeholder
+  (S5-record fix round 2). Port 8080 may be held by VS Code (`Code.exe`), so Run 16 served its fixtures on 8081 (#273).
+  A maximized Chrome window's frame overhangs its monitor by 8 px and meets an auto-hidden taskbar's 2 px strip: an
+  occluder guard over it stops on the taskbars — place the wave's window inside the work area (S5-liveA,
+  `S5-liveA-occluders.txt`). `python` is on Git Bash's PATH but not the PowerShell tool's: start a runner that needs
+  it from Git Bash (S5-liveA run 1). A `STOP:` printed inside a restore must end the wave (`s11-r16.ps1`, #279).
+  The daemon exits after 600 s idle between a STOP and a re-run; the next client spawns it with the same build id.
 - **Expected texts are tied to the product's constants, and re-read from the code before a row is committed.** Run 13's
   SAFE-9 and SAFE-10 expected texts were wrong, not the product (the `safety state:` log line precedes `extension
   resync` by design; Chrome 156 titles the worker's DevTools window `DevTools`), and both rows stayed FAIL because

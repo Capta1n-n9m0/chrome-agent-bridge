@@ -11,34 +11,32 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-25, Step 10 closed; lean procedures in place)
+## Current state (2026-10-26, Step 11 built and E2E-run; waiting for the user at its gate)
 
-- **Shipped:** Steps 1–9 (Step 9 — Phase E safety — closed 2026-10-24, #202; Step 8 closed 2026-10-24, wave W2,
-  #106–#127). Public on GitHub (MIT). **24 tools, 27 codes (26 on the wire), 27 router methods** (Step 11 S2–S4; the test count: Commands).
-- **Step 10 — the Step 8 follow-ups — built and E2E-run 2026-10-25** (Runs 14–15), as-built
-  `docs/plans/2026-10-24-step10-step8-follow-ups-asbuilt.md`: the MCP's trusted tools focus first (#106, #214); the
-  800-cap warning (`pastSnapshotCap`, the SDK `warning` event, the MCP line; #117, #206, #216); `browser_evaluate
-  {saveTo}` + `Tab.evaluateToFile` through an extension-side store (#127, #205, #207, #217, #218); `JS_DISABLED`
-  (#202, #219); `bb-login.ps1`'s condition wait (#215); the local branch `release/step8` (Variant C, #208); a live
-  retire row on a killed Chrome (RET-1R, 3 handles retired); the chunked MCP recipe retired (#228). Run 15: 27 PASS /
-  3 FAIL / 3 NOT MEASURED / 4 RECORD, none a product defect (#226). **Closed 2026-10-25:** the user ruled every open decision
-  (decisions.md · 2026-10-25 · The user rules on Step 10's open decisions; Step 10 closes (#229)) — all as built,
-  except #227 option (b) and the `saveTo` `kind` description, both in Step 11's first code stage; the `step8` tag and
-  `release/step8` are pushed (G10-1).
-- **Reloads need no human:** `recipes/reload-extension.ps1` reloads the extension by UI automation
-  and proves it (#65); an exit-2 reload may be re-run during waves (#99).
-- **Lean procedures (2026-10-25, #230):** rules for every agent in `docs/agent-rules.md`, briefs by pointer,
-  package `CLAUDE.md` files, decisions archived by step, risk-tiered models, the `cleanup-pass` skill. Built on the
-  Linux copy (`docs/plans/2026-10-25-lean-procedures.md`); Step 11 is its trial against Step 10.
-- **Resume:** Step 11 — D3 file upload, on Windows: kickoff `docs/plans/next-session-prompt.md` (its first checks
-  re-run the package `CLAUDE.md` loading probe there), phase doc `docs/plans/2026-10-25-step11-file-upload.md`. Interactive sessions using the bridge need `/mcp` or a fresh session (the MCP
-  and daemon builds changed in Step 10); the loaded extension is already the Step 10 build (Run 15).
-- **Next** (decisions.md · 2026-10-24 · The roadmap after Step 8 (#129), order open for veto): **Step 11** — D3 file
-  upload (`browser_upload_file` / `Tab.upload` via `DOM.setFileInputFiles`), with a first code stage for #227 (b) and
-  the `saveTo` `kind` text, and row SW-2 (the ~1.5 s capture switch with a warm-up trial) in its live wave; then a
-  small step for the network rule against redirects onto blocked sites (#140, placed by #229); **Step 12** — Phase F
-  (`args` for `browser_evaluate`, console capture, keep-attached debugger). Known limits carried: a popup of a
-  background opener gets no lease (#226 item 3); the focus/input race of the MCP's trusted tools (Stage 0 F19). Live
+- **Shipped:** Steps 1–10 (Step 10 closed 2026-10-25, #229; its as-built
+  `docs/plans/2026-10-24-step10-step8-follow-ups-asbuilt.md`). Public on GitHub (MIT). **24 tools, 27 codes (26 on the
+  wire), 27 router methods** (the test count: Commands).
+- **Step 11 — D3 file upload — built, E2E-run (Run 16) and documented 2026-10-25/26, not closed**: phase doc
+  `docs/plans/2026-10-25-step11-file-upload.md` (§ As built, Gate checklist). `Tab.upload` / `client.upload` and
+  `browser_upload_file` put local files into a page's file input through CDP `DOM.setFileInputFiles`; only files in
+  the human's Upload folders (options page, empty by default) and only with Chrome's "Allow access to file URLs" on,
+  else `UPLOAD_REFUSED`; the gate refuses `file:` pages for every method (#245). Also S1: the bridge's own `saveTo`
+  refusals unprefixed inside a debugger session (#246). Run 16: 30 rows, PASS 19 / FAIL 3 / NOT MEASURED 3 / RECORD 4;
+  the upload reaches a background tab with no focus (UP-1); SW-2 closed the ~1.5 s capture question (the event ends
+  the wait). **The gate stops** on S5.5 and S5.6 (part) for liveA (#282) and on a profile-name window title in the
+  unpushed commit `262619f` (redacted at the tip, #283); Open decisions list the rest (#235–#238, #240, #241, #243,
+  #245, #247, #250, #254, #257, #259, #261, #263, #264, #266, #268, #284, #286). Nothing pushed (G11-1).
+- **Lean procedures (#230), amended in Step 11:** doers (builders, fixers, live runners) run Sonnet at medium effort,
+  verifiers and step agents Opus (#270); a stage over ~600 new lines is split into slices (#271); a step agent never
+  ends its turn on a running child, and commits carry the verifier's verdict (#286). The trial numbers:
+  `docs/plans/2026-10-25-lean-procedures.md` § Trial.
+- **Reloads need no human:** `recipes/reload-extension.ps1` (#65; one re-run on exit 2, #99). The loaded extension is
+  the Step 11 build (Run 16); interactive sessions using the bridge need `/mcp` or a fresh session.
+- **Resume:** the user rules Step 11's gate (the open decisions, the S5.5/S5.6 failures, the history of `262619f`,
+  G11-1). **Next** (#129 as amended by #229): the block list stops redirected requests (#140) — kickoff
+  `docs/plans/next-session-prompt.md`; then **Step 12** — Phase F (`args` for `browser_evaluate`, console capture,
+  keep-attached debugger, and with it the native file chooser). Carried: `browser_upload_file`'s background-tab
+  sentence (#287); a popup of a background opener gets no lease (#226); the MCP trusted tools' focus/input race. Live
   waves run autonomously (#33).
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
@@ -116,10 +114,10 @@ Details and measured facts are in the package file named; the integrity floor is
 ```bash
 npm install
 npm run build        # daemon/dist/index.js + mcp/dist/index.js + extension/dist/{sw,options,offscreen,content}.js
-npm test             # vitest — 3273 passed, 132 files (`npm test` 2026-10-25 at 025bdef; recipes/test included)
+npm test             # vitest — 3811 passed, 154 files (`npm test` 2026-10-26, S6 tree; recipes/test included)
 npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension (chained with `&&`; see the cross-package gotchas below)
 npm run recipe -- recipes/<file>.ts [args]   # a script against the SDK, run with tsx (= npx tsx recipes/<file>.ts)
-npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10 cover the others; all five exit 0 since Step 10 S8)
+npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10, .s11 cover the others; all six exit 0 since Step 11 S3c — run them: a code stage can break one, as S3 did)
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
 token + port `9234` in its Options. The MCP config points at `<repo>/mcp/dist/index.js`; nobody starts
