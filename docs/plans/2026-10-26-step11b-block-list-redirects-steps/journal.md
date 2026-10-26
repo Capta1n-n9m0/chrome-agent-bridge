@@ -20,3 +20,5 @@ effort · start → end.
   - S3b · download half (typed rules, `onErrorOccurred` before `ingest`, `download.ts` mapping), options-page caps warning · standard · ~1.5 h · cap 400
   - S4-sheet (low) · S4-helpers (low) · S4-live (standard, Sonnet runner, Opus step agent) · S4-record (Opus verifier) · ~2 h
   - S5 · docs and CLAUDE.md proposals · low · ~45 min
+- 2026-10-26T17:00Z · S0F-a · step agent · Opus · medium · start
+- 2026-10-26T17:24Z · S0F-a · step agent · Opus · medium · end — DONE, `632483b` + `62eee7e`, verifier PASS-with-notes (one fix round); tests 3825/156; #298; extension/mcp CLAUDE.md lines and the root test count updated.

@@ -8,8 +8,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   session), `cursor.ts` (`TabCursor`: claimed on first untargeted touch, moved only as the cursor gotcha below says, lost with a one-line notice on a
   4002 reconnect or a new client), `tools/registry.ts` (the 24 MCP tools — `browser_focus_tab` is
   Step 7's, `browser_use_active_tab` Step 8's, `browser_upload_file` Step 11's (the SDK's `prepareUpload` first; the
-  answer names files, never a directory; no background-tab sentence yet although Run 16 UP-1 measured it, #262/#284 —
-  adding it re-baselines that one schema entry); `browser_click`'s description points file inputs there and still
+  answer names files, never a directory; its description says the upload works on a background tab (Step 11b S0F-a; pinned by a description test, the #214 baseline pins input schemas only); `browser_click`'s description points file inputs there and still
   ends with the focus sentence (`s2-focus-first.test.ts`); the `locator` object on the actions and
   `browser_wait_for`; `failureReport`/`failedLine`: an attach-set failure on a handle is rendered as the
   SDK's report plus a PNG; Step 9's `withSafetyRefusals` (a `DISARMED`/`JS_DISABLED`/`DOMAIN_BLOCKED` from any

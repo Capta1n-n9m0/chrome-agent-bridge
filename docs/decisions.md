@@ -185,6 +185,17 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-26 · S0F-a: the home check is one shared predicate, slightly stricter than Stage 0's table (#298)
+**Decided:** S0F-a's proposals: one predicate in `extension/src/upload-paths.ts` serves the options page and the gate,
+and refuses a home-folder parent itself too (for example `/var/home`), not only the folders inside it; the
+`listTabs` safety decision hides a `file:` tab as the tab rows and events do; the builder's edit of
+`recipes/test/s11-rules.test.ts` (the changed options texts; Run 16's recorded texts still checked byte for byte) and
+the fixer's correction of one `docs/setup.md` sentence the build made false are accepted as lane deviations.
+**Why:** stricter is the safe side of an Upload-folder rule; the two edits only keep tests and docs true.
+**Instead of:** Stage 0's narrower table (a parent like `/var/home` allowed as a folder).
+**Revisit if:** a real Upload folder of the user's is refused by it.
+**By:** Claude
+
 ### 2026-10-26 · Stage 0's incident: a stray `chrome.exe --version` reached the user's Chrome; never run Chrome without an own profile (#297)
 **Decided:** a Stage 0 measurer ran `chrome.exe --version` once with no `--user-data-dir`; Windows handed it to the
 user's running Chrome ("Opening in existing browser session."), which may have opened a window or tab there. No

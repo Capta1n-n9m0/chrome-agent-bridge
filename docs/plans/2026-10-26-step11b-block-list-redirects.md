@@ -431,6 +431,14 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - **Stage split** (journal 2026-10-26T17:00Z): S0F-a → S0F-b → S1 → S2 → S3a → S3b → S4-sheet → S4-helpers → S4-live →
   S4-record → S5, sequential (0.1).
 
+### S0F-a · 2026-10-26 · `632483b` (spec note), `62eee7e` · verifier PASS-with-notes (one fix round)
+- A home folder or a folder holding home folders is an invalid Upload-folder line (a reason naming no path), and the
+  gate ignores such a line already in storage, by one shared predicate in `upload-paths.ts` (#298); `.ssh` stays a
+  warning. A `file:` tab is listed hidden (`"blocked"`) in `listTabs` and in tab events (`hiddenReason`, `safety.ts`).
+  `browser_upload_file` says it works on a background tab (a description test pins it; #214 pins schemas only).
+- Tests 3811/154 → 3825/156, none removed; 16 new or changed tests red on the code before; F.1's home and `file:`
+  parts met. Report `…-steps/S0F-a.md`. Run 17's F-HOME expects the new reason text.
+
 ## Open items
 
 - **Ruled 2026-10-26:** 0.3 (A), 0.4 (C) (#290); S0F's what (#288).

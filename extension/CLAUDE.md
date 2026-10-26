@@ -247,7 +247,7 @@ Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind the
 - **The gate refuses `file:` pages whatever the file-URL toggle says** (Step 11): every tab call on a tab showing a
   `file:` URL (`closeTab`, `focusTab` included) and every `navigate`/`newTab` to one is `DOMAIN_BLOCKED`
   (`FILE_PAGE_MESSAGE`, `FILE_URL_MESSAGE`; order own page > `file:` > block list; a wrapper deeper than the unwrap bound
-  counts as `file:`); `listTabs` rows of a `file:` tab stay listed (#245 (a), #259; `safety-gate.test.ts`).
+  counts as `file:`); `listTabs` rows and tab events of a `file:` tab are listed hidden with the `"blocked"` reason, no `url`/`title` (Step 11b S0F-a, #288, `hiddenReason` in `safety.ts`; was listed, #259).
   `downloadStart` to a `file:` URL keeps its handler's `BAD_PARAMS` (`safety.ts` comment). For class `upload` the
   folder rule runs at receipt even for a gone tab, so a refused path never reaches the handler (#260).
 
