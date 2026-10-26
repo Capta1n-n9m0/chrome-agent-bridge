@@ -25,6 +25,11 @@
  *   whose removal was rejected). Every later update the keeper sends (install, release, rebuild, sweep) retries those
  *   too, in the same atomic update.
  * - An empty list (the default) makes no API call (F15).
+ * - **S3a (#301).** After a rejected rebuild, once no covered call is live (the last release, or the next install),
+ *   the keeper retries the start-up clear and is synced again if it succeeds. Each DNR call is bounded
+ *   (`timeoutMs`, 5 s by default); past it the call counts as rejected. A timed-out install's ids are kept as orphans
+ *   (Chrome may still apply it), removed by the next update; a timed-out rebuild's new ids join each live call's own,
+ *   removed at that call's release.
  */
 import { countRules, fitsCaps, rulesOf, type DnrCaps, type DnrCounts, type DnrRule, type DnrScope } from "./safety-dnr.js";
 import { methodClass, refusalError, stateUnreadableRefusal, type SafetyRefusal } from "./safety.js";
@@ -45,7 +50,14 @@ export interface DnrKeeperDeps {
   caps(): DnrCaps;
   /** `chrome.runtime.id`: the download rules' initiator. */
   extensionId: string;
+  /** The bound on each DNR call, in ms (default `DNR_TIMEOUT_MS`). */
+  timeoutMs?: number;
 }
+
+export const DNR_TIMEOUT_MS = 5_000;
+
+/** A DNR call past its bound: it may still apply later. */
+class DnrTimeout extends Error {}
 
 /** Which rule scope a call needs, or null: it installs nothing. Keyed on the method class (F7), plus back/forward (#296). */
 export function dnrScopeOf(method: string, params: Record<string, unknown>, extensionId: string): DnrScope | null {
@@ -67,8 +79,13 @@ export interface DnrCall {
    * it only after `await release()`: a rebuild already queued sets it when it runs, and `release` queues behind it.
    */
   refusal(): SafetyRefusal | null;
-  /** Removes the call's rules; once; never rejects. Settles after every rebuild queued before it: await it first. */
+  /**
+   * Removes the call's rules and any orphans (a timed-out add's ids, the refused call's own included); once; never
+   * rejects. Settles after every rebuild queued before it: await it first.
+   */
   release(): Promise<void>;
+  /** True while the call's rules are in force (installed, non-empty, not released): `back`/`forward` wait on it. */
+  holding(): boolean;
 }
 
 interface Live {
@@ -110,8 +127,10 @@ export class DnrKeeper {
     return this.cleared && !this.rebuildFailed;
   }
 
-  call(method: string, params: Record<string, unknown>): DnrCall {
-    return new Handle(this, dnrScopeOf(method, params, this.deps.extensionId));
+  /** The call's handle; with `only`, a call of another scope gets an inert one (S3a wires the tab half only). */
+  call(method: string, params: Record<string, unknown>, only?: DnrScope["kind"]): DnrCall {
+    const scope = dnrScopeOf(method, params, this.deps.extensionId);
+    return new Handle(this, only !== undefined && scope?.kind !== only ? null : scope);
   }
 
   /** The block list changed (`null`: the state cannot be read). Never rejects. */
@@ -136,7 +155,14 @@ export class DnrKeeper {
           addRules.push(...rules);
         }
         if (removeRuleIds.length > 0 || addRules.length > 0) await this.update(removeRuleIds, addRules);
-      } catch {
+      } catch (e) {
+        // S3a fixer 2 (V2-M1): a timed-out rebuild may land late, leaving only its new ids on the live calls' tabs, so
+        // each call keeps its new ids beside its old ones (counts summed) and they leave only at its own release
+        if (e instanceof DnrTimeout) {
+          entries.forEach(([h, l], i) =>
+            this.live.set(h, { scope: l.scope, ids: [...l.ids, ...ids[i]], counts: sum([l.counts, next[i].counts]) }),
+          );
+        }
         this.rebuildFailed = true;
         return this.refuseLive();
       }
@@ -166,18 +192,20 @@ export class DnrKeeper {
     return this.enqueue(async () => {
       if (h.released) throw refused(); // released before its install ran: nothing goes in
       if (!this.cleared) await this.clear();
+      await this.resyncIfIdle();
       if (!this.synced) throw refused();
       const counts = countRules(list);
       if (counts.rules === 0) {
         this.live.set(h, { scope, ids: [], counts });
         return;
       }
-      if (!fitsCaps([...this.liveCounts(), this.orphanCounts, counts], this.deps.caps())) throw refused();
-      let rules: DnrRule[];
+      let rules: DnrRule[] = [];
       try {
+        if (!fitsCaps([...this.liveCounts(), this.orphanCounts, counts], this.deps.caps())) throw new Error("caps");
         rules = rulesOf(list, scope, this.take(counts.rules));
         await this.update([...this.orphans], rules); // retries the orphans in the same atomic update
-      } catch {
+      } catch (e) {
+        if (e instanceof DnrTimeout) this.addOrphans(rules.map((r) => r.id), counts);
         throw refused();
       }
       this.dropOrphans();
@@ -191,24 +219,42 @@ export class DnrKeeper {
       const l = this.live.get(h);
       this.live.delete(h);
       const ids = l?.ids ?? [];
-      if (ids.length === 0) return;
-      try {
-        await this.update([...ids, ...this.orphans], []);
-        this.dropOrphans();
-      } catch {
-        this.orphans.push(...ids);
-        const c = l!.counts;
-        this.orphanCounts = { rules: this.orphanCounts.rules + c.rules, regexRules: this.orphanCounts.regexRules + c.regexRules };
+      // S3a fixer M1: the orphans too, even when the call holds none (its own add may have timed out and landed late)
+      if (ids.length > 0 || this.orphans.length > 0) {
+        try {
+          await this.update([...ids, ...this.orphans], []);
+          this.dropOrphans();
+        } catch {
+          this.addOrphans(ids, l?.counts ?? NONE);
+        }
       }
+      await this.resyncIfIdle();
     });
+  }
+
+  /** @internal */
+  holdsFor(h: Handle): boolean {
+    return (this.live.get(h)?.ids.length ?? 0) > 0;
+  }
+
+  /** #301 (a): after a rejected rebuild with no covered call live, a clear that succeeds is the rebuild that succeeds. */
+  private async resyncIfIdle(): Promise<void> {
+    if (!this.rebuildFailed || this.live.size > 0) return;
+    await this.clear();
+    if (this.cleared) this.rebuildFailed = false;
+  }
+
+  private addOrphans(ids: number[], c: DnrCounts): void {
+    if (ids.length === 0) return;
+    this.orphans.push(...ids);
+    this.orphanCounts = { rules: this.orphanCounts.rules + c.rules, regexRules: this.orphanCounts.regexRules + c.regexRules };
   }
 
   private async clear(): Promise<void> {
     try {
-      const ids = (await this.deps.getSessionRules()).map((r) => r.id);
-      if (ids.length > 0) await this.deps.updateSessionRules({ removeRuleIds: ids });
-      this.cleared = true;
-      this.dropOrphans();
+      const ids = (await this.bounded(this.deps.getSessionRules())).map((r) => r.id);
+      if (ids.length > 0) await this.bounded(this.deps.updateSessionRules({ removeRuleIds: ids }));
+      this.cleared = true; // orphans stay listed: a timed-out add may still land after this read (#301 (b))
     } catch {
       this.cleared = false;
     }
@@ -239,7 +285,17 @@ export class DnrKeeper {
     const u: DnrUpdate = {};
     if (removeRuleIds.length > 0) u.removeRuleIds = removeRuleIds;
     if (addRules.length > 0) u.addRules = addRules;
-    return this.deps.updateSessionRules(u);
+    return this.bounded(this.deps.updateSessionRules(u));
+  }
+
+  /** Rejects with `DnrTimeout` past the bound (#301 (b)); the late outcome is dropped. */
+  private bounded<T>(p: Promise<T>): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const bound = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new DnrTimeout()), this.deps.timeoutMs ?? DNR_TIMEOUT_MS);
+    });
+    p.catch(() => {});
+    return Promise.race([p, bound]).finally(() => clearTimeout(timer));
   }
 
   /** Runs `op` after every earlier one; one failure never stops the chain. */
@@ -248,6 +304,10 @@ export class DnrKeeper {
     this.tail = run.catch(() => {});
     return run;
   }
+}
+
+function sum(cs: DnrCounts[]): DnrCounts {
+  return cs.reduce((a, c) => ({ rules: a.rules + c.rules, regexRules: a.regexRules + c.regexRules }), NONE);
 }
 
 /** The fail-closed refusal (#292): the existing state-unreadable one; never Chrome's text. */
@@ -286,5 +346,9 @@ class Handle implements DnrCall {
     if (!this.scope || this.released) return Promise.resolve();
     this.released = true;
     return this.keeper.releaseFor(this);
+  }
+
+  holding(): boolean {
+    return this.scope !== null && !this.released && this.keeper.holdsFor(this);
   }
 }

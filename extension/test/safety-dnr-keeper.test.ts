@@ -40,13 +40,14 @@ class FakeDnr {
   }
 }
 
-function setup(caps = { sessionRules: 5000, regexRules: 1000 }) {
+function setup(caps = { sessionRules: 5000, regexRules: 1000 }, timeoutMs?: number) {
   const fake = new FakeDnr();
   const keeper = new DnrKeeper({
     updateSessionRules: (u) => fake.updateSessionRules(u),
     getSessionRules: () => fake.getSessionRules(),
     caps: () => caps,
     extensionId: EXT,
+    timeoutMs,
   });
   return { fake, keeper };
 }
@@ -388,5 +389,180 @@ describe("D2.1: a rule removed on each of five paths (the real GatedRouter)", ()
     expect(JSON.parse(raw).error).toEqual({ code: "DISARMED", message: STATE_UNREADABLE_MESSAGE, data: { scope: "all" } });
     expect(effects).toBe(0);
     expect(fake.rules.size).toBe(0);
+  });
+});
+
+describe("S3a (#301): leftovers, re-sync when idle, the time bound", () => {
+  it("R1: an install whose update rejects keeps the leftover rules; the next update retries them", async () => {
+    const { fake, keeper } = setup();
+    const gone = keeper.call(...nav(2));
+    await gone.install(LIST_B);
+    const orphanIds = [...fake.rules.keys()];
+    fake.reject = () => true;
+    await gone.release(); // removal rejected: an orphan
+    expectUnreadable(await refusedWith(keeper.call(...nav(1)).install(LIST_A)));
+    expect([...fake.rules.keys()]).toEqual(orphanIds);
+    fake.reject = null;
+    await keeper.sweep();
+    expect(fake.updates.at(-1)?.removeRuleIds).toEqual(orphanIds);
+    expect(fake.rules.size).toBe(0);
+  });
+
+  it("(a) after a rejected rebuild, the last live call's end retries a clear; synced again if it succeeds", async () => {
+    const { fake, keeper } = setup();
+    const live = keeper.call(...nav(1));
+    await live.install(LIST_A);
+    fake.reject = () => true;
+    await keeper.rebuild(LIST_B);
+    expect(keeper.synced).toBe(false);
+    fake.reject = null;
+    const gets = fake.gets;
+    await live.release();
+    expect(fake.gets).toBe(gets + 1);
+    expect(keeper.synced).toBe(true);
+    expect(fake.rules.size).toBe(0);
+    const next = keeper.call(...nav(3));
+    await next.install(LIST_B);
+    expect(next.refusal()).toBeNull();
+    expect(fake.rules.size).toBe(countRules(LIST_B).rules);
+    await next.release();
+    expect(fake.rules.size).toBe(0);
+  });
+
+  it("(a) a call still live keeps the keeper unsynced; a failed retry too, and the next idle install retries", async () => {
+    const { fake, keeper } = setup();
+    const a = keeper.call(...nav(1));
+    const b = keeper.call(...nav(2));
+    await a.install(LIST_B);
+    await b.install(LIST_B);
+    fake.reject = () => true;
+    await keeper.rebuild(LIST_A);
+    fake.reject = null;
+    await a.release();
+    expect(keeper.synced).toBe(false); // b is still live
+    expectUnreadable(await refusedWith(keeper.call(...nav(3)).install(LIST_B)));
+    fake.reject = () => true;
+    await b.release(); // removal and the clear both rejected
+    expect(keeper.synced).toBe(false);
+    fake.reject = null;
+    const c = keeper.call(...nav(4));
+    await c.install(LIST_B); // no live call: the install retries the clear first
+    expect(keeper.synced).toBe(true);
+    expect([...fake.rules.values()].every((r) => r.condition.tabIds[0] === 4)).toBe(true);
+    await c.release();
+    expect(fake.rules.size).toBe(0);
+  });
+
+  it("(b) an install whose update never settles is refused after the bound; its ids are removed by a later update", async () => {
+    const { fake, keeper } = setup(undefined, 20);
+    await keeper.ready;
+    let late: (() => void) | null = null;
+    const update = fake.updateSessionRules.bind(fake);
+    fake.updateSessionRules = (u) => new Promise<void>((res) => (late = () => void update(u).then(res)));
+    const hung = keeper.call(...nav(1));
+    expectUnreadable(await refusedWith(hung.install(LIST_A)));
+    fake.updateSessionRules = update;
+    late!(); // Chrome applies the timed-out add after all
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fake.rules.size).toBe(3);
+    const ids = [...fake.rules.keys()];
+    await hung.release();
+    await keeper.sweep();
+    expect(fake.updates.at(-1)?.removeRuleIds).toEqual(ids);
+    expect(fake.rules.size).toBe(0);
+  });
+
+  it("M1: a refused call's timed-out add that lands late is removed by that call's own release", async () => {
+    const { fake, keeper } = setup(undefined, 20);
+    await keeper.ready;
+    let late: (() => void) | null = null;
+    const update = fake.updateSessionRules.bind(fake);
+    fake.updateSessionRules = (u) => new Promise<void>((res) => (late = () => void update(u).then(res)));
+    const hung = keeper.call(...nav(1));
+    expectUnreadable(await refusedWith(hung.install(LIST_A)));
+    fake.updateSessionRules = update;
+    late!();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fake.rules.size).toBe(3);
+    await hung.release(); // no sweep, no later install: the end of the call alone
+    expect(fake.rules.size).toBe(0);
+  });
+
+  it("N3: a clear keeps the orphan list, so a timed-out add landing after the clear's read is still removed", async () => {
+    const { fake, keeper } = setup(undefined, 20);
+    await keeper.ready;
+    let late: (() => void) | null = null;
+    const update = fake.updateSessionRules.bind(fake);
+    fake.updateSessionRules = (u) => new Promise<void>((res) => (late = () => void update(u).then(res)));
+    const hung = keeper.call(...nav(1));
+    expectUnreadable(await refusedWith(hung.install(LIST_A))); // orphans: 3 ids, the add still pending
+    fake.updateSessionRules = update;
+    fake.reject = () => true;
+    await keeper.rebuild(LIST_B); // rejected: unsynced, the orphans kept
+    fake.reject = null;
+    const idle = keeper.call(...nav(2));
+    await idle.install(EMPTY); // no live call: the clear runs (it reads no rule yet)
+    expect(keeper.synced).toBe(true);
+    late!(); // the add lands after the clear's read
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fake.rules.size).toBe(3);
+    await keeper.sweep();
+    expect(fake.rules.size).toBe(0);
+    await Promise.all([hung.release(), idle.release()]);
+  });
+
+  it("V2-M1: a timed-out rebuild that lands late keeps each live call's new rules until that call's own release", async () => {
+    const { fake, keeper } = setup(undefined, 20);
+    await keeper.ready;
+    const a = keeper.call(...nav(1));
+    const b = keeper.call(...nav(2));
+    await a.install(LIST_A);
+    await b.install(LIST_A);
+    let late: (() => void) | null = null;
+    const update = fake.updateSessionRules.bind(fake);
+    fake.updateSessionRules = (u) => new Promise<void>((res) => (late = () => void update(u).then(res)));
+    await keeper.rebuild(LIST_B); // times out: refused, unsynced
+    fake.updateSessionRules = update;
+    late!(); // Chrome applies the rebuild after all: only the new ids are left
+    await new Promise((r) => setTimeout(r, 0));
+    const onTab = (t: number) => [...fake.rules.values()].filter((r) => r.condition.tabIds?.[0] === t).length;
+    expect(onTab(2)).toBe(1);
+    await a.release(); // another call's end
+    await keeper.sweep(); // a disarm
+    expect(onTab(2)).toBe(1);
+    expect(b.holding()).toBe(true);
+    expect(b.refusal()).toEqual(stateUnreadableRefusal());
+    await b.release();
+    expect(fake.rules.size).toBe(0);
+  });
+
+  it("(b) a start-up read that never settles refuses the call after the bound, and the next call clears", async () => {
+    const { fake, keeper } = setup(undefined, 20);
+    fake.rules.set(9, { id: 9 } as DnrRule);
+    const get = fake.getSessionRules.bind(fake);
+    fake.getSessionRules = () => new Promise(() => {});
+    expectUnreadable(await refusedWith(keeper.call(...nav()).install(LIST_A)));
+    fake.getSessionRules = get;
+    const ok = keeper.call(...nav());
+    await ok.install(LIST_A);
+    expect(fake.rules.has(9)).toBe(false);
+    expect(ok.holding()).toBe(true);
+    await ok.release();
+    expect(ok.holding()).toBe(false);
+    expect(fake.rules.size).toBe(0);
+  });
+
+  it("holding(): true only while the call's rules are in force", async () => {
+    const { keeper } = setup();
+    const empty = keeper.call(...nav(1));
+    await empty.install(EMPTY);
+    expect(empty.holding()).toBe(false);
+    const snap = keeper.call("snapshot", { tabId: 1 });
+    await snap.install(LIST_A);
+    expect(snap.holding()).toBe(false);
+    await keeper.rebuild(LIST_B); // the list gained a pattern mid-call
+    expect(empty.holding()).toBe(true);
+    await empty.release();
+    expect(empty.holding()).toBe(false);
   });
 });

@@ -19,6 +19,7 @@ import { TabInfoCache, eventFrame, tabCreatedParams, tabRemovedParams, tabReplac
 import { MARKER_KEY, SessionMarker, type MarkerStore } from "./session-marker.js";
 import { DISARMED_ALL, SafetyReporter, SafetyStore, failClosedView, readStoredArmed, reportOf, touchesSafety, type SafetyView } from "./safety-state.js";
 import { CallSafety, acceptRelaySender, type CallSafetyDeps } from "./safety-call.js";
+import { DnrKeeper, type DnrUpdate } from "./safety-dnr-keeper.js";
 import { NetworkIngestGate } from "./safety-network.js";
 import { redactTabCreated, redactTabRemoved } from "./safety.js";
 import { debuggerSessions } from "./debugger.js";
@@ -35,6 +36,17 @@ const DEFAULT_PORT = 9234;
 
 const tabInfo = new TabInfoCache();
 
+// Step 11b S3a (#292, #296, #301): the block list as session rules while a covered call runs (`safety-dnr-keeper.ts`).
+// The API and the caps are read at call time: a missing API rejects inside the keeper, which fails closed. The
+// start-up clear runs behind `ready` (installs queue after it); no top-level `await`. S3a wires the tab half only.
+const dnr = () => chrome.declarativeNetRequest;
+const dnrKeeper = new DnrKeeper({
+  updateSessionRules: async (u: DnrUpdate) => dnr().updateSessionRules(u as chrome.declarativeNetRequest.UpdateRuleOptions),
+  getSessionRules: async () => dnr().getSessionRules(),
+  caps: () => ({ sessionRules: dnr()?.MAX_NUMBER_OF_SESSION_RULES ?? 0, regexRules: dnr()?.MAX_NUMBER_OF_REGEX_RULES ?? 0 }),
+  extensionId: chrome.runtime.id,
+});
+
 const safety = new SafetyStore({
   get: (keys) => chrome.storage.local.get([...keys]),
   set: (items) => chrome.storage.local.set(items),
@@ -44,6 +56,7 @@ const safety = new SafetyStore({
     void debuggerSessions.detachAll(DISARMED_ALL, (tabId) => chrome.debugger.detach({ tabId }));
     clearDownloads();
     clearEvaluateSaves(); // Step 10 S4 (#205): every held saveTo value goes at a disarm
+    void dnrKeeper.sweep(); // Step 11b (#296): only rules no live call owns; a running call keeps its own
   },
   onArm: () => debuggerSessions.refuse(null),
 });
@@ -55,7 +68,7 @@ const callDeps: CallSafetyDeps = {
   lastUrl: (tabId) => tabInfo.lastUrl(tabId),
 };
 
-const router = new GatedRouter((method, params) => new CallSafety(method, params, callDeps));
+const router = new GatedRouter((method, params) => new CallSafety(method, params, callDeps, dnrKeeper.call(method, params, "tab")));
 router.on("navigate", navigate);
 router.on("snapshot", snapshot);
 router.on("screenshot", screenshot);
@@ -355,6 +368,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
     // Step 10 S4 (#205): JavaScript off (or a state that fails closed) drops every held saveTo value; a disarm
     // drops them in onDisarm.
     if (javaScriptOff(safety.memory)) clearEvaluateSaves();
+    // Step 11b S3a (#292): any safety change (a list edit, or a state now unreadable) rebuilds every live call's rules
+    // from a fresh read; unreadable → null. The key names stay in safety-state.ts (sw-static's scan).
+    void safety.read().then((v) => dnrKeeper.rebuild(v.ctx.blockList), () => dnrKeeper.rebuild(null));
     ingestGate.flush();
     reportSafety();
   }
@@ -363,6 +379,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // Step 9: load the memory copy once (the `ready` every gated read awaits), then decide the network events
 // held meanwhile. Not awaited: no top-level `await` here.
 void safety.start().then(() => ingestGate.flush());
+void dnrKeeper.ready; // Step 11b: every session rule left by an earlier worker goes before the first install
 
 void connect();
 

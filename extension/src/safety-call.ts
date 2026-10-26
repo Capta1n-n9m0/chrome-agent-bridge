@@ -13,6 +13,11 @@
  * `none`. A read of the state that fails refuses (#139); a throw from the gate is a wiring slip the router
  * answers `INTERNAL`.
  *
+ * Step 11b S3a (#292, #296, #301): a covered call (`navigate`, `back`, `forward`; the handle from `DnrKeeper.call`)
+ * installs its tab rules in `effect()`, from the block list of the re-check's own read, after the re-check and before
+ * the handler's side effect; the post-check releases them on every path and reads the keeper's refusal only after
+ * the release settled (S2-builder.md §7). Any other call gets the inert handle and behaves as before.
+ *
  * Never logs; nothing here prints a URL, title or pattern (phase doc 0.7).
  */
 import type { ExtensionListTabsRow } from "@bridge/shared";
@@ -32,6 +37,16 @@ import {
   type SafetyTarget,
 } from "./safety.js";
 import type { SafetyView } from "./safety-state.js";
+import type { DnrCall } from "./safety-dnr-keeper.js";
+
+/** The handle of a call that installs no rule. */
+const NO_RULES: DnrCall = {
+  mark: () => {},
+  install: async () => {},
+  refusal: () => null,
+  release: async () => {},
+  holding: () => false,
+};
 
 /** What a handler gets from the gated router (the second argument). Every method is safe to ignore. */
 export interface HandlerSafety {
@@ -45,6 +60,8 @@ export interface HandlerSafety {
   redactRows(rows: readonly ListRowInput[]): Promise<ExtensionListTabsRow[]>;
   /** The network query filter (`keepInQuery`) under a fresh read of the state (#137 item 6). */
   networkFilter(): Promise<(entry: NetworkUrls & { tabId: number }) => boolean>;
+  /** Step 11b S3a: true while this call's block-list rules are in force (after `effect()`); `back`/`forward` wait on it. */
+  holdsRules?(): boolean;
 }
 
 /** A `listTabs` row with the tab's `pendingUrl`, which is tested but never sent. */
@@ -210,17 +227,23 @@ export class CallSafety implements GatedCall {
     private readonly method: string,
     private readonly params: Record<string, unknown>,
     private readonly deps: CallSafetyDeps,
+    private readonly dnr: DnrCall = NO_RULES,
   ) {
     this.cls = methodClass(method);
   }
 
   /** The gate at one phase. A state that cannot be read refuses; a wiring slip throws. */
   private async decide(phase: SafetyPhase): Promise<SafetyDecision> {
+    return (await this.gate(phase)).d;
+  }
+
+  /** `decide`, with the view it read (null when the read failed). */
+  private async gate(phase: SafetyPhase): Promise<{ d: SafetyDecision; view: SafetyView | null }> {
     let view: SafetyView;
     try {
       view = await this.deps.readState();
     } catch {
-      return stateUnreadableRefusal();
+      return { d: stateUnreadableRefusal(), view: null };
     }
     let tab: SafetyTarget | null = null;
     const tabId = tabIdOf(this.params);
@@ -232,7 +255,7 @@ export class CallSafety implements GatedCall {
       }
     }
     const targets = callTargets(this.method, this.params, tab, this.finalUrl, view.ctx.extensionId);
-    return safetyDecisionAll(this.method, this.params, targets, view.switches, view.ctx, phase);
+    return { d: safetyDecisionAll(this.method, this.params, targets, view.switches, view.ctx, phase), view };
   }
 
   receipt(): Promise<SafetyDecision> {
@@ -240,8 +263,14 @@ export class CallSafety implements GatedCall {
   }
 
   async effect(): Promise<void> {
-    const d = await this.decide("effect");
+    this.dnr.mark(); // the read below is at least as new as any rebuild before it (S2-builder.md §7)
+    const { d, view } = await this.gate("effect");
     if (isRefusal(d)) throw refusalError(d);
+    if (view) await this.dnr.install(view.ctx.blockList); // once per call; throws the state-unreadable refusal
+  }
+
+  holdsRules(): boolean {
+    return this.dnr.holding();
   }
 
   async checkFinalUrl(url: string): Promise<void> {
@@ -251,8 +280,13 @@ export class CallSafety implements GatedCall {
 
   async post(): Promise<SafetyRefusal | null> {
     if (this.cls === "listTabs") return null;
-    const d = await this.decide("post");
-    return isRefusal(d) ? d : null;
+    let d: SafetyDecision;
+    try {
+      d = await this.decide("post");
+    } finally {
+      await this.dnr.release(); // every path; settles after any rebuild queued before it, so read refusal() after
+    }
+    return isRefusal(d) ? d : this.dnr.refusal();
   }
 
   onRefused(fn: () => void): void {

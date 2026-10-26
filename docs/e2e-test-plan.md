@@ -1566,6 +1566,25 @@ observer, liveB's file-access precondition).*
 | F-RAW-ENC ★ | B | As F-RAW with a present file whose name holds a space, `#`, `%` and `ü` (made by the wave inside ROOT) | `ok`, `{files: 1}` | Reporter: 1 file, its name and SHA-256 equal to the file's (the `file:` URL's percent-encoding reaches the right file). |
 | F-RAW-OK ★ | B | As F-RAW with `<ROOT>\s11-1k.bin` (a control: the probe lets a present file through) | `ok`, `{files: 1}` | Standard upload clauses of §4.23. |
 
+*Added 2026-10-26 by Step 11b S3a's builder (Claude Opus 5.5), before any Run 17 row ran: **placeholder rows** for the
+`chrome.*` glue of the tab half of the rule keeper (`extension/src/sw.ts`, `safety-call.ts`, `handlers/history.ts`;
+phase doc 0.3–0.6, 0.10 RD rows; decisions.md #292, #296, #301). S4-sheet writes the fixtures (a redirector and a
+blocked-port fixture on 127.0.0.1, its pattern added in the wave's own options window and restored) and may reword
+these before any observation. Rule counts are read in the worker console by count only (`getSessionRules().length`),
+never printed rule by rule.*
+
+| Row | Live | Steps (placeholder) | Expected | Pass rule (placeholder) |
+|---|---|---|---|---|
+| RD-PERM ★ | A | Worker console: `chrome.runtime.getManifest().permissions.includes("declarativeNetRequestWithHostAccess")` (D4.2; the extensions page cannot show it, Stage0.md §4) | `true` | Exactly `true` on the loaded build, before any RD row. |
+| RD-START | A | Worker console after a reload: `(await chrome.declarativeNetRequest.getSessionRules()).length` | `0` | 0 rules at idle after the start-up clear. |
+| RD-NAV-HOP ★ | A | Pattern for the blocked fixture's host:port; `navigate` to the redirector, which 302s to the blocked fixture | `DOMAIN_BLOCKED` with an existing block message, no `data` | Blocked fixture's hit counter 0; 0 session rules after the reply. |
+| RD-BACK ★ | A | Tab history: the redirector's entry then an allowed page; pattern added; `back` (the redirector re-requested, 302 → blocked) | `ok` (back's answer is unchanged); the next call on the tab refused `DOMAIN_BLOCKED` | Blocked fixture's hit counter 0 (the rule held until the load settled, #301 (c)); reply within 10 s; 0 rules after. Record the reply time. |
+| RD-FWD | A | As RD-BACK with `forward` | As RD-BACK | As RD-BACK. |
+| RD-BACK-EMPTY | A | Empty list; `back`/`forward` between two allowed pages | `ok`, as before Step 11b | No rule installed at any time (count 0 sampled during the call); reply time recorded (no settle wait). |
+| RD-BACK-SAMEDOC | A | Pattern listed; `back` across a same-document (`#hash`) entry | `ok` | Reply in under 1 s (no 10 s wait: the tab is not loading after `goBack`; unmeasured, #301 (c)). |
+| RD-REBUILD | A | Pattern listed; a `navigate` to a slow allowed fixture (server holds 3 s); during it, edit the list in the options window | `ok` | During the call the count equals the new list's rules; 0 after. |
+| RD-DISARM | A | As RD-REBUILD, press the toolbar button (disarm) mid-call | `DISARMED {scope:"all"}` | The running call's rules stay until its reply, then 0 (#296: a disarm does not lift them); restore armed. |
+
 ## 5. Results template
 
 Copy this and fill it in during the run:

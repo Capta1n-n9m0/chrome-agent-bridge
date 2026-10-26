@@ -3,6 +3,12 @@
  * `Alt+Shift+K`) — decisions.md · 2026-10-24 · The shortcut is `_execute_action` (#142). Nothing else
  * changes: no new permission (the ESCALATION list allows only `action` and `commands`), the same host
  * permissions, the same other keys.
+ *
+ * Re-pinned 2026-10-26 (Step 11b S3a; phase doc `docs/plans/2026-10-26-step11b-block-list-redirects.md` 0.3; decisions.md
+ * #290, ruled (A)): `permissions` gains exactly `declarativeNetRequestWithHostAccess` (session rules for the block
+ * list; no install warning, as `<all_urls>` is already held). Nothing else changes, and there is no
+ * `declarative_net_request` key (no static rule sets: session rules only, #291). S2b's tests below are unchanged
+ * except the permission list they pin.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -23,9 +29,26 @@ const BEFORE: Record<string, unknown> = {
   options_page: "options.html",
 };
 
+/** Step 11b S3a: the one permission added to S2b's list (0.3 (A), #290). */
+const ADDED_11B = "declarativeNetRequestWithHostAccess";
+
+describe("manifest.json (Step 11b S3a re-pin)", () => {
+  it("permissions are S2b's list plus exactly one, appended", () => {
+    expect(manifest.permissions).toEqual([...(BEFORE.permissions as string[]), ADDED_11B]);
+    const added = (manifest.permissions as string[]).filter((p) => !(BEFORE.permissions as string[]).includes(p));
+    expect(added).toEqual([ADDED_11B]);
+    for (const p of ["declarativeNetRequest", "declarativeNetRequestFeedback"]) expect(manifest.permissions).not.toContain(p);
+  });
+
+  it("no static rule sets: no declarative_net_request key; every other key as S2b pinned it", () => {
+    expect(manifest).not.toHaveProperty("declarative_net_request");
+    for (const [k, v] of Object.entries(BEFORE)) if (k !== "permissions") expect(manifest[k], k).toEqual(v);
+  });
+});
+
 describe("manifest.json (S2b)", () => {
-  it("the permissions are exactly today's (no new permission)", () => {
-    expect(manifest.permissions).toEqual(BEFORE.permissions);
+  it("the permissions are exactly today's (no new permission; since Step 11b S3a: plus the one above)", () => {
+    expect(manifest.permissions).toEqual([...(BEFORE.permissions as string[]), ADDED_11B]);
     expect(manifest.host_permissions).toEqual(BEFORE.host_permissions);
     expect(manifest).not.toHaveProperty("optional_permissions");
     expect(manifest).not.toHaveProperty("optional_host_permissions");
@@ -34,7 +57,7 @@ describe("manifest.json (S2b)", () => {
   it("no new top-level key besides action and commands; every old key unchanged", () => {
     const added = Object.keys(manifest).filter((k) => !(k in BEFORE)).sort();
     expect(added).toEqual(["action", "commands"]);
-    for (const [k, v] of Object.entries(BEFORE)) expect(manifest[k], k).toEqual(v);
+    for (const [k, v] of Object.entries(BEFORE)) if (k !== "permissions") expect(manifest[k], k).toEqual(v);
   });
 
   it("commands is exactly #142's", () => {
