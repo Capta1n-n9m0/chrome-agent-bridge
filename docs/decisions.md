@@ -176,6 +176,26 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
 
+### 2026-10-26 · S5-liveA's first run stopped on a title check; the record stands, two helpers are fixed between rows (#281)
+**Decided:** liveA's first run (exit 2 at ~04:20:42Z) stands as recorded: PASS UP-L1, UP-7 (a–c), SAVE-REFUSE-R (both
+legs); FAIL UP-6 (all five: "banner seen on a refusal") and UP-OPT (`o2-follows`, 6061 ms or a conflict note), never
+fixed in the wave; UP-FA not run because file access was found **ON** (the toggle untouched); SW-2 not measured (its
+occluder guard fired on 3 foreign windows); the rest not run. The restore read back equal for the stored state, the
+daemon status, the block list's and the Upload folders' hashes; only the toolbar-title check failed, which made the
+runner print `RESTORE FAILED` and end. Rulings: (a) `chrome://extensions` is fixture by #277, so the record and
+framing output may be committed; the runner's evidence scan is aligned to #277's set. (b) The title check reads only
+the first line of the toolbar button's name (`recipes/CLAUDE.md`, Chrome 156's second line "Has access to this site";
+`recipes/s9-win.ps1:179` matched the whole name), fixed between rows with a test, as a recorded set-up fix. (c) SW-2's
+occluder guard is diagnosed (which windows, where); a fix may only change the wave's own window placement, never
+loosen the guard. (d) The remaining liveA rows re-run from where it stopped as new record lines; UP-6 and UP-OPT keep
+their FAIL; their cause goes to S5-record as a proposed decision. A fresh step agent continues the slice (#225).
+**Why:** the stored safety state was restored (every hash equal), so the STOP was a helper defect already documented
+in `recipes/CLAUDE.md`; a failed row is recorded, never retuned (agent-rules §2).
+**Instead of:** fixing the helper past the STOP inside the run (forbidden); re-running UP-6/UP-OPT until they pass.
+**Revisit if:** the diagnosis shows the occluders are the user's windows over the human's window (then SW-2 waits for
+the user, recorded).
+**By:** Claude
+
 ### 2026-10-26 · S5-runner: accepted; UP-0, UP-RESTORE and UP-LOGS run in both live blocks (#280)
 **Decided:** `recipes/s11-r16.ps1` (403 lines) is accepted on verifier 2's PASS-with-notes. UP-0, UP-RESTORE and
 UP-LOGS run in both `liveA` and `liveB`, as §4.23's Live column says ("A, B"; #272), which overrides the brief's "each
