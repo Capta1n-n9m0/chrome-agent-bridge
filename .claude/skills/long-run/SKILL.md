@@ -30,7 +30,7 @@ owned by one step agent.
 
 | Level | Who | Does |
 |---|---|---|
-| 0 | **Session agent** (you) | Stage 0 audit first; writes the stage split (2–6 stages, risk tier each) to the journal before stage 1; one step agent per stage; accepts or re-dispatches; records decisions; writes each stage's as-built into the phase doc; gate checklist; final report |
+| 0 | **Session agent** (you) | Stage 0 audit first; writes the stage split (stages sized by `agent-rules.md` §7, risk tier each) to the journal before stage 1; one step agent per stage; accepts or re-dispatches; records decisions; writes each stage's as-built into the phase doc; gate checklist; final report |
 | 1 | **Step agent** | owns one stage end to end (`agent-rules.md` §6); proposes decisions, never records them |
 | 2 | **Builder / verifier / fixer / live runner** | one scoped task, done in one go |
 

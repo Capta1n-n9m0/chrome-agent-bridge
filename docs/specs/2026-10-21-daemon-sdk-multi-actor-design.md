@@ -21,7 +21,10 @@ on the user's ruling on Run 13 and its open decisions. Contracts and deviations:
 (#202), and Step 10 (the Step 8 follow-ups: the dated Step 10 notes in §8, §10, §11, §12 and §13) is built and
 E2E-run (Runs 14–15): 23 tools, 26 codes (25 on the wire), 26 router methods, 3273 tests in 132 files (`npm test`
 at `025bdef`); closed 2026-10-25, every open decision ruled (#229). *Corrected 2026-10-25 (cleanup pass): was "its gate waits on the user's open decisions".* Contracts and deviations:
-`docs/plans/2026-10-24-step10-step8-follow-ups-asbuilt.md`.* Plans: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`, `…step7-multi-actor-tabs.md`, `…step8-sdk-surface-and-mcp-cursor.md`.
+`docs/plans/2026-10-24-step10-step8-follow-ups-asbuilt.md`.* *Corrected 2026-10-26 (cleanup pass): Step 11 (D3 file
+upload: §10's Step 11 note) is built and E2E-run (Run 16): 24 tools, 27 codes (26 on the wire), 27 router methods,
+3811 tests in 154 files (`npm test` on S6's tree); not closed, its gate waits on the user. Contracts and deviations:
+`docs/plans/2026-10-25-step11-file-upload.md` § As built.* Plans: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`, `…step7-multi-actor-tabs.md`, `…step8-sdk-surface-and-mcp-cursor.md`.
 - **Owner:** Abbas Aliyev (@Capta1n-n9m0)
 - **Supersedes in part:** `2026-06-04-chrome-real-profile-agent-bridge-design.md` §3 "Controller: MCP server", §4 topology, and the "Tab targeting: active tab" decision. Everything about the extension's perception/action model stands.
 
@@ -387,6 +390,11 @@ stays as written):*
   kind: "pastSnapshotCap"})`; `tab.locate()` returns the flag; no action's return type changed (decisions.md ·
   2026-10-25 · Stage 0: the cap warning reaches SDK actions as a client event (#206)). The public surface is still
   eight values.*
+- *Corrected 2026-10-26 (cleanup pass), on what Step 11 added to the SDK (Step 11 as-built § S4, § S4b):
+  `tab.upload(target, paths, {timeoutMs?})` (and the cursor's `client.upload`) puts local files into a file input;
+  the SDK checks each path and sends its real path, and Chrome reads the files (`uploadFiles`, §10's Step 11 note;
+  decisions.md · 2026-10-25 · Step 11: `Tab.upload`'s signature and result (#240); · S4: `prepareUpload` joins the
+  `@bridge/sdk/download` subpath (#261)). The public surface is still eight values.*
 
 ### 8.2 Why "Claude writes the scripts" shifts polish toward errors
 
@@ -749,6 +757,10 @@ as-built § Stage D1, § Stage D3, § Stage D5.*
 `extension/src/evaluate/save.ts`, `extension/src/handlers/evaluate-save.ts`, `sdk/src/evaluate-save.ts`, the MCP
 schema baseline `mcp/test/tool-schemas.ts` with its fixture, and the Run 14–15 helpers in `recipes/` (`s9-r14.ps1`,
 `s10*`); it removed `recipes/blackboard/assemble-mcp.ts` and `transcript.ts` (#228) — see Step 10 as-built.*
+*Corrected 2026-10-26 (cleanup pass): Step 11 added `extension/src/upload-paths.ts`, `extension/src/upload-files.ts`,
+`extension/src/handlers/upload.ts`, `extension/src/content/upload-target.ts`, `sdk/src/upload.ts`, the `s11-*`
+fixtures in `test-fixtures/` and Run 16's helpers in `recipes/` (`s11*`, `tsconfig.s11.json`) — see Step 11's
+phase doc § As built.*
 
 ## 12. Risks and what E2E must settle
 
@@ -781,6 +793,9 @@ marker (§13).*
 Run 15 MCPF-1R 9/9). Row 3 — Step 10's differential row SW-1R stayed undetermined, so `activateForCapture`'s
 waits are unchanged and the ~1.5 s flash stays (decisions.md · 2026-10-25 · S7: Run 15 stands as recorded; its
 follow-ups (#226) item 1).*
+*Corrected 2026-10-26 (cleanup pass): row 3 — Run 16's SW-2 measured d = −24, 95, 68 ms in 3/3 after a warm-up:
+the event ends the wait rather than running to its bound; the waits stay (decisions.md · 2026-10-26 · S5-liveA
+closes with S5.5 and part of S5.6 failed as recorded; helper fixes before liveB (#282)).*
 
 *See Step 7 as-built § T5, § Stage T2.*
 

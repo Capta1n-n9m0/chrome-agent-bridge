@@ -11,7 +11,9 @@
   `ba6029e` `npm test` runs 2720 tests in 116 files (Step 9 as-built § Stage S5), and Step 9's safety controls
   are covered live by §4.20 (Run 13 in §5).* *Corrected 2026-10-25 (Step 10 propagator): was "2720 tests in 116
   files" as the current count; at `025bdef` `npm test` runs 3273 tests in 132 files (Step 10 as-built § S8), and
-  Step 10 is covered live by §4.21 (Run 14) and §4.22 (Run 15).*
+  Step 10 is covered live by §4.21 (Run 14) and §4.22 (Run 15).* *Corrected 2026-10-26 (cleanup pass): was "3273
+  tests in 132 files" as the current count; on S6's tree `npm test` runs 3811 tests in 154 files (Step 11 phase doc
+  § As built, Gate checklist), and Step 11 is covered live by §4.23 (Run 16 in §5).*
 
 Each test has an **ID**, **objective**, **steps** (as MCP tool calls), and an **expected result**.
 Record outcomes in the [Results template](#results-template). A run "passes" when all **must-pass**
@@ -1461,7 +1463,7 @@ blocked sites — a miss is a `STOP:`; the toolbar button presses need it pinned
 | Key | Code | Exact text | Source |
 |---|---|---|---|
 | K-gate | `UPLOAD_REFUSED`, no `data` | That file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders); the bridge will not upload it. Ask the user. | `extension/src/safety.ts:224-225` `UPLOAD_REFUSED_MESSAGE` |
-| K-noacc | `UPLOAD_REFUSED`, no `data` | Chrome does not allow this extension to read local files (chrome://extensions → Chrome Agent Bridge → Details → Allow access to file URLs), so the bridge cannot upload. Ask the user. | `extension/src/upload-files.ts:34-35` `NO_FILE_ACCESS_MESSAGE` |
+| K-noacc | `UPLOAD_REFUSED`, no `data` | Chrome does not allow this extension to read local files (chrome://extensions → Chrome Agent Bridge → Details → Allow access to file URLs), so the bridge cannot upload. Ask the user. | `extension/src/upload-files.ts:37-38` `NO_FILE_ACCESS_MESSAGE` *(corrected 2026-10-26: was `:34-35`; the text is unchanged)* |
 | K-notarget | `BAD_PARAMS` | uploadFiles needs a ref or a locator naming the file input | `extension/src/handlers/upload.ts:31` `UPLOAD_TARGET_REQUIRED_MESSAGE` |
 | K-notinput | `BAD_PARAMS` | not a file input: target an <input type=file>, a <label> for one, or an element with exactly one file input inside | `extension/src/content/upload-target.ts:25-26` |
 | K-many | `BAD_PARAMS` | the target holds more than one file input; target one of them | `upload-target.ts:27` |
@@ -1544,6 +1546,8 @@ or a trial count other than one warm-up plus three, makes SW-2 NOT MEASURED (nev
 URL counts as fixture only when it is `http://` on the wave's own fixture servers (127.0.0.1, `localhost` and its `*.localhost`
 aliases on ports 8081 and 8084; bare `localhost` added the same day, before any observation, #278), `chrome://extensions`, or this extension's own `chrome-extension://<id>/` pages;
 any other `scheme://host`, another loopback port included, counts as other.
+
+*Added 2026-10-26 (cleanup pass): Run 16 ran 2026-10-26; its results are in §5, Run 16.*
 
 ## 5. Results template
 

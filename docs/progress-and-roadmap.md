@@ -1,8 +1,8 @@
 # Progress & Roadmap
 
-- **Date:** 2026-10-25
+- **Date:** 2026-10-26
 - **Branch:** `main` (merged from `feat/agent-bridge`; public on GitHub, MIT, since 2026-09-03)
-- **Status:** **Step 11 (D3 file upload) built and E2E-run (Run 16, 2026-10-25/26); its docs stage S6 (docs, 2026-10-26) is written; the step's gate waits on the session agent's close and the user's decisions** ([Step 11 block](#step-11--d3-file-upload-2026-10-25)); **24 tools, 27 codes (26 on the wire), 27 router methods, 3811 unit tests green** (`npm test` → 3811 passed, 154 files, S6's tree, 2026-10-26). *Superseded 2026-10-26 (Step 11): was "23 tools, 26 codes, 3273 unit tests green" as the current count, because `browser_upload_file`, `UPLOAD_REFUSED`, `uploadFiles` and their tests landed.* **Step 10 (the Step 8 follow-ups) built, E2E-run (Runs 14–15) and closed 2026-10-25 — the user ruled every open decision (#229): all as built, except #227 option (b) and the `saveTo` `kind` text (Step 11's first code stage); next: Step 11 (D3 file upload)** *(updated 2026-10-25, cleanup pass: was "its last stage S8 retires the chunked recipe and updates the docs; the gate waits on the user's open decisions")* ([Step 10 block](#step-10--the-step-8-follow-ups-2026-10-25)); **23 tools, 26 codes, 3273 unit tests green** (`npm test` → 3273 passed, 132 files, S8's tree, 2026-10-25). *Superseded 2026-10-25 (Step 10 S8): was "23 tools, 25 codes, 2720 unit tests green" as the current count, because Step 10's stages landed.* **Step 9 (Phase E safety: the kill switch, the JavaScript switch, blocked sites) built, E2E-run (Run 13) and closed 2026-10-24 — the user ruled all 32 open decisions (#202): all as built, except a new code `JS_DISABLED` (Step 10) and a later network rule against redirects onto blocked sites (#140)** *(updated 2026-10-24: was "not closed — the user's ruling on Run 13 (#192) and 32 open decisions wait at the gate")* ([Step 9 block](#step-9--phase-e-safety-the-kill-switch-the-javascript-switch-blocked-sites-2026-10-24)); **23 tools, 25 codes, 2720 unit tests green** (`npm test` → 2720 passed, 116 files, at `ba6029e`, 2026-10-24). *Superseded 2026-10-24 (Step 9 S5): was "23 tools, 1714 unit tests green (… 85 files, at `eb6b991`)" as the current count, because Step 9's stages Stage 0–S4 landed.* **Step 8 (the SDK surface: locators, typed `Tab`, failure reports, the MCP cursor, first recipes) built and E2E-run (Runs 11–12), 2026-10-23/24, and closed 2026-10-24 (wave W2: 25 decisions ruled, #106–#127)** *(updated 2026-10-24, W2: was "its gate waits on the docs stage S7 and the user's open decisions", corrected the same day by the Step 8 propagator to "the open decisions and G8-3")* ([Step 8 block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026-10-2324)); at its close 23 tools, 1714 unit tests green (`npm test` → 1714 passed, 85 files, at `eb6b991`, 2026-10-24). *Superseded 2026-10-24: was "next: Step 8; 22 tools, 950 unit tests green (… 59 files, on the T6 tree)", because Step 8's stages Stage 0–S6b landed.* **Step 7 (multi-actor tabs) built, E2E-run (Runs 8–10) and closed 2026-10-23** ([Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23)). *Superseded 2026-10-23: was "Step 6 … closed 2026-10-22 — next: Step 7; 21 tools, 542 unit tests green", because Step 7's stages T0–T5b, RELOAD-AUTO and the BG-FLAGS run landed.* **Step 6 (daemon + SDK + MCP as an SDK client) built, E2E-tested live (wave W1) and closed 2026-10-22** ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
+- **Status:** **Step 11 (D3 file upload) built and E2E-run (Run 16, 2026-10-25/26); its docs stage S6 (docs, 2026-10-26) is written and the session agent's close-out ran (`bce321b`); the step's gate waits on the user's decisions** *(updated 2026-10-26, cleanup pass: was "the step's gate waits on the session agent's close and the user's decisions")* ([Step 11 block](#step-11--d3-file-upload-2026-10-25)); **24 tools, 27 codes (26 on the wire), 27 router methods, 3811 unit tests green** (`npm test` → 3811 passed, 154 files, S6's tree, 2026-10-26). *Superseded 2026-10-26 (Step 11): was "23 tools, 26 codes, 3273 unit tests green" as the current count, because `browser_upload_file`, `UPLOAD_REFUSED`, `uploadFiles` and their tests landed.* **Step 10 (the Step 8 follow-ups) built, E2E-run (Runs 14–15) and closed 2026-10-25 — the user ruled every open decision (#229): all as built, except #227 option (b) and the `saveTo` `kind` text (Step 11's first code stage); next: Step 11 (D3 file upload)** *(updated 2026-10-25, cleanup pass: was "its last stage S8 retires the chunked recipe and updates the docs; the gate waits on the user's open decisions")* ([Step 10 block](#step-10--the-step-8-follow-ups-2026-10-25)); **23 tools, 26 codes, 3273 unit tests green** (`npm test` → 3273 passed, 132 files, S8's tree, 2026-10-25). *Superseded 2026-10-25 (Step 10 S8): was "23 tools, 25 codes, 2720 unit tests green" as the current count, because Step 10's stages landed.* **Step 9 (Phase E safety: the kill switch, the JavaScript switch, blocked sites) built, E2E-run (Run 13) and closed 2026-10-24 — the user ruled all 32 open decisions (#202): all as built, except a new code `JS_DISABLED` (Step 10) and a later network rule against redirects onto blocked sites (#140)** *(updated 2026-10-24: was "not closed — the user's ruling on Run 13 (#192) and 32 open decisions wait at the gate")* ([Step 9 block](#step-9--phase-e-safety-the-kill-switch-the-javascript-switch-blocked-sites-2026-10-24)); **23 tools, 25 codes, 2720 unit tests green** (`npm test` → 2720 passed, 116 files, at `ba6029e`, 2026-10-24). *Superseded 2026-10-24 (Step 9 S5): was "23 tools, 1714 unit tests green (… 85 files, at `eb6b991`)" as the current count, because Step 9's stages Stage 0–S4 landed.* **Step 8 (the SDK surface: locators, typed `Tab`, failure reports, the MCP cursor, first recipes) built and E2E-run (Runs 11–12), 2026-10-23/24, and closed 2026-10-24 (wave W2: 25 decisions ruled, #106–#127)** *(updated 2026-10-24, W2: was "its gate waits on the docs stage S7 and the user's open decisions", corrected the same day by the Step 8 propagator to "the open decisions and G8-3")* ([Step 8 block](#step-8--the-sdk-surface-locators-tab-failure-reports-the-mcp-cursor-2026-10-2324)); at its close 23 tools, 1714 unit tests green (`npm test` → 1714 passed, 85 files, at `eb6b991`, 2026-10-24). *Superseded 2026-10-24: was "next: Step 8; 22 tools, 950 unit tests green (… 59 files, on the T6 tree)", because Step 8's stages Stage 0–S6b landed.* **Step 7 (multi-actor tabs) built, E2E-run (Runs 8–10) and closed 2026-10-23** ([Step 7 block](#step-7--multi-actor-tabs-2026-10-2223-closed-2026-10-23)). *Superseded 2026-10-23: was "Step 6 … closed 2026-10-22 — next: Step 7; 21 tools, 542 unit tests green", because Step 7's stages T0–T5b, RELOAD-AUTO and the BG-FLAGS run landed.* **Step 6 (daemon + SDK + MCP as an SDK client) built, E2E-tested live (wave W1) and closed 2026-10-22** ([Step 6 block](#step-6--daemon-sdk-and-the-mcp-as-an-sdk-client-2026-10-22)). Steps 1–5 shipped — Phases A–D, Step 4 (`browser_evaluate`), Step 5 (network inspection), `browser_download`, exit-with-session; **live in-browser E2E passed** — 29 cases on 2026-06-04, the Phase C (13), Phase D (7) and Phase B (6) passes on 2026-09-03, the Step 4 evaluate pass (20 of 22) and the Step 5 network pass (15 of 15) on 2026-09-07 — against the real default profile; 6 runtime bugs found & fixed across those runs. **2026-10-21: the Step 6–8 plans are restructured as phase docs, their audit findings ruled (12 entries in `docs/decisions.md`), and the Step 6 kickoff is written (`docs/plans/next-session-prompt.md`).** *Superseded 2026-10-22: was "21 tools, 301 unit tests green (`npm test` on `e60a83a`) … nothing of Step 6 is built", because Step 6's code stages D0–D5b landed on 2026-10-22.*
 
 ---
 
@@ -263,9 +263,10 @@ and the `saveTo` `kind` text, both in Step 11's first code stage; the `step8` ta
 
 Phase doc `docs/plans/2026-10-25-step11-file-upload.md` (its As built section holds the per-stage register);
 reports, run records and logs in `…-steps/`; Step 11's decisions in `docs/decisions.md` run from "2026-10-25 · Step 11: the order of the stages (#233)" to
-"2026-10-26 · S5 closes: Run 16 stands as recorded; UP-OPT keeps its FAIL with no cause stated (#285)". **Built (S0–S5)
-and E2E-run (Run 16); S6 (docs, 2026-10-26) written; not yet closed** — the session agent's closeout and the user's
-rulings are open: the list is decisions.md's Open decisions section (the contract-level proposals, and the
+"2026-10-26 · S6 accepted; Step 11 stops at the gate (#287)". **Built (S0–S5)
+and E2E-run (Run 16); S6 (docs, 2026-10-26) written; the close-out to the gate ran (`bce321b`); not yet closed** — the
+user's rulings are open *(updated 2026-10-26, cleanup pass: was "… (#285)" as the last entry and "the session agent's
+closeout and the user's rulings are open")*: the list is decisions.md's Open decisions section (the contract-level proposals, and the
 profile-name redaction, "2026-10-26 · The user's Chrome profile name reached a committed evidence file; redacted at
 the tip, history for the user (#283)", which must be ruled before any push).
 
@@ -641,7 +642,9 @@ measured, though DPR 1.25 and 1.5 both needed no correction.
 step blocks and `docs/e2e-test-plan.md` §5 (Runs 7–15). Step 10 verified live two items that were unit-tested only:
 the post-redirect `downloadStart` check (Run 14 R14-5c) and the retire of N ≥ 1 held handles on a killed Chrome (Run
 15 RET-1R). Still not verified live after Step 10: why a background capture takes ~1.5 s (SW-1R undetermined, #226),
-and another actor's capture landing between a trusted tool's focus and its input (Stage 0 F19).*
+and another actor's capture landing between a trusted tool's focus and its input (Stage 0 F19).* *Updated 2026-10-26
+(cleanup pass): Run 16's SW-2 settled the capture wait — the event ends it, the waits stay (#282); still not verified
+live: the focus/input race of Stage 0 F19.*
 
 ## 4. Known limitations & risks
 
@@ -745,7 +748,9 @@ Step 10 is built and E2E-run (Runs 14–15; [§1 Step 10 block](#step-10--the-st
 open for the user (`docs/decisions.md` → Open decisions → Step 10; G10-1, the `step8` tag). Next: Step 11 (D3 file
 upload), then Step 12 (Phase F); the place of the network rule against redirects onto blocked sites (#140) is set
 at Step 10's close.* *Updated 2026-10-25 (cleanup pass): Step 10 closed (#229); #140 is its own small step after
-Step 11, before Step 12.* *Superseded 2026-10-22 (W1): was "its
+Step 11, before Step 12.* *Updated 2026-10-26 (cleanup pass): Step 11 is built and E2E-run (Run 16; [§1 Step 11
+block](#step-11--d3-file-upload-2026-10-25)), its gate open for the user (`docs/decisions.md` → Open decisions).
+Next: the #140 step, then Step 12 (Phase F).* *Superseded 2026-10-22 (W1): was "its
 live E2E waits for the D6 wave with the user. Next after that: Step 7, then Step 8".* *Superseded 2026-10-22: was "Step 6 starts
 by pasting it into a fresh session that does not use the bridge MCP. Nothing is built.", because
 Step 6's code stages D0–D5b landed.*
@@ -807,10 +812,12 @@ hop and target each requested once); SAFE-4 (b) as R14-4b, PASS (banner gone at 
 R14-POP-1, FAIL, explained by R15-POP-2 (Chrome names another opener for a popup of a background tab; not a daemon
 defect, #226); SAFE-3 as R14-3, NOT MEASURED, then R15-3R, PASS (#224). No product change followed.*
 
-**Later — the block list stops redirected requests** (#202, planned 2026-10-24): a `declarativeNetRequest`
+**Next — the block list stops redirected requests** (#202, planned 2026-10-24): a `declarativeNetRequest`
 network rule (a new Chrome permission) so that a redirect onto a blocked site is never sent, for downloads and
-navigations alike (decisions.md · 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140)). Its place
-in the order is set when Step 10 closes.
+navigations alike (decisions.md · 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140)). It is the
+next step, after Step 11 and before Step 12 (decisions.md · 2026-10-25 · The user rules on Step 10's open decisions;
+Step 10 closes (#229)). *Corrected 2026-10-26: was "Later —" and "Its place in the order is set when Step 10
+closes"; #229 set it.*
 
 **Phase F — Ergonomics.** `wait_for` variants (element-visible; network-idle shipped in Step 5's
 Part N6) — ✅ **element-visible done in Step 8** (2026-10-23: `browser_wait_for({locator, state})`
@@ -827,7 +834,8 @@ follow-ups (see that plan's "Follow-ups"):
   `browser_evaluate {asRef:true}` prints `[ref=eN]`, the SDK's `tab.evaluateRef(js)` returns it;
   a non-element value is refused, Run 12 ASREF-1). *Updated 2026-10-24: after Step 8 the Phase F
   items still open include `args` for `browser_evaluate`, console capture, and D3 file upload
-  (Phase D) (decisions.md · 2026-10-21 · Step 8 S7 names only the Phase F items Step 8 closes).*
+  (Phase D) (decisions.md · 2026-10-21 · Step 8 S7 names only the Phase F items Step 8 closes).* *Superseded
+  2026-10-26: D3 file upload is no longer open — built as Step 11.*
 - **Keep-attached debugger session** per tab, to amortise the ~100 ms attach and the banner flicker;
   needs a lifecycle design, and pairs with Step 5's network work.
 - **Console capture** (`Runtime.enable` + `consoleAPICalled`) appended to the evaluate result — this

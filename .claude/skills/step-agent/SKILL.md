@@ -19,7 +19,7 @@ A brief points; it does not paste.
 - **Verifiers get the same READ list as the builder**, plus the builder's report labelled "claims
   to audit". They read the phase doc and spec themselves.
 - Briefs are not saved as files. The report names the brief's READ list.
-- Pass `model` on every `Agent` call (`agent-rules.md` §7), and `effort: "high"` for Sonnet.
+- Pass `model` on every `Agent` call (`agent-rules.md` §7), and the `effort` §7 names for Sonnet.
 
 ## STEP BRIEF (session agent → step agent)
 

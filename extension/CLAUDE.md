@@ -23,7 +23,7 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   — the 100 ms `waitFor {locator}` poll), `content/{index,snapshot,refmap,actions,geometry,guard}.ts`
   and Step 8's `content/a11y.ts` (the one walk, `roleOf`, the accessible name, the pruning gates —
   shared by snapshot and locate), `content/locate.ts`, `content/nearest.ts` (candidate ranking),
-  `content/marked.ts` (`refOfMarked`), `debugger.ts`, `debugger-errors.ts`
+  `content/marked.ts` (`refOfMarked`), `content/upload-target.ts` (Step 11: `uploadInputOf`, the one-off mark), `debugger.ts`, `debugger-errors.ts`
   (pure: CDP failure → `{code, message}`), `keys.ts` (pure: key name → CDP key params),
   `evaluate/{serialize,wrap,result,mark}.ts` (pure: in-page serialiser source, `return`-wrapper,
   CDP-result → `EvalEnvelope`, the `asRef` mark), `network-log.ts` (pure: `NetworkLog` reducer + query (its text formatter moved to `sdk/src/format`),
@@ -144,8 +144,8 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
 Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind them are in `src/handlers/CLAUDE.md`
 (every handler takes `tabId`; the CDP screenshot refusal).
 - **Only `captureVisibleTab` needs the tab on screen** — the default (`switch`) viewport screenshot,
-  the one call the daemon locks besides `focusTab` (`daemon/src/methods.ts`; `selectTab` was removed
-  in Step 8 S2b, and the daemon answers it `UNKNOWN_METHOD` itself — decisions.md · 2026-10-23 · S2b's details: the `selectTab` refusal grep, the marker's edge cases, the handle mark (#94) item 1). Everything
+  the one call the daemon locks besides `focusTab` (`daemon/src/methods.ts`; the daemon's
+  `selectTab` refusal is in `daemon/CLAUDE.md`). Everything
   else runs on a background tab by design; measured there: `waitFor {text}` and `networkIdle` work
   (Run 8 BG-4: text after 3746 ms, idle after 552 ms, the tab hidden throughout).
   Trusted input does not (next bullet); `fullPage` (CDP) on a hidden or minimized tab is unmeasured
@@ -196,8 +196,8 @@ Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind the
   `daemon/src/methods.ts`. Exempting or reclassifying a method to pass a row is a forbidden fix.
   (By construction + unit tests.)
 - **The state lives in `storage.local`, is read per call, and fails closed.** Keys `safety.armed`,
-  `safety.evaluate`, `safety.blockList` (`safety-state.ts` `SAFETY_KEYS`); missing keys = armed, JavaScript
-  on, empty list; a failed read or a wrong-typed value refuses every call `DISARMED` (#139, #171). Never move
+  `safety.evaluate`, `safety.blockList`, `safety.uploadFolders` (`safety-state.ts` `SAFETY_KEYS`); missing keys = armed,
+  JavaScript on, empty list, no upload folder; a failed read or a wrong-typed value refuses every call `DISARMED` (#139, #171). Never move
   it to `storage.session` (a reload would re-arm). A disarm held in memory wins over a read that still says
   armed (#176); a disarm whose write fails twice stays disarmed in memory, returns `"write-failed"` and
   lasts until the worker restarts, which reads storage again — armed (#174; S2b report §6 item 6); a

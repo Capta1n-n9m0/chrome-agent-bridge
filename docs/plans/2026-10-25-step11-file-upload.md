@@ -3,7 +3,7 @@
 **Date:** 2026-10-25 · **Status:** Built, Run 16 recorded, docs done (2026-10-26); **waiting for the user at the gate** (§ As built, Gate checklist) — kickoff `docs/plans/next-session-prompt.md`
 **Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change (§5 layer contract, §6 the human, §10 protocol and codes, with the Step 9 and
-Step 10 dated notes) · **Roadmap:** `docs/progress-and-roadmap.md` §5 (Phase D, "D3 file upload — not started") ·
+Step 10 dated notes) · **Roadmap:** `docs/progress-and-roadmap.md` §5 (Phase D, D3 file upload; "not started" at the kickoff, ✅ since Step 11) ·
 **As built:** § As built below (decisions.md · 2026-10-25 · Lean procedures: rules by pointer, package CLAUDE.md
 files, risk-tiered models (#230)) · **Steps
 dir:** `docs/plans/2026-10-25-step11-file-upload-steps/` (created at kickoff).
@@ -574,7 +574,7 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 | S6.1 | yes | `S6.md` (25 texts byte-identical) |
 | STOP rule: a title in committed evidence | **triggered** | the profile's display name in `262619f` (unpushed), redacted at the tip; the history is the user's (#283) |
 | G11-0 | met | #229 |
-| G11-1 (push/tag) | not asked | nothing pushed; 47 commits ahead of `origin/main` at the close-out (`git log origin/main..HEAD`) |
+| G11-1 (push/tag) | not asked | nothing pushed; 48 commits ahead of `origin/main` at `bce321b` (`git log origin/main..HEAD`) |
 | G11-2 (non-fixture upload) | not needed | fixture pages only (S5-record scan) |
 | G11-3 (file-URL toggle) | not needed | found ON by UP-0, never pressed |
 | Open decisions | waiting | `docs/decisions.md` → Open decisions (Step 11) |

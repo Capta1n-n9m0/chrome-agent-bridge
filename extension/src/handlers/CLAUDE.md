@@ -23,3 +23,5 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply. `extension/CLAUDE.md`
   already in front of a visible window.
 
 Redirects onto blocked hosts (the block list is not a network firewall) are in `extension/CLAUDE.md`, Safety gate.
+
+The upload handler's file-access refusal, its background-tab fact and the finder's closure rule are in `extension/CLAUDE.md`, Uploads (Step 11).

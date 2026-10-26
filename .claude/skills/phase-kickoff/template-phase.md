@@ -27,10 +27,9 @@ from `docs/agent-rules.md`, the `long-run` skill, the phase doc or a `CLAUDE.md`
 
 ## Bookkeeping invariants (carry into every phase)
 
-- One commit per stage close, one per phase close; exact file lists.
+- Commits: `docs/agent-rules.md` §10; stage reports: §9.
 - The run journal `docs/plans/<phase>-steps/journal.md` is append-only; pre-registered exit checks
   always precede the results they govern.
-- Every stage report states the test count before → after.
 - Anything that changed what the user must do (`docs/setup.md`) or how a tool behaves
   (`docs/e2e-test-plan.md` rows) is updated in the same stage.
 - At each stage close the session agent writes that stage's **As built** block into the phase doc

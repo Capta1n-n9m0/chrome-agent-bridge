@@ -93,7 +93,10 @@ machine that used the bridge before:
    daemon and the MCP again — reload the extension and run `/mcp` (or start a new session) after
    upgrading. An extension not reloaded since Step 9 answers `browser_evaluate {saveTo}` with
    `unknown method: evaluateSaveStart` and a JavaScript-off refusal as `DISARMED` instead of
-   `JS_DISABLED`.*
+   `JS_DISABLED`.* *Updated 2026-10-26: Step 11 changed the extension, the daemon and the MCP again — reload the
+   extension and run `/mcp` after upgrading; an extension not reloaded since Step 10 answers
+   `browser_upload_file` with `unknown method: uploadFiles`. Uploads stay refused until you add Upload folders and
+   turn on Allow access to file URLs ([Uploading files](#uploading-files)).*
 
 Every client on a machine must use the same `BRIDGE_PORT`; see [The daemon](#the-daemon).
 
@@ -403,7 +406,7 @@ reports off (below).
   path?})`, `click`, `type(target, text, {submit?, trusted?})`, `pressKey(key, {trusted?})`, `hover`,
   `scroll({target?, direction?})`, `selectOption(target, values)`, `locate`, `waitFor`, `evaluate`,
   `evaluateRef`, `evaluateToFile(expression, {path, overwrite?, timeoutMs?})`, `network`,
-  `networkClear`, `download(url, path)`, `focus`, `close`, `release`. *Superseded 2026-10-25: the list
+  `networkClear`, `download(url, path)`, `upload(target, paths, {timeoutMs?})`, `focus`, `close`, `release`. *Superseded 2026-10-25: the list
   had no `evaluateToFile`, because Step 10 S4 added it (#127, #205).* *Superseded 2026-10-26: the list had no
   `upload(target, paths, {timeoutMs?})`, because Step 11 S4 added it (#240); the client's cursor has `upload` too
   ([Uploading files](#uploading-files)).*
@@ -744,7 +747,7 @@ or token holder can do either:
    *Details*. Chrome refuses `DOM.setFileInputFiles` ("Not allowed") to a client that may not read local
    files, which for an extension is this toggle (Stage 0 F1, `docs/plans/2026-10-25-step11-file-upload-steps/stage0-cdp.txt`;
    decisions.md · 2026-10-25 · Stage 0: uploads need Chrome's file access, and the bridge never opens
-   `file:` pages (#245)). Changing the toggle reloads the extension. Run 16 found it already on; with it off the bridge refuses with the second text in the table below.
+   or reads `file:` pages (#245)). Changing the toggle reloads the extension. Run 16 found it already on; with it off the bridge refuses with the second text in the table below.
 
 **From Claude.** `browser_upload_file(ref | locator, paths, tab?)`, with `paths` 1 to 20 absolute file
 paths (more than one only if the input is `multiple`). Its description, as the model reads it
@@ -1036,7 +1039,7 @@ be read or saved](#when-the-state-cannot-be-read-or-saved)).
 ### The bridge never opens local files
 
 Since Step 11 (decisions.md · 2026-10-25 · Stage 0: uploads need Chrome's file access, and the bridge never
-opens `file:` pages (#245); · S2: the `file:` rule's edges (#259)): with **Allow access to file URLs** on, a
+opens or reads `file:` pages (#245); · S2: the `file:` rule's edges (#259)): with **Allow access to file URLs** on, a
 tab could show a `file:` page and the bridge would read any local file past the folder rule. So, whether the
 toggle is on or off, the bridge refuses every tab call on a tab showing a `file:` page (`closeTab` and
 `focusTab` included), and every `browser_navigate` / `browser_new_tab` to a `file:` URL, with
@@ -1099,14 +1102,15 @@ Run 15, row R15-3R); the background-window case is as Run 13 found it.*
 `await client.safety()` returns `{armed, evaluate, blockedCount}` as the daemon last heard it, or
 `null` before the extension has reported; `client.on("safetyStatus", (s) => …)` fires on every change.
 Both are read-only. A refused call throws a `BridgeError` with `code` `DISARMED` (`data.scope` `"all"`),
-`JS_DISABLED` (no `data`) or `DOMAIN_BLOCKED`, with no failure report attached (no screenshot, no
+`JS_DISABLED` (no `data`), `DOMAIN_BLOCKED` or, for an upload, `UPLOAD_REFUSED` (no `data`), with no failure report attached (no screenshot, no
 snapshot) and no `report` property; the one line Claude sees is `safetyRefusalLine(err.code, err.data)` from
 `@bridge/sdk/report` (decisions.md · 2026-10-24 · S3: Safety refusals get no `report` property; the
 wording is `safetyRefusalLine` on `@bridge/sdk/report`). `client.tabs()` marks withheld rows with `hidden:
 "disarmed" | "blocked"`, their `title` and `url` then `""`. A script should stop and ask, not retry.
 *Superseded 2026-10-25: was "`DISARMED` (`data.scope` `"all"` or `"evaluate"`) or `DOMAIN_BLOCKED`",
 because Step 10 S4b added `JS_DISABLED` (#202); only an extension not reloaded since Step 9 still sends
-scope `"evaluate"`.*
+scope `"evaluate"`.* *Superseded 2026-10-26: was "`JS_DISABLED` (no `data`) or `DOMAIN_BLOCKED`", because Step 11
+S2 added `UPLOAD_REFUSED` (#237).*
 
 ## Security notes
 
@@ -1157,6 +1161,8 @@ scope `"evaluate"`.*
   own controls, working as meant. Check the badge and the `Safety:` line of `browser_status`; see
   [Safety](#safety). *Superseded 2026-10-25: was "JavaScript is off (scope `evaluate`)" under
   `DISARMED`, because Step 10 S4b added `JS_DISABLED` (#202, #219).*
+- **`browser_upload_file` answers `UPLOAD_REFUSED`**: the file is not in a folder you listed under Upload folders
+  (empty by default), or Allow access to file URLs is off — see [Uploading files](#uploading-files).
 - **"No welcome from 127.0.0.1:9234 within 2 s after hello: a pre-Step-6 bridge server holds port
   9234"** from `browser_status` or any tool: an old Claude session still runs the previous bridge
   server. End that session, or stop the process listening on the port (`Stop-Process -Id

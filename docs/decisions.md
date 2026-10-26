@@ -23,7 +23,7 @@ conservative rule and they wait for the user at the gate).** Each entry is in th
 - 2026-10-25 · Step 11: Run 16 may edit the Upload folders box in its own window (#243) — a gate if the user prefers.
 - 2026-10-25 · Stage 0: uploads need Chrome's file access, and the bridge never opens or reads `file:` pages (#245) —
   **the one that matters most**: the gate refuses `file:` pages (a behaviour change for every method), and the new
-  human gate G11-3 (the "Allow access to file URLs" toggle) holds Run 16's upload rows.
+  human gate G11-3 (the "Allow access to file URLs" toggle; Run 16 found it on, so it was not needed).
 - 2026-10-25 · Stage 0: a `webkitdirectory` input is refused; `files` is the count Chrome accepted (#247) — the
   meaning of `files`.
 - 2026-10-25 · Stage 0: who the folder rule protects against, and the broad-folder warning (#250) — warn or refuse a
@@ -38,6 +38,8 @@ conservative rule and they wait for the user at the gate).** Each entry is in th
 - 2026-10-25 · S3: the upload's wire texts and its 15 s CDP bound (#268) — with #257.
 - 2026-10-26 · The user's Chrome profile name reached a committed evidence file; redacted at the tip, history for the user (#283) — **before any push**.
 - 2026-10-26 · S5-liveB: the upload works on a background tab; UP-6/UP-6B's banner FAIL is not product evidence; a raw missing-file upload answers ok (#284) — UP-RAW.
+- Step 11's gate items (pointers, no new ruling): S5.5 and part of S5.6 failed for liveA (#282); re-measure UP-OPT,
+  UP-RACE-A, UP-DEVT before the gate or not (#285); the push G11-1, with #283 — the phase doc § As built, Gate checklist.
 
 ## Standing decisions
 

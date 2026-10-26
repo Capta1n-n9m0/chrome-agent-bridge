@@ -25,11 +25,9 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
   the upload reaches a background tab with no focus (UP-1); SW-2 closed the ~1.5 s capture question (the event ends
   the wait). **The gate stops** on S5.5 and S5.6 (part) for liveA (#282) and on a profile-name window title in the
   unpushed commit `262619f` (redacted at the tip, #283); Open decisions list the rest (#235–#238, #240, #241, #243,
-  #245, #247, #250, #254, #257, #259, #261, #263, #264, #266, #268, #284, #286). Nothing pushed (G11-1).
-- **Lean procedures (#230), amended in Step 11:** doers (builders, fixers, live runners) run Sonnet at medium effort,
-  verifiers and step agents Opus (#270); a stage over ~600 new lines is split into slices (#271); a step agent never
-  ends its turn on a running child, and commits carry the verifier's verdict (#286). The trial numbers:
-  `docs/plans/2026-10-25-lean-procedures.md` § Trial.
+  #245, #247, #250, #254, #257, #259, #261, #263, #264, #266, #268, #284). Nothing pushed (G11-1).
+- **Lean procedures (#230), amended in Step 11 (#270, #271, #286):** the rules are in `docs/agent-rules.md` §7, §8,
+  §10; the trial against Step 10 (`docs/plans/2026-10-25-lean-procedures.md` § Trial) is not measured yet.
 - **Reloads need no human:** `recipes/reload-extension.ps1` (#65; one re-run on exit 2, #99). The loaded extension is
   the Step 11 build (Run 16); interactive sessions using the bridge need `/mcp` or a fresh session.
 - **Resume:** the user rules Step 11's gate (the open decisions, the S5.5/S5.6 failures, the history of `262619f`,
@@ -79,8 +77,9 @@ page carries a **failure report** (snapshot, screenshot, network). Network captu
 `chrome.webRequest` observers feed a bounded per-tab `NetworkLog` (no banner, no debugger), which
 `browser_network_requests` / `browser_network_clear` query.
 Since Step 9 every router method runs through one safety gate (`extension/src/safety.ts`, served by
-`GatedRouter`): the human's kill switch, JavaScript switch and block list are enforced in the extension,
-read from `storage.local` per call, and no wire, daemon or SDK method can change them; the network log
+`GatedRouter`): the human's kill switch, JavaScript switch, block list and Upload folders are enforced in the
+extension, read from `storage.local` per call, and no wire, daemon or SDK method can change them; since Step 11 the
+gate also refuses every call on a `file:` page; the network log
 records nothing while disarmed and drops blocked hosts. The daemon only relays the state
 (`safetyState` → `safetyStatus`, `daemon.status.safety`) and withholds URLs/titles while disarmed.
 
