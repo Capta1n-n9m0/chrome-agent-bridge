@@ -227,6 +227,14 @@ Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind the
   (`downloadStart` checks its own URL, then `res.url`, #140, #154). Measured live: a download redirected onto a
   blocked host was refused `DOMAIN_BLOCKED` with no file (Run 14 R14-5c, threaded `s9-redirect.py`).
   A cross-origin frame of a blocked host shows in screenshots (stage0-audit F16, by reading).
+- **DNR facts the rule builder binds (`safety-dnr.ts`, Step 11b; Chrome 156, `…step11b…-steps/Stage0.md` §4, `S1.md`).**
+  `requestDomains` matches a host and its subdomains, ignores the port and suffix-matches IP literals (`0.0.1` blocked
+  `127.0.0.1`), so IPs, `*.` and ports go by anchored regex; `regexFilter` sees the canonical URL with its port
+  (never a default one), RE2 without lookaround or backreferences, compiled in Latin-1 under a 2048-byte memory cap
+  (read in Chromium's source by S1's verifier): a default-port pattern makes two regex rules, and a host of about 80+
+  characters with a port or `*.` makes a regex Chrome rejects, so the covered call fails closed. Caps 5000 session
+  rules, 1000 regex. A download rule must be typed `resourceTypes:["xmlhttprequest"]`: an untyped `tabIds:[-1]` +
+  own-initiator rule refuses the offscreen document's new WebSocket handshakes (measured 3 of 3).
 - **Never log a pattern, URL or title from the safety code.** Nor a URL from anywhere else in the service worker: URLs
   carry tokens, the network code prints counts only (`[bridge] network: rehydrated N entries`), and the same rule holds for
   header values and bodies. The gate, matcher and state modules have no

@@ -24,3 +24,5 @@ effort · start → end.
 - 2026-10-26T17:24Z · S0F-a · step agent · Opus · medium · end — DONE, `632483b` + `62eee7e`, verifier PASS-with-notes (one fix round); tests 3825/156; #298; extension/mcp CLAUDE.md lines and the root test count updated.
 - 2026-10-26T17:24Z · S0F-b · step agent · Opus · medium · start
 - 2026-10-26T17:54Z · S0F-b · step agent · Opus · medium · end — DONE, `b108482` + `0202888`, verifier PASS (one fix round); tests 3845/157; #299; stale lines fixed in extension/sdk CLAUDE.md and setup.md.
+- 2026-10-26T17:55Z · S1 · step agent · Opus · medium · start
+- 2026-10-26T18:31Z · S1 · step agent · Opus · medium · end — DONE, `a675ab7`, verifier PASS-with-notes (one fix round); tests 4087/158; #300; DNR gotcha into extension/CLAUDE.md, CRLF-worktree gotcha into recipes/CLAUDE.md.

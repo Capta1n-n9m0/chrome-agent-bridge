@@ -446,6 +446,13 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - Tests 3825/156 → 3845/157, none removed; ~27 mutants, every fail-open one red. §4.24 placeholder rows F-RAW,
   F-RAW-2, F-RAW-DIR, F-RAW-ENC, F-RAW-OK for Run 17. Report `…-steps/S0F-b.md`.
 
+### S1 · 2026-10-26 · `a675ab7` · verifier PASS-with-notes (one fix round)
+- `safety-dnr.ts`: `rulesOf(list, scope, idBase)` (contiguous ids; tab scope `main_frame`; download scope `tabIds:[-1]`,
+  own initiator, `xmlhttprequest`), `countRules(list)`, `fitsCaps(live, caps)`; no `chrome.*`, no log.
+- D1.1 met: 112 cases, equivalence in both scopes, three mutants red, RE2 guard, cap test, scope and no-pattern-text
+  guards; a fuzz found 0 disagreements with `isUrlBlocked` in 7.5 M pairs. Round 1 failed on regexes too large for
+  Chrome's memory cap; fixed by #300. Tests 3845/157 → 4087/158, none removed. Report `…-steps/S1.md`.
+
 ## Open items
 
 - **Ruled 2026-10-26:** 0.3 (A), 0.4 (C) (#290); S0F's what (#288).

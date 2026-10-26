@@ -185,6 +185,20 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-26 · S1: a default-port pattern makes two regex rules; an over-long regex fails closed (#300)
+**Decided:** a pattern with a default port (`host:443`, `host:80`) makes two short regex rules (with and without the
+port, as the URL can carry it) instead of one alternation, each regex capped at 119 characters by a test; a host long
+enough (about 80+ characters with a port or `*.`) to make a regex Chrome rejects leaves the covered call refused (fail
+closed, #292), and S3b's options-page caps warning names that case. S3 or Run 17 records `isRegexSupported` for the
+two `bank.example:443` regexes and one long host.
+**Why:** S1's verifier found the single alternation too large for Chrome's per-regex memory cap (Latin-1, 2048 bytes,
+read in Chromium's source), which would have refused every covered call while such a pattern was listed; the split
+keeps the blocking identical (0 disagreements with `isUrlBlocked` in 7.5 M fuzzed pairs).
+**Instead of:** #296 item 7's "one regex per pattern" (amended here); `requestDomains` for ported hosts (it ignores the
+port, so it would over-block).
+**Revisit if:** `isRegexSupported` disagrees with the 119-character bound on Chrome 156.
+**By:** Claude
+
 ### 2026-10-26 · S0F-b: only a readable 200 is a file; one 5 s bound for the whole check (#299)
 **Decided:** the pre-attach check (`upload-exists.ts`) counts a path as a file only on a 200 with a readable first
 chunk; a reject, status 0 (a folder), any other status or error and the check's timeout all refuse `BAD_PARAMS`
