@@ -176,6 +176,19 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
 
+### 2026-10-26 · S5-win: accepted with its static-test gaps as notes for S5-runner (#279)
+**Decided:** `recipes/s11-win.ps1` (451 lines, under the 500 cap) is accepted on verifier 2's PASS-with-notes without
+another fix round. Its gaps go to S5-runner as binding notes: the output scan misses `Get-S11FoundText` as a source and
+`Write-S11Pressed`, `[IO.File]::WriteAllText`, `Tee-Object` as sinks (every real call site read safe); 7 of 17 planted
+bugs pass the static tests (each site correct by reading); a `STOP:` printed during the restore does not end the
+restore, so the runner ends the wave on it; the race-A press timing, the `chrome://extensions/?id=` window title and
+the options-page item counts on Chrome 156 are first measured live.
+**Why:** the gaps are in test coverage, not in the shipped helpers; the live slice's guards and its fresh verifier
+cover them; another round costs more than it saves.
+**Instead of:** a second fix round on the scanner.
+**Revisit if:** S5-liveA meets any of these sites.
+**By:** Claude (S5-win's proposal)
+
 ### 2026-10-25 · S5-actor: accepted over its size; bare `localhost` is fixture; a verifier started the daemon (#278)
 **Decided:** `recipes/s11.ts` (977 lines against a ~600 brief; no row missing, nothing dead or copied) is accepted.
 UP-LOGS counts bare `localhost` on 8081/8084 as fixture (UP-8's page is `localhost:8084`; `isFixture10` did the
