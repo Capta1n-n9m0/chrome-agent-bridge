@@ -176,6 +176,27 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
 
+### 2026-10-26 · S5-liveA closes with S5.5 and part of S5.6 failed as recorded; helper fixes before liveB (#282)
+**Decided:** liveA's record stands (both runs; `S5-liveA.md` §3): PASS UP-L1, UP-0, UP-7 (a–c), SAVE-REFUSE-R (SDK and
+MCP), SW-2 measured, UP-RESTORE (run 2, all four equal); FAIL UP-6 and UP-OPT; UP-FA RECORD (toggle on); UP-LOGS PASS
+for the daemon log and actor results of both runs and the console of run 2, **NOT MEASURED** for the console over run
+1's rows (UP-L1, UP-6, UP-7, SAVE-REFUSE-R). **SW-2 reads "the event ends the wait"** (warm-up excluded, d = [-24, 95,
+68] ms, 3/3): the carried input closes, no S5b. Exit check **S5.5 failed for liveA**: the first runner met two
+preflight STOPs (python not on the PowerShell tool's PATH; stale globals) and relaunched instead of returning — no
+effect, nothing had started — recorded as a failed pre-registered check, which by the phase doc's STOP rules ("a live
+runner continuing past a STOP line (#193)") stops the gate for the user; the write-up and liveB continue. No row is
+re-run to cure it. Before liveB, one set-up fixer: UP-6-style judges print each clause verdict before the banner
+verdict (F3; the pass rule unchanged); the scanners count scheme-plus-host matches, not a bare `://` (F4); the CLICK
+print uses the first line (F5). liveB's runner returns on every STOP, preflight included, and starts the console
+capture before its first row. An orphan `python -` (PID 22096, with its two bash parents, started 04:26:54Z from a
+Bash tool call of this session's agent tree, ~1.5k CPU-seconds) was stopped by the session agent at ~04:58Z.
+**Why:** the S5-liveA verifier's FAIL (MAJOR F1: S5.5; MAJOR F2: S5.6 console coverage); a failed check is reported,
+never re-tuned (agent-rules §2).
+**Instead of:** re-running liveA from the start to get clean S5.5/S5.6 (it re-measures completed rows to flatter the
+record).
+**Revisit if:** the user wants liveA re-run at the gate.
+**By:** Claude
+
 ### 2026-10-26 · S5-liveA's first run stopped on a title check; the record stands, two helpers are fixed between rows (#281)
 **Decided:** liveA's first run (exit 2 at ~04:20:42Z) stands as recorded: PASS UP-L1, UP-7 (a–c), SAVE-REFUSE-R (both
 legs); FAIL UP-6 (all five: "banner seen on a refusal") and UP-OPT (`o2-follows`, 6061 ms or a conflict note), never
