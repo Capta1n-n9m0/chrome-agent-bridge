@@ -462,6 +462,15 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   complete. Carried to S3a by #301: re-sync when idle, a DNR time bound, `back`/`forward` timing, R1's test. Report
   `…-steps/S2.md` (S3a's call shape: `S2-builder.md` §7; await `release()` before reading `refusal()`).
 
+### S3a · 2026-10-26 · `92252df` (spec note), `c9db926` · verifier PASS (two fix rounds)
+- `manifest.json` + `declarativeNetRequestWithHostAccess` (`manifest.test.ts` re-pinned, dated note); `sw.ts` builds the
+  keeper at the top level, start-up clear behind `ready`, rebuild in the existing listener (19 listeners, no new
+  top-level `await`); `safety-call.ts` installs tab rules for `navigate`, `back`, `forward` once per call and releases
+  them on every path; `newTab` unchanged (#295). #301 (a)–(c) and R1 done; 5 s per DNR call; `back`/`forward` wait up
+  to 10 s for their load while holding rules (#302).
+- D3.1–D3.5 met (no log line added; daemon/shared/sdk/mcp diff empty). Tests 4111/159 → 4135/160, none removed.
+  M2 (rebuild on any safety change) → S3b (#302). Run 17: RD-BACK, RD-FWD, RD-BACK-SAMEDOC. Report `…-steps/S3a.md`.
+
 ## Open items
 
 - **Ruled 2026-10-26:** 0.3 (A), 0.4 (C) (#290); S0F's what (#288).

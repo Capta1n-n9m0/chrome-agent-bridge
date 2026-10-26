@@ -185,6 +185,21 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-26 · S3a: `back`/`forward` wait for their load while they hold rules; the rebuild narrows to block-list edits in S3b (#302)
+**Decided:** S3a as built (`92252df`, `c9db926`; 494 lines against ~400, accepted as one piece): each DNR call bounded
+at 5 s, `back`/`forward` (in `handlers/history.ts`, an accepted lane deviation) wait up to 10 s for their load only
+while they hold rules, so with an empty list they behave exactly as before. S3a verifier's M2 — the keeper rebuilds on
+every safety-setting change, so toggling the JavaScript switch or the Upload folders can, for a few milliseconds,
+refuse an unrelated `navigate` `DISARMED` (fail closed) — is fixed in S3b, whose lane gains
+`extension/src/safety-state.ts` for it: the rebuild runs only when the block list's stored value changed or the state
+became unreadable. Recorded as unmeasured: the keeper assumes Chrome applies one extension's rule updates in the order
+sent.
+**Why:** a spurious refusal is safe but wrong; the narrowing keeps #292's "a list change rebuilds" exactly.
+**Instead of:** leaving M2 as a documented limit.
+**Revisit if:** Run 17's RD-BACK/RD-FWD rows show the tab not yet loading when `goBack`/`goForward` return, or a
+client with a timeout under 10 s meets `TIMEOUT` on `back`/`forward` with a non-empty list.
+**By:** Claude
+
 ### 2026-10-26 · S2: the keeper is accepted; it re-syncs when the last live call ends; S3a bounds DNR calls (#301)
 **Decided:** S2's keeper (`e7bb081`, 682 lines against a ~500 cap, accepted as complete). Three things go to S3a,
 which may edit the keeper for them: (a) after a rejected rebuild, the keeper retries a clear when the last live call
