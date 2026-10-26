@@ -5,7 +5,8 @@
  * re-runs at every `call.effect()` and as the post-check; this handler is never reached with a refused path.
  *
  * Order: the params (`BAD_PARAMS`, no page call) → the tab → the file-access check (#245 (b): `UPLOAD_REFUSED`
- * before anything touches the page) → effect → inject → `ref | locator` → effect → the content script's target rule
+ * before anything touches the page) → each path probed as an existing file (Step 11b S0F-b, #288 3c: `BAD_PARAMS`
+ * naming the index, nothing touched) → effect → inject → `ref | locator` → effect → the content script's target rule
  * and one-off mark → the CDP leg (`uploadByMark`: effect before the attach, the isolated-world finder removes the
  * mark, `DOM.setFileInputFiles`) → `{files}` (+ `pastSnapshotCap`). On every failure after the mark was asked for,
  * the content script sweeps this call's mark (`sweepUploadMark`), a disarm and a newly blocked tab included: the
@@ -23,6 +24,7 @@ import { BridgeError, ErrorCodes } from "../errors.js";
 import { newMark } from "../evaluate/mark.js";
 import { UPLOAD_MARK_PAGE_FN, UPLOAD_UNMARK_PAGE_FN, fileAccessRefusal, uploadSweepTarget } from "../upload-files.js";
 import { UPLOAD_MAX_PATHS } from "../upload-paths.js";
+import { checkUploadFilesExist } from "../upload-exists.js";
 import { checkTarget, resolveTargetCapped, withCapFlag } from "./target.js";
 import type { HandlerSafety } from "../safety-call.js";
 
@@ -97,6 +99,9 @@ export async function uploadFiles(p: Record<string, unknown>, call?: HandlerSafe
   const tab = await pageTab(p, "uploadFiles");
   const noAccess = fileAccessRefusal(await readFileAccess());
   if (noAccess) throw noAccess;
+  // Step 11b S0F-b (#288 3c): every path must be an existing file, read by the worker's own `fetch` of its `file:` URL,
+  // before anything touches the page; else `BAD_PARAMS` naming the index (`upload-exists.ts`). Needs file access (above).
+  await checkUploadFilesExist(paths, (url, init) => fetch(url, init));
   await call?.effect();
   await ensureContent(tab.id!);
   const { ref, pastSnapshotCap } = await resolveTargetCapped(tab.id!, p, call);

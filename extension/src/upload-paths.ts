@@ -146,6 +146,12 @@ export function uploadPathRefusalClass(path: unknown): UploadPathClass | null {
   return "refused" in s ? s.refused : null;
 }
 
+/** A well-formed path as segments, or null when its shape is refused (Step 11b S0F-b: the `file:` URL of a probe). */
+export function parseUploadPath(path: unknown): ParsedUploadPath | null {
+  const s = shapeOf(path);
+  return "refused" in s ? null : s.ok;
+}
+
 /** One line of the options page's Upload folders box. */
 export function parseUploadFolderLine(text: string): UploadFolderLine {
   if (text.trim() === "" || text.startsWith("#")) return { kind: "ignored", text };

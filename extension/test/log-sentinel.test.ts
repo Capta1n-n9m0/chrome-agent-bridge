@@ -589,3 +589,36 @@ describe("Step 11 S2.5 sentinel test — no upload path, folder or file name in 
     }
   });
 });
+
+// ---------------------------------------------------------------- Step 11b S0F-b: the missing-file probe
+// Exit check F.1 (phase doc `docs/plans/2026-10-26-step11b-block-list-redirects.md`): the probe of a sentinel path, on
+// every outcome, logs nothing, and no refusal names the path, a segment or its file: URL.
+describe("Step 11b S0F-b sentinel test — the missing-file probe names no path and logs nothing", () => {
+  it("every outcome over a sentinel path: refusals clean, no captured line", async () => {
+    const { checkUploadFilesExist } = await import("../src/upload-exists.js");
+    const fetches: Record<string, () => Promise<unknown>> = {
+      file: async () => ({ status: 200, body: null }),
+      missing: async () => Promise.reject(new TypeError(`Failed to fetch ${UP_FILE_URL}`)),
+      folder: async () => ({ status: 0, body: null }),
+      other: async () => ({ status: 404, body: null }),
+      abort: async () => Promise.reject(new DOMException(UP_FILE_URL, "AbortError")),
+    };
+    const messages: string[] = [];
+    let seenUrls = 0;
+    for (const [name, f] of Object.entries(fetches)) {
+      try {
+        await checkUploadFilesExist([UP_FILE_IN, UP_FILE_IN], (url) => (seenUrls += url === UP_FILE_URL ? 1 : 0, f()));
+        expect(name).toBe("file");
+      } catch (e) {
+        messages.push((e as Error).message);
+      }
+    }
+    expect(seenUrls).toBe(6); // the probe really ran on the sentinel's file: URL (2 for "file", 1 for each other)
+    expect(messages).toHaveLength(4);
+    expectUploadClean(messages);
+    for (const m of messages) expect(m).not.toMatch(/file:|[\\]/);
+    expect(captured).toEqual([]); // the probe has no log site
+    console.log("sentinel-capture-live");
+    expect(captured).toHaveLength(1); // the capture is live, so the empty check above is not vacuous
+  });
+});

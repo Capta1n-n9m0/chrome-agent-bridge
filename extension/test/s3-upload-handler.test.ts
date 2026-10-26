@@ -56,8 +56,16 @@ let fileAccess: unknown;
 /** The document the stub tab shows; a "navigation" changes it. */
 let currentDoc: string;
 let targets: { tabId: number; documentIds?: string[] }[];
+/** Step 11b S0F-b: the worker's `fetch` of each path's file: URL; a URL listed here is missing (rejects). */
+let missingUrls: Set<string>;
 
 beforeEach(() => {
+  missingUrls = new Set();
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    log.push("probe");
+    if (missingUrls.has(url)) throw new TypeError("Failed to fetch");
+    return { status: 200, body: null };
+  }));
   document.body.innerHTML = "";
   log = [];
   currentDoc = "DOC-1";
@@ -242,6 +250,8 @@ describe("the handler — order, the file-access check, and the mark removed on 
     expect(log).toEqual([
       "tabs.get",
       "fileAccess",
+      "probe",
+      "probe",
       "effect",
       "inject",
       "effect",
@@ -272,6 +282,22 @@ describe("the handler — order, the file-access check, and the mark removed on 
     (chrome.extension.isAllowedFileSchemeAccess as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("x"));
     expect(await wire(uploadFiles(p, fakeCall()))).toEqual({ code: ErrorCodes.UPLOAD_REFUSED, message: NO_FILE_ACCESS_MESSAGE });
     expect(marks()).toBe(0);
+  });
+
+  it("S0F-b (#288 3c): a missing file → BAD_PARAMS naming its index, after the file-access check and before any effect, page call, mark or attach", async () => {
+    const p = setup(`<input id="f" type="file" multiple>`);
+    p.paths = [P1, P2];
+    missingUrls.add("file:///C:/Wave/Up/b.txt");
+    expect(await wire(uploadFiles(p, fakeCall()))).toEqual({
+      code: ErrorCodes.BAD_PARAMS,
+      message: "upload: paths[1] does not exist (or Chrome cannot read it); nothing was uploaded",
+    });
+    expect(log).toEqual(["tabs.get", "fileAccess", "probe", "probe"]);
+    expect(marks()).toBe(0);
+    log = [];
+    fileAccess = false; // file access off: refused UPLOAD_REFUSED before any probe
+    expect(await wire(uploadFiles(p, fakeCall()))).toMatchObject({ code: ErrorCodes.UPLOAD_REFUSED });
+    expect(log).toEqual(["tabs.get", "fileAccess"]);
   });
 
   it("a webkitdirectory input (#247) and a non-file target → BAD_PARAMS with no attach and no mark", async () => {

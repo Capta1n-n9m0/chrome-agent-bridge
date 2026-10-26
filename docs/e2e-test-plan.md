@@ -1549,6 +1549,23 @@ any other `scheme://host`, another loopback port included, counts as other.
 
 *Added 2026-10-26 (cleanup pass): Run 16 ran 2026-10-26; its results are in §5, Run 16.*
 
+### 4.24 R17 rows (Step 11b, Run 17) — placeholders
+
+*Added 2026-10-26 by Step 11b S0F-b's builder (Claude Opus 5.5), before any Run 17 row ran: **placeholder rows** for
+the `chrome.*` glue of the missing-file check (phase doc `docs/plans/2026-10-26-step11b-block-list-redirects.md` 0.10
+F-RAW, 0.11 3c; decisions.md #288, #296). Stage S4-sheet writes the full sheet (helpers, ports, pass-rule wording,
+the other 0.10 rows) and may reword these before any observation; the expected texts are the shipped constants of
+`extension/src/upload-exists.ts` (`uploadProbeRefusal`). Same conventions as §4.23 (ROOT, the page reporter, the mark
+observer, liveB's file-access precondition).*
+
+| Row | Live | Steps (placeholder) | Expected | Pass rule (placeholder) |
+|---|---|---|---|---|
+| F-RAW ★ | B | A raw client call `uploadFiles {tab, locator:{css:"#up-single"}, paths:[<ROOT>\s11-missing.bin]}` (no SDK preflight; re-runs UP-RAW) | `BAD_PARAMS` `upload: paths[0] does not exist (or Chrome cannot read it); nothing was uploaded`, no `data` | Exact code and message; reporter 0 files and no `change` event; mark never set; no banner; the message names no ROOT, base folder or file name. |
+| F-RAW-2 ★ | B | As F-RAW with `paths:[<ROOT>\s11-1k.bin, <ROOT>\s11-missing.bin]` on `#up-multi` | `BAD_PARAMS` `upload: paths[1] does not exist (or Chrome cannot read it); nothing was uploaded` | As F-RAW: the present first file does not reach the page either (0 files). |
+| F-RAW-DIR ★ | B | As F-RAW with `paths:[<ROOT>\<a folder the wave made inside ROOT>]` | `BAD_PARAMS` `upload: paths[0] is a folder, not a file — pass a file; nothing was uploaded` | As F-RAW. |
+| F-RAW-ENC ★ | B | As F-RAW with a present file whose name holds a space, `#`, `%` and `ü` (made by the wave inside ROOT) | `ok`, `{files: 1}` | Reporter: 1 file, its name and SHA-256 equal to the file's (the `file:` URL's percent-encoding reaches the right file). |
+| F-RAW-OK ★ | B | As F-RAW with `<ROOT>\s11-1k.bin` (a control: the probe lets a present file through) | `ok`, `{files: 1}` | Standard upload clauses of §4.23. |
+
 ## 5. Results template
 
 Copy this and fill it in during the run:
