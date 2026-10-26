@@ -177,3 +177,60 @@ STOP: the restore failed or printed a STOP during the stop procedure; the wave i
 2026-10-26T04:20:42.631Z s9-win: stopped own process srv8081
 2026-10-26T04:20:42.782Z s9-win: stopped own process srv8084
 STOP: the wave ended (an exception in block liveA (RuntimeException)) (at 2026-10-26T04:20:42.784Z)
+2026-10-26T04:39:11.262Z s9-win: PLACE W work area [1920,0,3840,1080] cut clear of the taskbars to [1920,0,3840,1070]
+2026-10-26T04:39:11.626Z PARK point (1932,125) in page [1928,121,3832,1062]
+2026-10-26T04:39:11.656Z s9-win: PARK cursor at (1932,125) in W's page area (SW-2)
+2026-10-26T04:39:11.672Z s9-win: PARK cursor at (1932,125) in W's page area (SW-2)
+2026-10-26T04:39:11.688Z s9-win: GUARD occluders total=0 foreign=0 (SW-2)
+(i) background ok 1491 ms · (ii) front ok 1515 ms · d=-24 ms
+(i) background ok 1541 ms · (ii) front ok 1446 ms · d=95 ms
+(i) background ok 1557 ms · (ii) front ok 1489 ms · d=68 ms
+warm-up (trial 0, excluded): (i) background ok 1313 ms · (ii) front ok 543 ms · d=770 ms
+measured 3/3 trials
+d=[-24, 95, 68] ms → the event ends the wait
+CHECK SW-2 visibility log PASS: RECORD: visibilitychange events w=8 sw=8 (4 trials)
+ROW SW-2 PASS: measured as pre-written: the event ends the wait
+2026-10-26T04:39:49.142Z s9-win: LEG S11 open: my check window 2689826 - the only window carrying this call's marker (after 1130 ms), its address bar on the marker URL
+2026-10-26T04:39:49.423Z PARK point (1932,125) in page [1928,121,3832,1062]
+2026-10-26T04:39:49.452Z s9-win: PARK cursor at (1932,125) in W's page area (before the omnibox foreground/focus guard)
+2026-10-26T04:39:50.158Z s9-win: window 2689826 now shows chrome-extension://cpnemjbgecfbeicldpaaegbhjgjgjfep/options.html
+2026-10-26T04:39:50.587Z s9-win: toolbar buttons named 'Chrome Agent Bridge…': 1 after 55 ms (window 1920 px) -> pinned=true
+2026-10-26T04:39:50.646Z s9-win: ACTION name "Chrome Agent Bridge — armed (click to turn off)" (+1 further line(s) not shown) class 'ToolbarActionView'
+2026-10-26T04:39:50.703Z s9-win: PARK cursor at (1932,125) in W's page area (before the click guards)
+2026-10-26T04:39:50.794Z s9-win: CLICK 'Chrome Agent Bridge — armed (click to turn off)
+Has access to this site' at (3683,63)
+2026-10-26T04:39:50.797Z s9-win: PARK cursor at (1932,125) in W's page area (after the click)
+2026-10-26T04:39:50.807Z s9-win: PRESS button 1/1 at 2026-10-26T04:39:50.802Z
+2026-10-26T04:39:50.873Z s9-win: TITLE ok after 53 ms: "Chrome Agent Bridge — OFF: agents are refused (click to turn on)"
+2026-10-26T04:39:52.293Z s9-win: PARK cursor at (1932,125) in W's page area (before the click guards)
+2026-10-26T04:39:52.369Z s9-win: CLICK 'Chrome Agent Bridge — OFF: agents are refused (click to turn on)
+Has access to this site' at (3683,63)
+2026-10-26T04:39:52.372Z s9-win: PARK cursor at (1932,125) in W's page area (after the click)
+2026-10-26T04:39:52.375Z s9-win: PRESS button 1/1 at 2026-10-26T04:39:52.375Z
+2026-10-26T04:39:52.438Z s9-win: TITLE ok after 60 ms: "Chrome Agent Bridge — armed (click to turn off)"
+2026-10-26T04:39:52.490Z s9-win: ACTION name "Chrome Agent Bridge — armed (click to turn off)" (+1 further line(s) not shown) class 'ToolbarActionView'
+2026-10-26T04:39:52.505Z s9-win: PARK cursor at (1932,125) in W's page area (before the omnibox foreground/focus guard)
+2026-10-26T04:39:53.538Z s9-win: window 2689826 now shows about:blank
+2026-10-26T04:39:53.560Z s9-win: PARK cursor at (1932,125) in W's page area (before the omnibox foreground/focus guard)
+2026-10-26T04:39:54.219Z s9-win: window 2689826 now shows chrome-extension://cpnemjbgecfbeicldpaaegbhjgjgjfep/options.html
+2026-10-26T04:39:54.382Z s9-win: STATE armed=true evaluate=true blocklist lines=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 uploadfolders lines=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-26T04:39:54.396Z s9-win: PARK cursor at (1932,125) in W's page area (before the omnibox foreground/focus guard)
+2026-10-26T04:39:55.068Z s9-win: window 2689826 now shows about:blank
+2026-10-26T04:39:55.089Z s9-win: PARK cursor at (1932,125) in W's page area (before the omnibox foreground/focus guard)
+2026-10-26T04:39:55.759Z s9-win: window 2689826 now shows chrome-extension://cpnemjbgecfbeicldpaaegbhjgjgjfep/options.html
+2026-10-26T04:39:55.882Z s9-win: STATE armed=true evaluate=true blocklist lines=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 uploadfolders lines=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2026-10-26T04:39:56.201Z ROW UP-RESTORE wait-safety reached safety armed=true evaluate=true blockedCount=0 after 2 ms (wanted {"armed":true,"evaluate":true,"blockedCount":0})
+2026-10-26T04:39:56.270Z s9-win: ACTION name "Chrome Agent Bridge — armed (click to turn off)" (+1 further line(s) not shown) class 'ToolbarActionView'
+2026-10-26T04:39:56.272Z s9-win: RESTORE read-back: stored page equal true, daemon.status equal true, title armed true
+2026-10-26T04:39:56.280Z s9-win: RESTORE ok: the found texts (outside the repo) deleted after the read-back matched
+RESTORE armed=equal evaluate=equal blocklist lines=0 hash=equal uploadfolders lines=0 hash=equal
+CHECK UP-RESTORE stored PASS: armed, evaluate, block list and Upload folders equal to UP-0 by count and hash
+CHECK UP-RESTORE daemon PASS: daemon.status armed and evaluate equal the found state
+ROW UP-RESTORE PASS: armed, evaluate, block list and Upload folders equal to UP-0 by count and hash
+2026-10-26T04:39:58.688Z s9-win: worker console: 317 texts written to <PROFILE>\AppData\Local\Temp\bridge-e2e\s11\console.txt (not printed; Console tab found: True)
+SCAN console: ://=0 (fixture 0, other 0) token=0 sentinel=0 profile=0
+ROW UP-LOGS PASS: all counts zero
+SCAN daemon: ://=0 (fixture 0, other 0) token=0 sentinel=0 profile=0
+ROW UP-LOGS PASS: all counts zero
+SCAN actors: ://=1 (fixture 1, other 0) token=0 sentinel=0 profile=0
+ROW UP-LOGS PASS: all counts zero
