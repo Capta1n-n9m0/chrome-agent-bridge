@@ -74,3 +74,8 @@ One line per event, UTC. Agent lines: stage · role · model · start → end.
 - 2026-10-26T05:52Z · S6 · step agent · Opus 5.5 · 05:52Z → (running)
 - 2026-10-26T06:18Z · S6 · step agent · Opus 5.5 · ~06:07Z → ~06:30Z — DONE; builder + 2 fixers Sonnet medium, 3 verifiers Opus (the last two report effort low); commit bd755aa. Tests 3811/154.
 - 2026-10-26T06:18Z · session · close-out to the gate: #286, #287; package CLAUDE.md proposals applied (extension/ within budget); agent-rules §8, §10 amended; phase doc gate checklist (not met) + status line; root Current state; memory. Next: trial numbers, full cleanup pass, kickoff for the #140 step.
+- 2026-10-26T06:19Z · close-out · lead cleaner (full pass) · Opus 5.5 · 06:19Z → (running)
+- 2026-10-26T06:19Z · close-out · trial measurement · Sonnet 5.5 medium · 06:19Z → (running)
+- 2026-10-26T06:30Z · close-out · trial measurement · Sonnet 5.5 medium · → done — trial-numbers.md (tokens 383.5M vs 708.5M; words 113,637 vs 336,357; 14 h 03 min vs 17 h 35 min; Sonnet-built first checks 5 MAJOR vs Opus-built 0).
+- 2026-10-26T06:30Z · close-out · lead cleaner · Opus 5.5 · → done — 82a5253: 71 findings, 0 dropped, 32 fixed, 27 proposed (docs/cleanup/2026-10-26.md).
+- 2026-10-26T06:30Z · session · trial results into lean-procedures § Trial; #230's Revisit-if listed under Open decisions. Planner (Opus) drafting the #140 step's phase doc for the kickoff.

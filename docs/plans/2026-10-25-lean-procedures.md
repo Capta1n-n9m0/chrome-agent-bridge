@@ -133,3 +133,21 @@ Measured at Step 11's close, on the Windows machine where both ran:
   contracts.
 - Step 10's numbers above are the baseline for files and words; its token use is measured on
   Windows with the same script.
+
+### Results · 2026-10-26 (Step 11 at its gate; every number from `…step11…-steps/trial-numbers.md`, which names its commands)
+| Measure | Step 10 | Step 11 |
+|---|---|---|
+| Tokens, all four usage fields | 708.5M | 383.5M (0.54) |
+| Tokens without cache reads | 28.2M | 15.8M (0.56) |
+| Agents spawned (Agent tool) | 83, all Opus | 106: 65 Opus, 41 Sonnet (Sonnet 31.4 % of non-cache-read tokens) |
+| Steps dir | 125 files, 336,357 words | 100 files, 113,637 words (0.34) |
+| Wall time, kickoff → gate | 17 h 35 min (git commit times) | 14 h 03 min (journal), incl. a 6 h 12 min stall in S5-win |
+| First-check verifier findings | 1 CRITICAL, ≥ 7 MAJOR, 14 fix rounds (all Opus) | Opus-built S1–S4b: 0 CRITICAL, 0 MAJOR, 11 MINOR, 18 NIT, 3 fix rounds · Sonnet-built (9 builds): 0 CRITICAL, 5 MAJOR, 38 MINOR, 33 NIT, 4 of 9 failed first, 11 fix rounds, none past round 2 |
+| Live rows failed for a product defect | 0 (#226) | 0 (#284, #285) |
+
+**Reading, for the user:** cost roughly halved; the Sonnet-built slices drew more first-check findings than the
+Opus-built stages but closed within two rounds, and they were recipes, fixtures and docs, not contract code — not
+like for like. Step 11 also changed the plan mid-run (Sonnet medium doers, #270; slices, #271), after a Sonnet-high
+prep builder passed 700k tokens of context. Not measured yet: Step 12's Stage-0 audit against Step 11's contracts;
+per-stage token totals; Step 10's exact MINOR/NIT counts (`trial-numbers.md`, could-not-measure list). #230's
+Revisit-if ("more verifier findings … on Sonnet-built stages") is met in count and goes to the user.

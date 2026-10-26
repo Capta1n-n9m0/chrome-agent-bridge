@@ -27,7 +27,7 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
   unpushed commit `262619f` (redacted at the tip, #283); Open decisions list the rest (#235–#238, #240, #241, #243,
   #245, #247, #250, #254, #257, #259, #261, #263, #264, #266, #268, #284). Nothing pushed (G11-1).
 - **Lean procedures (#230), amended in Step 11 (#270, #271, #286):** the rules are in `docs/agent-rules.md` §7, §8,
-  §10; the trial against Step 10 (`docs/plans/2026-10-25-lean-procedures.md` § Trial) is not measured yet.
+  §10; the trial against Step 10: `docs/plans/2026-10-25-lean-procedures.md` § Trial, Results (tokens 0.54 of Step 10's; more first-check findings on Sonnet-built slices).
 - **Reloads need no human:** `recipes/reload-extension.ps1` (#65; one re-run on exit 2, #99). The loaded extension is
   the Step 11 build (Run 16); interactive sessions using the bridge need `/mcp` or a fresh session.
 - **Resume:** the user rules Step 11's gate (the open decisions, the S5.5/S5.6 failures, the history of `262619f`,
