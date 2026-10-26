@@ -30,3 +30,5 @@ effort · start → end.
 - 2026-10-26T19:08Z · S2 · step agent · Opus · medium · end — DONE, `e7bb081`, verifier PASS-with-notes (one fix round); tests 4111/159; #301 (V3 re-sync, V2 bound, back/forward timing → S3a).
 - 2026-10-26T19:09Z · S3a · step agent · Opus · medium · start (start commit ecd254f)
 - 2026-10-26T19:51Z · S3a · step agent · Opus · medium · end — DONE, `92252df` + `c9db926`, verifier PASS (two fix rounds); tests 4135/160; #302 (M2 → S3b with safety-state.ts in lane).
+- 2026-10-26T19:51Z · S3b · step agent · Opus · medium · start
+- 2026-10-26T20:15Z · S3b · step agent · Opus · medium · end — DONE, `7580d59`, verifier PASS-with-notes (one fix round); tests 4158/161; #303; extension Key files gain the three DNR modules.

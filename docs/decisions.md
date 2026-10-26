@@ -185,6 +185,18 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-27 · S3b: a blocked download hop is recognised strictly within 300 ms; the caps warning's thresholds (#303)
+**Decided:** S3b's two proposals (`…-steps/S3b.md` §5): a hop counts only for tab −1, `xmlhttprequest`, the own
+initiator, `ERR_BLOCKED_BY_CLIENT` and a URL the call's own list blocks, within 300 ms of that call's rejected `fetch`
+(only a rejected fetch waits); the options page warns on one call's rule count against the caps and on a regex over 119
+characters, naming line numbers only. Two blocked downloads within the same 300 ms can both answer `DOMAIN_BLOCKED`
+(fails safe). The verifier's open notes (`Date.now` rather than `performance.now()`; `HopWatch.blocked()` unused in
+production) are left as notes for S5's cleanup. ~580 lines against ~400, accepted as one piece.
+**Why:** the measured event fields; the event-versus-rejection order is not yet measured.
+**Instead of:** a hit lasting the whole fetch, which made a 404 wait and could misname it (round 1's failure).
+**Revisit if:** Run 17's RD-DL-HOP records the order or a latency near 300 ms; RD-CAPS-WARN disagrees with 119.
+**By:** Claude
+
 ### 2026-10-26 · S3a: `back`/`forward` wait for their load while they hold rules; the rebuild narrows to block-list edits in S3b (#302)
 **Decided:** S3a as built (`92252df`, `c9db926`; 494 lines against ~400, accepted as one piece): each DNR call bounded
 at 5 s, `back`/`forward` (in `handlers/history.ts`, an accepted lane deviation) wait up to 10 s for their load only

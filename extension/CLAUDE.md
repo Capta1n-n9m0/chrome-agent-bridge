@@ -46,7 +46,11 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   `"disarmed" | "armed" | "ignored" | "write-failed"`, the 1 s re-arm guard, `readStoredArmed`, the
   `safetyState` reporter), `safety-call.ts` (one call's gate at receipt, before each first side effect,
   and the post-check), `safety-debugger.ts` (the session registry `detachAll` at disarm),
-  `safety-network.ts` (the ingest filter), `upload-exists.ts` (Step 11b S0F-b: the pre-attach file check, its pure parts tested), `upload-paths.ts` (Step 11: the upload-folder matcher and, since S0F-a, the home-folder predicate, pure, no log;
+  `safety-network.ts` (the ingest filter), `safety-dnr.ts` (Step 11b S1: the block list as DNR session rules, tab
+  and download scopes, pure), `safety-dnr-keeper.ts` (S2: per-call rule ids, install/release on every path, the
+  rebuild — since S3b only on a block-list edit or an unreadable state, #302 — the start-up clear, fail closed),
+  `safety-hop.ts` (S3b: recognises a download's blocked hop from `onErrorOccurred` before `ingest`, keeps no URL),
+  `upload-exists.ts` (Step 11b S0F-b: the pre-attach file check, its pure parts tested), `upload-paths.ts` (Step 11: the upload-folder matcher and, since S0F-a, the home-folder predicate, pure, no log;
   #236, #249, #258), `upload-files.ts` (Step 11: the upload's CDP steps in one session — finder in a
   `Page.createIsolatedWorld` world, `DOM.setFileInputFiles`, the unmark; the shipped strings are closure-free and
   tested), `handlers/upload.ts` (the `uploadFiles` handler: the file-access check before the attach, #245 (b)),

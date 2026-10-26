@@ -471,6 +471,14 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - D3.1–D3.5 met (no log line added; daemon/shared/sdk/mcp diff empty). Tests 4111/159 → 4135/160, none removed.
   M2 (rebuild on any safety change) → S3b (#302). Run 17: RD-BACK, RD-FWD, RD-BACK-SAMEDOC. Report `…-steps/S3a.md`.
 
+### S3b · 2026-10-27 · `7580d59` · verifier PASS-with-notes (one fix round)
+- `downloadStart` holds the typed download rules for its fetch; a blocked hop (`safety-hop.ts`, read before `ingest`,
+  no URL kept) answers `DOMAIN_BLOCKED` with R14-5c's text; other failures keep today's answer (#303). The rebuild runs
+  only on a block-list edit or an unreadable state (`rebuildsRules`, #302). The options page warns past the caps or on
+  a regex over 119 characters, by line number only.
+- S3 as a whole: D3.3 (empty diff since `ecd254f`), D3.4, D3.5 (+0 log sites) met. Tests 4135/160 → 4158/161, none
+  removed. Run 17: RD-DL-HOP, RD-CAPS-WARN. Report `…-steps/S3b.md`.
+
 ## Open items
 
 - **Ruled 2026-10-26:** 0.3 (A), 0.4 (C) (#290); S0F's what (#288).
