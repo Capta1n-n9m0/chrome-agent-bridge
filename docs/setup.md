@@ -948,7 +948,10 @@ kept in the box, listed in red as `Line <n>: “<text>” — not a site pattern
 (bank.example), *.host for its subdomains only, host:port, an IP address, or paste an http(s) address`,
 matches nothing and is not counted. The summary under the box counts the valid lines, e.g. `1 blocked
 site. 1 invalid line is not counted (marked below).` (Run 13 row SAFE-OPT-1). Agents see only that
-count (`browser_status`, `client.safety()`), never the patterns.
+count (`browser_status`, `client.safety()`), never the patterns. If the list needs more of Chrome's blocking
+rules than Chrome allows, or a very long site name with a port or `*.` may make a rule Chrome rejects, the box
+shows a warning (naming line numbers only), because while such a list is saved agent navigations and downloads
+are refused.
 
 What a blocked site means for agents:
 - Every call on a tab whose address (or the address it is loading) is blocked is refused

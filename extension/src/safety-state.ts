@@ -138,6 +138,19 @@ export function touchesSafety(changes: Record<string, unknown>): boolean {
   return SAFETY_KEY_NAMES.some((k) => Object.prototype.hasOwnProperty.call(changes, k));
 }
 
+/**
+ * Step 11b S3b (#302): does a `storage.onChanged` batch call for a DNR rule rebuild? Only when the block list's stored
+ * value changed (a removed key is the default "") or the memory copy, after `applyChanges`, is unreadable — never for a
+ * switch or Upload-folders change alone, which would refuse an unrelated covered call for a few ms.
+ */
+export function rebuildsRules(changes: Record<string, unknown>, mem: MemoryState | null): boolean {
+  if (mem !== null && mem.unreadable === true) return true;
+  if (!Object.prototype.hasOwnProperty.call(changes, SAFETY_KEYS.blockList)) return false;
+  const c = changes[SAFETY_KEYS.blockList];
+  if (!isRecord(c)) return true;
+  return (c.oldValue ?? "") !== (c.newValue ?? "");
+}
+
 /** What the gate needs from the state: the two switches, the context (own id + parsed list), the count. */
 export interface SafetyView {
   switches: SafetySwitches;

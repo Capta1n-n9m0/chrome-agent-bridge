@@ -4,6 +4,8 @@ import {
   analyzeBlockList,
   analyzeUploadFolders,
   blockListAfterStoredChange,
+  blockListRuleWarnings,
+  MEASURED_DNR_CAPS,
   optionsStatus,
   writeFailedMessage,
   type SafetyControl,
@@ -42,6 +44,16 @@ const listConflictEl = document.getElementById("blocklist-conflict") as HTMLPara
 const listErrorEl = document.getElementById("blocklist-error") as HTMLParagraphElement;
 const listSavedEl = document.getElementById("blocklist-saved") as HTMLSpanElement;
 const invalidEl = document.getElementById("invalid-lines") as HTMLUListElement;
+const capsEl = document.getElementById("blocklist-caps") as HTMLUListElement;
+
+/** Step 11b S3b: Chrome's rule caps as the browser reports them, else the measured ones. */
+function dnrCaps() {
+  const d = chrome.declarativeNetRequest;
+  return {
+    sessionRules: d?.MAX_NUMBER_OF_SESSION_RULES ?? MEASURED_DNR_CAPS.sessionRules,
+    regexRules: d?.MAX_NUMBER_OF_REGEX_RULES ?? MEASURED_DNR_CAPS.regexRules,
+  };
+}
 
 /** The stored block-list text the textarea was last filled from (or saved as). */
 let loadedList: string | null = null;
@@ -112,6 +124,13 @@ function renderAnalysis(): void {
     ...a.invalid.map((l) => {
       const li = document.createElement("li");
       li.textContent = `Line ${l.line}: “${l.text.trim()}” — ${l.reason}`;
+      return li;
+    }),
+  );
+  capsEl.replaceChildren(
+    ...blockListRuleWarnings(listEl.value, dnrCaps()).map((w) => {
+      const li = document.createElement("li");
+      li.textContent = w;
       return li;
     }),
   );

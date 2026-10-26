@@ -11,6 +11,8 @@ import {
   blockListAfterStoredChange,
   optionsStatus,
   writeFailedMessage,
+  BLOCKLIST_CAPS_WARNING,
+  blockListRuleWarnings,
 } from "../src/options-model.js";
 import { parseBlockList } from "../src/safety-match.js";
 import { SafetyStore, SAFETY_KEYS } from "../src/safety-state.js";
@@ -133,5 +135,25 @@ describe("writeFailedMessage — names the control, never a value", () => {
     expect(writeFailedMessage("armed")).toBe("Could not save the bridge switch (storage write failed). Showing the stored state.");
     expect(writeFailedMessage("evaluate")).toBe("Could not save the JavaScript switch (storage write failed). Showing the stored state.");
     expect(writeFailedMessage("blockList")).toBe("Could not save the block list (storage write failed). Your text is kept; try Save again.");
+  });
+});
+
+describe("blockListRuleWarnings — Step 11b S3b: the rules' caps (#296, #300)", () => {
+  const long = "a".repeat(40) + "." + "b".repeat(40) + ".example";
+  it("an empty or ordinary list: no warning", () => {
+    expect(blockListRuleWarnings("")).toEqual([]);
+    expect(blockListRuleWarnings(["bank.example", "*.mail.example", "localhost:8081", "10.0.0.1"].join("\n"))).toEqual([]);
+  });
+  it("past the caps (each cap on its own): the caps warning", () => {
+    const ports = Array.from({ length: 6 }, (_, i) => `h${i}.example:${1000 + i}`).join("\n");
+    expect(blockListRuleWarnings(ports, { sessionRules: 5, regexRules: 1000 })).toEqual([BLOCKLIST_CAPS_WARNING]);
+    expect(blockListRuleWarnings(ports, { sessionRules: 5000, regexRules: 5 })).toEqual([BLOCKLIST_CAPS_WARNING]);
+    expect(blockListRuleWarnings(ports, { sessionRules: 6, regexRules: 6 })).toEqual([]);
+  });
+  it("a long host with a port or *. is named by line number, never by its text; a long plain host is fine", () => {
+    const w = blockListRuleWarnings(["bank.example", `${long}:8443`, long, `*.${long}`].join("\n"));
+    expect(w).toHaveLength(1);
+    expect(w[0]).toMatch(/^Lines 2, 4: /);
+    for (const t of w) expect(t).not.toMatch(/example|aaaa|bbbb/);
   });
 });

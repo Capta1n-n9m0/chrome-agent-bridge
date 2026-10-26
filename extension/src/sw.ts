@@ -17,10 +17,11 @@ import { isOwnTraffic } from "./network-log.js";
 import type { WebRequestDetails, WebRequestEvent } from "./network-log.js";
 import { TabInfoCache, eventFrame, tabCreatedParams, tabRemovedParams, tabReplacedParams } from "./tab-events.js";
 import { MARKER_KEY, SessionMarker, type MarkerStore } from "./session-marker.js";
-import { DISARMED_ALL, SafetyReporter, SafetyStore, failClosedView, readStoredArmed, reportOf, touchesSafety, type SafetyView } from "./safety-state.js";
+import { DISARMED_ALL, SafetyReporter, SafetyStore, failClosedView, readStoredArmed, rebuildsRules, reportOf, touchesSafety, type SafetyView } from "./safety-state.js";
 import { CallSafety, acceptRelaySender, type CallSafetyDeps } from "./safety-call.js";
 import { DnrKeeper, type DnrUpdate } from "./safety-dnr-keeper.js";
 import { NetworkIngestGate } from "./safety-network.js";
+import { BlockedHopWatcher } from "./safety-hop.js";
 import { redactTabCreated, redactTabRemoved } from "./safety.js";
 import { debuggerSessions } from "./debugger.js";
 import { BadgeController } from "./badge.js";
@@ -38,7 +39,8 @@ const tabInfo = new TabInfoCache();
 
 // Step 11b S3a (#292, #296, #301): the block list as session rules while a covered call runs (`safety-dnr-keeper.ts`).
 // The API and the caps are read at call time: a missing API rejects inside the keeper, which fails closed. The
-// start-up clear runs behind `ready` (installs queue after it); no top-level `await`. S3a wires the tab half only.
+// start-up clear runs behind `ready` (installs queue after it); no top-level `await`. S3b adds the download half: its
+// blocked hop is recognised from `onErrorOccurred` (`safety-hop.ts`), read in the existing listener before `ingest`.
 const dnr = () => chrome.declarativeNetRequest;
 const dnrKeeper = new DnrKeeper({
   updateSessionRules: async (u: DnrUpdate) => dnr().updateSessionRules(u as chrome.declarativeNetRequest.UpdateRuleOptions),
@@ -46,6 +48,7 @@ const dnrKeeper = new DnrKeeper({
   caps: () => ({ sessionRules: dnr()?.MAX_NUMBER_OF_SESSION_RULES ?? 0, regexRules: dnr()?.MAX_NUMBER_OF_REGEX_RULES ?? 0 }),
   extensionId: chrome.runtime.id,
 });
+const hopWatcher = new BlockedHopWatcher(chrome.runtime.id);
 
 const safety = new SafetyStore({
   get: (keys) => chrome.storage.local.get([...keys]),
@@ -66,9 +69,10 @@ const callDeps: CallSafetyDeps = {
   getTab: (tabId) => chrome.tabs.get(tabId),
   replacedBy: (tabId) => tabInfo.replacedBy(tabId),
   lastUrl: (tabId) => tabInfo.lastUrl(tabId),
+  watchHops: (list) => hopWatcher.open(list),
 };
 
-const router = new GatedRouter((method, params) => new CallSafety(method, params, callDeps, dnrKeeper.call(method, params, "tab")));
+const router = new GatedRouter((method, params) => new CallSafety(method, params, callDeps, dnrKeeper.call(method, params)));
 router.on("navigate", navigate);
 router.on("snapshot", snapshot);
 router.on("screenshot", screenshot);
@@ -154,7 +158,10 @@ chrome.webRequest.onCompleted.addListener(
   ["responseHeaders"],
 );
 chrome.webRequest.onErrorOccurred.addListener(
-  (d) => void ingest("onErrorOccurred", d as unknown as WebRequestDetails),
+  (d) => {
+    hopWatcher.offer(d); // Step 11b S3b (#296): before `ingest`, which drops blocked hosts; keeps no URL
+    void ingest("onErrorOccurred", d as unknown as WebRequestDetails);
+  },
   ALL_URLS,
 );
 
@@ -368,9 +375,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
     // Step 10 S4 (#205): JavaScript off (or a state that fails closed) drops every held saveTo value; a disarm
     // drops them in onDisarm.
     if (javaScriptOff(safety.memory)) clearEvaluateSaves();
-    // Step 11b S3a (#292): any safety change (a list edit, or a state now unreadable) rebuilds every live call's rules
-    // from a fresh read; unreadable → null. The key names stay in safety-state.ts (sw-static's scan).
-    void safety.read().then((v) => dnrKeeper.rebuild(v.ctx.blockList), () => dnrKeeper.rebuild(null));
+    // Step 11b S3a (#292), narrowed by S3b (#302): a block-list edit, or a state now unreadable, rebuilds every live
+    // call's rules from a fresh read; unreadable → null. The key names stay in safety-state.ts (sw-static's scan).
+    if (rebuildsRules(changes, safety.memory)) void safety.read().then((v) => dnrKeeper.rebuild(v.ctx.blockList), () => dnrKeeper.rebuild(null));
     ingestGate.flush();
     reportSafety();
   }

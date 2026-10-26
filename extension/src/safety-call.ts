@@ -38,6 +38,8 @@ import {
 } from "./safety.js";
 import type { SafetyView } from "./safety-state.js";
 import type { DnrCall } from "./safety-dnr-keeper.js";
+import type { BlockList } from "./safety-match.js";
+import type { HopWatch } from "./safety-hop.js";
 
 /** The handle of a call that installs no rule. */
 const NO_RULES: DnrCall = {
@@ -62,6 +64,8 @@ export interface HandlerSafety {
   networkFilter(): Promise<(entry: NetworkUrls & { tabId: number }) => boolean>;
   /** Step 11b S3a: true while this call's block-list rules are in force (after `effect()`); `back`/`forward` wait on it. */
   holdsRules?(): boolean;
+  /** Step 11b S3b: `downloadStart`, after its fetch failed: did this call's own rules block a hop (bounded wait)? */
+  hopBlocked?(): Promise<boolean>;
 }
 
 /** A `listTabs` row with the tab's `pendingUrl`, which is tested but never sent. */
@@ -88,6 +92,8 @@ export interface CallSafetyDeps {
   replacedBy(tabId: number): number | undefined;
   /** The last URL the worker knew for a tab, live or recently closed. */
   lastUrl(tabId: number): string | undefined;
+  /** Step 11b S3b: opens a blocked-hop watch on the call's list (`BlockedHopWatcher.open`); absent = no watch. */
+  watchHops?(list: BlockList): HopWatch;
 }
 
 /** An integer `tabId`, else undefined. */
@@ -222,6 +228,7 @@ export class CallSafety implements GatedCall {
   private seen: string | undefined;
   private finalUrl: string | undefined;
   private cleanups: Array<() => void> = [];
+  private hop: HopWatch | null = null;
 
   constructor(
     private readonly method: string,
@@ -267,6 +274,14 @@ export class CallSafety implements GatedCall {
     const { d, view } = await this.gate("effect");
     if (isRefusal(d)) throw refusalError(d);
     if (view) await this.dnr.install(view.ctx.blockList); // once per call; throws the state-unreadable refusal
+    // S3b (#293, #296): a download holding rules watches for its own blocked hop, on the list its rules came from
+    if (view && this.cls === "downloadStart" && !this.hop && this.dnr.holding() && this.deps.watchHops) {
+      this.hop = this.deps.watchHops(view.ctx.blockList);
+    }
+  }
+
+  async hopBlocked(): Promise<boolean> {
+    return this.hop ? this.hop.settle() : false;
   }
 
   holdsRules(): boolean {
@@ -284,6 +299,7 @@ export class CallSafety implements GatedCall {
     try {
       d = await this.decide("post");
     } finally {
+      this.hop?.close();
       await this.dnr.release(); // every path; settles after any rebuild queued before it, so read refusal() after
     }
     return isRefusal(d) ? d : this.dnr.refusal();

@@ -2,6 +2,7 @@ import type { DownloadChunkResult, DownloadStartResult } from "@bridge/shared";
 import { BridgeError, ErrorCodes } from "../errors.js";
 import { DEFAULT_CHUNK_BYTES, DownloadStore, bareContentType, suggestedFilename, toBase64 } from "../download.js";
 import type { HandlerSafety } from "../safety-call.js";
+import { BLOCKED_URL_MESSAGE } from "../safety.js";
 
 const store = new DownloadStore();
 
@@ -22,8 +23,12 @@ const MAX_TIMEOUT_MS = 600_000;
  *
  * Step 9 (#140, Stage 0 F8, F24): the gate is re-checked before the fetch; the final URL (`res.url`) is
  * checked as soon as `fetch` resolves, and a refusal aborts the body read, so the bytes are never kept;
- * a reply the post-check refuses releases the held bytes. A redirect hop onto a blocked host is still
- * requested (a `declarativeNetRequest` rule would be needed to stop it; not built).
+ * a reply the post-check refuses releases the held bytes.
+ *
+ * Step 11b S3b (#293, #296): while the list is non-empty the call's session rules stop a redirect hop onto a blocked
+ * host; `fetch` then rejects, and when the call's own rules blocked a hop (`call.hopBlocked()`, `safety-hop.ts`) the
+ * answer is `DOMAIN_BLOCKED` with the block message and no `data`. Only a rejected `fetch` asks: `DOWNLOAD_HTTP`, a
+ * body-read error and any other failure keep their answer, with no wait.
  */
 export async function downloadStart(p: Record<string, unknown>, call?: HandlerSafety): Promise<DownloadStartResult> {
   const url = typeof p.url === "string" ? p.url : "";
@@ -36,8 +41,10 @@ export async function downloadStart(p: Record<string, unknown>, call?: HandlerSa
   let res: Response;
   let bytes: Uint8Array;
   let refused: { err: unknown } | undefined;
+  let fetched = false;
   try {
     res = await fetch(url, { credentials: "include", redirect: "follow", cache: "no-store", signal: ctrl.signal });
+    fetched = true;
     if (call) {
       try {
         await call.checkFinalUrl(res.url);
@@ -57,6 +64,7 @@ export async function downloadStart(p: Record<string, unknown>, call?: HandlerSa
   } catch (err) {
     if (refused) throw refused.err;
     if (ctrl.signal.aborted) throw new BridgeError(ErrorCodes.TIMEOUT, `Download timed out after ${timeoutMs} ms`);
+    if (!fetched && call?.hopBlocked && (await call.hopBlocked())) throw new BridgeError(ErrorCodes.DOMAIN_BLOCKED, BLOCKED_URL_MESSAGE);
     throw err instanceof Error ? err : new Error(String(err));
   } finally {
     clearTimeout(timer);

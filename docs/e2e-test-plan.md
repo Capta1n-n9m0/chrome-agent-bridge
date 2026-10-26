@@ -1585,6 +1585,19 @@ never printed rule by rule.*
 | RD-REBUILD | A | Pattern listed; a `navigate` to a slow allowed fixture (server holds 3 s); during it, edit the list in the options window | `ok` | During the call the count equals the new list's rules; 0 after. |
 | RD-DISARM | A | As RD-REBUILD, press the toolbar button (disarm) mid-call | `DISARMED {scope:"all"}` | The running call's rules stay until its reply, then 0 (#296: a disarm does not lift them); restore armed. |
 
+*Added 2026-10-26 by Step 11b S3b's builder (Claude Opus 5.5), before any Run 17 row ran: **placeholder rows** for the
+`chrome.*` glue of the download half and the options page's caps warning (`extension/src/sw.ts`, `safety-call.ts`,
+`handlers/download.ts`, `options.ts`; `safety-hop.ts` is unit-tested; phase doc 0.5, 0.6; decisions.md #293, #296,
+#300, #302). S4-sheet writes the fixtures and may reword these before any observation. Counts only, never a rule.*
+
+| Row | Live | Steps (placeholder) | Expected | Pass rule (placeholder) |
+|---|---|---|---|---|
+| RD-DL-HOP ★ | A | Pattern for the blocked fixture's host:port; `downloadStart` of the redirector's URL, which 302s to the blocked fixture | `DOMAIN_BLOCKED` `That address is on the user's block list in Chrome; the bridge will not open or fetch it. Ask the user.`, no `data`, no file | Blocked fixture's hit counter 0 (R14-5c saw 1); 0 session rules after the reply. Record the reply time (a blocked hop is recognised from `onErrorOccurred`, with up to 300 ms waited for it, #296). |
+| RD-DL-ERR | A | Same pattern; `downloadStart` of an allowed URL on a closed port (a genuine network failure) | Today's answer for a failed fetch (recorded before Step 11b, unchanged) | Not `DOMAIN_BLOCKED`; 0 rules after. |
+| RD-DL-SOCKET | A | Pattern `127.0.0.1` listed; a slow allowed download (server holds 3 s) during a keepalive reconnect window | `ok` | The daemon socket stays up (`browser_status` connected after the call): the typed download rule never matches the offscreen WebSocket (#296). |
+| RD-REBUILD-NARROW | A | Pattern listed; a slow `navigate`; during it toggle the JavaScript switch in the options window | `ok` | Not refused `DISARMED` (#302: a switch change does not rebuild the rules); restore the switch. |
+| RD-CAPS-WARN | A | In the wave's own options window, type (do not save) a long fixture host with a port (about 90 characters) | The box shows `Line <n>: a very long site name with a port or *. may make a rule Chrome rejects; …` | The warning names no pattern; nothing saved; record `isRegexSupported` for that host's regex (#300). |
+
 ## 5. Results template
 
 Copy this and fill it in during the run:

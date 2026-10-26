@@ -8,6 +8,7 @@
  * - Nothing here logs; the page shows the lines to the human only.
  */
 import { parseBlockList } from "./safety-match.js";
+import { countRules, fitsCaps, rulesOf, type DnrCaps } from "./safety-dnr.js";
 import { parseUploadFolders, uploadPathRefusalClass, type ParsedUploadPath } from "./upload-paths.js";
 import type { StoredSafety } from "./safety-state.js";
 
@@ -72,6 +73,40 @@ export function blockListAfterStoredChange(s: { current: string; loaded: string;
 } {
   if (s.current === s.loaded || s.current === s.stored) return { text: s.stored, loaded: s.stored, conflict: false };
   return { text: s.current, loaded: s.stored, conflict: s.stored !== s.loaded };
+}
+
+// --- The rules' caps (Step 11b S3b; #296, #300) ----------------------------------------------------------------
+// While the list is non-empty, a bridge navigation or download blocks redirects by Chrome session rules built from it
+// (`safety-dnr.ts`). Past Chrome's caps, or with a regex Chrome rejects, those calls are refused (fail closed, #292).
+// The warnings name no pattern; only line numbers.
+
+/** Chrome's caps as measured on Chrome 156 (Stage0.md §4); the page passes the live ones when it can read them. */
+export const MEASURED_DNR_CAPS: DnrCaps = Object.freeze({ sessionRules: 5000, regexRules: 1000 });
+/** Regexes up to this length fit Chrome's per-regex cap (S1's budget, #300); a longer one may be rejected. */
+export const MAX_SAFE_REGEX_CHARS = 119;
+
+export const BLOCKLIST_CAPS_WARNING =
+  "This list needs more of Chrome's blocking rules than Chrome allows, so while it is saved every agent navigation and download is refused. Shorten the list.";
+
+export function blockListLongHostWarning(lines: number[]): string {
+  const which = lines.length === 1 ? `Line ${lines[0]}` : `Lines ${lines.join(", ")}`;
+  return `${which}: a very long site name with a port or *. may make a rule Chrome rejects; while it is saved, agent navigations and downloads may be refused.`;
+}
+
+/** The caps warnings for a block-list text (empty: none). */
+export function blockListRuleWarnings(text: string, caps: DnrCaps = MEASURED_DNR_CAPS): string[] {
+  const list = parseBlockList(text);
+  const out: string[] = [];
+  if (!fitsCaps([countRules(list)], caps)) out.push(BLOCKLIST_CAPS_WARNING);
+  const long: number[] = [];
+  list.lines.forEach((l, i) => {
+    if (l.kind !== "valid") return;
+    const one = { lines: [l], patterns: [l.pattern], blockedCount: 1 };
+    const rules = rulesOf(one, { kind: "tab", tabId: 0 }, 1);
+    if (rules.some((r) => (r.condition.regexFilter ?? "").length > MAX_SAFE_REGEX_CHARS)) long.push(i + 1);
+  });
+  if (long.length > 0) out.push(blockListLongHostWarning(long));
+  return out;
 }
 
 export type SafetyControl = "armed" | "evaluate" | "blockList" | "uploadFolders";

@@ -231,9 +231,9 @@ describe("sw.ts wiring (static)", () => {
     expect(code.match(/dnrKeeper\.rebuild\(/g)).toHaveLength(2);
   });
 
-  it("onDisarm sweeps (never clears a live call's rules); the router's factory hands the tab-only handle", () => {
+  it("onDisarm sweeps (never clears a live call's rules); the router's factory hands each call its handle (S3b: no filter)", () => {
     const d = code.indexOf("onDisarm:");
     expect(code.slice(d, code.indexOf("onArm:", d))).toContain("void dnrKeeper.sweep();");
-    expect(code).toContain('new CallSafety(method, params, callDeps, dnrKeeper.call(method, params, "tab"))');
+    expect(code).toContain("new CallSafety(method, params, callDeps, dnrKeeper.call(method, params))");
   });
 });
