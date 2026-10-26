@@ -1,0 +1,8 @@
+# S5-liveB ledger — Run 16 liveB block
+
+Step agent: Opus 5.5, started 2026-10-26 04:54Z. Baseline `decb6fb`. Brief: #282's steps (1)–(5); children run as foreground Agent calls (brief deviation from agent-rules §8).
+
+- 04:54Z · preflight · done: tracked tree clean except `journal.md` (the session agent's; excluded by the runner's guard); 8081, 8084, 9234 no listener; node 22152 only (the user's, not touched); no python.exe. `%TEMP%\bridge-e2e\s11\` holds liveA's leftovers (no globals file). Next: set-up fixer (Sonnet, medium) for F3/F4/F5 + console capture before liveB's first row.
+- 04:59:47Z · set-up fixer (Sonnet 5.5, medium; 04:54Z→~05:00Z) · done: commit 341491e (F3 refusalRowVerdicts, F4 scheme:// count, F5 CLICK first line, Save-S16Console on the stop path; npm test 3803→3811, 154 files). Report S5-liveB-fixer.md (uncommitted, goes with the slice's last commit). Diff read by the step agent: no guard or pass rule changed. Next: preflight re-check, then live runner (Sonnet, medium) `-Block liveB`.
+- 05:00:50Z · live runner (Sonnet 5.5, medium) · started; report S5-liveB-runner.md. Watcher: step agent's foreground poll on the report file. Next: on return, evidence commit, then fresh Opus verifier.
+- 05:04:13Z · live runner · returned DONE: liveB exit 0 (wave 05:01:00Z→05:02:51Z), no STOP line in this run (framing's 4 STOP lines are liveA's 04:18Z, the file is cumulative); 11 PASS, 1 FAIL (UP-6B banner), 3 RECORD, 3 NOT MEASURED (UP-DEVT, UP-RACE-A/B); UP-RESTORE all equal; UP-LOGS 0. Evidence copied: S5-liveB-{framing,console,daemon}.txt (s11-evidence exit 0). 9234 = daemon/dist/index.js PID 24484 (idle exit pending); 8081/8084 free. Next: committer (evidence), then Opus verifier.
