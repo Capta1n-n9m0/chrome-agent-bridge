@@ -1,8 +1,8 @@
 /**
  * Step 11 S3 — S3.4's model half (phase doc `docs/plans/2026-10-25-step11-file-upload.md` 0.4; decisions.md #250,
  * #257): the "Upload folders" box's analysis (`analyzeUploadFolders`, over S2's own parser): a root and a relative
- * line refused and marked by line number with a reason; a home folder, a folder holding homes and a `.ssh` folder
- * warned, never refused; the standing warning names the home folder, `bridge.token` and `.ssh`; the page glue
+ * line refused and marked by line number with a reason; a `.ssh` folder warned (a home folder or a folder holding homes:
+ * refused since Step 11b S0F-a, #288 3b); the standing text names the home folder, `bridge.token` and `.ssh`; the page glue
  * (`options.ts`) and `options.html` agree on the box's element ids. Reserved, fixture-like paths only.
  */
 import { readFileSync } from "node:fs";
@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import {
   UPLOAD_FOLDERS_WARNING,
-  UPLOAD_HOME_WARNING,
+  UPLOAD_HOME_REASON,
   UPLOAD_INVALID_REASON,
   UPLOAD_PAD_REASON,
   UPLOAD_RELATIVE_REASON,
@@ -59,12 +59,16 @@ describe("analyzeUploadFolders — invalid lines marked with a reason (#257); va
   });
 });
 
-describe("analyzeUploadFolders — the broad-folder warnings (#250): warned, never refused", () => {
-  it("a home folder, a folder that holds homes, and /root are warned", () => {
+describe("analyzeUploadFolders — home lines refused (#288 3b); the .ssh warning (#250)", () => {
+  // Changed 2026-10-26 (Step 11b S0F-a; decisions.md #288 item 3b changes #250): was "a home folder, a folder that
+  // holds homes, and /root are warned" (valid, `UPLOAD_HOME_WARNING`). They are now invalid lines with the home reason;
+  // the full case table is `s0f-home-folders.test.ts`.
+  it("a home folder, a folder that holds homes, and /root are refused as invalid lines (#288 3b)", () => {
     for (const f of [String.raw`C:\Users\Wave`, String.raw`C:\Users`, "d:\\users\\wave\\", "/home/wave", "/home", "/Users/wave", "/root"]) {
       const a = analyzeUploadFolders(f);
-      expect(a.folderCount, f).toBe(1);
-      expect(a.warned, f).toEqual([{ line: 1, text: f, status: "valid", warning: UPLOAD_HOME_WARNING }]);
+      expect(a.folderCount, f).toBe(0);
+      expect(a.warned, f).toEqual([]);
+      expect(a.invalid, f).toEqual([{ line: 1, text: f, status: "invalid", reason: UPLOAD_HOME_REASON }]);
     }
   });
 
@@ -80,9 +84,11 @@ describe("analyzeUploadFolders — the broad-folder warnings (#250): warned, nev
     }
   });
 
-  it("the standing warning names the home folder, bridge.token and .ssh, and the shell limit", () => {
+  // Changed 2026-10-26 (Step 11b S0F-a, #288 3b): the home-folder sentence says the line is refused (was "Never allow
+  // your home folder, or any folder that holds bridge.token or a .ssh folder.").
+  it("the standing warning says a home folder is refused, names bridge.token and .ssh, and the shell limit", () => {
     expect(UPLOAD_FOLDERS_WARNING).toBe(
-      "An agent may upload any file inside these folders to any site it can open. Allow only folders that hold files you mean to share. Never allow your home folder, or any folder that holds bridge.token or a .ssh folder. An agent that can also run programs on this computer can put any file into an allowed folder.",
+      "An agent may upload any file inside these folders to any site it can open. Allow only folders that hold files you mean to share. A home folder, or a folder that holds home folders, is refused; never allow a folder that holds bridge.token or a .ssh folder. An agent that can also run programs on this computer can put any file into an allowed folder.",
     );
   });
 

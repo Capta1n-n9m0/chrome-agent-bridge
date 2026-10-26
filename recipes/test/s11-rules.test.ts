@@ -10,7 +10,7 @@ import { STRINGIFY_FAILED_MESSAGE } from "../../extension/src/evaluate/save.js";
 import { UPLOAD_TARGET_REQUIRED_MESSAGE } from "../../extension/src/handlers/upload.js";
 import {
   UPLOAD_FOLDERS_WARNING,
-  UPLOAD_HOME_WARNING,
+  UPLOAD_HOME_REASON,
   UPLOAD_RELATIVE_REASON,
   UPLOAD_ROOT_REASON,
 } from "../../extension/src/options-model.js";
@@ -141,10 +141,20 @@ describe("expected texts, byte for byte against the sheet's table", () => {
     expect(K["K-notarget"].message).toBe(UPLOAD_TARGET_REQUIRED_MESSAGE);
     expect(K["K-cycle"].message).toBe(STRINGIFY_FAILED_MESSAGE);
     expect(MCP_UP_LINE).toBe(safetyRefusalLine("UPLOAD_REFUSED", undefined));
-    expect(K["K-opt-stand"]).toBe(UPLOAD_FOLDERS_WARNING);
     expect(K["K-opt-root"]).toBe(UPLOAD_ROOT_REASON);
     expect(K["K-opt-rel"]).toBe(UPLOAD_RELATIVE_REASON);
-    expect(K["K-opt-home"]).toBe(UPLOAD_HOME_WARNING);
+  });
+
+  // Dated note 2026-10-26 (Step 11b S0F-a; decisions.md #288 item 3b changes #250): after Run 16 the product refuses a
+  // home folder instead of warning, so K-opt-stand's home sentence and K-opt-home (a warning) are Run 16's record, no
+  // longer the product's text. The sheet's text is never edited after its run (agent-rules §2); this test pins that
+  // the product moved exactly where #288 says, and nowhere else in these two texts.
+  it("drift after Run 16 (#288 3b): K-opt-stand and K-opt-home are Run 16's record; the product changed only the home part", () => {
+    const RUN16_HOME = "Never allow your home folder, or any folder that holds bridge.token or a .ssh folder.";
+    const NOW_HOME = "A home folder, or a folder that holds home folders, is refused; never allow a folder that holds bridge.token or a .ssh folder.";
+    expect(K["K-opt-stand"].replace(RUN16_HOME, NOW_HOME)).toBe(UPLOAD_FOLDERS_WARNING);
+    expect(K["K-opt-home"]).toBe("a home folder, or a folder that holds home folders: every file in it (keys, tokens, documents) could be uploaded");
+    expect(UPLOAD_HOME_REASON.startsWith("a home folder, or a folder that holds home folders, is never allowed: every file in it (keys, tokens, documents) could be uploaded")).toBe(true);
   });
 });
 

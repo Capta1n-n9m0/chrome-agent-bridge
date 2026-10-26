@@ -98,7 +98,7 @@ export function writeFailedMessage(control: SafetyControl): string {
 
 /** The standing warning above the box (#250). */
 export const UPLOAD_FOLDERS_WARNING =
-  "An agent may upload any file inside these folders to any site it can open. Allow only folders that hold files you mean to share. Never allow your home folder, or any folder that holds bridge.token or a .ssh folder. An agent that can also run programs on this computer can put any file into an allowed folder.";
+  "An agent may upload any file inside these folders to any site it can open. Allow only folders that hold files you mean to share. A home folder, or a folder that holds home folders, is refused; never allow a folder that holds bridge.token or a .ssh folder. An agent that can also run programs on this computer can put any file into an allowed folder.";
 
 export const UPLOAD_ROOT_REASON = "a whole drive or the filesystem root is never allowed";
 export const UPLOAD_PAD_REASON = "starts or ends with a space: a folder is taken exactly as typed";
@@ -106,17 +106,13 @@ export const UPLOAD_RELATIVE_REASON = "not an absolute folder path: write it fro
 export const UPLOAD_INVALID_REASON =
   "not an allowed folder path: no network (\\\\server) or device paths, no . or .. parts, no doubled separators, no backslash in a / path, no <>\"|?* characters or reserved names (CON, NUL, …)";
 
-export const UPLOAD_HOME_WARNING = "a home folder, or a folder that holds home folders: every file in it (keys, tokens, documents) could be uploaded";
+/**
+ * Step 11b S0F-a (#288 3b): a home folder, or a folder that holds home folders, is an invalid line (it was a warning,
+ * #250). Which folders count is `isHomeFolder` (`upload-paths.ts`), shared with the gate's matcher. Names no path.
+ */
+export const UPLOAD_HOME_REASON =
+  "a home folder, or a folder that holds home folders, is never allowed: every file in it (keys, tokens, documents) could be uploaded. Allow a folder inside it instead";
 export const UPLOAD_SSH_WARNING = "a .ssh folder, or a folder inside one: it holds private keys";
-
-/** `X:\Users`, `X:\Users\<name>` (and the old `Documents and Settings`), `/home`, `/home/<name>`, `/Users…`, `/root`. */
-function holdsHome(f: ParsedUploadPath): boolean {
-  const s = f.segments;
-  if (s.length < 1 || s.length > 2) return false;
-  if (f.style === "win") return ["users", "documents and settings"].includes(s[0]!.toLowerCase());
-  if (s.length === 1 && s[0] === "root") return true;
-  return s[0] === "home" || s[0] === "Users";
-}
 
 function underSsh(f: ParsedUploadPath): boolean {
   return f.segments.some((seg) => (f.style === "win" ? seg.toLowerCase() : seg) === ".ssh");
@@ -151,9 +147,12 @@ export interface UploadFoldersAnalysis {
 export function analyzeUploadFolders(text: string): UploadFoldersAnalysis {
   const parsed = parseUploadFolders(text);
   const lines: UploadFolderMark[] = parsed.lines.map((l, i) => {
-    if (l.kind === "invalid") return { line: i + 1, text: l.text, status: "invalid", reason: invalidReason(l.text) };
+    if (l.kind === "invalid") {
+      const reason = l.home ? UPLOAD_HOME_REASON : invalidReason(l.text);
+      return { line: i + 1, text: l.text, status: "invalid", reason };
+    }
     if (l.kind === "ignored") return { line: i + 1, text: l.text, status: "ignored" };
-    const warning = underSsh(l.folder) ? UPLOAD_SSH_WARNING : holdsHome(l.folder) ? UPLOAD_HOME_WARNING : undefined;
+    const warning = underSsh(l.folder) ? UPLOAD_SSH_WARNING : undefined;
     return warning ? { line: i + 1, text: l.text, status: "valid", warning } : { line: i + 1, text: l.text, status: "valid" };
   });
   const invalid = lines.filter((l) => l.status === "invalid");

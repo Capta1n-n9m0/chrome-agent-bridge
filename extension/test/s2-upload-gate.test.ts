@@ -272,10 +272,13 @@ describe("#245 (a) — every tab call on a file: tab → DOMAIN_BLOCKED, for eve
     }
   });
 
-  it("listTabs is not refused and its rows are not hidden by this rule (#245 (a) names tab calls only)", () => {
-    expect(safetyDecision("listTabs", {}, { kind: "live", urls: [FILE_URLS[0]] }, armed, ctx())).toBe("allow");
+  // Changed 2026-10-26 (Step 11b S0F-a; decisions.md #288 item 3d changes #259): was "listTabs is not refused and its
+  // rows are not hidden by this rule" (`toBe("allow")`, the row returned unchanged). A file: row is now hidden as a
+  // blocked tab's (`s0f-file-tabs.test.ts`); listTabs is still never refused.
+  it("listTabs is not refused; its file: rows are hidden as \"blocked\" (#288 3d)", () => {
+    expect(safetyDecision("listTabs", {}, { kind: "live", urls: [FILE_URLS[0]] }, armed, ctx())).toEqual({ redact: "blocked" });
     const row = { id: 3, windowId: 1, active: true, title: "t", url: FILE_URLS[0] };
-    expect(redactListTabsRow(row, armed, ctx())).toBe(row);
+    expect(redactListTabsRow(row, armed, ctx())).toEqual({ id: 3, windowId: 1, active: true, hidden: "blocked" });
   });
 });
 

@@ -16,7 +16,8 @@
  * - The extension's own id and the parsed block list come in through `ctx` (never read here); since Step 11 S2 also
  *   the parsed upload folders (`ctx.uploadFolders`, missing = none), which `uploadRefusal` reads (#236, #237).
  * - Step 11 S2, #245 (a): a tab call on a `file:` page and a `navigate`/`newTab` to a `file:` URL → `DOMAIN_BLOCKED`
- *   (`FILE_PAGE_MESSAGE`, `FILE_URL_MESSAGE`), for every method; `listTabs` rows and events are not hidden by it.
+ *   (`FILE_PAGE_MESSAGE`, `FILE_URL_MESSAGE`), for every method. Since Step 11b S0F-a (#288 3d) `listTabs` rows and
+ *   tab events of a `file:` tab are hidden with the reason `"blocked"`, as a blocked tab's are (#134).
  *
  * Messages never contain a URL, a pattern or a title. Never log any of them from here (0.7).
  */
@@ -311,7 +312,8 @@ export function safetyDecision(
   // 1. The state.
   if (cls === "listTabs") {
     if (!state.armed) return { redact: "disarmed" };
-    if (target.kind === "live" && firstBlocked(target.urls, ctx)) return { redact: "blocked" };
+    // Step 11b S0F-a (#288 3d): a file: tab is redacted as a blocked one is.
+    if (target.kind === "live" && (firstBlocked(target.urls, ctx) || target.urls.some(isFileUrl))) return { redact: "blocked" };
     return "allow";
   }
   if (!state.armed) return disarmed();
@@ -417,14 +419,16 @@ export function safetyDecisionAll(
 // Redaction of listTabs rows and tab events (#134, #146)
 // ------------------------------------------------------------------------------------------------
 
-/** Why a tab's title/URL is withheld: disarmed (any tab), else a blocked URL or this extension's page. */
+/** Why a tab's title/URL is withheld: disarmed (any tab), else a blocked URL, this extension's page or a `file:` URL. */
 export function hiddenReason(
   urls: readonly (string | undefined)[],
   state: SafetySwitches,
   ctx: SafetyContext,
 ): HiddenReason | null {
   if (!state.armed) return "disarmed";
-  return firstBlocked(urls, ctx) ? "blocked" : null;
+  // Step 11b S0F-a (#288 3d): a file: tab is hidden as a blocked one is (its path must not reach a client); the
+  // reason reuses "blocked", so the daemon forgets its cached url/title (stage0-audit.md §6).
+  return firstBlocked(urls, ctx) || urls.some(isFileUrl) ? "blocked" : null;
 }
 
 /**

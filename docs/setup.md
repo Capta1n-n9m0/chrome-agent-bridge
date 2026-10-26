@@ -754,7 +754,7 @@ paths (more than one only if the input is `multiple`). Its description, as the m
 (`mcp/src/tools/registry.ts:613`):
 
 ```text
-Put one or more local files into a file input — an <input type="file">, a label for one, or an element holding exactly one (the hidden input behind an "Attach" button or drop zone) — found by ref or `locator` in this session's tab (the active tab is claimed on first use) or `tab`, as if the user had picked them in the file dialog. `paths` are absolute file paths on this computer; Chrome reads the files itself. The tab is not brought to the front. Every file must lie in a folder the user allowed in Chrome (extension options → Upload folders), and the user must have turned on "Allow access to file URLs" for the extension (chrome://extensions → the extension's Details); otherwise the answer is UPLOAD_REFUSED — then stop and ask the user, and never retry with another path. Shows Chrome's 'is debugging this browser' banner briefly. Never click a file input (browser_click): that opens a native file dialog the bridge cannot see or close. The answer lists each file's name, size and sha256 as read on this computer: it says what Chrome accepted, which is not proof that the page received them — check the page (e.g. browser_snapshot) to confirm.
+Put one or more local files into a file input — an <input type="file">, a label for one, or an element holding exactly one (the hidden input behind an "Attach" button or drop zone) — found by ref or `locator` in this session's tab (the active tab is claimed on first use) or `tab`, as if the user had picked them in the file dialog. `paths` are absolute file paths on this computer; Chrome reads the files itself. The upload works on a background tab: the tab is not brought to the front. Every file must lie in a folder the user allowed in Chrome (extension options → Upload folders), and the user must have turned on "Allow access to file URLs" for the extension (chrome://extensions → the extension's Details); otherwise the answer is UPLOAD_REFUSED — then stop and ask the user, and never retry with another path. Shows Chrome's 'is debugging this browser' banner briefly. Never click a file input (browser_click): that opens a native file dialog the bridge cannot see or close. The answer lists each file's name, size and sha256 as read on this computer: it says what Chrome accepted, which is not proof that the page received them — check the page (e.g. browser_snapshot) to confirm.
 ```
 
 The answer is `Uploaded <n> file(s) to <target>:` and one line per file, `<name> · <bytes> bytes · sha256
@@ -795,7 +795,7 @@ where it is read:
 
 | Where | Text | Source |
 |---|---|---|
-| Folder rule, on the wire | `That file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders); the bridge will not upload it. Ask the user.` | `extension/src/safety.ts:224` |
+| Folder rule, on the wire | `That file is not in a folder the user allows for uploads in Chrome (extension options → Upload folders); the bridge will not upload it. Ask the user.` | `extension/src/safety.ts:225` |
 | File access off, on the wire | `Chrome does not allow this extension to read local files (chrome://extensions → Chrome Agent Bridge → Details → Allow access to file URLs), so the bridge cannot upload. Ask the user.` | `extension/src/upload-files.ts:37` |
 | The one line the SDK's `safetyRefusalLine` and the MCP show, either cause | `UPLOAD_REFUSED: the bridge will not upload that file — either it is not in a folder the user allows for uploads in Chrome (extension options → Upload folders), or the user has not turned on "Allow access to file URLs" for the extension (chrome://extensions → the extension's Details). Stop and ask the user; do not retry with another path.` | `sdk/src/error.ts:136` |
 
@@ -999,7 +999,7 @@ The box's label is `Folders agents may upload files from, one absolute path per 
 (`extension/src/options-model.ts:100`):
 
 ```text
-An agent may upload any file inside these folders to any site it can open. Allow only folders that hold files you mean to share. Never allow your home folder, or any folder that holds bridge.token or a .ssh folder. An agent that can also run programs on this computer can put any file into an allowed folder.
+An agent may upload any file inside these folders to any site it can open. Allow only folders that hold files you mean to share. A home folder, or a folder that holds home folders, is refused; never allow a folder that holds bridge.token or a .ssh folder. An agent that can also run programs on this computer can put any file into an allowed folder.
 ```
 
 One absolute folder path per line, from the drive letter (`C:\Users\you\Uploads`) or from `/`. A blank line
@@ -1008,22 +1008,29 @@ space is invalid); one trailing separator is allowed. A file is allowed only whe
 strictly inside a listed folder at a separator boundary (`C:\Up\x` is not inside `C:\Uploads`); drive-letter
 paths compare without regard to case, POSIX paths exactly. A folder's subfolders count.
 
-The page marks each invalid line by its number with one of these reasons (`options-model.ts:103-107`), and
-the line is not used:
+Since Step 11b, a home folder, or a folder that holds home folders, is refused: any drive's `Users` or
+`Documents and Settings` (or a short name such as `DOCUME~1`) and a folder directly inside it, `/home`, `/Users`,
+`/var/home`, `/System/Volumes/Data/Users` and a folder directly inside each, and `/root`, `/var/root` and
+`/private/var/root`, in any letter case. Such a line is invalid, and the
+bridge never uses it, even one saved before this rule (decisions.md · 2026-10-26 · The user rules Step 11's gate;
+Step 11 closes (#288) item 3b). A folder inside your home, such as `C:\Users\you\Uploads`, is allowed.
+
+The page marks each invalid line by its number with one of these reasons (`options-model.ts:103-107`,
+`:113-114`), and the line is not used:
 - `a whole drive or the filesystem root is never allowed`
 - `starts or ends with a space: a folder is taken exactly as typed`
 - `not an absolute folder path: write it from the drive letter (C:\…) or from / (/home/…)`
 - `not an allowed folder path: no network (\\server) or device paths, no . or .. parts, no doubled separators, no backslash in a / path, no <>"|?* characters or reserved names (CON, NUL, …)`
+- `a home folder, or a folder that holds home folders, is never allowed: every file in it (keys, tokens, documents) could be uploaded. Allow a folder inside it instead`
 
-A valid line that is risky is **warned, not refused** (decisions.md · 2026-10-25 · Stage 0: who the folder
-rule protects against, and the broad-folder warning (#250)); the page shows these next to the line
-(`options-model.ts:109-110`):
-- `a home folder, or a folder that holds home folders: every file in it (keys, tokens, documents) could be uploaded`
+A valid line inside a `.ssh` folder is **warned, not refused** (decisions.md · 2026-10-25 · Stage 0: who the
+folder rule protects against, and the broad-folder warning (#250)); the page shows this next to the line
+(`options-model.ts:115`):
 - `a .ssh folder, or a folder inside one: it holds private keys`
 
 Under the box a summary reads `No upload folder: every upload is refused.` or the count, `1 upload folder.` or
 `<n> upload folders.`, and, when lines are invalid, adds `1 invalid line is not used (marked below).` or `<n> invalid
-lines are not used (marked below).` (`options-model.ts:163-165`). If the saved folders change elsewhere while you
+lines are not used (marked below).` (`options-model.ts:162-164`). If the saved folders change elsewhere while you
 edit, the page says:
 
 `The saved folders were changed elsewhere while you were editing; Save replaces them with the text shown here.`
@@ -1044,10 +1051,11 @@ tab could show a `file:` page and the bridge would read any local file past the 
 toggle is on or off, the bridge refuses every tab call on a tab showing a `file:` page (`closeTab` and
 `focusTab` included), and every `browser_navigate` / `browser_new_tab` to a `file:` URL, with
 `DOMAIN_BLOCKED`:
-- `This tab shows a local file (a file: page), which the bridge never reads or acts on.` (`extension/src/safety.ts:217`)
-- `The bridge never opens local files (file: URLs).` (`extension/src/safety.ts:219`)
+- `This tab shows a local file (a file: page), which the bridge never reads or acts on.` (`extension/src/safety.ts:218`)
+- `The bridge never opens local files (file: URLs).` (`extension/src/safety.ts:220`)
 
-`browser_list_tabs` still lists a `file:` tab with its URL (the refusal covers calls, not the listing), and a
+Since Step 11b, `browser_list_tabs` lists a `file:` tab as it lists a tab on a blocked site, `(hidden: blocked
+site)`, without its URL or title, and tab events drop them too (design spec §10, the 2026-10-26 note). A
 `browser_download` to a `file:` URL keeps its own `BAD_PARAMS`. You can still open a `file:` page yourself;
 agents just cannot act on it.
 

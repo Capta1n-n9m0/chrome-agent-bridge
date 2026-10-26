@@ -53,7 +53,7 @@ export type ParsedUploadPath =
 
 export type UploadFolderLine =
   | { kind: "ignored"; text: string }
-  | { kind: "invalid"; text: string }
+  | { kind: "invalid"; text: string; home?: true }
   | { kind: "valid"; text: string; folder: ParsedUploadPath };
 
 /** A parsed folder list. `lines` keeps every input line in order (for the options page, S3). */
@@ -158,7 +158,41 @@ export function parseUploadFolderLine(text: string): UploadFolderLine {
   const s = shapeOf(body);
   if ("refused" in s) return invalid;
   // A root (`C:\`, `/`) never parses as a folder here: its body is `C:` (RELATIVE) or `` (EMPTY).
+  // Step 11b S0F-a (#288 3b): a home folder, or a folder holding homes, is invalid here, so the options page and the
+  // gate's matcher (which parses the stored text with this same function) both refuse it: fails closed.
+  if (isHomeFolder(s.ok)) return { kind: "invalid", text, home: true };
   return { kind: "valid", text, folder: s.ok };
+}
+
+// --- Home folders (Step 11b S0F-a; decisions.md #288 item 3b, #296; stage0-audit.md §5) ---------------------------
+// A parent of homes, as ASCII-folded segments: a folder equal to one, or one segment below one, is a home folder.
+const POSIX_HOME_PARENTS: readonly (readonly string[])[] = [
+  ["home"],
+  ["users"],
+  ["var", "home"], // `/home` links here on Fedora Atomic
+  ["system", "volumes", "data", "users"], // the macOS firmlink of `/Users`
+];
+/** Root's home folders: refused exactly (a folder inside one stays allowed). */
+const POSIX_ROOT_HOMES: readonly (readonly string[])[] = [["root"], ["var", "root"], ["private", "var", "root"]];
+/** `Users`, `Documents and Settings` and its 8.3 alias `DOCUME~<n>`, on any drive. */
+const WIN_HOME_PARENT_RE = /^(?:users|documents and settings|docume~[0-9]+)$/;
+
+function segmentsEqual(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((s, i) => s === b[i]);
+}
+
+/**
+ * Is this folder a home folder or a folder that holds home folders (`X:\Users`, `X:\Users\<name>`, `/home`,
+ * `/home/<name>`, `/Users…`, `/root`, …)? ASCII letters compare in any case on both styles (macOS volumes are
+ * case-insensitive by default). Pure; never logs. A junction or link elsewhere that points at a home is not seen.
+ */
+export function isHomeFolder(f: ParsedUploadPath): boolean {
+  const segs = f.segments.map(foldAscii);
+  if (f.style === "win") return (segs.length === 1 || segs.length === 2) && WIN_HOME_PARENT_RE.test(segs[0]!);
+  if (POSIX_ROOT_HOMES.some((h) => segmentsEqual(segs, h))) return true;
+  return POSIX_HOME_PARENTS.some(
+    (p) => (segs.length === p.length || segs.length === p.length + 1) && segmentsEqual(segs.slice(0, p.length), p),
+  );
 }
 
 /** The whole box (CRLF, CR or LF). */

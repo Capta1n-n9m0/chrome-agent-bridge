@@ -276,4 +276,18 @@ describe("S2.3 the tool list's names and input schemas equal f45e3bf's; the desc
       expect(has, name).toBe(["browser_click", "browser_type", "browser_press_key"].includes(name));
     }
   });
+
+  // Re-baselined 2026-10-26 (Step 11b S0F-a; decisions.md #287, #284 UP-1, #262's Revisit-if): the baseline above
+  // pins names and input schemas only, so `browser_upload_file`'s input schema is unchanged; its description gains
+  // the background-tab sentence Run 16 UP-1 allows, in place of "The tab is not brought to the front." It is pinned here.
+  it("browser_upload_file's description says the upload works on a background tab, once", () => {
+    const UPLOAD_BACKGROUND_SENTENCE = " The upload works on a background tab: the tab is not brought to the front.";
+    const { registered } = tools(fakeBridge().bridge);
+    const d = registered.browser_upload_file!.description ?? "";
+    expect(d.split(UPLOAD_BACKGROUND_SENTENCE)).toHaveLength(2);
+    expect(d).not.toContain(" The tab is not brought to the front.");
+    for (const [name, tool] of Object.entries(registered)) {
+      if (name !== "browser_upload_file") expect(tool.description ?? "", name).not.toContain("background tab:");
+    }
+  });
 });
