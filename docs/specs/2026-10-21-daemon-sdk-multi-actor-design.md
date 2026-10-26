@@ -712,9 +712,24 @@ The block itself is left as written.*
   - *`DOMAIN_BLOCKED` also answers every call on a tab showing a `file:` page (by its `url` or `pendingUrl`, also
     wrapped in `blob:`/`filesystem:`/`view-source:`, the scheme in any case), and `navigate`/`newTab` to a `file:`
     URL, with fixed messages that name no path (#245 (a)). `listTabs` rows and tab events of a `file:` tab are not
-    hidden by this rule.*
+    hidden by this rule.* *Superseded 2026-10-26 (Step 11b S0F-a, #288 3d): they are hidden — see the next note.*
   - *With the bridge armed, JavaScript on, an empty block list and no upload folders, every other method answers as
     before, except calls on or to `file:` pages.*
+- *Amended 2026-10-26 (Step 11b S0F-a; phase doc `docs/plans/2026-10-26-step11b-block-list-redirects.md` 0.11;
+  decisions.md · 2026-10-26 · The user rules Step 11's gate; Step 11 closes (#288) items 3b and 3d; · Stage 0's
+  reconciled proposals adopted; S0F split; the download half is built (#296)). No method, code, event or field is
+  added:*
+  - *A `listTabs` row and every tab event of a tab showing a `file:` page (by `url` or `pendingUrl`, wrapped or in any
+    case, as `DOMAIN_BLOCKED` reads it) are hidden exactly as a blocked tab's are (#134): the row drops `title` and
+    `url` and carries `hidden: "blocked"`; `tabCreated` carries `url: ""`; `tabRemoved` drops `lastUrl` and
+    `lastTitle` and carries `hidden: "blocked"`. The reason reuses `"blocked"` (no new `HiddenReason`), so the
+    daemon forgets the cached url/title as for a blocked tab, and older clients read it unchanged.*
+  - *An Upload folders line that is a home folder or a folder holding home folders (any drive's `Users`,
+    `Documents and Settings` or its 8.3 alias `DOCUME~<n>`, and one name below it; `/home`, `/Users`, `/var/home`,
+    `/System/Volumes/Data/Users`, and one name below each; `/root`, `/var/root`, `/private/var/root`; ASCII letters
+    in any case) is invalid: the options page marks it with its own reason, which names no path, and the gate's
+    matcher never uses it, also when it is already in `storage.local` (fails closed). A folder inside a home stays
+    allowed. The `UPLOAD_REFUSED` answer and message are unchanged.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
