@@ -2756,6 +2756,147 @@ Open items (each recorded, not re-run; the proposals are in [`S7.md`](plans/2026
 - **R15-3 (NOT MEASURED)** — re-measured as R15-3R PASS under #224's exemption.
 - **RET-1 (NOT MEASURED)** — re-measured as RET-1R PASS (#222).
 
+### Run 16 (S5) — 2026-10-26 (Step 11: file upload, §4.23)
+
+*Rows, expected text and rules committed before the first observation: §4.23 at `36cfc43` (2026-10-25 20:12:15Z) and
+its three dated notes made before any observation — Run 16's fixtures on 8081 (#273, `d0744b2`, 20:32:26Z), SW-2's
+edge cases and UP-LOGS's fixture set (#277, `5d11c2c`, 20:56:15Z), bare `localhost` as fixture (#278, `1767de6`,
+21:24:02Z) — against the record's first line at 2026-10-26 04:19:14.611Z (S5.1). Run by the S5 live runners (Sonnet,
+medium, #270), the user not present (#33), in two slices (#271). **liveA** ran twice. Run 1 (04:18–04:20:42Z): two
+preflight STOPs, then a relaunch; reload exit 0; UP-L1 … SAVE-REFUSE-R; then SW-2's occluder guard stopped it, and the
+stop procedure's restore printed `RESTORE FAILED` because the toolbar-title check compared a two-line name with a
+one-line constant — the stored state and `daemon.status` read back equal (#281). Run 2 (04:38–04:41Z), after a set-up
+fix (`ddc3955`: the title's first line, SW-2's window placement, per-occluder diagnostic lines): SW-2, UP-RESTORE,
+UP-LOGS. **liveB** ran once (05:01:00–05:02:51Z, exit 0, no STOP) after a second set-up fix (`341491e`: clause verdicts
+before the banner verdict, a scheme-and-host URL count, the CLICK print, the console saved on a stop). No product code
+changed (both verifiers: `git diff 0abd25e..HEAD -- shared daemon sdk mcp extension` empty; one daemon build id in both
+slices). No row that had made an observation was re-run, except UP-RESTORE (run 1's stop-path read-back, REC:154-172,
+then run 2's PASS): UP-6 and UP-OPT keep their FAIL (#281 d). **Live verifiers: liveA FAIL** (MAJOR F1 = S5.5, F2 =
+S5.6 in part; no row verdict wrong), **liveB PASS-with-notes**. Rulings: #281
+(first run stands), #282 (liveA closes with S5.5 and part of S5.6 failed as recorded), #283 (a window title in committed
+evidence), #284 (liveB closes). Written only from the committed record; every row line below names its source. Runs
+1–15 above are unchanged.*
+
+Sources: **REC** = [`S5-run-record.md`](plans/2026-10-25-step11-file-upload-steps/S5-run-record.md), cited by line
+(lines 1–236 liveA, 237–410 liveB); **FA / FA2 / FB** = `S5-liveA-framing.txt`, `S5-liveA-framing2.txt`,
+`S5-liveB-framing.txt` (FB is cumulative: its lines 2–8 are liveA run 1's); **DA / DB** = `S5-liveA-daemon.txt`,
+`S5-liveB-daemon.txt`; **LA / LB** = the step reports `S5-liveA.md`, `S5-liveB.md`; **VA / VB** = their verifiers
+`S5-liveA-verifier.md`, `S5-liveB-verifier.md` (all in `plans/2026-10-25-step11-file-upload-steps/`).
+
+```
+Date: 2026-10-26 (UTC liveA run 1 04:18-04:20, run 2 04:38-04:41; liveB 05:01-05:02; verifiers to 05:17)  Chrome 156
+HEAD: liveA run 1 on 0abd25e (FA:14); run 2 on ddc3955 (VA S5.2/F6, no preflight); liveB on 341491e (FB:154)
+Daemon build: 834c77bac996... (DA:2, DA:36, DB:2)   reload: recipes/reload-extension.ps1 exit 0, attempt 1 (FA:45, FB:194)
+
+Row              Slice/run  Verdict          Observed (short) and source
+UP-L1            A / 1      [P]              build = sha256 of daemon/dist; raw-root and raw-outside refused as pre-written;
+                                             FOUNDCHECK root=not outside=not. REC:10-14
+UP-0 (A)         A / 1      [P]              armed, JavaScript on, both boxes 0 lines (the empty text's hash); toggle read on,
+                                             nothing pressed. REC:8-9, 18, 26-28 (a CHECK line, no ROW line)
+UP-OPT           A / 1      [F]              8 clauses PASS; o2-follows FAIL: O2 took 6061 ms (bound 5000). Never re-run (#281
+                                             d). REC:47-56
+UP-FA            A / 1      [RECORD]         not run - the toggle is on. REC:57
+UP-6             A / 1      [F]              all 5 steps "banner seen on a refusal"; the other clauses are not shown; the
+                                             sampler window held the wave's own debugger attaches, so no product defect (#284).
+                                             REC:60-66, VA F3, VB F1
+UP-7             A / 1      [P]              a disarmed, b blocked, c folder-removed: exact, page untouched, each leg read back
+                                             equal. REC:67-121
+SAVE-REFUSE-R    A / 1      [P]              SDK: 4 exact + control prefixed + no files; MCP (tool search off): 4 contained and
+                                             unprefixed, no files. REC:122-136
+SW-2             A / 1, 2   [P] measured     run 1: guard STOP before trial 0, no trial (REC:137-143); run 2: warm-up (770 ms)
+                                             excluded, d = [-24, 95, 68] ms, 3/3 -> "the event ends the wait" (#282), no S5b.
+                                             REC:180-192
+UP-RESTORE (A)   A / 1, 2   [P] (run 2)      run 1 stop path: stored and daemon equal, title check -> RESTORE FAILED, a helper
+                                             defect (#281; REC:154-172); run 2: all four equal to UP-0. REC:216-229
+UP-LOGS (A)      A / 2      [P] in part      console (run 2 only), daemon, actors: 0 (REC:231-236); the console is NOT MEASURED
+                                             for run 1's rows UP-L1, UP-6, UP-7, SAVE-REFUSE-R (#282, VA F2)
+UP-0 (B)         B          [P]              found state as liveA's; toggle on, nothing pressed; <ROOT> added, read back equal.
+                                             REC:249-253, 254-260 (CHECK lines, no ROW line)
+UP-1             B          [P]              page hash = file's, isTrusted, tab stayed behind, human's tab unchanged: the page
+                                             received the file on a background tab, no focus needed (0.6, #284). REC:261-266
+UP-2             B          [P]              three files (0 B, 5 MiB, 50 MiB) in order, hashes equal; 119 ms (bound 15000).
+                                             REC:267-268
+UP-3             B          [P]              hidden input via its label / wrapper: page hash equal. REC:269-271
+UP-4             B          [P]              shadow-root and frame inputs: page hashes equal. REC:272-274
+UP-5             B          [P]              MCP actor (tool search off): turn 1 exact K-mcp-ok, hash equal, mark 0; turn 2
+                                             exact K-mcp-up, page untouched. REC:275-279
+UP-6B            B          [F]              5 refusal clauses PASS (K-notinput, K-single, K-disabled, K-dir, K-many: exact, page
+                                             untouched); banner clause FAIL, not product evidence (#284). REC:280-289
+UP-8             B          [P]              CSP shown real by the header and the blocked/ran pair; upload hash equal. REC:290-291
+UP-9             B          [P]              junction out of <ROOT>: K-gate exact, page untouched. REC:292
+UP-PATCH         B          [P]              per its pre-written rule. REC:293
+UP-TWICE         B          [P]              2 changes, 2 mark pairs, the page holds the second file. REC:294
+UP-RAW           B          [RECORD]         no leak, mark balanced; a raw call with a missing file under <ROOT> answered ok and
+                                             the page holds 1 file (a contract question, #284). REC:295-296
+UP-NAV           B          [RECORD]         REF_STALE (93 chars, not in the table); the new document saw no mutation, no mark
+                                             left. REC:297-298
+UP-DEVT          B          [NOT MEASURED]   the call succeeded, which the rule records as not measured; DevTools never shown
+                                             open (VB F3). REC:299-309
+UP-STALE         B          [RECORD]         no mark left; the old script was liveA's Step 11 build, not Step 10's (VB F5).
+                                             REC:310-311
+UP-7J            B          [P]              JavaScript off -> the upload works -> on, each read back equal. REC:312-329
+UP-RACE-A        B          [NOT MEASURED]   not discriminating: 80 ok, then 0 K-disarmed; no per-call time, so the row
+                                             does not exclude an `ok` returned during the disarm (VB F2; UP-7 (a) covers
+                                             the gate).
+                                             REC:330-350
+UP-RACE-B        B          [NOT MEASURED]   not discriminating: 80 ok, then 0 K-blocked; the loop ended before the edit.
+                                             REC:351-365
+UP-RESTORE (B)   B          [P]              armed, JavaScript, block list and Upload folders equal to UP-0 by count and hash;
+                                             stored page, daemon.status and title equal. REC:366-403
+UP-LOGS (B)      B          [P] x3           console, daemon slice, actors: token, non-fixture URL, sentinel, profile all 0
+                                             (console captured from 05:01:23.9Z, before UP-0). REC:404-410, VB S5.6
+UP-CLICK         -          [NOT RUN]        not run (#251): no proven safe way to close the native file dialog; listed in §4.23
+                                             for completeness, no ROW line, not counted.
+Counts: PASS 19 / FAIL 3 / NOT MEASURED 3 / RECORD 4 / split 1 (UP-LOGS (A))   over 30 row lines: liveA 10, liveB 20
+        (the 17 rows that wait on G11-3: PASS 10 / FAIL 1 / NOT MEASURED 3 / RECORD 3, as LB section 3)
+
+Found state = read-back: armed=true evaluate=true, block list and Upload folders 0 lines, sha256 e3b0c442...b855 (the empty
+text's) at the start and the end of liveA (REC:8, 226) and of liveB (REC:251, 400); the file-access toggle found ON in both
+slices and never pressed (REC:18, 252; G11-3); toolbar button pinned (REC:145, 331). The boxes were edited by UP-0, UP-OPT, UP-7, UP-RACE-B and
+UP-RESTORE and restored; the restores read back "hash=equal" at REC:99, 108, 161 (liveA run 1 stop path),
+361 and 390; UP-OPT's read-backs are STATE lines (REC:38, 43), not hash=equal lines; REC:91, 116 and 260 (UP-0 (B)) are
+set read-backs.
+STOP lines in the committed evidence: FA:2, 4, 6, 8 (liveA run 1's preflight, 4 lines for 2 causes) and REC:143, 148,
+171, 172, 179 (the guard and the restore chain); FA2, DA, DB, the console, REC:180-410: 0. FB repeats FA's four.
+```
+
+**Exit checks over the whole run** (rules pre-registered in the phase doc, "Exit checks"):
+
+| Check | Verdict | Evidence |
+|---|---|---|
+| **S5.1** §4.23 committed before the first observation | **held** | `git log -L1445,1552:docs/e2e-test-plan.md`: `36cfc43` 2026-10-25T20:12:15Z, `d0744b2` 20:32:26Z, `5d11c2c` 20:56:15Z, `1767de6` 21:24:02Z; none touched §4.23 after (`git diff --stat 1767de6 HEAD -- docs/e2e-test-plan.md` empty before this section). First timestamp: REC:1, 2026-10-26T04:19:14.611Z (FA:1 04:18:20Z is a preflight STOP). The last note precedes it by 6 h 55 m. VA S5.1 agrees. |
+| **S5.2** the first line proves the build; reloads only by the script | **held** | build proof REC:11 (UP-L1's found read, REC:1-10, comes first: VA N1); `reload-extension.ps1` exit 0, attempt 1 (FA:45, FB:194, the latter for UP-STALE); run 2 had no reload; builds equal (DA:2, DA:36, DB:2 = `sha256sum daemon/dist/index.js`); product diff empty (VA S5.2, VB S5.2). liveB's own proof sits in DB and FB, not REC (VB N1). |
+| **S5.3** observed against pre-written text, by a fresh verifier; judged by the page's reporter | **held** | liveA: REC prints verdicts, not texts, so VA compared the judge's 22 constants with §4.23 (`compared 22, differ 0`); liveB: 21 keys, the 4 that differ are the K-opt rows (liveA's, not error codes), all 17 error constants match (VB S5.3). Every upload row is judged by the page's hash (`uploadPageJudge`, `refusalPageJudge`), never by an `ok`. |
+| **S5.4** armed, JavaScript, block list and Upload folders read back equal | **held** | REC:226-229 (liveA run 2, against run 1's found record), REC:400-403 (liveB). Run 1's stop path printed `RESTORE FAILED` (REC:171) from a title-check defect while the stored state and `daemon.status` were equal (REC:154, 160-161, 166, 170; #281); run 2 proves the state. Only the empty text's hash is printed. |
+| **S5.5** every STOP/guard line matched to a return (#193) | **FAILED for liveA; held for liveB** | liveA: FA:2 (`python was not found`) and FA:6 (stale globals) have no return in the ledger and the runner relaunched (VA F1; back-filled afterwards; nothing had started). REC:143, 148, 171, 172, 179 match the return at 04:20:42Z (`S5-liveA.ledger.md`). liveB: no STOP line of its own (VB S5.5; `diff` of FB against the raw file exit 0). **Failed as recorded by #282**, no row re-run; by the phase doc's STOP rules it stops the gate for the user. |
+| **S5.6** UP-LOGS by count | **FAILED in part (liveA); held for liveB; one title line (N2)** | counts all 0: REC:231-236, 405-410. The worker console was captured in run 2 only, so UP-L1, UP-6, UP-7, SAVE-REFUSE-R were never console-scanned: NOT MEASURED (VA F2, #282). liveB's console covers every row (VB S5.6). Separately, `S5-liveB-console.txt` line 1, a DevTools window title carrying the profile's display name, was committed in `262619f` (no UP-LOGS rule counts it, VB N2); redacted at the tip, history for the user before any push (#283). |
+| **S5.7** SW-2's warm-up recorded and excluded; outcome read off 0.14 (c) | **held** | REC:188 (`warm-up (trial 0, excluded)`, d = 770 ms), REC:189-190 (3/3 -> "the event ends the wait"); the guard stop of run 1 ran no trial (REC:143); no S5b (VA S5.7, #282). |
+
+**Differences from the step reports' tallies** (stated, not smoothed):
+- LB section 3 says "10 PASS, 1 FAIL, 3 RECORD, 3 NOT MEASURED" over 17 rows, and that the ledger's
+  "11 PASS" (the runner's hand-back as it recorded it) was miscounted; REC agrees with 10 (VB section 2). With UP-0 (B), UP-RESTORE and UP-LOGS the liveB column is
+  PASS 13 / FAIL 1 / RECORD 3 / NOT MEASURED 3 = 20.
+- LA has no totals. The liveA column is PASS 6 / FAIL 2 / RECORD 1 plus UP-LOGS (A), which is neither a pass nor a not-
+  measured row (PASS for the daemon and actors of both runs and the console of run 2; NOT MEASURED for run 1's console):
+  counted as "split". The run total (30 row lines, 19/3/3/4/1) is this section's own; no report states one.
+- #284's PASS list omits UP-0 (B), which LB lists; REC has only CHECK lines for UP-0 in both slices (REC:26-28, 251-253),
+  no ROW line. Counted PASS on its CHECK PASS lines, the found read-back and the toggle read.
+- UP-RESTORE (A) is counted once, as the run 2 PASS; run 1's stop-path read-back is a separate line (REC:154-172).
+
+**Open items** (each recorded, not re-run; rulings by number):
+- **UP-6 / UP-6B (FAIL, banner)** — the sampler window holds the wave's own `evaluate` attaches (VB F1); no product
+  defect filed; a later pre-registered row samples the banner with no `evaluate` in the window (#284). UP-1's banner
+  "seen" PASS is equally uninformative.
+- **UP-OPT (FAIL)** — O2 took 6061 ms against 5000 with no conflict note (REC:46, 55); kept as recorded (#281 d); the
+  committed reports establish no cause. Proposed decisions for UP-6 and UP-OPT: `S5-record-fixer.md` (#281 d).
+- **UP-RAW (RECORD)** — a raw upload of a missing file under `<ROOT>` answers ok: a contract question for the user (#284).
+- **UP-RACE-A, UP-RACE-B, UP-DEVT (NOT MEASURED)** — to be re-registered as new pre-registered rows, not re-runs
+  (proposed in LB section 9 for UP-RACE-A, per-call times, and UP-DEVT, a DevTools-open check; none exists yet; UP-RACE-B
+  is not named there).
+- **UP-LOGS (A) console** — NOT MEASURED for run 1's rows (run 1 had no console capture at all, 04:19:08Z-04:20:42Z, which also covers UP-0
+  and UP-OPT; #282 lists four rows); SAVE-REFUSE-R's `saveTo` refusals are liveA-only (#282).
+- **S5.5 (liveA) and the committed title line** — gate items for the user (#282, #283).
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.
