@@ -252,6 +252,14 @@ target origin is its second argument); fixture ports picked by `netstat` at S4-s
 
 ## Stages
 
+*Note 2026-10-26 (after Stage 0, #295, #296):* `newTab` is **not** covered in this build (#295; RD-2 becomes a RECORD
+row of today's leak); `back`/`forward` carry the tab rule; S0F runs as **S0F-a** (home predicate, `file:` rows hidden,
+the tool's background-tab sentence, the spec note) and **S0F-b** (the missing-file check from the worker); S3 runs as
+**S3a** (manifest, `sw.ts` keeper and start-up clear, `safety-call.ts` install/remove for `navigate`/`back`/`forward`)
+and **S3b** (the download half: typed rules, `onErrorOccurred` before `ingest`, `download.ts`'s mapping; the options
+page's caps warning). 0.9 gains Stage 0's blind spots (F22). D3.3's `<start>` is S3a's start commit. S1 consumes
+`…-steps/stage0-s1-cases.md` with `Stage0.md` §6 item 7.
+
 **Lane** is the explicit grant a step agent needs (`docs/agent-rules.md` §3 item 5). **Risk** per `agent-rules.md` §7:
 every code stage here is on the safety side, so **standard**. Models and effort by `agent-rules.md` §7 as ruled
 2026-10-26 (#289): Opus builds and fixes the code stages (all safety code here) and runs every verifier and step agent;
@@ -405,7 +413,23 @@ binding (`docs/plans/2026-10-25-step11-file-upload.md` § STOP rules, and `docs/
 ## As built
 
 One block per stage, written by the session agent at the stage close (format: `docs/docs-writing-guide.md` § Phase
-doc header); at the phase close, the gate checklist (item → met? → evidence). *Empty until Stage 0 closes.*
+doc header); at the phase close, the gate checklist (item → met? → evidence).
+
+### Stage 0 · 2026-10-26 · `ca422ca` · verifier PASS-with-notes (two rounds)
+- **#290's checks, measured on a scratch Chrome 156 on a temporary profile (#294):** (1) a tab-scoped `main_frame`
+  session rule blocks the redirect hop of a `tabs.update` navigation (blocked server 1 → 0); (2) in force when
+  `updateSessionRules` resolves (0 of 25 escaped); (3) a rule matches the worker's own `fetch` (tab `-1`,
+  `xmlhttprequest`), and `onErrorOccurred` reports `ERR_BLOCKED_BY_CLIENT`: the download half is built; (4) 5000
+  session rules, 1000 of them regex; no list cap in code beyond `storage.local`'s quota. No STOP.
+- **Found:** `newTab`'s `tabs.create({url})` leaks its first request (10/10) → #295, uncovered for now; an untyped
+  download rule cuts the offscreen socket → typed `xmlhttprequest` (#296); `tab.url` after a blocked main frame is the
+  blocked URL (post-check unchanged); Chrome follows no redirect onto an own page or `file:` (0.7 holds); 3c by check
+  (i) from the worker; `file:` rows hidden as `"blocked"`. Counts: 27 methods, 27 codes (26 on the wire), 24 tools,
+  3811 tests / 154 files, log-scan allowlist 54; Step 9's and Step 11's contracts green on port 0.
+- **Decisions:** #294–#297 (#297: a stray `chrome.exe --version` reached the user's Chrome; rule added to
+  `recipes/CLAUDE.md`). Report `…-steps/Stage0.md`, audit `stage0-audit.md`, S1's table `stage0-s1-cases.md`.
+- **Stage split** (journal 2026-10-26T17:00Z): S0F-a → S0F-b → S1 → S2 → S3a → S3b → S4-sheet → S4-helpers → S4-live →
+  S4-record → S5, sequential (0.1).
 
 ## Open items
 

@@ -15,7 +15,12 @@ Step 11b (contract-level; the conservative option applies until the user rules a
   (b) standing rules for the whole list (needs 0.4 (A)/(B)); (c) fail open when the API rejects (forbidden).
 - **#293** 2026-10-26 · Step 11b: the bridge's answers when a hop is blocked stay as today — options: (a) the existing
   codes and texts, a blocked download hop recognised by `onErrorOccurred` `ERR_BLOCKED_BY_CLIENT` (recommended,
-  applied); (b) a new `REDIRECT_BLOCKED` code; (c) `NAV_FAILED` with Chrome's text.
+  applied); (b) a new `REDIRECT_BLOCKED` code; (c) `NAV_FAILED` with Chrome's text. Amended by #296 (the fallback
+  dropped).
+- **#295** 2026-10-26 · `newTab` stays uncovered until the user rules on opening it on `about:blank` — options: (a)
+  open `about:blank`, install the rule, navigate (0 of 10 leaked; `tabCreated.url` = `about:blank`, two history
+  entries) (recommended for security); (b) `newTab` as today, its first request escaping a blocked redirect, a known
+  gap (applied, conservative).
 
 Step 11's were ruled on 2026-10-26 (#288, #289, #290); the lists of earlier steps' open decisions, with their rulings,
 are in the archive entries they cite and in git.
@@ -179,6 +184,51 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
+
+### 2026-10-26 · Stage 0's incident: a stray `chrome.exe --version` reached the user's Chrome; never run Chrome without an own profile (#297)
+**Decided:** a Stage 0 measurer ran `chrome.exe --version` once with no `--user-data-dir`; Windows handed it to the
+user's running Chrome ("Opening in existing browser session."), which may have opened a window or tab there. No
+evidence depends on it and nothing else reached that Chrome. From now on no agent runs `chrome.exe` on this machine
+without its own `--user-data-dir`, not even for `--version` (read it from CDP `Browser.getVersion` or the install
+folder); the rule is a `recipes/CLAUDE.md` gotcha and #294 stands with it.
+**Why:** #294's Revisit-if ("disturbs the user's running Chrome in any way") was met by a command outside the method,
+not by the scratch instance itself, which stayed separate (`Stage0.md` §7, `Stage0-verifier.md` M4).
+**Instead of:** dropping the scratch-profile method (the instance itself never touched the user's Chrome).
+**Revisit if:** any other path from an agent to the user's Chrome shows up.
+**By:** Claude (to be reported to the user)
+
+### 2026-10-26 · Stage 0's reconciled proposals adopted; S0F split; the download half is built (#296)
+**Decided:** `Stage0.md` §6 items 2–11, as written there: download rules typed `resourceTypes:["xmlhttprequest"]`
+with `tabIds:[-1]` and the own initiator, guarded by a test (an untyped rule cut the offscreen socket, measured); 0.6's
+guessed-error fallback dropped (the worker's blocked hop is seen by `onErrorOccurred`, read before `ingest`);
+`navigate`'s post-check unchanged (`tab.url` reads the blocked URL); a disarm does not lift a running call's rules
+(only the call's end and the start-up clear do); install keyed on the method class and run once per call; a rejected
+rebuild leaves the previous rules and refuses the reply; an empty list makes no API call; Chrome's text never reaches
+the wire; S1's translation per item 7 (plain hosts by canonical `requestDomains`, IP literals, `*.` and ports by
+anchored regex), the caps read at run time from `MAX_NUMBER_OF_SESSION_RULES`/`MAX_NUMBER_OF_REGEX_RULES` (no
+`minimum_chrome_version` change), past the cap fail closed and the options page warns; `back`/`forward` carry the
+tab rule; Run 17's amendments (item 9); S0F by check (i) from the worker, the home predicate with ASCII case folding
+and the 8.3/macOS aliases, `file:` rows hidden as `"blocked"`, split into **S0F-a** (home, `hidden`, the tool
+description) and **S0F-b** (the missing-file check); the plan-side notes of item 11. Amends #291, #292, #293 where they
+differ.
+**Why:** each is a measurement (`Stage0.md` §4) or makes a rule stricter within 0.4 (C); none changes an answer on a
+page with no redirect.
+**Instead of:** the phase doc's unmeasured guesses (an untyped download rule would have cut the bridge's own socket).
+**Revisit if:** S1–S3's tests or Run 17 contradict a measurement.
+**By:** Claude
+
+### 2026-10-26 · `newTab` stays uncovered until the user rules on opening it on `about:blank` (#295)
+**Decided (contract-level, for user review):** Stage 0 measured that `tabs.create({url})` sends its first request
+before any rule installed on the new tab's id can act (10 of 10; verifier 5 of 5), while opening `about:blank`,
+installing the rule, then navigating sent 0 of 10 — at the cost of `tabCreated.url` reading `about:blank` and a second
+history entry. That changes an event and the tab's history, so the conservative option applies: Step 11b builds
+`newTab` exactly as today (its first request still escapes a blocked redirect, recorded as a known gap, RD-2 a RECORD
+row), and the `about:blank` form is listed under Open decisions.
+**Why:** `docs/agent-rules.md` §4's conservative option: every existing tool behaving identically, security no weaker
+than today; #140 named only `navigate` and `downloadStart`, `newTab` was 0.2's proposal.
+**Instead of:** building the `about:blank` form now (an event and history change the user has not seen).
+**Revisit if:** the user rules for it; then it is one small stage after S3 (the rule keeper already covers a tab id).
+**By:** Claude (conservative option applied)
 
 ### 2026-10-26 · Stage 0 measures DNR in a separate scratch Chrome on a temporary profile (#294)
 **Decided:** #290's four checks and 0.2's unconfirmed DNR facts are measured on a scratch test extension loaded into a

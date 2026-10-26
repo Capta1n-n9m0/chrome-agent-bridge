@@ -135,3 +135,11 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   expected text is never edited after its run (decisions.md · 2026-10-24 · S4: Dated notes on §4.20 for two
   expected-text errors (#195)). `recipes/test/s9-rules.test.ts` and `s10-rules.test.ts` compare every expected text
   with the committed constant it was copied from, so a wording change fails there first.
+- **Never run `chrome.exe` on this machine without an own `--user-data-dir`, not even `--version`.** Windows hands a
+  bare invocation to the user's running Chrome ("Opening in existing browser session."), which may open a window or
+  tab there (Step 11b Stage 0, #297). Read the version from CDP `Browser.getVersion` or the install folder.
+- **A scratch Chrome for measurements** (#294): branded Chrome 156 loads an unpacked extension on a fresh temporary
+  profile via `--user-data-dir=<temp> --remote-debugging-pipe --enable-unsafe-extension-debugging` and CDP
+  `Extensions.loadUnpacked` (file access already on); `chrome.runtime.reload()` or a file-access toggle leaves it
+  disabled until `management.setEnabled`. Close it by CDP `Browser.close`, never by killing `chrome.exe`
+  (`…step11b…-steps/Stage0-measurer.md`, `Stage0.md` §7).
