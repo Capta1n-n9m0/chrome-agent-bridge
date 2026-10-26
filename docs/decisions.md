@@ -178,6 +178,19 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
 
+### 2026-10-26 · S5 closes: Run 16 stands as recorded; UP-OPT keeps its FAIL with no cause stated (#285)
+**Decided:** Run 16 (`docs/e2e-test-plan.md` §5, `4071287`; verifier PASS-with-notes) stands: 30 rows, PASS 19 / FAIL 3
+/ NOT MEASURED 3 / RECORD 4, plus UP-LOGS (liveA) split; UP-CLICK not run (#251). S5.1–S5.4 and S5.7 held over the
+whole run; S5.5 failed for liveA and S5.6 failed in part for liveA (#282), which stop the gate for the user. UP-OPT
+(6061 ms against the 5000 ms bound) keeps its FAIL with no cause stated — nothing in the record says why; UP-6/UP-6B
+are ruled by #284. UP-RACE-A (no per-call times) and UP-DEVT (DevTools never proven open) are offered to the user as
+re-registered rows for a later wave, not run now. SW-2 closed the ~1.5 s capture question (#282); no S5b.
+**Why:** the whole-run verifier; the tally differences (liveB ledger 11 vs record 10 PASS; UP-0 (B) counted from CHECK
+lines) are written into the section, never smoothed.
+**Instead of:** a cause guessed for UP-OPT; re-running the race rows inside Step 11.
+**Revisit if:** the user wants UP-OPT, UP-RACE-A or UP-DEVT re-measured before the gate.
+**By:** Claude
+
 ### 2026-10-26 · S5-liveB: the upload works on a background tab; UP-6/UP-6B's banner FAIL is not product evidence; a raw missing-file upload answers ok (#284)
 **Decided:** liveB's record stands (`S5-liveB.md`; verifier PASS-with-notes; S5.2–S5.6 hold for liveB; one run, exit
 0, no STOP): PASS UP-1…UP-5, UP-8 (CSP), UP-9 (junction refused), UP-PATCH, UP-TWICE, UP-7J, UP-RESTORE, UP-LOGS;

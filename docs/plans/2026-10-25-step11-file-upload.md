@@ -602,6 +602,24 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   the root typecheck); an erased `import type` fixes it (#276). All recipes configs exit 0; `dist/` byte-identical;
   tests unchanged 3625/146. Verifier: NIT 1 (keep the `type` keyword).
 
+### S5 — Run 16 (live), in slices · 2026-10-25 → 26 · verifiers: per slice PASS-with-notes, liveA FAIL (bookkeeping, #282) · commits `36cfc43` … `4071287` · models: doers Sonnet 5.5 (medium) from here (#270), verifiers and step agents Opus 5.5
+- **Course:** the first attempt (one prep builder, Sonnet high) was stopped at 19:52Z past 700k tokens of context with
+  nothing committed; the user moved doers to Sonnet medium (#270) and asked for smaller iterations (#271). S5 then ran
+  as S5-sheet → S5-fixtures → S3c (a recipes typecheck S3 broke, #275–#276) ∥ S5-rules → S5-actor → S5-win →
+  S5-runner → S5-liveA (two runs, #281–#282) → S5-liveB → S5-record. Builders' contexts after the split: about
+  80k–150k.
+- **Run 16** (§5): 30 rows, PASS 19 / FAIL 3 / NOT MEASURED 3 / RECORD 4 (+1 split). **The upload works on a
+  background tab** (UP-1, 0.6's table: no focus); multiple, hidden, shadow, frame, MCP, CSP and patched-page uploads
+  all reached the page by its own hash; the junction is refused; every refusal left 0 files and every mark was
+  removed; the file-URL toggle was found ON and never pressed (G11-3 not needed); SAVE-REFUSE-R passed (S1's fix
+  live); **SW-2: the event ends the wait** (no S5b). FAILs: UP-6, UP-6B (a banner check that cannot discriminate,
+  #284), UP-OPT (#285). UP-RAW: a raw missing-file upload answers ok (#284, for the user).
+- **Exit checks:** S5.1–S5.4, S5.7 held; **S5.5 failed for liveA, S5.6 failed in part for liveA** (#282) — gate stops
+  for the user. Leak scan of the committed evidence: 0 for every class (#283 redacted a profile-name window title
+  first; its unpushed history is the user's).
+- **Decisions:** #270–#285. **Contracts (binding forward):** Run 16's helpers (`recipes/s11*`) and the salvage
+  folder `C:\Users\aliev\Projects\step11-s5-salvage\` (outside the repo; may be deleted by the user).
+
 ### S4 — The SDK and the MCP · 2026-10-25 · verifier: PASS-with-notes · commit `acbb042` (its message says "verifier: pending"; the verdict is this line's) · models: all Opus 5.5
 - **S4.1–S4.4 met** (verifier on a `git archive` copy): preflight refusals make zero calls; `fs.promises.realpath`
   sent; sha256 equals the file's; eight values; types pinned; baseline +1 tool; no directory in any answer;
