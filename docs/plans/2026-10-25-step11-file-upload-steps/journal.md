@@ -79,3 +79,5 @@ One line per event, UTC. Agent lines: stage · role · model · start → end.
 - 2026-10-26T06:30Z · close-out · trial measurement · Sonnet 5.5 medium · → done — trial-numbers.md (tokens 383.5M vs 708.5M; words 113,637 vs 336,357; 14 h 03 min vs 17 h 35 min; Sonnet-built first checks 5 MAJOR vs Opus-built 0).
 - 2026-10-26T06:30Z · close-out · lead cleaner · Opus 5.5 · → done — 82a5253: 71 findings, 0 dropped, 32 fixed, 27 proposed (docs/cleanup/2026-10-26.md).
 - 2026-10-26T06:30Z · session · trial results into lean-procedures § Trial; #230's Revisit-if listed under Open decisions. Planner (Opus) drafting the #140 step's phase doc for the kickoff.
+- 2026-10-26T06:36Z · close-out · planner · Opus 5.5 · → done — Step 11b phase doc draft (~4.8k words; Stage 0, S1–S3 code, S4 Run 17 in slices, S5 docs; 0.3 and 0.4 user-gated).
+- 2026-10-26T06:36Z · session · kickoff `docs/plans/next-session-prompt.md` written for Step 11b (1061 words; precondition: Step 11's gate and 0.3/0.4 ruled). Close-out complete; Step 11 waits for the user at its gate.

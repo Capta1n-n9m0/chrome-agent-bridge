@@ -1,0 +1,368 @@
+# Step 11b — The block list stops redirected requests (`declarativeNetRequest` session rules)
+
+**Date:** 2026-10-26 · **Status:** Draft, written at Step 11's close-out; waits for Step 11's gate and the user's rulings on 0.3 and 0.4 (kickoff `docs/plans/next-session-prompt.md`)
+**Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
+binds for everything it does not change (§6.5 the human, §10 protocol and codes, with the Step 9–11 dated notes) ·
+**Roadmap:** decisions.md · 2026-10-24 · The roadmap after Step 8 (#129), as amended by · 2026-10-25 · The user rules on
+Step 10's open decisions; Step 10 closes (#229): "its own small step after Step 11, before Step 12". Neither entry gives
+it a number, so it is **Step 11b**; Step 12 (Phase F) keeps its number · **Steps dir:**
+`docs/plans/2026-10-26-step11b-block-list-redirects-steps/` (created at kickoff).
+
+> **PRECONDITION — Step 11b starts only after the user has ruled Step 11's gate**: the gate checklist in
+> `docs/plans/2026-10-25-step11-file-upload.md` § As built (S5.5 not met, S5.6 part, the #283 STOP rule triggered) and
+> the Step 11 list under `docs/decisions.md` → Open decisions. Step 11b edits `extension/src/safety*.ts`,
+> `extension/manifest.json` and `sw.ts`, which a Step 11 ruling could also reopen; building on an unruled gate would
+> stack a second safety change on an unaccepted one. The user also rules this doc's two **user-gated** proposals, 0.3
+> (the permission) and 0.4 (which requests the rule covers), before Stage 0 (human gate G11b-0). If either ruling is
+> missing, the session agent stops before Stage 0, writes one line in the run journal and asks the user. Modelled on
+> how Step 11 made Step 10's rulings its precondition.
+
+## Why
+
+Step 9 made the human's block list refuse every bridge call on a blocked site, but it checks addresses, not the
+network. When an allowed address answers with a redirect onto a blocked host, Chrome follows the hop before any check
+can run: a bridge `navigate` loads the blocked page with the profile's cookies, and a `downloadStart` sends the
+blocked host a GET with those cookies. The post-check then refuses the reply and a download drops its bytes, but the
+request has been sent — a side effect the bridge cannot undo. The limit is measured: Run 13 SAFE-5b (the page on the
+blocked port was loaded) and Run 14 R14-5c (the hop and the target each requested once), and it stands in
+`extension/CLAUDE.md` § Safety gate as "The block list is not a network firewall".
+
+An open redirector on an allowed site is exactly what a page that has talked an agent into something (prompt
+injection) would use to reach a site the human blocked. decisions.md · 2026-10-24 · `downloadStart` and redirects
+onto a blocked host (#140) named the fix — a `declarativeNetRequest` (DNR) session rule that blocks requests to
+blocked hosts inside Chrome's network stack, under a new manifest permission — and left it for a later step; #202
+ratified that, and #229 placed it here.
+
+## Outcome (planned)
+
+- A redirect hop of a bridge `navigate`, `newTab` or `downloadStart` onto a host the human's block list matches is
+  never sent: the blocked server's log shows 0 requests (today 1), measured live on fixture servers only.
+- The rules are derived from the same parsed list the gate uses (`parseBlockList`, `safety-match.ts`), rebuilt when
+  `storage.onChanged` touches the list, cleared at worker start, and fail closed: a call whose rules cannot be put in
+  place is refused before its first side effect.
+- The bridge's answers do not change: the codes, messages and `data` of SAFE-5b and R14-5c stay as recorded; only the
+  server-side count changes. No new code, method, tool or SDK signature (27 codes, 27 router methods, 24 tools stay).
+- One new manifest permission, `declarativeNetRequestWithHostAccess` (0.3), pinned by `manifest.test.ts`.
+- The human's own browsing does not change (0.4 (C), recommended), unless the user rules the wider option.
+
+## Decisions
+
+**(user)** marks a choice the user already ruled (cited by date + title). **(proposed)** marks Claude's proposal,
+recorded by the session agent in `docs/decisions.md` before Stage 0 so the audit can attack it.
+**Contract-level** ones are also listed under Open decisions; the two marked **user-gated** are ruled before Stage 0
+(G11b-0), because a conservative default does not exist for them (not building is the only conservative choice).
+
+### 0.1 Precondition, name and order (proposed)
+
+The box at the top. Order: Stage 0 → S1 (the rule builder, pure) → S2 (the rule keeper, pure) → S3 (the wiring and the
+manifest) → S4 Run 17 in slices → S5 docs. No stage runs in parallel: S2 consumes S1's output, S3 both.
+
+### 0.2 What is built (user — the what; proposed — the shape)
+
+decisions.md · 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140), ruled by #202 and placed by
+#229: a DNR session rule set that blocks requests to blocked hosts, so a hop of a bridge `navigate` or `downloadStart`
+is never sent. *Proposed:* `newTab` with a URL is covered too, since it opens an address the same way `navigate` does
+and #140's reason applies to it word for word. Session rules, not dynamic or static ones: they live in memory and
+are lost on a browser restart and on an extension update (source below), so a stale rule can never outlive the
+human's state across a restart; the worker rebuilds them anyway (0.5).
+
+**External facts (the one search; source: Chrome for Developers, `chrome.declarativeNetRequest` API reference,
+https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest, read 2026-10-26):**
+`updateSessionRules` removes first, then adds, atomically; on an invalid rule, a duplicate id or the count limit it
+rejects and leaves the rule set unchanged; session rules are capped at 5000 (`MAX_NUMBER_OF_SESSION_RULES`, Chrome
+120+) and are not persisted. **Not confirmed by the search, so Stage 0 measures them:** whether a rule applies to a
+redirect hop (expected: each hop is a new request evaluated by the rules); whether rules apply to this extension's
+own `fetch` from the service worker; the `tabIds` condition (expected session-only, with `-1` for requests outside a
+tab); `initiatorDomains` against a `chrome-extension://` initiator; the resource type of a worker `fetch`; the regex
+rule cap and RE2 syntax; what `navigate`'s tab URL is after a blocked main frame.
+
+### 0.3 The new permission and the manifest test (proposed — contract-level, **user-gated**)
+
+- **(A) `declarativeNetRequestWithHostAccess` (recommended).** Rules act only where the extension has host access; it
+  has `<all_urls>` already, so it adds no install warning. #140 named it.
+- (B) `declarativeNetRequest`: adds the warning "Block content on any page"; nothing gained over (A).
+- (C) `declarativeNetRequestFeedback` in addition: only to read which rule matched (`onRuleMatchedDebug`, unpacked
+  extensions only). Not proposed; 0.6 answers without it.
+
+`extension/test/manifest.test.ts` pins today's permissions exactly. S3 changes its expectation to today's list plus
+the one permission, with a dated header note citing this decision, and adds a test that no other key changed and that
+`declarative_net_request` (static rule sets) is absent. Adding the permission requires one extension reload, done by
+`recipes/reload-extension.ps1` (#65); an unpacked extension shows no permission prompt.
+
+### 0.4 Which requests the rule covers (proposed — contract-level, **user-gated**)
+
+The question is whether the block list becomes a firewall for the human's own browsing.
+- **(A) Every request in the profile.** One rule set with no tab condition: the human's tabs, every page's
+  subresources, every site's service worker. Strongest, simplest rules, but the human's browsing changes: a blocked
+  site no longer loads anywhere in Chrome, for the human too. That is a new product promise (the options page says
+  the list governs the bridge) and needs the user's ruling and an options-page text change.
+- **(B) Every request of the tabs the bridge holds, all the time.** The extension does not know leases (the daemon
+  holds them), so it would need a new "bridge tabs" set fed by the calls it sees; a human's tab claimed by
+  `browser_use_active_tab` would then be filtered while claimed and after. A new state to keep right, for coverage
+  #140 did not ask for.
+- **(C) Only the requests of a bridge call in flight (recommended).** A `navigate` or `newTab` installs, right before
+  its first side effect, rules scoped to that tab (`tabIds: [tabId]`, `resourceTypes: ["main_frame"]`) and removes
+  them after its post-check; a `downloadStart` installs rules scoped to requests outside any tab and initiated by this
+  extension (`tabIds: [-1]` and `initiatorDomains: [<own id>]`, if Stage 0 shows they match the worker's `fetch`) for
+  the life of its fetch. This is exactly #140's two hops (plus `newTab`, 0.2). The human's browsing is unchanged,
+  except a human's tab that a bridge `navigate` is loading during that call. Later loads the page itself starts (a
+  script redirect, a click) are not covered: the gate's per-call checks still refuse every later call on that tab.
+
+*Recommendation:* (C). The conservative choice is the narrowest rule that does #140's job and changes no answer and no
+human-visible behaviour. (A) is offered as the alternative if the user wants the list to be a firewall for the whole
+profile; it would add an options-page sentence and a live row on a tab the wave opened by hand.
+
+If Stage 0 finds that DNR does not apply to the extension's own `fetch`, the download half cannot be built with DNR:
+that is a recorded finding, the download limit stays documented, and the `navigate`/`newTab` half proceeds (a proposed
+decision at Stage 0, not a STOP).
+
+### 0.5 How the rule set stays equal to the block list (proposed — contract-level, safety)
+
+- **One source.** The rules are a pure function of the `BlockList` the call's own gate read produced
+  (`SafetyView.ctx`), never of the options text parsed a second way. S1's builder maps each `HostPattern` to rules
+  that block exactly what `patternMatches` blocks: a host and its subdomains (dot boundary only), `*.host` subdomains
+  only, `:port` that effective port only (a default port written or omitted), an IP literal only itself. Plain hosts
+  without a port use `requestDomains` (Chrome's documented domain-or-subdomain match); `*.`, ports and IP literals use
+  an anchored `regexFilter` in RE2 syntax. Invalid and ignored lines make no rule, as they block nothing today.
+- **Per call.** Each covered call owns a rule-id range; its rules are added before its first side effect (inside the
+  existing `effect()` step, after the gate's re-check) and removed after the post-check, on every path (success,
+  refusal, error, timeout, disarm).
+- **On change.** When `storage.onChanged` touches `safety.blockList` (or makes the state unreadable), the keeper
+  rebuilds every live call's rules from the new list in one atomic `updateSessionRules`. The existing top-level
+  listener in `sw.ts` calls it; no new listener, no top-level `await`.
+- **At worker start.** Every session rule this extension holds is removed (a worker culled mid-call leaves orphans;
+  no call survives a worker restart), before the router serves its first call: a call waits on that `ready`, as it
+  waits on the safety state's.
+- **Fails closed.** A rule update that rejects (invalid rule, the count cap, a missing API) refuses the call before its
+  first side effect with the existing `stateUnreadableRefusal()` (`DISARMED {scope:"all"}`, `STATE_UNREADABLE_MESSAGE`),
+  as an unreadable state does (#139) — no new code. A rebuild on change that rejects marks the keeper unsynced: every
+  live covered call is aborted with that refusal and new covered calls are refused until a rebuild succeeds. A list
+  with more patterns than the caps allow is the same case; the options page may warn (0.9).
+- **Disarm.** Disarm already refuses every call; the keeper removes every rule in `onDisarm`.
+
+*Instead of:* standing rules for the whole list rebuilt on change (that is 0.4 (A) or (B)); a cache of the list in the
+keeper (two sources); failing open when the API rejects.
+
+### 0.6 What the bridge answers when a hop is blocked (proposed — contract-level)
+
+Today's answers stay, so every test, row and client line stays valid:
+- **`newTab`:** its post-check is the state only (`safety.ts` header), so today a redirected `newTab` answers as an
+  allowed one; it keeps that answer (the tab now shows Chrome's blocked-request page, and every later call on it is
+  refused by the gate). Stage 0 records today's exact answer; RD-2 expects it.
+- **`navigate`:** Chrome shows its blocked-request error page; the post-check reads the tab's URL and
+  answers `DOMAIN_BLOCKED` with one of the two existing block messages, no `data`, as SAFE-5b's expected text already
+  allows. Stage 0 measures what `tab.url` reads after a blocked main frame; if it is not the blocked URL (for example
+  `chrome-error://`), S3 makes the post-check use the navigation's last committed or attempted URL — a proposed
+  decision at Stage 0, never `NAV_FAILED` with Chrome's raw text.
+- **`downloadStart`:** a blocked hop makes `fetch` reject (a network error, no final URL). The handler answers
+  `DOMAIN_BLOCKED` with R14-5c's exact text when the call's own rules blocked it; S3 decides "its own rules blocked
+  it" by a `webRequest.onErrorOccurred` event with `net::ERR_BLOCKED_BY_CLIENT` for a request outside any tab during
+  the fetch whose URL the call's list blocks (the observers exist; the URL is tested in memory, never stored or logged).
+  Any other fetch failure keeps today's answer. If Stage 0 shows the worker's own requests do not reach its
+  `webRequest`, the fallback is: a fetch failure while the call's rules were non-empty answers `DOMAIN_BLOCKED` only if
+  the request URL's own host is not blocked and a re-check finds no other cause — that fallback is a Stage 0 proposed
+  decision, flagged, since it may misname a genuine network error.
+
+*Instead of:* a new code (`REDIRECT_BLOCKED`) — a wire change for no new information; `NAV_FAILED` with Chrome's
+`net::ERR_BLOCKED_BY_CLIENT` — exposes a Chrome detail and breaks SAFE-5b's text.
+
+### 0.7 Redirects onto this extension's pages and onto `file:` (proposed)
+
+No rule is added for either. Chrome itself refuses a web page's redirect onto an extension page that is not
+web-accessible (this extension declares none) and an http(s) redirect onto `file:`; `fetch` treats a redirect to a
+non-http(s) scheme as a network error. The gate's post-check already refuses an own page (#134, #155) and a `file:`
+page (decisions.md · 2026-10-25 · Stage 0: uploads need Chrome's file access, and the bridge never opens or reads
+`file:` pages (#245)). Stage 0 confirms the Chrome behaviour by reading; Run 17 records it (RD-7, RD-8). If Chrome
+followed either, that is a STOP (a gap in #245), not a rule added in a code stage.
+
+### 0.8 Logging (proposed)
+
+The rules contain the patterns, so nothing logs a rule, a rule's filter, a `getSessionRules` result, a URL or the
+error text of a rejected update (Chrome's text may quote a rule). At most one new fixed log line, with counts only
+(`[bridge] safety rules: <n> active` or none at all), added to `extension/test/log-allowlist.ts`, so the log-scan
+count grows by at most 1 (S3's report states the number from `npm test`). The rule builder and keeper modules have no
+log call. Nothing on the wire reads the rules; `daemon.status` and `safetyState` are unchanged.
+
+### 0.9 Not in Step 11b (proposed)
+
+The profile-wide firewall (0.4 (A)) unless ruled; requests a page starts after a bridge call ends; WebSocket hops; a
+redirect loop's other hosts (each hop is checked by the same rules anyway); `declarativeNetRequestFeedback`; an
+options-page line about the caps (only if S1 shows realistic lists can reach them; otherwise a follow-up).
+
+### 0.10 Run 17 — the live rows (proposed)
+
+New `docs/e2e-test-plan.md` §4.24 (Stage 0 checks the next free number), rows with expected text committed before the
+build is loaded. Fixture pages and the threaded redirect server `recipes/s9-redirect.py` only (port 8083, #197; its
+target origin is its second argument); fixture ports picked by `netstat` at S4-sheet (8080 may be held, #273). The
+"blocked origin" is a fixture port the wave puts on the list in its own options window, as Runs 13–16 did.
+- **RD-0** found state (armed, JavaScript, the block list and upload folders counted and hashed, never printed); the
+  loaded-build proof (the extension's manifest permissions read in a window the wave opened).
+- **RD-CTL** the redirect server's concurrency control, as R14-5c-ctl.
+- **RD-1** `navigate` to an allowed 8083 URL that redirects onto the blocked fixture port: `DOMAIN_BLOCKED`, existing
+  message, no `data`; 8083 log 1 hit, **blocked port 0 hits** (SAFE-5b recorded 1).
+- **RD-2** `newTab` the same way, its own query tag: the answer Stage 0 recorded for today (0.6), then a `snapshot`
+  on the new tab refused `DOMAIN_BLOCKED` or the tab shown as Chrome's error page; 8083 log 1, blocked port 0 hits.
+- **RD-3** `downloadStart` (SDK `downloadToFile`) as R14-5c's redirect leg: R14-5c's exact text, no file, **8083 = 1,
+  blocked port = 0** (R14-5c recorded 1). The direct leg as R14-5c's control.
+- **RD-4** the list emptied, then RD-1's URL again through the bridge: loads, blocked-port log 1 (the rules follow the
+  list; the rule is not stuck).
+- **RD-5** a pattern added and a `navigate` sent within the same second: refused, 0 hits (no stale-rule window).
+- **RD-6** the human's browsing unchanged (0.4 (C)): after RD-1, a page load through 8083 in a tab of a window the wave
+  opened outside the bridge (by its own UI Automation) reaches the blocked port, log 1. If the user rules 0.4 (A), the
+  expectation flips to 0 hits, written before the run.
+- **RD-7** (RECORD) the redirect server pointed at this extension's `options.html`: the answer and the page as Chrome
+  leaves them. **RD-8** (RECORD) pointed at a `file:` URL of a wave-made file: same.
+- **RD-LOGS** `daemon.log`, the worker console and actor output: 0 for the token, the test patterns, a non-fixture
+  `scheme://host`, by count. **RD-RESTORE** the found state read back by hash.
+- SAFE-5b's and R14-5c's records are untouched; these rows are new.
+
+## Stages
+
+**Lane** is the explicit grant a step agent needs (`docs/agent-rules.md` §3 item 5). **Risk** per `agent-rules.md` §7:
+every code stage here is on the safety side, so **standard**. Builders, fixers and live runners run Sonnet at medium
+effort, verifiers and step agents Opus (#270). Each code stage stays under about 600 new lines (#271); a builder that
+finds more stops DONE-PARTIAL. **Verifier focus** adds to `agent-rules.md` §6 and the stage's exit checks.
+
+### Stage 0 — Spec audit (1.5 h, first, alone; risk: standard)
+- [ ] Four lenses over this doc, as Step 11's Stage 0: cited files and functions **executed**; counts recomputed
+      (27 router methods, 27 codes (26 on the wire), 24 tools, the test count and log-scan count from `npm test` at the
+      start commit); blind spots extended; every exit check executable and discriminating. Output
+      `…-steps/stage0-audit.md`, findings tagged plan-side (a dated note here) or code-side.
+- [ ] The DNR facts of 0.2's "not confirmed" list, measured on a scratch unpacked test extension in a window the
+      wave opens (never the bridge's own profile state) or, where only reading is possible, cited with a source:
+      redirect hops, the extension's own `fetch`, `tabIds` (including `-1`), `initiatorDomains` with a
+      `chrome-extension://` initiator, the worker `fetch`'s resource type, the regex cap and syntax, `tab.url` after a
+      blocked main frame, `onErrorOccurred` for the worker's own request. Each fact is recorded with how it was
+      obtained. Re-running Step 9's and Step 11's binding contracts on port 0.
+- [ ] S1's translation case table drafted from `safety-match.test.ts`'s 50 cases plus the port, IP and `*.` cases.
+**Lane:** the steps dir; a scratch test extension outside the repo; read-only elsewhere; port 0 only.
+**Verifier focus:** re-execute five findings; each DNR fact's evidence is a measurement or a cited source, never a
+belief; 0.4 (C)'s conditions confirmed or the download half's fallback proposed.
+
+### S1 — The rule builder, pure (1.5 h, after Stage 0; risk: standard; ≤ ~400 lines)
+- [ ] `extension/src/safety-dnr.ts`: `rulesOf(list: BlockList, scope, idBase)` → DNR rules; no `chrome.*`, no log.
+      Failing tests first: the case table; an **equivalence test** that, for every case URL, the rules' match (the
+      `requestDomains` rule by Chrome's documented domain-or-subdomain semantics, the regex by running it) equals
+      `isUrlBlocked`; an RE2-subset guard (no lookaround, no backreference); a cap test (rule count and regex count
+      against the measured limits).
+**Lane:** `extension/src/safety-dnr.ts`, `extension/test/safety-dnr*.test.ts`. **Verifier focus:** three mutants red
+(a dot-less suffix, a port ignored, `*.` matching the bare host); no pattern string outside the rule objects.
+
+### S2 — The rule keeper, pure (1.5 h, after S1; risk: standard; ≤ ~500 lines)
+- [ ] `extension/src/safety-dnr-keeper.ts`: per-call id ranges, install/remove, rebuild on change, the start-up clear,
+      the unsynced state, the disarm clear; `updateSessionRules`/`getSessionRules` injected. Failing tests first:
+      removal on every path; a rejecting update refuses with `stateUnreadableRefusal()` before the effect; a rebuild
+      that rejects aborts live calls and refuses new ones until a rebuild succeeds; concurrent calls never share or
+      leak ids; a list change during a call rebuilds that call's rules.
+**Lane:** `extension/src/safety-dnr-keeper.ts`, its tests. **Verifier focus:** fail-closed paths by mutant (an update
+error swallowed must turn a test red); no rule left after any path (a fake that counts rules).
+
+### S3 — Wiring and the manifest (2 h, after S2; risk: standard; ≤ ~400 lines)
+- [ ] Spec §10 dated note first (no new code or method; the block list now stops a covered call's redirect hops).
+- [ ] `manifest.json` gains `declarativeNetRequestWithHostAccess` (0.3); `manifest.test.ts` re-pinned with a dated
+      note. `sw.ts`: the keeper constructed at the top level, the start-up clear behind a `ready`, the rebuild inside
+      the existing safety `storage.onChanged` listener, the disarm clear in `onDisarm`. `safety-call.ts`: install in
+      `effect()` for `navigate`/`newTab`/`downloadStart`, remove after the post-check. `handlers/download.ts`: 0.6's
+      `DOMAIN_BLOCKED` mapping. The post-check change of 0.6 only if Stage 0 requires it. The log allowlist (0.8).
+- [ ] `docs/e2e-test-plan.md` §4.24 placeholders for the glue the unit tests cannot reach (filled at S4-sheet).
+**Lane:** `extension/manifest.json`, `extension/src/{sw,safety-call,safety}.ts`, `extension/src/handlers/{download,
+navigate,tabs}.ts`, `extension/test/`, the spec §10 note. Daemon, SDK, MCP, `shared/` untouched (`git diff` empty).
+**Verifier focus:** no new top-level `await`; the listener count in `sw.ts` unchanged; every existing safety test and
+SAFE-5b/R14-5c expected text unchanged; the log-scan count +0 or +1; the router-scan test passes unchanged.
+
+### S4 — Run 17 (live), in slices (1 h prep + 1 h live; risk: prep low, live standard)
+Slices, one step agent each (#271): **S4-sheet** (§4.24 rows of 0.10 with expected text, committed before any
+observation; the ports by `netstat`) → **S4-helpers** (`recipes/s11b*` from Run 14's `s9-r14.ps1` and `s9.ts` where
+they fit, their rule tests, a `recipes/tsconfig.s11b.json` if new TypeScript; `s9-redirect.py` unchanged unless RD-7/8
+need a target form it lacks, then a tested change) → **S4-live** (main-tree `npm run build` of committed code, the
+reload script, the loaded-build proof first; the rows; the restore; returns on every STOP line, #193) →
+**S4-record** (the record `…-steps/S4-run-record.md`, §5 Run 17, a fresh verifier against the pre-written text).
+**Lane:** `recipes/s11b*`, `recipes/test/s11b-*`, `test-fixtures/s11b-*` if any, `docs/e2e-test-plan.md` §4.24 and
+§5, the steps dir. **No product code.** **Verifier focus:** server-log counts are the evidence, never an `ok`;
+restore read back by hash; no test pattern in committed evidence.
+
+### S5 — Docs (45 min, last; risk: low)
+- [ ] `docs/setup.md` Safety section (what the list now stops, and what it still does not: 0.4's scope), the roadmap
+      block, `README.md` if it states the limit; `extension/CLAUDE.md` bullet "The block list is not a network
+      firewall" rewritten from Run 17's measurements and Key-files lines — as proposals in
+      `…-steps/S5-claude-md-proposals.md` for the session agent.
+**Lane:** docs only. **Verifier focus:** every changed sentence about the limit cites a Run 17 row.
+
+## Exit checks (pre-registered)
+
+Every stage: `npm test` = before + n with no test removed unless listed per file; `npm run typecheck` and `npm run
+build` exit 0; `git status --short` clean of tracked changes after the build; every new pure test fails on the code
+before the stage (the verifier proves it).
+
+- **Z.1** (Stage 0) findings ranked with command and output; each DNR fact of 0.2 measured or cited with its source;
+  counts recomputed; every (proposed) decision attacked; Step 9's and Step 11's contracts re-run on port 0.
+- **D1.1** (S1) the case table (≥ 60 cases: the 50 of `safety-match.test.ts` plus ports, IPs, `*.`) passes; the
+  equivalence test covers every case; three mutants red; the RE2 guard and the cap test pass.
+- **D2.1** (S2) a rule removed on each of five paths (success, refusal, error, timeout, disarm), counted by the fake;
+  **D2.2** a rejecting install refuses `DISARMED` with `STATE_UNREADABLE_MESSAGE` before the effect runs (an effect
+  counter at 0); **D2.3** a rejecting rebuild aborts live calls and refuses new ones until a good rebuild; **D2.4** the
+  start-up clear removes pre-existing rules before the first call proceeds.
+- **D3.1** (S3) `manifest.test.ts` passes with exactly one added permission and its dated note; **D3.2** the spec §10
+  note's commit precedes the code commit (`git log` order); **D3.3** `git diff <start> -- daemon shared sdk mcp` is
+  empty; **D3.4** 27 codes, 27 router methods, 24 tools (the existing count tests pass unchanged); **D3.5** log-scan
+  count +0 or +1, sentinel test green.
+- **D4.1** (S4) §4.24 committed before the first observation; **D4.2** the first line proves the loaded build includes
+  the new permission; **D4.3** RD-1, RD-2, RD-3 each show 0 hits on the blocked port with the pre-written answer;
+  RD-4 shows 1 hit; RD-6 as its pre-written expectation; **D4.4** the found state read back equal by hash, none
+  printed; **D4.5** every STOP or guard line matched to a return in the ledger (#193); **D4.6** RD-LOGS by count.
+- **D5.1** (S5) every changed sentence about the limit cites a Run 17 row; `node scripts/doc-check.mjs` passes.
+
+## Human gates
+
+- **G11b-0** — Step 11's gate ruled, and 0.3 and 0.4 ruled (the box at the top).
+- **G11b-1** — any push or tag; nothing of Step 11b is pushed without a fresh grant.
+- **G11b-2** — any live row on a real site or with the user's credentials; Run 17 uses fixture servers on
+  127.0.0.1 / `localhost` only.
+- **Carried:** live fixture waves are Claude's (#33); reloads by `recipes/reload-extension.ps1`, one re-run on exit 2
+  (#65, #99); the block list edited only in the wave's own options window, to add its own fixture pattern and restore
+  the found text exactly (as Runs 13–16); no Chrome restart planned, any needs a fresh grant. Stage 0's scratch test
+  extension is loaded only with a grant if it must go into the user's profile; otherwise its facts are cited or
+  measured on the bridge itself in Run 17's RECORD rows.
+
+## STOP rules and forbidden fixes
+
+**Stops the gate** (the write-up continues): a pre-registered check fails after the allowed fix rounds
+(`agent-rules.md` §6–§7); a covered call that proceeds after its rules failed to install; a rule left installed after
+its call ended (S2's fake, or Run 17); a bridge call answering differently from its pre-Step-11b text on a page with
+no redirect; a pattern, URL, rule or the token in a log or committed evidence; the human's browsing changed outside
+the ruled scope (RD-6); Chrome following a redirect onto an own page or `file:` (RD-7, RD-8); a safety state not
+restored; a `CLAUDE.md` runtime invariant that would have to change beyond the "not a network firewall" bullet this
+step exists to rewrite; anything pushed or tagged; a port-9234 holder that is not the daemon, or an orphan process.
+
+**Continues anyway, recorded:** the download half found impossible at Stage 0 (0.4's last paragraph); RD-7/RD-8's
+outcomes; a live row that fails (its fix is a proposed decision).
+
+**Forbidden fixes:** deriving the rules from anything but the parsed `BlockList` of the gate's own read; matching by
+substring or a dot-less suffix in a rule (the `safety-match.ts` invariant); failing open when `updateSessionRules`
+rejects; static or dynamic rule sets instead of session rules; widening the rule to the whole profile, or to every
+held tab, without the user's ruling on 0.4; a wire, daemon, SDK or MCP method that reads or changes the rules;
+logging a rule or Chrome's rejection text; a new error code or a changed message to make a row pass; exempting a
+method from the gate; editing a row's expected text after its run; and every forbidden fix of Steps 9–11 still
+binding (`docs/plans/2026-10-25-step11-file-upload.md` § STOP rules, and `docs/agent-rules.md` §2).
+
+## As built
+
+One block per stage, written by the session agent at the stage close (format: `docs/docs-writing-guide.md` § Phase
+doc header); at the phase close, the gate checklist (item → met? → evidence). *Empty until Stage 0 closes.*
+
+## Open items
+
+- **For the user before Stage 0 (G11b-0):** 0.3 (the permission; recommended (A)) and 0.4 (the scope; recommended
+  (C), the profile-wide (A) offered).
+- **Contract-level, conservative rule applied, listed for the user at the gate:** 0.5 (fail closed with the existing
+  `DISARMED` refusal), 0.6 (answers unchanged; how a blocked download hop is recognised).
+- **Settled only by Stage 0:** whether DNR applies to the worker's own `fetch` (the download half), `tab.url` after a
+  blocked main frame, the regex cap. Each changes a stage item, not the decisions above, unless a STOP rule fires.
+
+## Follow-ups
+
+- If the user rules 0.4 (A) later: the profile-wide firewall as standing rules, an options-page sentence, a row on a
+  human-opened tab.
+- Requests a page starts after a bridge call (script redirects, clicks): covered today only by the gate's next-call
+  refusal; a candidate for 0.4 (B) if Run 17 or use shows a need.
+- Step 12 — Phase F (`args` for `browser_evaluate`, console capture, the keep-attached debugger), per #129.

@@ -39,6 +39,7 @@ conservative rule and they wait for the user at the gate).** Each entry is in th
 - 2026-10-26 · The user's Chrome profile name reached a committed evidence file; redacted at the tip, history for the user (#283) — **before any push**.
 - 2026-10-26 · S5-liveB: the upload works on a background tab; UP-6/UP-6B's banner FAIL is not product evidence; a raw missing-file upload answers ok (#284) — UP-RAW.
 - 2026-10-25 · Lean procedures: rules by pointer, package CLAUDE.md files, risk-tiered models (#230) — its Revisit-if is met in count: the trial (`docs/plans/2026-10-25-lean-procedures.md` § Trial, Results) shows more first-check findings on Sonnet-built slices (5 MAJOR vs 0), at about half the tokens; keep #270 or change it.
+- **Step 11b, before its Stage 0** (`docs/plans/2026-10-26-step11b-block-list-redirects.md`, a draft): 0.3 the new permission (`declarativeNetRequestWithHostAccess`, no new install warning) and 0.4 which requests the rule covers (recommended: only while a bridge `navigate`/`newTab`/`downloadStart` runs, so the human's own browsing is unchanged; alternative: every request in the profile).
 - Step 11's gate items (pointers, no new ruling): S5.5 and part of S5.6 failed for liveA (#282); re-measure UP-OPT,
   UP-RACE-A, UP-DEVT before the gate or not (#285); the push G11-1, with #283 — the phase doc § As built, Gate checklist.
 
