@@ -43,7 +43,7 @@ $FramingBlocks = @('preflight', 'servers', 'files', 'window', 'prestale', 'reloa
 $SliceA = @('preflight', 'servers', 'files', 'window', 'reload', 'setup', 'console', 'up-l1', 'up-0', 'up-opt', 'up-fa', 'up-6', 'up-7', 'save-refuse-r', 'sw-2', 'up-restore', 'up-logs', 'teardown')
 $SliceB = @('preflight', 'servers', 'files', 'window', 'prestale', 'reload', 'setup', 'console', 'up-0', 'root-add', 'up-1', 'up-2', 'up-3', 'up-4', 'up-5', 'up-6b', 'up-8', 'up-9', 'up-patch', 'up-twice', 'up-raw', 'up-nav', 'up-devt', 'up-stale', 'up-7j', 'up-race-a', 'up-race-b', 'up-restore', 'up-logs', 'teardown')
 $NeedsAccess = @('root-add', 'up-1', 'up-2', 'up-3', 'up-4', 'up-5', 'up-6b', 'up-8', 'up-9', 'up-patch', 'up-twice', 'up-raw', 'up-nav', 'up-devt', 'up-stale', 'up-7j', 'up-race-a', 'up-race-b')
-$Persist = @('W', 'O', 'E', 'D', 'X', 'S9WinIds', 'S11Own', 'S11Found', 'S11RootText', 'S11Stable', 'S16Changed', 'S16Pids', 'S16Born', 'S16Toggle', 'S16Mark', 'S16Actor')
+$Persist = @('W', 'O', 'E', 'D', 'X', 'S9WinIds', 'S11Own', 'S11Found', 'S11RootText', 'S11Stable', 'S16Changed', 'S16Pids', 'S16Born', 'S16Toggle', 'S16Mark', 'S16Actor', 'S16ConsoleRead')
 . "$PSScriptRoot\s11-win.ps1"
 $global:S9PinUiaOnly = $true                      # never pin or unpin by mouse in this wave
 $global:S16Stops = 0; $global:S16Fail = 0; $global:S16NM = 0; $global:S16Gone = $false; $global:S16InRestore = $false
@@ -156,7 +156,17 @@ function Use-S16Options {
 }
 function Start-S16Actor { [void](Invoke-S16Node @('actor-start')); $global:S16Actor = $true; Save-S16 }
 function End-S16Actor { if ($global:S16Actor) { $global:S16Actor = $false; [void](Invoke-S16Node @('actor-end')) } }
+# S5-liveB (console, #282): a stop before UP-LOGS must not lose the worker console (liveA's F2: the first run's window was closed unread).
+# Whatever closes the windows first saves the capture to the same console.txt UP-LOGS reads; no verdict, no scan, no guard here.
+function Save-S16Console {
+  if ($global:S16ConsoleRead) { return }
+  if ($global:D -and (Test-S9Live $global:D)) {
+    Read-S9WorkerConsole $global:D (Join-Path $env:S11_OUT 'console.txt')
+    $global:S16ConsoleRead = $true
+  }
+}
 function Close-S16Windows {
+  try { Save-S16Console } catch { Say9 'the worker console could not be saved before closing (no verdict)' }
   foreach ($h in @($global:D, $global:E)) { if ($h -and (Test-S9Live $h)) { Close-S9Window $h } }
   Close-S11All
 }
@@ -353,6 +363,7 @@ $Blocks['up-restore'] = {
 $Blocks['up-logs'] = {
   $cf = Join-Path $env:S11_OUT 'console.txt'; $df = Join-Path $env:S11_OUT 'daemon-slice.txt'
   Step-S16 'console' { Read-S9WorkerConsole $global:D $cf }
+  $global:S16ConsoleRead = $true
   $lg = @(Get-Content $DaemonLog -Encoding UTF8 | Select-Object -Skip $global:S16Mark)
   [IO.File]::WriteAllLines($df, [string[]]$lg, $S11Utf8)   # vetted-file-write
   [void](Invoke-S16Node @('scan', '--what', 'console', '--file', $cf))

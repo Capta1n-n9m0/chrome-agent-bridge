@@ -59,6 +59,7 @@ import {
   saveFilesVerdict,
   saveMcpVerdict,
   saveSdkVerdict,
+  refusalRowVerdicts,
   scanText,
   staleVerdict,
   stateLine,
@@ -404,9 +405,10 @@ async function refusalRow(id: string, steps: readonly { step: string; key: ErrKe
     return out;
   };
   const { v, banner: seen } = banner ? await sampled(id, body) : { v: await body(), banner: false };
-  const res = refusalSteps(steps, v, {}).map((r) => ({ ...r, j: banner && seen ? bad("banner seen on a refusal") : r.j }));
-  for (const r of res) ck(id, r.step, r.j);
-  row(id, all(res.map((r) => r.j)));
+  const res = refusalRowVerdicts(steps, v, banner, seen);
+  for (const r of res.clauses) ck(id, r.step, r.j);
+  if (res.banner) ck(id, "banner", res.banner);
+  row(id, res.row);
 }
 
 const css = (c: string): Tgt => ({ css: c });

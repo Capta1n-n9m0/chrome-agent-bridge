@@ -405,7 +405,7 @@ function Click-S9Element([long]$Hwnd, $El) {
   if (-not $at -or -not [Windows.Automation.Automation]::Compare($at, $El)) { throw "the element at ($x,$y) is not the target - nothing clicked" }
   [void][S9Mouse]::SetCursorPos($x, $y); Start-Sleep -Milliseconds 50
   [S9Mouse]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero); [S9Mouse]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
-  Say9 "CLICK '$($El.Current.Name)' at ($x,$y)"
+  Say9 "CLICK '$((Get-S9FirstLine $El.Current.Name).First)' at ($x,$y)"
   Park-S9Cursor 'after the click'
 }
 

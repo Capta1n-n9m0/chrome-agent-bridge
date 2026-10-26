@@ -139,6 +139,18 @@ export function refusalSteps(steps: readonly StepDef[], obs: readonly StepObs[],
   });
 }
 
+/**
+ * UP-6 / UP-6B (F3, S5-liveB, #282): every step's own clause verdict is kept (a seen banner no longer replaces them), then the banner
+ * verdict follows. The row passes exactly when it did before: every clause holds and, with the sampler on, no banner was seen.
+ */
+export function refusalRowVerdicts(steps: readonly StepDef[], obs: readonly StepObs[], sampler: boolean, seen: boolean): { clauses: Array<{ step: string; j: Judged }>; banner?: Judged; row: Judged } {
+  const clauses = refusalSteps(steps, obs, {});
+  const banner = sampler ? (seen ? bad("banner seen on a refusal") : ok("no banner seen")) : undefined;
+  const fin = clauses.map((c) => (sampler && seen ? bad("banner seen on a refusal") : c.j));
+  const row = fin.find((j) => !j.pass && !j.notMeasured) ?? fin.find((j) => !j.pass) ?? ok(fin.length === 0 ? "nothing to check" : "all checks hold");
+  return { clauses, banner, row };
+}
+
 export const UP6_STEPS: readonly StepDef[] = Object.freeze([
   { step: "outside", key: "K-gate" },
   { step: "missing", key: "K-missing" },
@@ -500,9 +512,13 @@ export function isFixture11(url: string, ownId = ""): boolean {
 }
 /** Counts only; fixture means isFixture11. */
 export function scanText(text: string, ctx: ScanCtx): Scan {
-  const urls = count(text, "://");
+  // F4 (S5-liveB, #282): a URL is scheme:// plus what follows; a bare "://" (the helpers' own "SCAN x: ://=n" lines) is not one.
+  let urls = 0;
   let fixture = 0;
-  for (const m of text.matchAll(/[a-z][a-z0-9+.-]*:\/\/[^\s/'"`<>)\]\\,;]*/gi)) if (isFixture11(m[0], ctx.ownId)) fixture++;
+  for (const m of text.matchAll(/[a-z][a-z0-9+.-]*:\/\/[^\s/'"`<>)\]\\,;]*/gi)) {
+    urls++;
+    if (isFixture11(m[0], ctx.ownId)) fixture++;
+  }
   const low = text.toLowerCase();
   const forms = new Set<string>();
   for (const p of ctx.profile) {
