@@ -56,3 +56,6 @@ One line per event, UTC. Agent lines: stage · role · model · start → end.
 - 2026-10-25T21:24Z · S5-win · step agent · Opus 5.5 · 21:24Z → (running) — S5-driver split into S5-win → S5-runner (#271); hard cap 500 lines
 - 2026-10-26T03:39Z · S5-win · step agent · Opus 5.5 · 21:26Z → ~03:38Z (+1 d) — DONE; builder Sonnet 5.5 medium; verifier 1 Opus FAIL (MAJOR 1: the banner sampler stopped at the reply; MINOR 9, NIT 6); fixer Sonnet medium (its hand-back reached the step agent ~5 h after its own end time); verifier 2 Opus PASS-with-notes. Commit b08720d. 451 lines (cap 500). Tests 3746/150. Wall time ~6.2 h, mostly the late hand-back.
 - 2026-10-26T03:39Z · session · S5-win accepted; #279 (gaps as notes for S5-runner). 9234 free. Next: S5-runner.
+- 2026-10-26T03:39Z · S5-runner · step agent · Opus 5.5 · 03:39Z → (running) — hard cap 500 lines
+- 2026-10-26T04:16Z · S5-runner · step agent · Opus 5.5 · 03:39Z → ~04:16Z — DONE; builder Sonnet 5.5 medium 03:40–03:52; verifier 1 Opus FAIL (MAJOR 1: a double restore after a failed restore in UP-RESTORE; MINOR 4); fixer Sonnet medium (all five, each with a reverting test); verifier 2 Opus PASS-with-notes (MINOR 1, NIT 2). Commit 5f610f3. 403 lines. Tests 3784.
+- 2026-10-26T04:16Z · session · S5-runner accepted; #280. Prep slices done (sheet, fixtures, rules, actor, win, runner). Next: S5-liveA, alone.

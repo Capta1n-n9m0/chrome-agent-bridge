@@ -176,6 +176,19 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11 and the lean-procedures work), newest first.
 
+### 2026-10-26 · S5-runner: accepted; UP-0, UP-RESTORE and UP-LOGS run in both live blocks (#280)
+**Decided:** `recipes/s11-r16.ps1` (403 lines) is accepted on verifier 2's PASS-with-notes. UP-0, UP-RESTORE and
+UP-LOGS run in both `liveA` and `liveB`, as §4.23's Live column says ("A, B"; #272), which overrides the brief's "each
+row in exactly one block". Open notes, recorded for the live slices: a line tagged "vetted" is skipped by the leak
+scan (three such lines, read safe; MINOR-A); a `STOP:` during liveB's early file-access read is not counted (NIT-A);
+a bare-string line passes the scan (NIT-B). Exit codes: 0 done, 2 STOP (after one restore, read back by hash), 3
+liveB refused at G11-3.
+**Why:** the sheet is the pre-registered source; both verifiers agreed; the open notes concern lines that are safe
+today, and the live slices' fresh verifier scans the record itself by count.
+**Instead of:** a third round on the scanner.
+**Revisit if:** a live slice prints a vetted line with content.
+**By:** Claude (S5-runner's proposal)
+
 ### 2026-10-26 · S5-win: accepted with its static-test gaps as notes for S5-runner (#279)
 **Decided:** `recipes/s11-win.ps1` (451 lines, under the 500 cap) is accepted on verifier 2's PASS-with-notes without
 another fix round. Its gaps go to S5-runner as binding notes: the output scan misses `Get-S11FoundText` as a source and
