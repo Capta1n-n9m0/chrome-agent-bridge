@@ -9,13 +9,15 @@ as a dated entry and point back.
 
 ## Open decisions
 
-Step 12's contract-level proposals, recorded before Stage 0 so the audit can attack them; each stays open for the
-gate (Step 11b's were ruled on 2026-10-27, #311, #320):
-- 2026-10-27 · Step 12: `args` for evaluate is a function source called with one JSON value (#322)
-- 2026-10-27 · Step 12: `consoleMessages`: read on demand, the entry shape, class `tab` (#323)
-- 2026-10-27 · Step 12: `uploadFiles {chooser: true}` intercepts the chooser only inside the call (#325)
-- 2026-10-27 · Step 12: G1 and G2 as ruled, their contract left to Stage 0 (#326)
+Step 12's contract-level decisions, open for the gate; the build follows the conservative option meanwhile (Step 11b's
+were ruled on 2026-10-27, #311, #320). #322, #323, #325 and #326 are amended by Stage 0's entries below them:
+- 2026-10-27 · Step 12: `args` for evaluate is a function source called with one JSON value (#322), amended by #330–#332
+- 2026-10-27 · Step 12: `consoleMessages`: read on demand, the entry shape, class `tab` (#323), amended by #333, #334
+- 2026-10-27 · Step 12: `uploadFiles {chooser: true}` intercepts the chooser only inside the call (#325), amended by #336
+- 2026-10-27 · Step 12: G1 and G2 as ruled, their contract left to Stage 0 (#326), amended by #337, #338
 - 2026-10-27 · Step 12: how every item passes the safety gate (#327)
+- 2026-10-27 · Stage 0: the kept session's lifecycle; an overlapping call keeps today's answer (#335)
+- **G12-2 for the user:** add the `webNavigation` permission so G1 can be built? (#337)
 
 ## Standing decisions
 
@@ -186,6 +188,121 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
+
+### 2026-10-27 · Stage 0: the slice split, the raised caps and the plan-side corrections (#339)
+**Decided:** Stage 0's split (`2026-10-27-step12-phase-f-steps/Stage0.md` §6) is the plan: S1-sheet, S1-helpers-a,
+S1-helpers-b, S1-live, S1-record; S2a, S2b; S3a, S3b; S4a, S4b; S5a, S5b; S6-G2 (S6-G1 only on a G12-2 yes); S7; S8.
+The four caps over the phase doc's stage limits are raised to Stage0.md §6's (S2a 450, S3a 450, S5a 550, S6-G1 350),
+each under `agent-rules.md` §7's ~600. The plan-side findings (`stage0-audit.md` §4–§5, `stage0-audit-2.md` §5) and the
+exit-check rewrites of `stage0-audit.md` §5 (B2.1, B2.3, C3.1, C3.3, C3.4, D4.2, E5.2, S8.1) bind as dated in the phase
+doc. The DevTools gotcha in `extension/CLAUDE.md` stays until Run 19 measures it in the real profile (m2 D3c ran with
+a flag, its control not measured).
+**Why:** Stage 0's added work (the pause bound, the cross-table test, the shared prologue, the cancel paths) is real and
+each slice stays one coherent piece.
+**Instead of:** cutting each slice at the old limit (more slices, the same lines).
+**Revisit if:** a slice reports DONE-PARTIAL at its new cap.
+**By:** Claude (build decision)
+
+### 2026-10-27 · Stage 0: G2 by the daemon, one request, a 500 ms pause (#338)
+**Decided (contract-level, for user review):** Stage0.md §5 (auditor 2's (ii-a)): for `click`/`type`/`pressKey` with
+`trusted: true` and no `focusEmulation`, the daemon takes the visibility lock, forwards `focusTab`, re-checks caller and
+lease, forwards the input, replies, then holds the lock 500 ms before releasing. No wire, extension, SDK or MCP change;
+under contention a trusted input answers `LOCK_TIMEOUT {holder}`, as a lock-taking call does today. Built as S6-G2 with
+the spec §10 note first and the exit checks G6.5–G6.8 of Stage0.md §6.
+**Why:** #321 Q6 (b) ruled a blocking action; m2 G2 measured ~10 ms needed, so 500 ms has margin; an old extension
+works unchanged.
+**Instead of:** (i) a `focus` param on the input (a silent no-op on an old extension); (ii-b) a hold token.
+**Revisit if:** Run 19's R19-G2 rows show the hold misses a capture.
+**By:** Claude (conservative option applied; the user ruled the behaviour, the mechanism is for review)
+
+### 2026-10-27 · Stage 0: G1 waits for G12-2; it stays a documented limit (#337)
+**Decided:** naming a background opener's real popup needs `webNavigation` (m2 G1: `sourceTabId` right 15 of 15 with
+it; the manifest lacks it; no other source has a tab id). Per #321 and the phase doc, the permission returns to the
+user as **G12-2**; S6-G1 (Stage0.md §6 draft) is not run until the user says yes; meanwhile #226's limit stands.
+**Why:** a new manifest permission is the user's (G12-2).
+**Instead of:** `Page.windowOpen` on a session per held tab (no tab id, a banner on every held tab).
+**Revisit if:** the user rules G12-2.
+**By:** Claude (the phase doc's fallback)
+
+### 2026-10-27 · Stage 0: the chooser on the call's own session, with `Page.enable`; JavaScript off refuses it (#336)
+**Decided (contract-level, for user review):** Stage0.md §5 "E on the call's own session": E does not depend on D or
+G2; `Page.enable` before the interception (0 of 5 events without it, m2 E7); the click by `Runtime.evaluate
+{userGesture: true}` (a trusted CDP click does not reach a background tab, m2 E6); an event without `backendNodeId`
+refused; the `multiple` check on the event's `mode`; a refusal after the click ends the chooser by interception off and
+detach; one chooser call per tab at a time; one shared prologue for both upload paths. **While JavaScript is off,
+`chooser: true` answers `JS_DISABLED`** (a params rule in the gate), the conservative of the auditors' two readings.
+**Why:** m2 E1–E8; security at least as strict as today.
+**Instead of:** class `upload` alone, with the switch not applied (auditor 1); E on D's session.
+**Revisit if:** the user rules the switch reading.
+**By:** Claude (conservative option applied)
+
+### 2026-10-27 · Stage 0: the kept session's lifecycle; an overlapping call keeps today's answer (#335)
+**Decided (contract-level for the overlap answer, for user review):** #324 amended as Stage0.md §5 "the keeper's
+lifecycle": kept sessions stay in `debuggerSessions`, idle or not; detach on a safety change that blocks a kept tab; a
+start-up sweep detaches every `attached: true` tab target (a session survives a worker stop, m2 D4c); drop a session
+after a call timeout or failed clean-up; each feature switches its CDP domains off before its call ends. **A second
+CDP call overlapping one in flight on the same tab answers `DEBUGGER_DEVTOOLS` as today**; only non-overlapping calls
+reuse the session. KEEP-2 judges the detach time. Before S4b ships, a scratch or Run 19 row measures a sweep detach of a
+tab another client holds.
+**Why:** m2 D2–D5; an existing tool must not answer differently without the user's ruling (the phase doc's STOP rule).
+**Instead of:** per-tab serialisation (an overlapping call waits; friendlier, changes an existing answer).
+**Revisit if:** the user prefers serialisation; a culled worker loses the session.
+**By:** Claude (conservative option applied)
+
+### 2026-10-27 · Stage 0: `consoleMessages` is class `evaluate` until the user rules (#334)
+**Decided (contract-level, safety, for user review):** reading the console replays an error subclass's `message`
+getter once (m1 C8): page code runs. The JavaScript switch could be read as "no page code at all", so the conservative
+option is taken: `consoleMessages` is class **`evaluate`** in `METHOD_CLASSES` (refused `JS_DISABLED` while
+JavaScript is off), and the tool's description says so. Stage 0 recommended class `tab` (the getter is the page's own
+code, which a human's DevTools runs too); that is the user's to choose.
+**Why:** `agent-rules.md` §4: security at least as strict; undoable by one table line.
+**Instead of:** class `tab` (#323's proposal; Stage 0's recommendation).
+**Revisit if:** the user rules for `tab`.
+**By:** Claude (conservative option applied)
+
+### 2026-10-27 · Stage 0: the console read — C1 on the tab's session, filtered before stripping (#333)
+**Decided (contract-level, safety, for user review):** Stage0.md §5 "the console read": C1 holds (replay of up to
+1000 earlier messages and uncaught errors, m1 C1–C3); `consoleAPICalled` and `exceptionThrown` (minus revoked); no
+`Log.enable`; never `discardConsoleEntries`; the tab's own session only (frames excluded); before URLs and stacks are
+stripped the reducer drops entries from a blocked, own-extension or `file:` source and entries before the latest arm;
+an exception's description cut at its first stack line; the caps of #323; one top-level `chrome.debugger.onEvent`
+listener in `sw.ts` feeding a per-call collector.
+**Why:** m1 C1–C8; the gate's hiding rules reach the replayed text too.
+**Instead of:** C2; auto-attaching to frames.
+**Revisit if:** the user wants frame messages.
+**By:** Claude (proposed; the shape stays open for the gate)
+
+### 2026-10-27 · Stage 0: an old extension is detected by its hello, not by the answer (#332)
+**Decided (contract-level, for user review):** the extension's hello gains an optional `features: ["evaluateArgs"]`
+(proto stays 2); the daemon answers `VERSION` with the reload hint to an `evaluate`/`evaluateSaveStart` carrying `args`
+when the hello lacked it. Covers the SDK, `evaluateRef`, `evaluateToFile` and the MCP alike; a real function result
+stays `kind: "function"`.
+**Why:** m1 B6: an old extension's answer cannot be read reliably (a `function` form answers `undefined`).
+**Instead of:** #322's `kind` test; a reply marker checked in the SDK only.
+**Revisit if:** the hello cannot change in Step 12.
+**By:** Claude (conservative option applied)
+
+### 2026-10-27 · Stage 0: an `args` call is bounded by a debugger pause and terminate (#331)
+**Decided (contract-level, for user review):** `callFunctionOn` has no timeout and `terminateExecution` is refused for
+an extension (m1 B7); the call is bounded by Stage0-measurer3.md §5's six steps (`Debugger.enable` with breakpoints
+off before the call; at `timeoutMs` `Debugger.pause`, terminate only when a paused frame is the function's own script,
+else resume; `Debugger.disable` always; nothing from `Debugger.paused` logged). S2a's fake-CDP tests and a Run 19 row
+pin it.
+**Why:** m3 B10 (3 of 3, and the verifier's reproduction); today's evaluate is bounded.
+**Instead of:** a documented limit with m3 B11's recovery by navigation (the fallback).
+**Revisit if:** `Debugger.enable` misbehaves with a human's DevTools open or on a heavy page (not measured).
+**By:** Claude (proposed)
+
+### 2026-10-27 · Stage 0: `args` crosses as a JSON string beside a function object (#330)
+**Decided (contract-level, for user review):** #322's call form is replaced: `callFunctionOn {arguments: [{value}]}`
+mangles JSON (keys sorted, null properties dropped, a top-level `null` lost; m1 B1). The source is evaluated to a
+function object, then called on `globalThis` by a fixed wrapper with `[{objectId}, {value: JSON.stringify(args)}]`
+(exact JSON, async resolves, no page global, works under a strict CSP; m1 runs 4–5, verifier V1); `asRef` and `saveTo`
+on the same form; the expression wrapper off the `args` path. The caps and refusals of #322 stand.
+**Why:** (i) fails its pass rule; (i′) passes.
+**Instead of:** #322 (i); 0.4 (ii) (unmeasured).
+**Revisit if:** a page that replaced `JSON.parse` breaks a live row.
+**By:** Claude (proposed; the phase doc's fallback order)
 
 
 ### 2026-10-27 · Step 12: the stage order and Run 18's rows (#329)

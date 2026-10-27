@@ -277,5 +277,5 @@ R19-G2-2 (typed text complete under a competing capture).
 
 No process of Stage 0 remains (each measurer's §7 / Handoff; their scratch roots deleted). Port 9234 untouched; the
 daemon not started. For the user: the contract-level proposals of §5 and **G12-2** (the `webNavigation` permission for
-G1). The session agent writes the phase doc's dated notes and decisions.md entries. Commit: *(hash after the
-committer)*.
+G1). The session agent writes the phase doc's dated notes and decisions.md entries. Commit: `de8ea69` (docs(docs): Stage 0 — the spec audit (verifier: PASS-with-notes); 37 files). This hash line is
+an uncommitted edit after it, for the session agent to commit with the journal.
