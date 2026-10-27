@@ -19,3 +19,12 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
   S4a (~430, standard, cap 450) → S4b (~200, standard, cap 250) → S5a (~520, standard, cap 550) → S5b (~100, standard, cap 150) →
   S6-G2 (~235, standard, cap 300) [→ S6-G1 (~305, cap 350) only on a G12-2 yes] → S7 (sheet/helpers/live/record; prep low, live standard) → S8 (docs, low).
   Parallel: the S1 prep slices (recipes, e2e plan §4.26) beside S2a (shared/extension/daemon), file-disjoint; every live slice alone with a clean tree.
+- 2026-10-27T15:19Z · S1-sheet · step agent · Opus · medium · started (docs lane: e2e plan §4.26, steps dir).
+- 2026-10-27T15:19Z · S2a · step agent · Opus · medium · started beside S1-sheet (file-disjoint: shared/, extension/ evaluate path and hello, spec §10 note).
+- 2026-10-27T15:38Z · S1-sheet · step agent · ended · `3008f55` · verifier FAIL → PASS-with-notes (one fix round) · `S1-sheet.md`; X1, X2 recorded as #340.
+- 2026-10-27T15:38Z · S1-helpers-a · step agent · Opus · medium · started (recipes lane; beside S2a).
+- 2026-10-27T16:00Z · S2a · step agent · ended · spec note `3ab9207`; code verified PASS-with-notes (one fix round, two MINOR) but over the 1.5× cap (1083 lines, code 399) → accepted as #341; tests 4665 → 4728 (194 files).
+- 2026-10-27T16:00Z · S2a · committer · Sonnet · medium · started (13 files + S2a reports).
+- 2026-10-27T16:00Z · S2a · committer · ended · `e481efe` (18 files).
+- 2026-10-27T16:00Z · S2b · step agent · Opus · medium · started beside S1-helpers-a (daemon/sdk/mcp + setup row; recipes untouched). S1-live waits for a clean tree, so it now follows S2b's commit too (#340's condition, applied).
+- 2026-10-27T16:33Z · S2b · step agent · ended · `9921715` · PASS-with-notes (one fix round) · tests 4728 → 4734; #342 recorded; spec §10 dated note for the two texts (F2); S1-sheet and S2 as-built written.

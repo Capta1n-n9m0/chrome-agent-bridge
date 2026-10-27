@@ -14,7 +14,7 @@ MINOR and NIT items only; verifier2 PASSed the fixes.
 
 ## 2. Outputs
 
-- Commit: see the committer's hash (filled in below).
+- Commit `9921715` `feat(mcp): S2b — evaluate args in the daemon, SDK and MCP (verifier: PASS-with-notes)`.
 - Files (exact): `daemon/src/handshake.ts`, `daemon/src/wsHost.ts`, `daemon/src/intercept.ts` (the hello record
   `helloFeatures`, the per-socket feature set, the `VERSION` `ARGS_RELOAD_HINT` rule before any forward);
   `sdk/src/tab.ts`, `sdk/src/evaluate-save.ts`, `sdk/src/client.ts`; `mcp/src/tools/registry.ts`;

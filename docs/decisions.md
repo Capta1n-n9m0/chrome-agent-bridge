@@ -17,6 +17,7 @@ were ruled on 2026-10-27, #311, #320). #322, #323, #325 and #326 are amended by 
 - 2026-10-27 · Step 12: G1 and G2 as ruled, their contract left to Stage 0 (#326), amended by #337, #338
 - 2026-10-27 · Step 12: how every item passes the safety gate (#327)
 - 2026-10-27 · Stage 0: the kept session's lifecycle; an overlapping call keeps today's answer (#335)
+- 2026-10-27 · S2b: `browser_evaluate.args` as a written-out schema delta; the daemon's own reload text; the SDK's ninth refusal (#342)
 - **G12-2 for the user:** add the `webNavigation` permission so G1 can be built? (#337)
 
 ## Standing decisions
@@ -188,6 +189,47 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
+
+### 2026-10-27 · S2b: `browser_evaluate.args` as a written-out schema delta; the daemon's own reload text; the SDK's ninth refusal (#342)
+**Decided (contract-level for the schema and texts, for user review):** S2b's three proposals (`…-steps/S2b-builder.md`
+§5): the #214 baseline is not regenerated; `browser_evaluate` gains `args` as a written-out delta in
+`mcp/test/s2-focus-first.test.ts` (every other tool still equals the fixture); the daemon answers an `args` call to a
+featureless extension `VERSION` with its own text `ARGS_RELOAD_HINT`, and the key's presence (`null` included) counts as
+carrying `args`; the SDK refuses a non-string `fn` with `args` (a ninth fixed text) and the MCP runs the shared guard
+itself. Both texts are in spec §10 by a dated note (S2b verifier F2). S2b's size, 382 lines against 300 (code 89,
+tests 290, docs 3), is within #341's handling.
+**Why:** #214 says the baseline moves only by a recorded decision; a delta keeps the other 23 tools pinned; a distinct
+text tells the human which reload is meant.
+**Instead of:** regenerating the fixture; reusing the general reload text.
+**Revisit if:** the user rules on the MCP schema at the gate.
+**By:** Claude (proposed; build decision for the size)
+
+### 2026-10-27 · S2a: the test-heavy overrun is accepted; the guard's texts, the `(source\n)` form, the 500 ms paused wait (#341)
+**Decided:** S2a commits as one slice at 1083 new lines (code 399, under its 450 cap; tests 684), a deviation from
+`agent-rules.md` §7's 1.5× bound recorded here: nothing remains to build, the extra lines are the exit checks' own rows
+(the round-trip table, the refusals through both handlers, the bound's paths, B2.2 through `GatedRouter`, the
+sentinel), and no split leaves two pieces under the bound. S2a's three design-local proposals stand as written in
+`…-steps/S2a-builder.md` §5: the eight fixed refusal texts of the args guard (also in the spec §10 note, `3ab9207`);
+the source evaluated as `(source\n)` without `replMode`, a non-function refused (a trailing `;` answers `PAGE_ERROR`);
+a 500 ms paused wait with the stop steps bounded.
+**Why:** the cap exists to keep a builder's context small; this builder finished in one go and two Opus verifiers
+passed it (22 mutants red).
+**Instead of:** trimming exit-check tests, or a split after the fact.
+**Revisit if:** a later slice overruns the same way: the caps then under-count tests, and #339's caps get a tests
+allowance.
+**By:** Claude (build decision)
+
+### 2026-10-27 · S1-sheet: banner clauses per slice's control; a short idle is a helper STOP; S1-live after S2a lands (#340)
+**Decided:** S1-sheet's X1 and X2 (`…-steps/S1-sheet.md`, Proposed decisions): each banner clause is judged by its own
+slice's R18-BANNER-CTL, and S1-record applies the run-wide rule; an idle under 15 s before a banner row is a helper
+STOP, not a new NOT MEASURED clause. R17-UP-6's 2 500 ms banner window stands and S1-helpers matches
+`recipes/s11-win.ps1:30` to it. S1-live starts only when the tree is clean of uncommitted code: after S2a's commits,
+and the record names the HEAD it built.
+**Why:** the verifier's two MAJORs, ruled in the sheet before any observation; a live slice runs alone (#33's waves,
+the kickoff).
+**Instead of:** a run-wide control only; waiting for S2b too (it touches no extension file).
+**Revisit if:** S2a's verdict is late enough to hold S1-live past S2b.
+**By:** Claude (build decision)
 
 ### 2026-10-27 · Stage 0: the slice split, the raised caps and the plan-side corrections (#339)
 **Decided:** Stage 0's split (`2026-10-27-step12-phase-f-steps/Stage0.md` §6) is the plan: S1-sheet, S1-helpers-a,

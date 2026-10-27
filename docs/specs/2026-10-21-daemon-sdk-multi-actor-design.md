@@ -839,6 +839,12 @@ The block itself is left as written.*
   - *The daemon's rule, built in S2b (#332): an `evaluate` or `evaluateSaveStart` carrying `args` is answered
     `VERSION` with the reload hint, without forwarding, when the connected extension's hello did not list
     `"evaluateArgs"`; every other call is unchanged. A real function result stays `kind: "function"`.*
+  - *Note 2026-10-27 (Step 12 S2b, `9921715`; S2b verifier F2; decisions.md #342, proposed): as built, the daemon's
+    reload text for this refusal is its own, `ARGS_RELOAD_HINT` (`daemon/src/intercept.ts`): "the Chrome extension is
+    an older build without evaluate args — reload it at chrome://extensions (↻ on Chrome Agent Bridge)"; a call
+    "carries `args`" when the key is present, `null` included. The SDK adds a ninth fixed refusal before any wire call,
+    `BAD_PARAMS` "args: pass the function source as a string, such as \"(a) => a.rows.length\" — not a function", for a
+    non-string `fn` with `args`; the MCP tool runs `checkEvaluateArgs` itself.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
