@@ -788,6 +788,57 @@ The block itself is left as written.*
   narrow cases are unmeasured in Chrome (the blank page silent over 2 s then completing, a doubled blank `complete`, a
   `tabs.get` reading `complete` ahead of its event). Run 17b saw none of the first two: five 3 s pages answered after
   3074-3102 ms, `completes=1` (R17B-NEWTAB-LOAD); the third is not measured. R17B-RD-2: the blocked server saw 0 requests.*
+- *Amended 2026-10-27 (Step 12 S2a; phase doc `docs/plans/2026-10-27-step12-phase-f.md` 0.4 with its Stage 0 note;
+  decisions.md · 2026-10-27 · Step 12: `args` for evaluate is a function source called with one JSON value (#322),
+  amended by · Stage 0: `args` crosses as a JSON string beside a function object (#330); · Stage 0: an `args` call is
+  bounded by a debugger pause and terminate (#331); · Stage 0: an old extension is detected by its hello, not by the
+  answer (#332). All proposed, for the user at Step 12's gate. No method, code or event is added; the methods keep
+  their safety class `evaluate`):*
+  - *`evaluate {tab, expression, timeoutMs?, asRef?, args?}` and `evaluateSaveStart {tab, expression, timeoutMs?,
+    args?}` take an optional `args`, any JSON value (`null` included). Without the key, every call is byte for byte
+    as before (the console-style expression, `replMode`, the `return` wrapper). With it, `expression` is a **function
+    source** (`"(a) => a.rows.length"`, `"async (a) => …"`, `"function (a) { … }"`) called with `args` as its one
+    argument, in one debugger session: the source alone is evaluated (`Runtime.evaluate`, in parentheses, no
+    `replMode`, `timeout: timeoutMs`) to a function object; then `Runtime.callFunctionOn` on `globalThis` runs the fixed
+    wrapper `function (fn, json) { return fn(JSON.parse(json)); }` with `arguments: [{objectId: <the function>},
+    {value: JSON.stringify(args)}]`, `awaitPromise: true`, `userGesture: true`, the result kept by objectId and
+    shaped by today's serialiser (`asRef` marks and mints a ref as before) or, for `evaluateSaveStart`, held by
+    today's save path. `args` appears in no `expression` or `functionDeclaration`; the page receives exactly the
+    sent JSON (key order, `null`s), and no page global is added (Stage 0 m1 run 5, B2). The `return` wrapper does
+    not apply to a function source. A source that does not evaluate to a function is refused `BAD_PARAMS
+    "args: with args, expression must be a function source such as \"(a) => a.rows.length\"; it evaluated to
+    <type>"` (`<type>` is CDP's type name, never the value); a syntax error is today's `PAGE_ERROR`.
+    The source is evaluated as the parenthesised expression `(<source>\n)`, so it must be one function expression
+    with no trailing `;`: `"(a) => a.n;"` is a syntax error there and answers `PAGE_ERROR`, not the not-a-function
+    refusal (`extension/src/evaluate/call.ts`, `functionSourceParams`; S2a verifier F2).*
+  - *The caps and refusals live in one shared guard, `checkEvaluateArgs(args)` (`shared/src/protocol.ts`), which
+    the extension calls before the tab is read and the SDK calls first (S2b). `args` must pass `JSON.stringify`
+    with nothing dropped, thrown on or turned into `null` (a value its `toJSON` returns is what is checked; a `Map`
+    or a class instance passes as the `{}`-like JSON it gives) and be at most `EVALUATE_ARGS_MAX_BYTES` (1 MiB, 1 048 576 bytes of UTF-8 JSON); else
+    `BAD_PARAMS`, no `data`, with a fixed message that names the type or the size and never a part of the value:
+    `args: the value holds undefined, which JSON cannot carry — use null, or leave the key out`;
+    `args: the value holds a function, which JSON cannot carry — pass plain JSON data`;
+    `args: the value holds a symbol, which JSON cannot carry — pass plain JSON data`;
+    `args: the value holds a BigInt, which JSON cannot carry — pass it as a string or a number`;
+    `args: the value holds NaN or an infinite number, which JSON turns into null — pass null or a string`;
+    `args: the value holds a cycle (an object that contains itself), which JSON cannot carry`;
+    `args: JSON.stringify threw on the value (a throwing toJSON or getter) — pass plain JSON data`;
+    `args: the value is <n> bytes as JSON, over the 1 MiB cap (1048576 bytes)`.
+    Over the wire only the size refusal can occur (a parsed frame holds JSON only); the others serve the SDK.*
+  - *The bound (#331): the session runs `Debugger.enable` and `Debugger.setBreakpointsActive {active: false}` first,
+    reads the function's own `scriptId` (`Runtime.getProperties`, `[[FunctionLocation]]`), and races the call against
+    `timeoutMs` as today. At the deadline it sends `Debugger.pause` and waits at most 500 ms for `Debugger.paused`: if
+    a paused frame is in the function's own script it sends `Debugger.resume {terminateOnResume: true}`, otherwise a
+    plain `Debugger.resume`; with no paused event it resumes nothing. `Debugger.disable` is sent on every path before
+    the detach. The answer at the deadline is today's `TIMEOUT` (`raceTimeout`'s text); a "terminated" reply maps to
+    `TIMEOUT` as `evaluate`'s does today. Nothing from `Debugger.paused` is kept beyond that check or logged. A loop
+    after an `await` is ended but its call never replies (m3 B10), so the race stays.*
+  - *The extension's hello gains an optional `features: string[]`, validated by `isHello` when present (an array of
+    strings), as `session` is; proto stays 2. A Step 12 extension sends `features: ["evaluateArgs"]`
+    (`FEATURE_EVALUATE_ARGS`). An older daemon ignores the field (its hello check reads no unknown key).*
+  - *The daemon's rule, built in S2b (#332): an `evaluate` or `evaluateSaveStart` carrying `args` is answered
+    `VERSION` with the reload hint, without forwarding, when the connected extension's hello did not list
+    `"evaluateArgs"`; every other call is unchanged. A real function result stays `kind: "function"`.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
