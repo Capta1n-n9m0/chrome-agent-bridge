@@ -16,7 +16,9 @@
  * Step 11b S3a (#292, #296, #301): a covered call (`navigate`, `back`, `forward`; the handle from `DnrKeeper.call`)
  * installs its tab rules in `effect()`, from the block list of the re-check's own read, after the re-check and before
  * the handler's side effect; the post-check releases them on every path and reads the keeper's refusal only after
- * the release settled (S2-builder.md §7). Any other call gets the inert handle and behaves as before.
+ * the release settled (S2-builder.md §7). Any other call gets the inert handle and behaves as before. S6 (#311, #312):
+ * a `newTab` with a URL gets a second, tab-scoped handle for its blank tab (`holdRulesFor`, `deps.dnrForTab`), held
+ * and released the same way.
  *
  * Never logs; nothing here prints a URL, title or pattern (phase doc 0.7).
  */
@@ -66,6 +68,11 @@ export interface HandlerSafety {
   holdsRules?(): boolean;
   /** Step 11b S3b: `downloadStart`, after its fetch failed: did this call's own rules block a hop (bounded wait)? */
   hopBlocked?(): Promise<boolean>;
+  /**
+   * Step 11b S6 (#311, #312): `newTab`, on its blank tab before it navigates: the gate again (phase `effect`), then that
+   * tab's rules installed from that read's list; released at the post-check. Throws the refusal. Once per call.
+   */
+  holdRulesFor?(tabId: number): Promise<void>;
 }
 
 /** A `listTabs` row with the tab's `pendingUrl`, which is tested but never sent. */
@@ -94,6 +101,8 @@ export interface CallSafetyDeps {
   lastUrl(tabId: number): string | undefined;
   /** Step 11b S3b: opens a blocked-hop watch on the call's list (`BlockedHopWatcher.open`); absent = no watch. */
   watchHops?(list: BlockList): HopWatch;
+  /** Step 11b S6 (#312): a tab-scoped keeper handle for a tab made during the call (`dnrKeeper.call("navigate", {tabId})`). */
+  dnrForTab?(tabId: number): DnrCall;
 }
 
 /** An integer `tabId`, else undefined. */
@@ -229,6 +238,7 @@ export class CallSafety implements GatedCall {
   private finalUrl: string | undefined;
   private cleanups: Array<() => void> = [];
   private hop: HopWatch | null = null;
+  private tabRules: DnrCall | null = null;
 
   constructor(
     private readonly method: string,
@@ -284,6 +294,16 @@ export class CallSafety implements GatedCall {
     return this.hop ? this.hop.settle() : false;
   }
 
+  async holdRulesFor(tabId: number): Promise<void> {
+    if (this.tabRules) throw new Error("holdRulesFor: once per call"); // a wiring slip
+    const rules = this.deps.dnrForTab?.(tabId) ?? NO_RULES;
+    this.tabRules = rules; // set before any await: post() releases it on every path
+    rules.mark(); // the read below is at least as new as any rebuild before it (S2-builder.md §7)
+    const { d, view } = await this.gate("effect");
+    if (isRefusal(d)) throw refusalError(d);
+    if (view) await rules.install(view.ctx.blockList); // throws the state-unreadable refusal
+  }
+
   holdsRules(): boolean {
     return this.dnr.holding();
   }
@@ -301,8 +321,9 @@ export class CallSafety implements GatedCall {
     } finally {
       this.hop?.close();
       await this.dnr.release(); // every path; settles after any rebuild queued before it, so read refusal() after
+      await this.tabRules?.release(); // S6: the new tab's handle, likewise
     }
-    return isRefusal(d) ? d : this.dnr.refusal();
+    return isRefusal(d) ? d : (this.dnr.refusal() ?? this.tabRules?.refusal() ?? null);
   }
 
   onRefused(fn: () => void): void {

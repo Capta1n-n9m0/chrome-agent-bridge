@@ -70,6 +70,7 @@ const callDeps: CallSafetyDeps = {
   replacedBy: (tabId) => tabInfo.replacedBy(tabId),
   lastUrl: (tabId) => tabInfo.lastUrl(tabId),
   watchHops: (list) => hopWatcher.open(list),
+  dnrForTab: (tabId) => dnrKeeper.call("navigate", { tabId }), // Step 11b S6 (#312): newTab's blank tab
 };
 
 const router = new GatedRouter((method, params) => new CallSafety(method, params, callDeps, dnrKeeper.call(method, params)));

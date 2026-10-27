@@ -2,6 +2,7 @@ import { asTabUnknown, humansTab, noteFocus, requireTabId, waitForLoad } from ".
 import { BridgeError, ErrorCodes } from "../errors.js";
 import type { ExtensionListTabsRow } from "@bridge/shared";
 import type { HandlerSafety } from "../safety-call.js";
+import { BLANK_URL, openBehindRules, opensBehindRules, settleBlank } from "../newtab-open.js";
 
 interface ListedTab {
   id: number;
@@ -76,10 +77,26 @@ export async function focusTab(p: Record<string, unknown>, call?: HandlerSafety)
   return { ok: true };
 }
 
-/** Opens a tab in the background unless `active === true` is passed (plan 0.8). */
+/**
+ * Opens a tab in the background unless `active === true` is passed (plan 0.8). Step 11b S6 (#311, #312): with a URL
+ * other than `about:blank`, on `about:blank` first, its block-list rules held, then navigated (`newtab-open.ts`); with
+ * no URL, `about:blank`, or no `call` (tests), as before.
+ */
 export async function newTab(p: Record<string, unknown>, call?: HandlerSafety): Promise<{ id: number }> {
   const url = p.url ? String(p.url) : undefined;
   await call?.effect(); // Step 9 (#137)
+  const hold = call?.holdRulesFor?.bind(call);
+  if (hold && opensBehindRules(url)) {
+    const id = await openBehindRules({
+      create: async () => (await chrome.tabs.create({ url: BLANK_URL, active: p.active === true })).id!,
+      settleBlank: (tabId) => settleBlank(tabId, chrome.tabs),
+      holdRules: hold,
+      waitLoad: (tabId) => waitForLoad(tabId),
+      navigate: async (tabId) => void (await chrome.tabs.update(tabId, { url })),
+      remove: (tabId) => chrome.tabs.remove(tabId),
+    });
+    return { id };
+  }
   const tab = await chrome.tabs.create({ url, active: p.active === true });
   if (url) await waitForLoad(tab.id!);
   return { id: tab.id! };
