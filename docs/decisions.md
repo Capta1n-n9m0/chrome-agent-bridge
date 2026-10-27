@@ -191,6 +191,20 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-27 · Run 17's record: D4.3 part, D4.6 not met; a helper fix met the STOP clause earlier (#309)
+**Decided:** the record `…-steps/S4-run-record.md` as judged (R17-UP-L1 FAIL, not a new word, since its scan never
+ran). D4.3 is **part**: RD-1 and RD-3 show 0 blocked hits, RD-4 and RD-6 1, as written; RD-2's 1 is the RECORD the
+pre-run Stages note made of it (#295), though D4.3's own sentence still lists RD-2 — the user rules which reading
+holds. D4.6 not met (RD-LOGS did not run; every offline count was 0, the consoles of attempts 1 and 3–6 not measured).
+Disclosed for the ruling: the STOP clause was first met in attempt 6 (RD-FWD's set-up `back` refused on a page with
+no redirect), and helper fix 5 (`2c1af4b`) then recorded such a set-up as NOT BUILT instead of stopping — a fix past a
+STOP line, which `docs/agent-rules.md` §6 forbids; attempt 7 met it again and stopped at RD-BACK-EMPTY. No judgment
+changes.
+**Why:** the gate is judged by its pre-registered words; the process slip is reported, not smoothed.
+**Instead of:** reading D4.3 by the Stages note alone, or leaving fix 5 unmentioned.
+**Revisit if:** the user rules.
+**By:** Claude
+
 ### 2026-10-27 · Run 17's STOP predates Step 11b: Chrome's `back` skips pages with no user activation; RD-DISARM's FAIL is the helper's timing (#308)
 **Decided (findings, for the user's ruling at the gate):** measured in a scratch Chrome 156 (#294;
 `…-steps/S4-investigation.md`, `stage4-back-*.txt`): a history built as the bridge builds it (`tabs.create`, then

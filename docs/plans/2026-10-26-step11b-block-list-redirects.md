@@ -490,6 +490,19 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   16 test files, `recipes/tsconfig.s11b.json`. Offline only. Tests 4158/161 → 4472/177, none removed. #305, #306.
   Report `…-steps/S4-helpers.md`.
 
+### S4-live · 2026-10-27 · `723b63c` (#306) … `e50ded1` · ESCALATE at a pre-registered STOP
+- Run 17 liveA, seven attempts (each return in `S4-live.ledger.md`; five helper fixes, each verified and committed
+  before use). Attempt 7: RD-0 proves the loaded build has the new permission (D4.2); **RD-1 blocked 0, RD-3 blocked 0
+  (R14-5c's text), RD-4 blocked 1, RD-6 blocked 1** (0.4 (C)); RD-2 blocked 1 (RECORD, #295); RD-5, RD-5b,
+  RD-REBUILD-NARROW, RD-DL-HOP, RD-DL-ERR, RD-CAPS-WARN, F-HOME, F-FILETAB PASS; RD-REGEX: 120/121-character regexes
+  supported. Stopped at **RD-BACK-EMPTY** (`back` → `INTERNAL` with an empty list; #307), which predates Step 11b
+  (#308). liveB, RD-LOGS and RD-RESTORE as rows not run; the STOP path restored the state, read back equal. Tests
+  4472/177 → 4535/183 (helper fixes). Report `…-steps/S4-live.md`; investigation `S4-investigation.md`.
+
+### S4-record · 2026-10-27 · `105543f` · verifier PASS-with-notes (two fix rounds)
+- 38 rows judged: PASS 14, FAIL 4 (RD-BACK, RD-BACK-SAMEDOC, RD-DISARM — causes in #308 — and R17-UP-L1, whose console
+  scan never ran), RECORD 4, NOT RUN 15, STOP 1. §5 Run 17 entry. Record `…-steps/S4-run-record.md`; #309.
+
 ## Open items
 
 - **Ruled 2026-10-26:** 0.3 (A), 0.4 (C) (#290); S0F's what (#288).
