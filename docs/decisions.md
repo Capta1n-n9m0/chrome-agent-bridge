@@ -178,6 +178,28 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-27 · S6: a failed `tabs.update` closes the blank tab; a load timeout or a post-check refusal keeps the tab (#314)
+**Decided:** as built (`db3f82e`): a refused re-check, a rejected install or a failed `tabs.update` removes the blank tab
+and opens nothing; a load timeout or a post-check refusal keeps the tab, as before S6. Both verifiers: the #311 STOP
+clause ("a blank tab after a refused install") is not hit by the kept cases (the tab is not blank, the install was not
+refused).
+**Why:** no orphan tab for a URL Chrome refuses; every other answer as before S6.
+**Instead of:** closing the tab on every refusal (a behaviour change no row asked for).
+**Revisit if:** the user wants a refused `newTab` to close its tab, or Chrome's `tabs.update` error text differs from
+`tabs.create`'s in a way a client relies on (an S7 RECORD row).
+**By:** Claude
+
+### 2026-10-27 · S6: `newTab` lets its blank tab finish loading before it waits for the URL (#313)
+**Decided:** the `about:blank` sequence waits for the blank tab's own `complete` (listener before `tabs.get`, 2 s bound,
+never rejects) before arming the URL's load wait (`settleBlank`). Three narrow cases stay unmeasured (verifier N1, MINOR):
+a blank tab silent past 2 s, a doubled blank `complete`, a `tabs.get` ahead of the event.
+**Why:** `waitForLoad` takes the first `complete` for the id, so without it `newTab` could reply, and release its rules,
+on the blank page's late load in the middle of a redirect (S6 verifier round 1).
+**Instead of:** ignoring completes until a post-navigate `loading`; editing the shared `waitForLoad`.
+**Revisit if:** Run 17b sees a `newTab` answer before the URL's load, or any N1 case — then add the post-navigate
+`loading` filter as well.
+**By:** Claude
+
 ### 2026-10-27 · S6's lane gains one `sw.ts` line: a keeper call for a tab known only later (#312)
 **Decided:** S6 option (A) of `…-steps/S6.md`: `extension/src/sw.ts` joins S6's lane for one `callDeps` entry that
 hands `safety-call.ts` a keeper handle for a tab id known after the call started (`dnrKeeper.call("navigate",

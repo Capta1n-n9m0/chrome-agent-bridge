@@ -596,6 +596,16 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - #307–#309 (a): accepted with Run 17 as recorded; D4.3 read by the pre-run note (**part**); fix 5 acknowledged.
   #295 (a): `newTab` on `about:blank` → S6. #292 (a), #293 (a) confirmed. Push granted (G11b-1). Run 17b → S7.
 
+### S6 · 2026-10-27 · `6259421` (spec notes), `db3f82e` · verifier PASS-with-notes (one fix round)
+- `newTab` with a URL: the gate's check as before, the tab on `about:blank`, a second keeper handle (one `callDeps` line
+  in `sw.ts`, #312) installs the tab rules from the gate's fresh read, the blank page settles (≤ 2 s, #313), then the
+  navigation and today's wait; `post()` releases the handle on every path. A refused install, re-check or `tabs.update`
+  removes the blank tab and opens nothing (#314). Without a URL, or with `about:blank`: today's path.
+- E6.1–E6.5 met: tests 4535/183 → 4560/184, none removed; the navigate-before-install mutant red 13/25; daemon, shared,
+  SDK, MCP diff since `ce1f06d` empty; counts and log sites unchanged. #312's "Revisit if" not met. Run 17b decides
+  the leak (R17B-RD-2). For S8: a keeper comment, an `extension/src/CLAUDE.md` bullet and the §10 wording are stale.
+  Report `…-steps/S6.md`.
+
 ## Open items
 
 - *Rewritten 2026-10-27 (cleanup P12):* for the user at the gate: #292, #293, #295, #307–#309 — **ruled
