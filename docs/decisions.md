@@ -178,6 +178,20 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-27 · S7-sheet: Run 17b's sheet committed; the activation is the bridge's own `evaluate`; two STOP readings (#315)
+**Decided:** §4.25 as committed in `3cfbb95` before any observation (D7.1). The activation for the back rows is a bridge
+`evaluate` of `1` on each fixture page the wave opened (8081/8091 only), which sends `Runtime.evaluate {userGesture:
+true}` through `chrome.debugger` (`extension/src/debugger.ts`); R17B-ACT-CTL measures first that this path activates as
+the investigation's own CDP connection did. Adopted from the report: (1) an activated `back`/`forward` on a page with no
+redirect that does not answer `ok` is a STOP; (2) R17B-0 reads the created tab's URL from Chrome's `tabs.onCreated`
+in the worker console (clients never see `tabCreated`), `about:blank` proving the S6 build is loaded.
+**Why:** the investigation measured activation as the deciding factor (#308); a STOP must be pre-registered; a disk
+read of `sw.js` would not prove the loaded worker (verifier round 1).
+**Instead of:** a trusted click for activation (it needs a target element on every page and the visibility lock).
+**Revisit if:** R17B-ACT-CTL shows the bridge's `evaluate` gives no activation: then the back rows are NOT MEASURED,
+never re-tuned.
+**By:** Claude
+
 ### 2026-10-27 · S6: a failed `tabs.update` closes the blank tab; a load timeout or a post-check refusal keeps the tab (#314)
 **Decided:** as built (`db3f82e`): a refused re-check, a rejected install or a failed `tabs.update` removes the blank tab
 and opens nothing; a load timeout or a post-check refusal keeps the tab, as before S6. Both verifiers: the #311 STOP

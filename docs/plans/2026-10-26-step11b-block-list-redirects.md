@@ -606,6 +606,11 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   the leak (R17B-RD-2). For S8: a keeper comment, an `extension/src/CLAUDE.md` bullet and the §10 wording are stale.
   Report `…-steps/S6.md`.
 
+### S7-sheet · 2026-10-27 · `3cfbb95` · verifier PASS (two fix rounds)
+- §4.25 committed before any observation (D7.1): every S7 row, Run 17's FAIL/NOT RUN/STOP rows carried with their pass
+  rules word for word, liveB included, plus R17B-ACT-CTL, R17B-NEWTAB-LOAD, R17B-NEWTAB-REFUSED (RECORD); §4.24 and
+  Run 17's record untouched; ports by `netstat`. #315. Report `…-steps/S7-sheet.md`.
+
 ## Open items
 
 - *Rewritten 2026-10-27 (cleanup P12):* for the user at the gate: #292, #293, #295, #307–#309 — **ruled
