@@ -67,7 +67,8 @@ describe("output safety", () => {
     expect(src.split(FALLBACK_LINE).length - 1).toBe(2);
   });
   it("Get-S11bCaps prints a count only and Open-S11bFileWindow prints <ROOT>\\name; the file omnibox never goes through the URL-printing helper", () => {
-    expect(fnBody("Get-S11bCaps")).toContain('Say9 "CAPS items=$n (texts withheld)"');
+    expect(fnBody("Get-S11bCaps")).toContain('Say9 "CAPS items=$n by=id (texts withheld)"'); // fixer3b F3: by=id|text
+    expect(fnBody("Get-S11bCaps")).toContain('Say9 "CAPS items=$n by=text (texts withheld)"');
     expect(fnBody("Open-S11bFileWindow")).toContain('Say9 "FILEWINDOW $h opened <ROOT>\\$Name"');
     expect(fnBody("Open-S11bFileWindow")).not.toContain("Set-S9Omnibox");
     expect(fnBody("Set-S11bOmnibox")).not.toContain("Set-S9Omnibox");

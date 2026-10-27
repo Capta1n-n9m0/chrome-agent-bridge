@@ -89,21 +89,47 @@ function Open-S11bFileWindow([string]$Root, [string]$FilePath) {
 }
 
 # ---- RD-CAPS-WARN ------------------------------------------------------------------------------------------------------------
-# The texts of the options page's #blocklist-caps list items, returned (callers compare them with K-caps; never printed).
-# The page must have rendered (the block-list summary is there), else an empty list could not be told from a blank page.
+# Both caps item forms (options-model.ts blockListLongHostWarning, names line numbers only; BLOCKLIST_CAPS_WARNING's leading text).
+$S11bCapsRe = '^(Lines? \d+(, \d+)*: a very long site name|This list needs more of Chrome''s blocking rules)'
+# The options page's caps items: Found ($false = the list is not in the UIA tree and no K-caps item stands anywhere: NOT MEASURED)
+# and Items (texts, compared with K-caps; never printed). The page must have rendered (the block-list summary is there).
+# fixer3 (Run 17 attempt 4): Chrome 156 shows <p id="blocklist-summary"> by its text only (Get-S9Summary, 2026-10-24), so the
+# summary is read by Get-S9Summary; the list by id, else (or when it holds no ListItem) its K-caps items by text (Find-S11Texts, F-HOME).
 function Get-S11bCaps([long]$Hwnd) {
   Assert-S11Own $Hwnd 'caps read'
   $doc = Get-S9Options $Hwnd
-  if (-not (Get-S9ById $doc 'blocklist-summary')) { throw 'the options page shows no block-list summary: not read' }
+  if (-not (Get-S9Summary $doc)) { throw 'the options page shows no block-list summary: not read' }
   $ul = Get-S9ById $doc 'blocklist-caps'
-  $items = @()
+  $items = @(); $by = 'id'
   if ($ul) {
     $LI = New-Object Windows.Automation.PropertyCondition($S9UIA::ControlTypeProperty, [Windows.Automation.ControlType]::ListItem)
     $items = @($ul.FindAll([Windows.Automation.TreeScope]::Descendants, $LI) | ForEach-Object { [string]$_.Current.Name })
   }
+  if ($items.Count -eq 0) { $items = @(Find-S11Texts $doc $S11bCapsRe); $by = 'text' }
   $n = $items.Count
-  Say9 "CAPS items=$n (texts withheld)"
-  $items
+  if ($by -eq 'id') { Say9 "CAPS items=$n by=id (texts withheld)" } else { Say9 "CAPS items=$n by=text (texts withheld)" }
+  if (-not $ul -and $n -eq 0) { Say9 'CAPS list not in the UIA tree and no K-caps item by text: NOT MEASURED' }
+  [pscustomobject]@{ Found = ([bool]$ul -or $n -gt 0); Items = $items }
+}
+# The STOP's cause for the stop procedure (printed by Show-S16, profile masked): a helper's own `throw '<text>'` (its error id is
+# its text; a rethrown record or exception object is not) or a UIA/COM framework message. Any other class (an engine cast, a JSON
+# parse, a file error can quote a value or a path) gives its type name and the error record's fixed id only. Any printed message
+# that holds an RD-LOGS pattern (scan17's, pinned by s11b-fix3-static.test.ts; stricter: 127.0.0.1, any 16-hex run as the token
+# guard, the state.json alias and sentinel) or a URL, a drive or UNC path or a non-ASCII character is withheld.
+$S11bStopDeny = 'a{24}|bank\.example|localhost:8085|127\.0\.0\.1|://|[0-9a-f]{16}|[A-Za-z]:[\\/]|\\\\|[^\x20-\x7e]'
+function Get-S11bStopCause($Err) { try { Get-S11bStopText $Err } catch { 'cause not readable' } }
+function Get-S11bStopText($Err) {
+  $x = $Err.Exception; $tag = $x.GetType().Name
+  $own = ($x.GetType() -eq [Management.Automation.RuntimeException]) -and $x.WasThrownFromThrowStatement -and ($Err.FullyQualifiedErrorId -ceq $x.Message)
+  $in = if ($x -is [Management.Automation.MethodInvocationException] -and $x.InnerException) { $x.InnerException } else { $x }
+  $uia = ("$($in.GetType().Namespace)" -eq 'System.Windows.Automation') -or ($in -is [Runtime.InteropServices.COMException])
+  if (-not ($own -or $uia)) { $id = [string]$Err.FullyQualifiedErrorId; if ($id -notmatch '^[\w.,-]{1,120}$' -or $id -match $S11bStopDeny) { $id = '?' }; return "$tag; message withheld (id $id)" }
+  if ($uia) { $tag = $in.GetType().Name }
+  $m = ([string]$in.Message -replace '\s+', ' ').Trim()
+  $known = @(); try { $j = [IO.File]::ReadAllText((Join-Path $env:S11_OUT 'state.json')) | ConvertFrom-Json; $known = @("$($j.alias)", "$($j.sentinel)") | Where-Object { $_ } } catch { }
+  if ($m -match $S11bStopDeny -or @($known | Where-Object { $m.IndexOf($_, [StringComparison]::OrdinalIgnoreCase) -ge 0 }).Count) { return "$tag; message withheld (an RD-LOGS pattern, a URL, a path or a non-ASCII text)" }
+  if ($m.Length -gt 240) { $m = $m.Substring(0, 240) }
+  "$tag" + ': ' + $m
 }
 
 # ---- B17 as a child process ----------------------------------------------------------------------------------------------------
@@ -373,11 +399,12 @@ function Get-S11bHomeObs([long]$O) {
 # RD-CAPS-WARN: H119 and H120 typed after the found block list, caps read; H121 added, read; reverted. bl = RD-0 (c)'s line count.
 function Get-S11bCapsObs([long]$O) {
   Set-S11bTyped $O 'blocklist' @((Get-S11bLongHost 22), (Get-S11bLongHost 23))
-  $two = @(Get-S11bCaps $O)
+  $two = Get-S11bCaps $O
   Set-S11bTyped $O 'blocklist' @((Get-S11bLongHost 22), (Get-S11bLongHost 23), (Get-S11bLongHost 24))
-  $three = @(Get-S11bCaps $O)
+  $three = Get-S11bCaps $O
   $equal = Undo-S11bTyped $O 'blocklist' $global:S11Found.blockSha
-  Write-S11bObs 'caps-obs.json' ([ordered]@{ bl = [int]$global:S11Found.blockLines; afterTwo = $two; afterThree = $three; storedEqual = $equal })
+  if (-not ($two.Found -or $three.Found) -and $equal) { return '' }   # neither read found anything: not measured; else judged (a changed stored list, a list gone after H121: FAIL)
+  Write-S11bObs 'caps-obs.json' ([ordered]@{ bl = [int]$global:S11Found.blockLines; afterTwo = @($two.Items); afterThree = @($three.Items); storedEqual = $equal })
 }
 # R17-UP-OPT: Invoke-S11Opt's observations ($ObsJson) completed with what it cannot read (K-opt-stand once; the third typed line's
 # K-opt-home item), judged together by B17. $FoundSummary = the Upload-folders summary read before Invoke-S11Opt ran.

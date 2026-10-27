@@ -122,7 +122,7 @@ function Invoke-R17Node([string]$Which, [string[]]$NodeArgs, [scriptblock]$Drive
   $null = $p.Handle
   Set-S16Pid 'node' $p.Id
   $tag = ''; $res = @()
-  if ($Driver) { try { $res = @(& $Driver) } catch { $tag = $_.Exception.GetType().Name } }
+  if ($Driver) { try { $res = @(& $Driver) } catch { $tag = Get-S11bStopCause $_ } }
   if ($tag -and -not $p.HasExited) { Stop-S16Pid 'node' }
   $done = $p.WaitForExit($BudgetS * 1000)
   if (-not $done) { Stop-S16Pid 'node' }
@@ -241,7 +241,7 @@ function Invoke-R17Judge([string]$Kind, [string]$File) {
 function Invoke-R17CapsWarn([switch]$First) {
   if ($First) { $env:S9_RAW = $Framing }   # RD-0 (a-prime): only the judged ROW is the record's first line
   try { $f = @(Get-S11bCapsObs (Use-S16Options))[-1] } finally { if ($First) { $env:S9_RAW = $Record } }
-  [void](Invoke-R17Judge 'caps' $f)
+  if (-not $f) { Say9 'ROW RD-CAPS-WARN NOT MEASURED: the caps list is not in the UIA tree and no K-caps item was read by text'; $global:S16NM++ } else { [void](Invoke-R17Judge 'caps' $f) }
   $global:R17CapsDone = $true; Save-S16
 }
 # RD-BACK, RD-FWD, RD-BACK-SAMEDOC, RD-BACK-EMPTY: the call, then the measured values (hits, flip count, RULES) to the judge.
@@ -898,7 +898,7 @@ try {
     if ($global:R17NB -gt 0) { exit 3 }
   }
 } catch {
-  $tag = $_.Exception.GetType().Name
+  $tag = Get-S11bStopCause $_   # fixer3: the cause, not only its type
   Stop-S16Wave "an exception in block $Name ($tag)"
 }
 exit 0
