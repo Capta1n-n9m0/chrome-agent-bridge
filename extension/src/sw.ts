@@ -11,6 +11,8 @@ import { networkRequests, networkClear } from "./handlers/network.js";
 import { downloadStart, downloadChunk, downloadEnd, clearDownloads } from "./handlers/download.js";
 import { evaluateSaveStart, evaluateSaveChunk, evaluateSaveEnd, clearEvaluateSaves, dropEvaluateSavesForTab } from "./handlers/evaluate-save.js";
 import { uploadFiles } from "./handlers/upload.js";
+import { consoleMessages } from "./handlers/console.js";
+import { armedFromUnknown, consoleArmFloor, consoleCollectors } from "./console-messages.js";
 import { javaScriptOff } from "./evaluate-save-store.js";
 import { log as networkLog, ownPort, scheduleFlush, setOwnPort } from "./network-state.js";
 import { isOwnTraffic } from "./network-log.js";
@@ -61,7 +63,10 @@ const safety = new SafetyStore({
     clearEvaluateSaves(); // Step 10 S4 (#205): every held saveTo value goes at a disarm
     void dnrKeeper.sweep(); // Step 11b (#296): only rules no live call owns; a running call keeps its own
   },
-  onArm: () => debuggerSessions.refuse(null),
+  onArm: () => {
+    debuggerSessions.refuse(null);
+    consoleArmFloor.armed(); // Step 12 S3a (#333): console entries before the latest arm are dropped
+  },
 });
 
 const callDeps: CallSafetyDeps = {
@@ -104,6 +109,8 @@ router.on("evaluateSaveEnd", evaluateSaveEnd);
 // Step 11 (#256, S3): `uploadFiles` — class "upload" in the safety table (the folder rule on every path, so the handler
 // is never reached with a refused path), a tab method in the daemon's, no lock.
 router.on("uploadFiles", uploadFiles);
+// Step 12 S3a (#333, #334): `consoleMessages` — class "evaluate" in the safety table, a tab method in the daemon's, no lock.
+router.on("consoleMessages", consoleMessages);
 
 // --- Network capture -------------------------------------------------------------------------
 // MV3 requires every webRequest listener to be registered synchronously while the worker script
@@ -349,6 +356,9 @@ chrome.debugger.onDetach.addListener((source, reason) => {
   console.warn("[bridge] debugger detached, tabId", source.tabId, "reason:", reason);
 });
 
+// Step 12 S3a (#333): the one top-level CDP event listener; it feeds `consoleMessages`' per-call collectors only.
+chrome.debugger.onEvent.addListener((source, method, params) => consoleCollectors.feed(source, method, params));
+
 chrome.runtime.onInstalled.addListener((details) => {
   sessionMarker.installed(details?.reason);
   void connect();
@@ -372,7 +382,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
   // Step 9: the options page (or the toggle) changed the safety state: update the memory copy (and run the
   // disarm actions on a disarm), decide held network events, report the new state.
   if (area === "local" && touchesSafety(changes)) {
+    const before = safety.memory;
     safety.applyChanges(changes);
+    // Step 12 S3a (M-2): an arm from an unknown state (a failed first load) moves the console floor too; onArm sees
+    // only disarmed → armed.
+    if (armedFromUnknown(before, safety.memory)) consoleArmFloor.armed();
     // Step 10 S4 (#205): JavaScript off (or a state that fails closed) drops every held saveTo value; a disarm
     // drops them in onDisarm.
     if (javaScriptOff(safety.memory)) clearEvaluateSaves();

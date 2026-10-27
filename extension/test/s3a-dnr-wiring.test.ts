@@ -222,7 +222,8 @@ describe("sw.ts wiring (static)", () => {
   });
 
   it("the listener count is unchanged (19); the rebuild sits in the safety storage.onChanged listener", () => {
-    expect(code.match(/addListener\(/g)).toHaveLength(19);
+    // 19 → 20: Step 12 S3a (2026-10-27; decisions.md #333): the one top-level `chrome.debugger.onEvent` listener.
+    expect(code.match(/addListener\(/g)).toHaveLength(20);
     const i = code.indexOf("if (area === \"local\" && touchesSafety(changes)) {");
     const j = code.indexOf("ingestGate.flush();", i);
     expect(i).toBeGreaterThan(0);

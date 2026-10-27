@@ -58,7 +58,8 @@ describe("S2.1 — the gate runs before any handler code", () => {
       expect(out.error, m).toEqual({ code: ErrorCodes.DISARMED, message: DISARMED_ALL_MESSAGE, data: { scope: "all" } });
     }
     expect(calls).toEqual([]);
-    expect(Object.keys(METHOD_CLASSES)).toHaveLength(27);
+    // 27 → 28: Step 12 S3a (2026-10-27; decisions.md #333, #334): `consoleMessages`.
+    expect(Object.keys(METHOD_CLASSES)).toHaveLength(28);
   });
 
   it("disarmed: a handler that throws synchronously, before any await, is never entered", async () => {

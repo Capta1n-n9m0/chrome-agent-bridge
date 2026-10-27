@@ -822,3 +822,52 @@ export function isSafetyStatusEvent(value: unknown): value is EventMessage<Safet
   const p = eventParams(value, "safetyStatus");
   return p !== null && isSafetyState(p);
 }
+
+// ── Step 12 S3a (phase doc 0.5 with its Stage 0 note; decisions.md #323, #333, #334; spec §10's Step 12 S3a note) ──
+// `consoleMessages {tabId, level?, limit?}`: the console messages and uncaught errors Chrome replays on
+// `Runtime.enable`, read in one debugger session on the tab. Entries carry no CDP-supplied
+// source URL or stack; text the page itself logs is passed as logged.
+
+/** The levels, most severe first; a `level` filter keeps that level and every more severe one. */
+export const CONSOLE_LEVELS = ["error", "warning", "info", "debug"] as const;
+export type ConsoleLevel = (typeof CONSOLE_LEVELS)[number];
+
+/** `text` is at most this many characters (a cut text ends with "…"). */
+export const CONSOLE_TEXT_MAX = 2000;
+/** At most this many entries per reply (the newest); also the default and the highest `limit`. */
+export const CONSOLE_ENTRIES_MAX = 200;
+
+/** One console message (`kind: "console"`) or uncaught error (`"exception"`); `ts` in ms since the epoch. */
+export interface ConsoleEntry {
+  level: ConsoleLevel;
+  text: string;
+  ts: number;
+  kind: "console" | "exception";
+}
+
+/** `consoleMessages`' own params (a client adds `tab`; the daemon forwards `tabId`). */
+export interface ConsoleMessagesParams {
+  level?: ConsoleLevel;
+  limit?: number;
+}
+
+/** The value of a `consoleMessages` call: oldest first, newest last. */
+export interface ConsoleMessagesResult {
+  entries: ConsoleEntry[];
+}
+
+export type ConsoleMessagesCheck = { ok: true; level?: ConsoleLevel; limit: number } | { ok: false; message: string };
+
+/** `level` absent or a `CONSOLE_LEVELS` name; `limit` absent (→ 200) or an integer 1–200. Fixed refusal texts. */
+export function checkConsoleMessagesParams(p: Record<string, unknown>): ConsoleMessagesCheck {
+  const { level, limit } = p;
+  if (level !== undefined && !(CONSOLE_LEVELS as readonly unknown[]).includes(level)) {
+    return { ok: false, message: 'consoleMessages: level must be one of "error", "warning", "info", "debug"' };
+  }
+  if (limit !== undefined && !(Number.isInteger(limit) && (limit as number) >= 1 && (limit as number) <= CONSOLE_ENTRIES_MAX)) {
+    return { ok: false, message: `consoleMessages: limit must be an integer from 1 to ${CONSOLE_ENTRIES_MAX}` };
+  }
+  return level === undefined
+    ? { ok: true, limit: (limit as number | undefined) ?? CONSOLE_ENTRIES_MAX }
+    : { ok: true, level: level as ConsoleLevel, limit: (limit as number | undefined) ?? CONSOLE_ENTRIES_MAX };
+}

@@ -72,7 +72,8 @@ describe("S1.1: the method table classifies every router method", () => {
     expect(nonLiteral).toEqual([]); // a registration through a variable would escape the scan
     // 23 → 26: Step 10 S4 (2026-10-25; decisions.md #205): the three `evaluateSave*` methods added by design.
     // 26 → 27: Step 11 S2 (2026-10-25; decisions.md #256): `uploadFiles` (class `upload`, a stub until S3) by design.
-    expect(names).toHaveLength(27);
+    // 27 → 28: Step 12 S3a (2026-10-27; decisions.md #333, #334): `consoleMessages` (class `evaluate`) by design.
+    expect(names).toHaveLength(28);
     for (const n of names) expect(() => methodClass(n)).not.toThrow();
     expect([...names].sort()).toEqual([...ALL_METHODS].sort());
   });
@@ -88,6 +89,8 @@ describe("S1.1: the method table classifies every router method", () => {
         "evaluateSaveStart", "evaluateSaveChunk", "evaluateSaveEnd",
         // Step 11 S2 (2026-10-25; decisions.md #256): class `upload`.
         "uploadFiles",
+        // Step 12 S3a (2026-10-27; decisions.md #333, #334): class `evaluate`.
+        "consoleMessages",
       ].sort(),
     );
   });

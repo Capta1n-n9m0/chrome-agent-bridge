@@ -30,6 +30,7 @@ export const TAB_METHODS: ReadonlySet<string> = new Set([
   "evaluateSaveChunk",
   "evaluateSaveEnd",
   "uploadFiles",
+  "consoleMessages", // Step 12 S3a (#334): lease-checked, no visibility lock
 ]);
 
 /** Free (no lease check), forwarded. `networkRequests` still has its scope resolved (#40). */

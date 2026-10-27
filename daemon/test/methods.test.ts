@@ -32,6 +32,8 @@ describe("method table", () => {
         "evaluateSaveEnd",
         // Step 11 S2 (2026-10-25; decisions.md #238): `uploadFiles` added by design.
         "uploadFiles",
+        // Step 12 S3a (2026-10-27; decisions.md #333, #334): `consoleMessages` added by design.
+        "consoleMessages",
       ].sort(),
     );
     for (const m of TAB_METHODS) expect(classify(m, {})).toBe("tab");

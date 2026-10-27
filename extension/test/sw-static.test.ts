@@ -90,7 +90,7 @@ describe("sw.ts constructs only the gated router", () => {
     expect(src).not.toMatch(/\.on\.(call|apply|bind)\s*\(/);
     // 23 → 26: Step 10 S4 (2026-10-25; decisions.md #205): the three `evaluateSave*` methods added by design.
     // 26 → 27: Step 11 S2 (2026-10-25; decisions.md #256): the `uploadFiles` stub; since S3 the real handler.
-    expect(src.match(/\brouter\.on\(\s*"[A-Za-z]+"\s*,/g)).toHaveLength(27);
+    expect(src.match(/\brouter\.on\(\s*"[A-Za-z]+"\s*,/g)).toHaveLength(28); // 27 → 28: Step 12 S3a (2026-10-27; decisions.md #333): `consoleMessages`.
   });
 
   it("the handlers it registers come from ./handlers/ only", () => {
@@ -98,7 +98,8 @@ describe("sw.ts constructs only the gated router", () => {
     // 23 → 26: Step 10 S4 (#205). 26 → 27: Step 11 S3 (2026-10-25; decisions.md #256): S2's inline `uploadFiles`
     // stub is replaced by the handler `uploadFiles` from ./handlers/upload.js, so every registration is of the
     // `router.on("name", handler)` form again (S2's "the one exception is the stub" assertions are removed with it).
-    expect(names).toHaveLength(27);
+    // 27 → 28: Step 12 S3a (2026-10-27; decisions.md #333): `consoleMessages` from ./handlers/console.js.
+    expect(names).toHaveLength(28);
     const all = [...src.matchAll(/\brouter\.on\(\s*"([A-Za-z]+)"\s*,/g)].map((m) => m[1]!);
     const named = new Set([...src.matchAll(/\brouter\.on\(\s*"([A-Za-z]+)"\s*,\s*[A-Za-z_$][\w$]*\s*\)/g)].map((m) => m[1]!));
     expect(all.filter((n) => !named.has(n))).toEqual([]);
@@ -191,5 +192,20 @@ describe("listener placement (#139, V7; CLAUDE.md: listeners at the top level)",
     const body = src.slice(i, src.indexOf("\n});", i));
     expect(body).toMatch(/acceptRelaySender\(/);
     expect(body.indexOf("acceptRelaySender(")).toBeLessThan(body.indexOf("router.handle("));
+  });
+});
+
+describe("Step 12 S3a — the console arm floor's wiring (verifier M-2)", () => {
+  const src = code(readFileSync(SW, "utf8"));
+  it("onArm moves the floor", () => {
+    expect(src).toMatch(/onArm:\s*\(\)\s*=>\s*\{[^}]*consoleArmFloor\.armed\(\)/);
+  });
+  it("storage.onChanged moves the floor when the state lands on armed from an unknown, unreadable or disarmed one", () => {
+    expect(src).toMatch(/const before = safety\.memory;\s*safety\.applyChanges\(changes\);\s*if \(armedFromUnknown\(before, safety\.memory\)\) consoleArmFloor\.armed\(\);/);
+  });
+  it("the handler reads the floor before the read", () => {
+    const h = code(readFileSync(join(SRC, "handlers", "console.ts"), "utf8"));
+    expect(h).toMatch(/const floor = consoleArmFloor\.floor;/);
+    expect(h.indexOf("consoleArmFloor.floor")).toBeLessThan(h.indexOf("withDebugger("));
   });
 });

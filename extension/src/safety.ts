@@ -92,6 +92,7 @@ export const METHOD_CLASSES: Readonly<Record<string, MethodClass>> = Object.free
     evaluateSaveChunk: "evaluate",
     evaluateSaveEnd: "evaluate",
     uploadFiles: "upload",
+    consoleMessages: "evaluate", // Step 12 S3a (#334): class evaluate until the user rules
   } satisfies Record<string, MethodClass>),
 );
 

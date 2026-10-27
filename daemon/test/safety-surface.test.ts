@@ -44,9 +44,12 @@ const STEP10_S4_TAB_METHODS = ["evaluateSaveStart", "evaluateSaveChunk", "evalua
  */
 const STEP11_S2_TAB_METHODS = ["uploadFiles"];
 
+/** Step 12 S3a (2026-10-27; decisions.md #333, #334): `consoleMessages`, a tab method (lease-checked, no lock), by design. */
+const STEP12_S3A_TAB_METHODS = ["consoleMessages"];
+
 describe("S3.3 — the daemon's method tables are Step 8's", () => {
   it("each table equals Step 8's, element for element (plus Step 10 S4's three and Step 11 S2's one tab method)", () => {
-    expect([...TAB_METHODS]).toEqual([...STEP8.TAB_METHODS, ...STEP10_S4_TAB_METHODS, ...STEP11_S2_TAB_METHODS]);
+    expect([...TAB_METHODS]).toEqual([...STEP8.TAB_METHODS, ...STEP10_S4_TAB_METHODS, ...STEP11_S2_TAB_METHODS, ...STEP12_S3A_TAB_METHODS]);
     expect([...FREE_METHODS]).toEqual(STEP8.FREE_METHODS);
     expect([...DAEMON_METHODS]).toEqual(STEP8.DAEMON_METHODS);
     expect([...NETWORK_METHODS]).toEqual(STEP8.NETWORK_METHODS);
