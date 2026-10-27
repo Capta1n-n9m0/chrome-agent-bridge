@@ -226,6 +226,13 @@ daemon omits `lastUrl`/`lastTitle` from `tabGone` and `TAB_GONE` while the last 
 2026-10-24 · What `listTabs`, tab events and the daemon reveal while disarmed or for a blocked tab (#134); · S3:
 `leaseGranted.url` is `""` while disarmed, whatever the event carried (#161).*
 
+*Amended 2026-10-27 (Step 11b S6; decisions.md · 2026-10-27 · The user rules Step 11b's gate: accept, `newTab` on
+`about:blank` (S6), then Run 17b (#311) item 2): a `newTab` with a URL other than `about:blank` now opens the tab on
+`about:blank`, installs its block-list rules, then navigates it to the URL, so the `tabCreated` it causes reads `url:
+"about:blank"` (not the URL), and the tab's history holds one more entry (`about:blank` before the page). A `newTab`
+with no URL or with `about:blank` is unchanged. No event, field, code or message is added; the reply (`{id}`) is
+unchanged. See §10's Step 11b S6 note.*
+
 ### 6.3 Leases
 
 - A tab is held by the actor that opened it (`newTab`), claimed it (`tabs.claim`), or received it by
@@ -767,6 +774,15 @@ The block itself is left as written.*
   fetch; a blocked hop (`safety-hop.ts`, read before `ingest`, no URL kept) answers `DOMAIN_BLOCKED` with R14-5c's
   text; other failures keep today's answer (#303). The rebuild runs only on a block-list edit or an unreadable state
   (`rebuildsRules`, #302).*
+- *Amended 2026-10-27 (Step 11b S6; phase doc § S6; decisions.md #311 item 2, #312). No method, code, event, field or
+  message is added: `newTab` with a URL that is not `about:blank` is covered as `navigate` is. After the gate's checks
+  on the URL Chrome will open (unchanged), the tab is created on `about:blank`, the gate re-checks and the tab's rules
+  go in from that read's list; once the blank page has reported its own load (or 2 s passed), the tab is navigated to
+  the URL and waited for as before (30 s, the same timeout message), so the wait ends on the URL's load, never on the
+  blank page's; the rules come out after the post-check, on every path. If the install fails (or the re-check refuses, or the navigation call
+  itself fails), the URL is never opened, the blank tab is closed, and the call answers the existing refusal
+  (`DISARMED {scope:"all"}`, `STATE_UNREADABLE_MESSAGE`, for a failed install). The visible differences: the
+  `tabCreated` event reads `url: "about:blank"` and the tab has one more history entry (§6.2's 2026-10-27 note).*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
