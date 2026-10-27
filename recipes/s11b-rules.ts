@@ -671,9 +671,30 @@ export function unexpectedStop17(e: unknown, o: { ctx: Scan17Ctx; known: Readonl
   if (!(e instanceof Error)) return `unexpected throw${at}`;
   const c = (e as { code?: unknown }).code;
   if (e.name !== "BridgeError" || typeof c !== "string") return `unexpected ${e.constructor.name}${at}`;
-  const code = isErrorCode(c) ? c : `<code len=${c.length}>`;
-  const msg = o.known.has(e.message) || safeMessage17(e.message, o.ctx) ? `"${e.message}"` : `<message withheld len=${e.message.length}>`;
-  return `unexpected BridgeError ${code}${at} ${msg}`;
+  const t = bridgeErrText17(c, e.message, o);
+  return `unexpected BridgeError ${t.code}${at} ${t.msg}`;
+}
+/** The code (outside the enum: by length) and `"<message>"` or `<message withheld len=n>`, under fix 4's filter. */
+function bridgeErrText17(c: string, m: string, o: { ctx: Scan17Ctx; known: ReadonlySet<string> }): { code: string; msg: string } {
+  return { code: isErrorCode(c) ? c : `<code len=${c.length}>`, msg: o.known.has(m) || safeMessage17(m, o.ctx) ? `"${m}"` : `<message withheld len=${m.length}>` };
+}
+/**
+ * S4-live fixer 5: a BridgeError `INTERNAL` (Chrome's refusal, measured in attempt 6) thrown by a set-up `back` is the
+ * build's recorded answer, not a STOP: `HISTORY <kind> set-up NOT BUILT at=back <i> INTERNAL "<msg>"` (exit 3).
+ * Any other code, step or throw → undefined (still a STOP; fixer 5b, verifier 5 MINOR-1).
+ */
+export function histNotBuilt17(e: unknown, o: { kind: string; step?: string; ctx: Scan17Ctx; known: ReadonlySet<string> }): string | undefined {
+  const c = e instanceof Error ? (e as { code?: unknown }).code : undefined;
+  if (!o.step || !/^back \d+$/.test(o.step) || !(e instanceof Error) || e.name !== "BridgeError" || c !== "INTERNAL") return undefined;
+  const t = bridgeErrText17(c, e.message, o);
+  return `HISTORY ${o.kind} set-up NOT BUILT at=${o.step} ${t.code} ${t.msg}`;
+}
+/** Which planned entry the tab's own row shows (labels only): `0..n-1`, `initial`, `hidden` (empty URL), else `other`. */
+export function histDiagRow17(plan: { urls: readonly string[] }, initial: string, rowUrl: string | undefined): string {
+  if (rowUrl === undefined) return "other";
+  if (rowUrl === "") return "hidden";
+  const i = plan.urls.findIndex((u) => sameUrl17(rowUrl, u));
+  return i >= 0 ? String(i) : sameUrl17(rowUrl, initial) ? "initial" : "other";
 }
 
 // ===== H5: the SDK subcommands' pure parts (history URLs, race pacing, banner window, exact-error judge) =====

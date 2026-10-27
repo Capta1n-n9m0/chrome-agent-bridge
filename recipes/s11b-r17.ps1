@@ -46,7 +46,7 @@ $FixtureHuman = 'http://127.0.0.1:8081/s11-upload.html?s11=human'
 $Fix81 = 'http://127.0.0.1:8081/e2e-playground.html'
 $Blk = 'localhost:8085'
 $EncName = 's11b enc #%' + [char]0x00FC + '.bin'
-$Persist = @('W', 'O', 'E', 'D', 'X', 'S9WinIds', 'S11Own', 'S11Found', 'S11RootText', 'S11Stable', 'S16Changed', 'S16Pids', 'S16Born', 'S16Toggle', 'S16Mark', 'S16Actor', 'S16ConsoleRead', 'R17Fallback', 'R17CapsDone', 'R17ErrMs', 'R17HopMs', 'R17Rd3Ms', 'R17SockRan', 'R17SockLog0', 'R17SockLog1', 'R17ActorRan')
+$Persist = @('W', 'O', 'E', 'D', 'X', 'S9WinIds', 'S11Own', 'S11Found', 'S11RootText', 'S11Stable', 'S16Changed', 'S16Pids', 'S16Born', 'S16Toggle', 'S16Mark', 'S16Actor', 'S16ConsoleRead', 'R17Fallback', 'R17CapsDone', 'R17ErrMs', 'R17HopMs', 'R17Rd3Ms', 'R17SockRan', 'R17SockLog0', 'R17SockLog1', 'R17ActorRan', 'R17FwdNotBuilt')
 . "$PSScriptRoot\s9-win.ps1"
 . "$PSScriptRoot\s11-win.ps1"
 . "$PSScriptRoot\s11b-win.ps1"
@@ -509,7 +509,8 @@ $Blocks['rd-regex'] = {
 $Blocks['history'] = {
   New-R17Tab 'HIST' 'hb' 'hb'; New-R17Tab 'HIST' 'hf' 'hf'   # m6: keys that no S11 key (rb is race B's alias tab) can collide with in the shared state.json
   [void](Invoke-R17Node 's11b' @('history', '--kind', 'back', '--tab', 'hb'))
-  [void](Invoke-R17Node 's11b' @('history', '--kind', 'fwd', '--tab', 'hf'))
+  # S4-live fixer 5: a refused set-up back exits 3 (HISTORY fwd set-up NOT BUILT, counted by Invoke-R17Node); RD-FWD then makes no call
+  $global:R17FwdNotBuilt = ([int](Invoke-R17Node 's11b' @('history', '--kind', 'fwd', '--tab', 'hf')) -eq 3); Save-S16
 }
 $Blocks['g1-open'] = {
   $global:S16Changed = $true; Save-S16
@@ -627,7 +628,10 @@ $Blocks['rd8'] = {
 }
 # RD-BACK / RD-FWD / RD-BACK-SAMEDOC: the call, then hits, the flip count and RULES go to B17 judge-history (the sheet's pass rules).
 $Blocks['rd-back'] = { Invoke-R17History 'RD-BACK' 'back' 'hb' 'bk' }
-$Blocks['rd-fwd'] = { Invoke-R17History 'RD-FWD' 'forward' 'hf' 'fw' 2 }
+$Blocks['rd-fwd'] = {
+  if ($global:R17FwdNotBuilt) { Say9 'ROW RD-FWD NOT MEASURED: its history set-up was not built (see HISTORY fwd set-up NOT BUILT)'; $global:S16NM++; return }   # no bridge call
+  Invoke-R17History 'RD-FWD' 'forward' 'hf' 'fw' 2
+}
 $Blocks['rd-back-samedoc'] = {
   New-R17Tab 'RD-BACK-SAMEDOC' 'hs' 'sd'
   [void](Invoke-R17Node 's11b' @('history', '--kind', 'samedoc', '--tab', 'hs'))

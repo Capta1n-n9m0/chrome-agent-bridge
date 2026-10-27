@@ -47,7 +47,7 @@ import {
   rulesExpectLine, redactChromeBlocked17, rulesExpression, rulesSampleExpression, row17Line, scan17, type Scan17Ctx, scanLine17, storedExpression, verdict17, REGEX_NOT_MEASURED,
   callLine, foundList, judgeErr17, judgeHistory, judgeRaceA, judgeSamedoc, judgeSocket, k17RawDir, k17RawMissing, K17, latLine, raceDone17, raceDue, recordLine, socketLine,
   answerOfRow, dlHopRecord, dropTitleLines, fileExistsFrom, judgeDlTrial, judgeFileTabHidden, judgeFileTabRow, type FileTabListRow, judgeRd0State, markExpression, parseCallRow, parseMarkLine, rd0StateLine, rd0ToggleLine, SOCK_MARKS, stateCompat, type SockWindow,
-  historyPlan, historyBackTarget, pollUntil17, sameUrl17, HIST_POLL_MS, HIST_SETTLE_MS, HIST_WAIT_MS, unexpectedStop17, windowViolations, judgeCallAnswer, judgeCaps, judgeFHome, judgeHistoryRow, judgeTimedRules, judgeUpOpt, gapJudge, parseCtxTabs, parseRulesTimedLine, rulesTimedExpression, rulesSamplesLine, type TimedMode, RACE_MAX_CALLS, RACE_MIN_CALLS, RACE_SPACING_MS, WINDOW_AFTER_MS, WINDOW_BEFORE_MS,
+  historyPlan, historyBackTarget, histNotBuilt17, histDiagRow17, pollUntil17, sameUrl17, HIST_POLL_MS, HIST_SETTLE_MS, HIST_WAIT_MS, unexpectedStop17, windowViolations, judgeCallAnswer, judgeCaps, judgeFHome, judgeHistoryRow, judgeTimedRules, judgeUpOpt, gapJudge, parseCtxTabs, parseRulesTimedLine, rulesTimedExpression, rulesSamplesLine, type TimedMode, RACE_MAX_CALLS, RACE_MIN_CALLS, RACE_SPACING_MS, WINDOW_AFTER_MS, WINDOW_BEFORE_MS,
   type Answer, type CallSpan, type HistoryKind, type J17, type K17Error, type Port, type RaceCall, type Reply,
 } from "./s11b-rules.js";
 
@@ -711,13 +711,27 @@ async function history(a: Args): Promise<void> {
   await session("s11b-history", async (c, claim) => {
     histStep = "claim";
     const tab = await claim(handleOf(tabKey));
+    let navs = 0;
     for (const [i, u] of plan.urls.entries()) {
       histStep = `navigate ${i + 1}`;
       await tab.navigate(u); // no wait added: the navigate handler answers only after the load (handlers/navigate.ts waitForLoad)
+      navs++;
     }
     for (let i = 0; i < plan.backs; i++) {
       histStep = `back ${i + 1}`;
-      await tab.back();
+      try {
+        await tab.back();
+      } catch (e) {
+        // S4-live fixer 5: a set-up back's BridgeError is recorded (labels only), the build NOT BUILT and exit 3; else a STOP.
+        const nb = histNotBuilt17(e, { kind, step: histStep, ctx: stopCtx(a), known: KNOWN_TEXTS });
+        if (!nb) throw e;
+        const row = await c.tabs().then((rs) => histDiagRow17(plan, `http://127.0.0.1:8081/e2e-playground.html?s11b=${tabKey}`, rs.find((r) => r.handle === tab.handle)?.url), () => "unread");
+        say(`HISTDIAG ${kind} row=${row} navigations=${navs} backs-done=${i}`);
+        say(nb);
+        histStep = undefined;
+        bump(3);
+        return;
+      }
       // S4-live fixer 4b: goBack answers before its load (handlers/history.ts) and no read exposes a load status
       // (listTabs rows and TabInfo carry none), so wait until the tab's own row shows the entry the back lands on,
       // then a fixed settle for commit → complete; compared here, never printed.
