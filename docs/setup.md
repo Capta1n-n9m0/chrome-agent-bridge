@@ -972,15 +972,30 @@ What a blocked site means for agents:
 whose top-level address is blocked, and navigations the bridge itself starts to one. It does not stop
 a page from loading a blocked site: script on an allowed page (an agent's `evaluate` included), a meta
 refresh, a link, or `back`/`forward` can make Chrome load it with your cookies; the bridge refuses to
-read or act there only afterwards. A redirect hop is still requested: a `browser_navigate` that an
-allowed address redirects onto a blocked one sends that request, and so does a `browser_download`
-whose redirect lands on one — the download is refused on its final address and its bytes are dropped,
-but the request went out (`downloadStart` checks its own address before the fetch). Blocking the hop
-itself would need a `declarativeNetRequest` rule, which is not built (decisions.md · 2026-10-24 ·
-`downloadStart` and redirects onto a blocked host; · S1: `downloadStart` checks its own URL against the
-block list only). The download's check of its final address was measured live in Step 10's Run 14
-(row R14-5c): a download redirected onto a blocked host was refused `DOMAIN_BLOCKED` with no file
-written, and the test server saw the redirect hop and the target each requested once. *Superseded
+read or act there only afterwards. *Superseded 2026-10-27: was "A redirect hop is still requested … blocking the hop
+itself would need a `declarativeNetRequest` rule, which is not built", because Step 11b built the rule (Run 17 RD-1,
+RD-3).*
+
+*Redirects, since Step 11b.* While a bridge `navigate` or `downloadStart` runs, the extension holds a Chrome
+network rule (`declarativeNetRequest`, built from your list), so a redirect hop that lands on a blocked host is
+never sent. Run 17 measured it on fixture servers: the blocked server saw 0 requests for a `browser_navigate`
+(row RD-1) and for a `browser_download` (RD-3), with the same answers as before (`DOMAIN_BLOCKED`, no file);
+before Step 11b it saw 1 (Run 13 SAFE-5b, Run 14 R14-5c). The rules follow your list: with the pattern
+removed, the same redirect loads (RD-4), and a pattern added just before or during a call counts (RD-5, RD-5b). What is still not covered:
+- `browser_new_tab` with a URL: its first request still goes out (RD-2: the blocked server saw 1; #295). The new
+  tab is refused afterwards.
+- `back` and `forward` hold the rules while they wait for their load (#302), but Run 17 did not measure a redirect
+  through them: RD-BACK failed and RD-FWD did not run, both on Chrome's refusal below (#308).
+- Your own browsing: the rules cover only a bridge call in flight (decisions.md · 2026-10-26 · #290, 0.4 (C)); a
+  page you load yourself still reaches a blocked host (RD-6: the blocked server saw 1).
+- Requests a page starts by itself after a bridge call ends, such as a script or a meta refresh (phase doc 0.9).
+
+`back` and `forward` have a separate limit, not caused by Step 11b: Chrome's back skips pages no human acted on, so
+a history the bridge built alone cannot be gone back through (`INTERNAL`, "Cannot find a next page in history.",
+26 of 26 in a scratch Chrome; #308).
+
+The download's check of its final address was first measured in Step 10's Run 14 (row R14-5c): a download
+redirected onto a blocked host was refused `DOMAIN_BLOCKED` with no file written. *Superseded
 2026-10-25: was "unit-tested but **not yet measured live**: Run 13's redirect test timed out on its own
 test server, and Step 10 measures it again (decisions.md · 2026-10-24 · S4: SAFE-5c's redirect half,
 SAFE-POP-1, SAFE-3 and SAFE-4(b) are re-measured in the next live wave (Step 10))", because Run 14

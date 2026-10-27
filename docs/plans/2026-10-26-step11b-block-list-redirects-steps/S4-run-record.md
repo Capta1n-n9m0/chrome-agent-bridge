@@ -9,6 +9,8 @@ for it. `R7` = `S4-live-run7A-record.md` (line numbers); `R1`, `R3`–`R6` = the
 All rows that ran were judged on attempt 7 (the only attempt that got past RD-REGEX); earlier attempts measured the
 same rows RD-0 … RD-REGEX with the same results (section 2).
 
+*Corrected 2026-10-27 (S5): the RD-FWD row, attempt 6A's row and the STOP-rules row call the pages of the refused set-up `back` "8081 pages". The refused `back` (`at=back 1`, RD-FWD's set-up, attempts 6 and 7) started from the 8091 flip page, the last URL of `historyPlan("fwd")` (`recipes/s11b-rules.ts`); its first request answered 200, so "no redirect" still holds. Finding M1 in `S4-record.md`; evidence `S4-record-verifier2.md`. The judgment text is not rewritten.*
+
 Judgment words: PASS, FAIL, RECORD (a row the sheet only records, whose recorded clauses are in), NOT RUN (not reached
 or not built; why stated), and STOP (the row the pre-registered STOP rule fired on). A row whose pass rule is not met is not PASS.
 

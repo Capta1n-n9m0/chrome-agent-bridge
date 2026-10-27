@@ -693,8 +693,10 @@ live: the focus/input race of Stage 0 F19.*
   actor can claim an unowned tab by handle, sensitive ones included. Mitigations: localhost-only +
   token + the debugger banner, and since Step 9 the human's controls in Chrome — the kill switch, the
   JavaScript switch and a block list (`docs/setup.md` → "Safety"). The block list is not a network
-  firewall: a page, or a redirect hop of a bridge navigation or download, can still load a blocked
-  host (decisions.md · 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140)).
+  firewall: a page can still load a blocked host, and so can a `newTab`'s first request (decisions.md ·
+  2026-10-24 · `downloadStart` and redirects onto a blocked host (#140)). *Superseded 2026-10-27: was "a redirect hop of a
+  bridge navigation or download can still load a blocked host", because Step 11b stops it for `navigate` and
+  `downloadStart` (Run 17 RD-1, RD-3); `newTab` leaks 1 request (RD-2, #295).*
   *Superseded 2026-10-24: was "Mitigations today are localhost-only + token + the debugger banner",
   because Step 9 built Phase E.* *Superseded 2026-10-23: was "the agent acts on
   whatever tab is focused", because of Step 7's cursor.*
@@ -795,8 +797,9 @@ block](#step-9--phase-e-safety-the-kill-switch-the-javascript-switch-blocked-sit
 switch by toolbar button, `Alt+Shift+K` and the options page; a JavaScript switch; a block list, empty
 by default; the own-page block; a log scan that keeps patterns, URLs and the token out of every log.
 Closed 2026-10-24 (#202). *Superseded 2026-10-25: was "Its gate waits for the user's ruling on Run 13
-(#192)", because #202 ruled it.* Not built: blocking a redirect hop onto a
-blocked host (`declarativeNetRequest`, #140), and an allow-list mode (#128 turned it down).
+(#192)", because #202 ruled it.* Not built: an allow-list mode (#128 turned it down). *Superseded 2026-10-27: was "Not built: blocking a redirect hop
+onto a blocked host (`declarativeNetRequest`, #140), and an allow-list mode", because Step 11b built the rule (Run 17
+RD-1, RD-3); `newTab` stays uncovered (#295).*
 *Superseded 2026-10-24: was "An explicit arm/disarm toggle in the options page; optional per-domain
 allow/block list; never log page content or tokens. Higher priority since Step 4 …", because Step 9
 built it.*
@@ -818,14 +821,16 @@ hop and target each requested once); SAFE-4 (b) as R14-4b, PASS (banner gone at 
 R14-POP-1, FAIL, explained by R15-POP-2 (Chrome names another opener for a popup of a background tab; not a daemon
 defect, #226); SAFE-3 as R14-3, NOT MEASURED, then R15-3R, PASS (#224). No product change followed.*
 
-**Next — Step 11b, the block list stops redirected requests** (#202, planned 2026-10-24; phase doc
-`docs/plans/2026-10-26-step11b-block-list-redirects.md`, 0.3 (A) and 0.4 (C) ruled 2026-10-26 (#290); it first builds
-Step 11's three follow-ups as stage S0F (#288)): a `declarativeNetRequest`
-network rule (a new Chrome permission) so that a redirect onto a blocked site is never sent, for downloads and
-navigations alike (decisions.md · 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140)). It is the
-next step, after Step 11 and before Step 12 (decisions.md · 2026-10-25 · The user rules on Step 10's open decisions;
-Step 10 closes (#229)). *Corrected 2026-10-26: was "Later —" and "Its place in the order is set when Step 10
-closes"; #229 set it.*
+**Step 11b — the block list stops redirected requests** (#202, planned 2026-10-24; phase doc
+`docs/plans/2026-10-26-step11b-block-list-redirects.md`, 0.3 (A) and 0.4 (C) ruled 2026-10-26 (#290)). **Built
+2026-10-26/27, gate not met, waiting for the user's ruling.** Stages S0F (Step 11's three follow-ups, #288), S1–S3
+(a `declarativeNetRequest` rule set from the block list, a new Chrome permission) and S4 (Run 17) are done. Run 17
+measured: a redirect hop of a bridge `navigate` or `downloadStart` onto a blocked host is never sent (RD-1, RD-3:
+blocked server 0 requests, was 1); the human's own browsing is unchanged (RD-6); `newTab`'s first request still
+escapes (RD-2, #295). Run 17 stopped at a pre-registered STOP, RD-BACK-EMPTY (`back` answered `INTERNAL`; #307);
+the cause predates Step 11b: Chrome's back skips pages no human acted on (#308). Gate check D4.3 is part (RD-2's leak; the user rules which
+reading holds) and D4.6 is not met (#309); the gate awaits the user's ruling. Docs: S5 (`docs/setup.md` Safety updated). *Corrected 2026-10-27: was
+"**Next — Step 11b**" (planned, not started), because it is built and Run 17 has run.*
 
 **Phase F — Ergonomics.** `wait_for` variants (element-visible; network-idle shipped in Step 5's
 Part N6) — ✅ **element-visible done in Step 8** (2026-10-23: `browser_wait_for({locator, state})`
