@@ -28,7 +28,7 @@
 //   The received text and any hash are never printed or written. The listener stays open after the verdict until the typed poller's own
 //   bounded time is over (its first POST + --for + 1 s), answering 204 and judging nothing: a closed port would make Chrome log a failed
 //   request naming the ephemeral loopback URL in the console RD-LOGS scans (S4-helpers fixer, M4).
-// Other subs: hits, ctl, scan, state, mark, judge-row, dl-record, clean-console (below). H5's SDK subcommands are added at the marked place in `cmds`.
+// Other subs: hits, ctl, scan, state, mark, judge-row, dl-record, state-compat, clean-console (below). H5's SDK subcommands are added at the marked place in `cmds`.
 //
 // Exit: 0 every check passed, 1 a check failed, 2 a STOP, 3 not measured / not discriminating.
 import { createHash } from "node:crypto";
@@ -46,7 +46,7 @@ import {
   parseCtxLine, parseManifestLine, parseRegexLines, parseRulesLine, parseRulesSamplesLine, preTypeCheck, regexExpression, regexProof,
   rulesExpectLine, redactChromeBlocked17, rulesExpression, rulesSampleExpression, row17Line, scan17, type Scan17Ctx, scanLine17, storedExpression, verdict17, REGEX_NOT_MEASURED,
   callLine, foundList, judgeErr17, judgeHistory, judgeRaceA, judgeSamedoc, judgeSocket, k17RawDir, k17RawMissing, K17, latLine, raceDone17, raceDue, recordLine, socketLine,
-  answerOfRow, dlHopRecord, dropTitleLines, fileExistsFrom, judgeDlTrial, judgeFileTabHidden, judgeFileTabRow, type FileTabListRow, judgeRd0State, markExpression, parseCallRow, parseMarkLine, rd0StateLine, rd0ToggleLine, SOCK_MARKS, type SockWindow,
+  answerOfRow, dlHopRecord, dropTitleLines, fileExistsFrom, judgeDlTrial, judgeFileTabHidden, judgeFileTabRow, type FileTabListRow, judgeRd0State, markExpression, parseCallRow, parseMarkLine, rd0StateLine, rd0ToggleLine, SOCK_MARKS, stateCompat, type SockWindow,
   historyPlan, windowViolations, judgeCallAnswer, judgeCaps, judgeFHome, judgeHistoryRow, judgeTimedRules, judgeUpOpt, gapJudge, parseCtxTabs, parseRulesTimedLine, rulesTimedExpression, rulesSamplesLine, type TimedMode, RACE_MAX_CALLS, RACE_MIN_CALLS, RACE_SPACING_MS, WINDOW_AFTER_MS, WINDOW_BEFORE_MS,
   type Answer, type CallSpan, type HistoryKind, type J17, type K17Error, type Port, type RaceCall, type Reply,
 } from "./s11b-rules.js";
@@ -484,6 +484,16 @@ function judgeRow(a: Args): void {
   if (kind === "dl-hop") return judged(label, judgeDlTrial("hop", row, { fileExists: fileExistsFrom(text, step), blocked: opt("blocked"), rulesAfter: opt("rules-after") }));
   if (kind === "tabs-hidden") return judged(label, judgeFileTabRow(row));
   judged(label, judgeCallAnswer(kind, answerOfRow(row), label));
+}
+/** `state-compat [--file <state.json>]` (S4-live fixer 2): adds the keys s9.ts needs to the state.json s11.ts wrote (stateCompat); prints key names only. */
+function stateCompatCmd(a: Args): void {
+  const f = outsideRepo(a.opts.file ?? join(S11_OUT, "state.json"));
+  if (!existsSync(f)) return say("STATECOMPAT no state.json (nothing to do)");
+  const j = JSON.parse(readFileSync(f, "utf8")) as unknown;
+  if (typeof j !== "object" || j === null || Array.isArray(j)) stop("state.json is not a JSON object");
+  const r = stateCompat(j as Record<string, unknown>);
+  if (r.added.length) writeFileSync(f, JSON.stringify(r.state, null, 2));
+  say(r.added.length ? `STATECOMPAT added ${r.added.join(",")}` : "STATECOMPAT nothing missing");
 }
 /** RD-DL-HOP's RECORD line: `dl-record --hop a,b,c --err a,b,c [--rd3 <ms>]`. */
 function dlRecord(a: Args): void {
@@ -1003,6 +1013,7 @@ export const cmds: Record<string, (a: Args) => void | Promise<void>> = {
   "redact-console": redactConsole,
   "judge-row": judgeRow,
   "dl-record": dlRecord,
+  "state-compat": stateCompatCmd,
   "judge-opt": judgeOpt,
   "judge-history": judgeHistoryCmd,
   "judge-gap": judgeGapCmd,

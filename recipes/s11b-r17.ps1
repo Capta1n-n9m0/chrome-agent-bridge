@@ -135,11 +135,16 @@ function Invoke-R17Node([string]$Which, [string[]]$NodeArgs, [scriptblock]$Drive
   if (-not $done) { throw "node $Name exceeded its budget" }
   if ($res -contains $false) { throw "the driver of $Name stopped" }
   if ($n -eq 2 -or $global:S16Stops -gt $s0) { throw "node $Name ended in a STOP" }
-  if ($n -eq 1 -and -not @($out | Where-Object { $_ -match '^(ROW|CHECK) ' }).Count) { throw "node $Name exited 1 with no ROW or CHECK line (a crash, see node-err.txt)" }
+  # S4-live fixer 2: s9.ts prints every ROW/CHECK line after an ISO time (its `say`); s11.ts and s11b.ts print them bare.
+  if ($n -eq 1 -and -not @($out | Where-Object { $_ -match '^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z )?(ROW|CHECK) ' }).Count) { throw "node $Name exited 1 with no ROW or CHECK line (a crash, see node-err.txt)" }
   if ($n -eq 1 -and $StopOnFail) { Stop9 "node $Name failed where a failure is a row-level STOP"; throw 'stop' }
   if ($n -eq 1) { $global:S16Fail++ } elseif ($n -eq 3) { $global:S16NM++ } elseif ($n -ne 0) { throw "node $Name exited $n" }
+  if ($Which -eq 's11' -and $NodeArgs[0] -in 'make', 'setup', 'found') { Sync-R17State }
   $n
 }
+# S4-live fixer 2: s11.ts writes the shared state.json (make, setup, found) in its own shape, without the `opened` list s9.ts's
+# noteOpened reads; B17 state-compat adds only the missing keys and never removes one. The caller's R17Out is kept.
+function Sync-R17State { $keep = $global:R17Out; try { [void](Invoke-R17Node 's11b' @('state-compat')) } finally { $global:R17Out = $keep } }
 # S9 call <ROW> <step> <op> <args> --expect <E>
 function Call9([string]$Row, [string]$Step, [string]$Op, [string[]]$A, [string]$Expect, [switch]$StopOnFail) {
   Invoke-R17Node 's9' (@('call', $Row, $Step, $Op) + $A + @('--expect', $Expect)) -StopOnFail:$StopOnFail

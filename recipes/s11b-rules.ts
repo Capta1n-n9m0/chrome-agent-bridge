@@ -840,9 +840,11 @@ export function parseMarkLine(dump: string, label: string): string | null {
 
 /** One `S9 call` row line: `ROW <id> <step> <ok|CODE> <message> [data <json>] (<ms> ms)`. The `-file` line has no `(ms)` and never matches. */
 export interface CallRow { code: string; message: string; data?: unknown; ms: number }
+/** S9's printed prefix (S4-live fixer 2): recipes/s9.ts `say` writes `<ISO time> <line>` for every line but its STOP line. Optional. */
+export const S9_SAY_PREFIX = "(?:\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z )?";
 export function parseCallRow(text: string, step: string): CallRow | null {
   const esc = step.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const re = new RegExp(`^ROW \\S+ ${esc} (ok|[A-Z][A-Z0-9_]*)(?: (.*?))? \\((\\d+) ms\\)$`);
+  const re = new RegExp(`^${S9_SAY_PREFIX}ROW \\S+ ${esc} (ok|[A-Z][A-Z0-9_]*)(?: (.*?))? \\((\\d+) ms\\)$`);
   let hit: RegExpExecArray | null = null;
   for (const l of wholeLines(text)) hit = re.exec(l) ?? hit;
   if (!hit) return null;
@@ -863,8 +865,20 @@ export function parseCallRow(text: string, step: string): CallRow | null {
 /** `ROW <id> <step>-file <name> exists=<yes|no> part=<yes|no>`: true when a file or its `.part` exists; null when the line is missing. */
 export function fileExistsFrom(text: string, step: string): boolean | null {
   const esc = step.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const m = lastMatch(text, new RegExp(`^ROW \\S+ ${esc}-file \\S+ exists=(yes|no) part=(yes|no)$`));
+  const m = lastMatch(text, new RegExp(`^${S9_SAY_PREFIX}ROW \\S+ ${esc}-file \\S+ exists=(yes|no) part=(yes|no)$`));
   return m ? m[1] === "yes" || m[2] === "yes" : null;
+}
+/**
+ * `state-compat` (S4-live fixer 2): the one state.json is written by s11.ts in its own shape (alias, sentinel, tabs, files, found,
+ * toggle) and by s9.ts, whose `noteOpened` reads `opened` and whose `newtab --as` writes `tabs`. Adds only the keys s9.ts needs that are
+ * absent (`opened: []`, `tabs: {}`); never changes or removes a key. Both helpers save the whole parsed object, so no other key is lost.
+ */
+export function stateCompat(s: Record<string, unknown>): { state: Record<string, unknown>; added: string[] } {
+  const state = { ...s };
+  const added: string[] = [];
+  if (!("tabs" in s)) (state.tabs = {}), added.push("tabs");
+  if (!("opened" in s)) (state.opened = []), added.push("opened");
+  return { state, added };
 }
 /** F-FILETAB's `tabs` row: exactly one tab hidden as `blocked` (S9's `tabs total=… hidden(blocked)=<n> …` detail), else NOT MEASURED. */
 export function judgeFileTabRow(row: CallRow | null): J17 {
