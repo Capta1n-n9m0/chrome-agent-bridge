@@ -3014,6 +3014,87 @@ STOP lines in the committed evidence: FA:2, 4, 6, 8 (liveA run 1's preflight, 4 
   and UP-OPT; #282 lists four rows); SAVE-REFUSE-R's `saveTo` refusals are liveA-only (#282).
 - **S5.5 (liveA) and the committed title line** — gate items for the user (#282, #283).
 
+### Run 17 (S4) — 2026-10-27 (Step 11b: the block list stops redirected requests, §4.24)
+
+*Rows, expected text and rules committed before the first observation: §4.24 at `336547d` (2026-10-27), with its one
+dated note (RD-LOGS's `chrome-blocked` category, #306, `723b63c`) also before it. Run by the S4-live runners (Sonnet,
+medium), the user not present (#33), liveA only, in **seven attempts** (00:35–02:38Z); each ended on a STOP and a return,
+and five helper fixes stood between them (`041ea89`, `4446d17`, `344f386`, `9e3fbe4`, `2c1af4b`; none changed a pass
+rule, judge or expected text). Attempt 7 reached RD-BACK-EMPTY and ended on a **pre-registered STOP** (a call on a page
+with no redirect answered `INTERNAL`, not `ok`; decisions #307); liveB did not start. **The same STOP clause's condition was met earlier** (F1): attempt 6's RD-FWD set-up `back` answered the same `INTERNAL` on an empty list with no redirect, and helper fix 5 (`2c1af4b`) then recorded that answer as NOT BUILT instead of a STOP; attempt 7 met it again at RD-FWD's set-up before RD-BACK-EMPTY. That is for the user's ruling beside #307 and #308. No product code changed. Judged
+by the sheet's own pass rules against the committed records, in
+[`S4-run-record.md`](plans/2026-10-26-step11b-block-list-redirects-steps/S4-run-record.md). Unlike Run 16's entry, the
+per-row lines (each row's evidence line and file) are consciously left in that record and not repeated here; this entry
+holds the summary, the found state, the STOP inventory, the exit checks and the differences. Runs 1–16 above are
+unchanged.*
+
+Sources: **R7** = `S4-live-run7A-record.md` (attempt 7, by line), **RUN6 / RUN7 / RUN8** = `S4-live-runner6.md`, `-runner7.md`,
+`-runner8.md`, **LIVE** = `S4-live.md`, **INV** = `S4-investigation.md`, **LED** = `S4-live.ledger.md` (all in
+`plans/2026-10-26-step11b-block-list-redirects-steps/`).
+
+```
+Date: 2026-10-27 (UTC attempt 1 00:35, attempt 7 02:31-02:38)  Chrome 156   HEAD at attempt 7: 2c1af4b
+Rows: 38. PASS 14 / FAIL 4 / RECORD 4 / NOT RUN 15 / STOP 1.
+PASS    RD-0 RD-CTL F-FILETAB F-HOME RD-CAPS-WARN RD-1 RD-6 RD-3 RD-DL-ERR RD-DL-HOP RD-REBUILD-NARROW RD-4
+        RD-5 RD-5b
+FAIL    RD-BACK, RD-BACK-SAMEDOC (answer INTERNAL, not ok / K-tab), RD-DISARM (K-tab, want DISARMED),
+        R17-UP-L1 (every refusal clause holds; cause: the pass rule's "console-scanned" clause was not met by the row,
+        RD-LOGS never ran after the STOP; runner 8's offline scan of attempt 7's console read 0)
+RECORD  RD-REGEX (120- and 121-character regexes supported, over the 119 bound), RD-2 (redirect 1, blocked 1: `newTab`
+        leaks, #295), RD-7 (K-own, CTX count 0), RD-8 (navigate ok, error-page snapshot)
+STOP    RD-BACK-EMPTY
+NOT RUN RD-FWD (set-up not built), RD-DL-SOCKET, R17-UP-OPT, R17-UP-6, R17-UP-7, R17-SAVE-REFUSE, RD-RESTORE, RD-LOGS,
+        F-RAW, F-RAW-2, F-RAW-DIR, F-RAW-ENC, F-RAW-OK, R17-UP-RACE-A, R17-UP-DEVT
+Exit checks: D4.1 met, D4.2 met, D4.3 NOT met (RD-2 blocked=1), D4.4 met (STOP-path restore, equal), D4.5 met, D4.6 NOT met.
+```
+
+**Causes (#308, `S4-investigation.md`).** The four `INTERNAL "Cannot find a next page in history."` answers
+(RD-BACK, RD-BACK-SAMEDOC, RD-BACK-EMPTY, and RD-FWD's set-up; the record prints only `<message len=35>` for the three
+rows, R7:250, 267, 437, so the text comes from that length and RUN6/RUN7) are Chrome's own refusal of `back` for a history the bridge
+builds with no user activation; a scratch Chrome measured it 26 of 26 times with and without Step 11b's permission, and
+no earlier run ever measured a bridge `back` (HIST-1 never ran). RD-DISARM's FAIL is the timing of the sheet's steps and the
+helper: ON came about 1.3 s after OFF (OFF R7:325, ON R7:330; the helper's 1.6 s gap runs from the scheduled first press), as
+the sheet's steps prescribe, so the state was armed again before the 4 s redirect and the steps contradict the expected
+K-disarmed (INV section 4); wait-safety compared with the found count, not G1's. Both FAILs and the STOP stay as recorded; the
+user rules on the options in #308.
+
+**What the redirect rows show.** With the list holding the blocked fixture: RD-1 and RD-3 (and RD-DL-HOP-1..3) show 0
+requests reaching the blocked port; RD-5b shows 0 after a list edit during the call; `RULES` reads 0 after every reply;
+RD-4 (list without the pattern) shows 1; RD-6 (the human's own window) shows 1, as 0.4 (C) writes.
+
+**Open items** (recorded, not re-run; rulings by number):
+- **Gate** — not met (D4.3, D4.6, the fired STOP); the user rules (#307, #308).
+- **RD-BACK, RD-FWD, RD-BACK-SAMEDOC, RD-BACK-EMPTY, RD-DISARM** — to be re-registered as new rows with an activated
+  set-up and ON after the reply, not re-runs (#308 option a).
+- **RD-LOGS, RD-RESTORE, the Upload rows, liveB** — NOT RUN; offline scan counts were 0, but the consoles of attempts 1 and
+  3-6 are NOT MEASURED (no control line).
+- **STOP clause met earlier (F1)** — RD-FWD's set-up `back` (attempts 6 and 7) met the phase doc's row-level STOP clause
+  before RD-BACK-EMPTY, and fix 5 turned it into NOT BUILT; the user rules beside #307/#308.
+- **RD-REGEX** — #300's and #303's revisit trigger is met (the 119 bound over-warns, never under-blocks).
+
+Found state = read-back: armed=true evaluate=true, block list and Upload folders 0 lines at the start (R7:1-13); the file-access
+toggle found ON, never pressed. The STOP path's restore read back stored page, `daemon.status` and title equal, both texts the
+empty text's hash (R7:460-468; wait-safety reached R7:466, `equal true` x3); the row RD-RESTORE never ran. Only the empty
+text's hash is printed.
+
+STOP lines in the committed evidence: the attempt records' own (attempt 1 F-FILETAB set-up; 2 preflight; 3A `f-filetab`; 4A
+`rd-caps-warn`; 5A and 6A the history block), R7:440-441 (RD-BACK-EMPTY) and the wave-ending lines after it (to R7:483), and
+RUN8's two (the ledger scan's `profile=1`, redacted before the commit, and the refused teardown). Each is matched to a
+return in LED (returns 1-7 and runner 8); RD-FWD's set-up `NOT BUILT` line (RUN7:28) is not a STOP line, which is F1.
+
+| Check | Verdict | Evidence |
+|---|---|---|
+| **D4.1** §4.24 before the first observation | **met** | `336547d` 2026-10-26T20:46Z, `723b63c` 2026-10-27T00:34Z; first line 00:35:30Z |
+| **D4.2** first line proves the build has the permission | **met** | `MANIFEST dnrWithHostAccess=true staticRuleSets=absent`, R7:1 and run1, run3A-run6A |
+| **D4.3** RD-1/2/3 0 hits, RD-4 1, RD-6 as written | **NOT met** | RD-2 `blocked=1` (R7:121; `newTab` leak, #295); RD-1, RD-3 0; RD-4 1; RD-6 1 as written |
+| **D4.4** found state read back equal | **met** (STOP-path restore, not the row) | R7:460-468 |
+| **D4.5** every STOP matched to a return | **met** | LED returns 1-7, runner 8 |
+| **D4.6** RD-LOGS by count | **NOT met** | the row did not run; counts 0 offline, five consoles NOT MEASURED |
+
+**Differences from the step reports' tallies:** LIVE gives RD-FWD as NOT MEASURED (the helper's own label); this record
+counts it NOT RUN (the five words have no NOT MEASURED, and the row was never observed). RD-0 is PASS on liveA only (liveB
+did not start). R17-UP-L1 is FAIL here (earlier drafts: PASS, then a sixth word PARTIAL) because its console clause was not met by the row.
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.
