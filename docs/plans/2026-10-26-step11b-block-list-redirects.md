@@ -623,6 +623,11 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   (judged in S7-record): R17B-RD-2 `blocked=0`; the activated back rows blocked 0. Tests 4663/190 → 4665/191. Report
   `…-steps/S7-live.md`.
 
+### S7-record · 2026-10-27 · `1e285d7` · verifier PASS-with-notes (two fix rounds)
+- 28 rows: PASS 16, RECORD 2, FAIL 7 (all carried from Run 16's uploads), NOT MEASURED 3. D7.3 met (R17B-RD-2 blocked
+  0), D7.4 met (R17B-BACK, R17B-FWD blocked 0; SAMEDOC, EMPTY `ok`), **D7.6 not met** (R17B-LOGS NOT MEASURED). §5 Run
+  17b entry. Record `…-steps/S7-run-record.md`; #318.
+
 ## Open items
 
 - *Rewritten 2026-10-27 (cleanup P12):* for the user at the gate: #292, #293, #295, #307–#309 — **ruled

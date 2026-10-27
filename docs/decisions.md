@@ -9,8 +9,12 @@ as a dated entry and point back.
 
 ## Open decisions
 
-None for Step 11b: the user ruled #292, #293, #295 and #307–#309 on 2026-10-27 (#311). Decisions S6 or Run 17b
-takes as contract-level land here.
+Step 11b (the user ruled #292, #293, #295 and #307–#309 on 2026-10-27, #311):
+- **#318** 2026-10-27 · Run 17b: Step 11b's own rows pass (R17B-RD-2 and the activated back rows blocked 0), but D7.6
+  is not met (R17B-LOGS not measured: one console path for both slices) and seven rows carried from Run 16's uploads
+  fail, each on a helper or sheet defect or an unestablished banner reading. Options: (a) close Step 11b and carry
+  the helper fixes and new rows (a separate console capture per slice, a banner sampler control, UP-RACE-A and UP-OPT
+  re-written) into Step 12's first live wave (recommended); (b) a Run 17c of those rows before closing; (c) hold.
 
 Step 11b's were ruled on 2026-10-27 (#311); Step 11's on 2026-10-26 (#288, #289, #290); the lists of earlier steps' open decisions, with their rulings,
 are in the archive entries they cite and in git.
@@ -177,6 +181,22 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
+
+### 2026-10-27 · Run 17b's record: Step 11b's rows pass; seven carried upload rows fail; D7.6 not met (#318)
+**Decided:** the record `…-steps/S7-run-record.md` as judged (`1e285d7`; 28 rows: PASS 16, RECORD 2, FAIL 7, NOT MEASURED
+3). D7.1–D7.5 and D7.7 met: **R17B-RD-2 blocked 0** (Run 17: 1), so S6 closes the `newTab` leak; R17B-BACK and R17B-FWD
+blocked 0 on activated histories; R17B-DISARM, RD-DL-SOCKET, RESTORE pass. **D7.6 not met:** R17B-LOGS is NOT MEASURED
+because the helper wrote both slices' console capture to one path, so liveA's control line is gone; a helper's printed
+verdict is not evidence when the raw line it checks is gone (the stricter reading, adopted against the result). The
+seven FAILs are all rows carried from Run 16 (Step 11's uploads): UP-OPT (6105 ms over 5000; the poll does not record
+whether the text ever showed), UP-6, F-RAW, F-RAW-2, F-RAW-DIR ("banner seen", also on legs that send no call, so the
+sampler's meaning is not supported; cause not established), UP-RACE-A (its steps press ON 1.6 s after OFF, against its
+own pass rule, as Run 17's RD-DISARM), and UP-L1 (fails because R17B-LOGS was not measured). #313's "Revisit if" not
+met (no early `newTab` answer); #310's met (S8 updates the docs); #316's met (helper lines the rules cannot read).
+**Why:** pre-written rules decide; failures stay failures; causes only from evidence.
+**Instead of:** PASS on the helper's printed verdicts (19/2/6/1).
+**Revisit if:** the user rules on the gate (Open decisions).
+**By:** Claude (judged; the gate for the user)
 
 ### 2026-10-27 · S7-live: attempt 1's throw before any state change was a set-up failure, not a STOP (#317)
 **Decided:** Run 17b's attempt 1 threw inside R17B-0, after the read-only reads and before the first state change: a
