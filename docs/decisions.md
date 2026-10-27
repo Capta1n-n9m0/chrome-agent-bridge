@@ -181,3 +181,22 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
+
+### 2026-10-27 · The user rules Step 12's scope (G12-0) (#321)
+**Decided (user):** the six questions of `docs/plans/2026-10-27-step12-phase-f.md` § For the user at G12-0:
+1. **Scope and order:** A (Run 18, already #320), then B (`args`), C (console), D (kept debugger session), E (the file
+   chooser). **F parked** (`back` onto bridge-built history; #308 (b)). **G1 built after Stage 0 measures it**, only if no
+   new permission is needed, else it returns to the user (G12-2).
+2. **Console:** (a) read on demand through the debugger, if Stage 0 confirms Chrome keeps earlier messages; else (b).
+3. **Kept session:** (a) one per tab while an agent works, closed 5 s after its last call; the banner stays steady.
+4. **File chooser:** (a) `chooser: true`, intercepted only inside that call, files only from the Upload folders.
+5. **`back`:** (a) Chrome's rule is kept; agents navigate to the address instead.
+6. **G2 (the trusted tools' focus/input gap): changed from the recommendation.** A trusted click or typing becomes one
+   **blocking** action: it holds the visibility lock from the focus through the input and a short settle pause after it,
+   so no other actor's capture or focus comes between. The user accepts that trusted actions and the browser are a
+   little slower. Stage 0 picks the mechanism and measures the pause (starting near 500 ms).
+In the chat the user first answered G1 "(a)" under Q6 and "measure first" under Q1; asked, the user chose measure, then
+build. Push granted for the close-out, the Step 12 plan and this ruling.
+**Why:** the user's ruling.
+**Instead of:** G2 kept a known limit (the recommendation).
+**By:** the user (ruled 2026-10-27; recorded by Claude)

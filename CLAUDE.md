@@ -25,10 +25,9 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
   agent never ends its turn on a running child (#286). Rules: `docs/agent-rules.md` §6–§8, §10.
 - **Reloads need no human:** `recipes/reload-extension.ps1` (#65; one re-run on exit 2, #99). The loaded extension is
   the S6 build (Run 17b's R17B-0); interactive sessions using the bridge need `/mcp` or a fresh session.
-- **Resume: Step 12 — Phase F** from `docs/plans/next-session-prompt.md`. It opens with the user's scope ruling, then
-  a first live wave that fixes Run 17b's helper gaps and re-runs Run 16's carried upload rows (#318 (a)). Carried: a
-  popup of a background opener gets no lease (#226); the MCP trusted tools' focus/input race. Live waves run
-  autonomously (#33).
+- **Resume: Step 12 — Phase F** from `docs/plans/next-session-prompt.md`; its scope is ruled (G12-0, #321): Stage 0, then
+  a first live wave that fixes Run 17b's helper gaps and re-runs Run 16's carried upload rows (#318 (a)); then B, C, D, E,
+  G1 (#226, measured first) and G2 (a blocking trusted action); F parked. Live waves run autonomously (#33).
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
 
