@@ -11,27 +11,24 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-27, Step 11b built and re-measured; one gate item waits for the user)
+## Current state (2026-10-27, Step 11b closed; Step 12 next)
 
-- **Shipped:** Steps 1–11 (Step 11, D3 file upload, closed 2026-10-26, #288; `docs/decisions-archive/step11.md`).
-  Public on GitHub (MIT); pushed to `ce1f06d` (#311), later commits not pushed. **24 tools, 27 codes (26 on the wire),
+- **Shipped:** Steps 1–11b (Step 11b, the block list stops redirected requests, closed 2026-10-27, #320;
+  `docs/decisions-archive/step11b.md`). Public on GitHub (MIT), pushed. **24 tools, 27 codes (26 on the wire),
   27 router methods** (the test count: Commands).
 - **Step 11b in one line:** while a bridge `navigate`, `newTab` with a URL, `back`, `forward` or `downloadStart` runs,
   session `declarativeNetRequest` rules built from the block list stop a redirect hop onto a blocked host (0 requests:
-  Run 17 RD-1, RD-3; Run 17b R17B-RD-2, R17B-BACK, R17B-FWD); `newTab` opens `about:blank` first (S6, #311); a bridge
-  `back`/`forward` reaches only pages a human or an activating call acted on (#308); plus Step 11's follow-ups.
-  Phase doc `docs/plans/2026-10-26-step11b-block-list-redirects.md`.
-- **How agents run (#289):** Opus builds contract and safety code and runs every verifier; Sonnet does recipes,
-  fixtures, docs and live runners; every agent at medium effort, passed explicitly; a step agent never ends its turn
-  on a running child (#286). Rules: `docs/agent-rules.md` §6–§8, §10.
+  Run 17 RD-1, RD-3; Run 17b R17B-RD-2, R17B-BACK, R17B-FWD); `newTab` opens `about:blank` first (#311); a bridge
+  `back`/`forward` reaches only pages a human or an activating call acted on (#308).
+- **How agents run (#289, #320):** Opus builds contract and safety code and runs every verifier; Sonnet does recipes,
+  fixtures, docs and live runners; every agent at medium effort, passed explicitly; three fix rounds per stage; a step
+  agent never ends its turn on a running child (#286). Rules: `docs/agent-rules.md` §6–§8, §10.
 - **Reloads need no human:** `recipes/reload-extension.ps1` (#65; one re-run on exit 2, #99). The loaded extension is
   the S6 build (Run 17b's R17B-0); interactive sessions using the bridge need `/mcp` or a fresh session.
-- **Resume: the user's ruling on #318** (`docs/decisions.md` → Open decisions): Run 17b passed Step 11b's own rows, but
-  D7.6 is not met (R17B-LOGS not measured) and seven rows carried from Run 16's uploads fail on helper or sheet defects.
-  Recommended: close Step 11b and carry those helper fixes into Step 12's first live wave. Then **Step 12** — Phase F
-  (`args` for `browser_evaluate`, console capture, keep-attached debugger, the native file chooser; #308 (b) a `back`
-  that reaches bridge-built history). Carried: a popup of a background opener gets no lease (#226); the MCP trusted
-  tools' focus/input race. Live waves run autonomously (#33).
+- **Resume: Step 12 — Phase F** from `docs/plans/next-session-prompt.md`. It opens with the user's scope ruling, then
+  a first live wave that fixes Run 17b's helper gaps and re-runs Run 16's carried upload rows (#318 (a)). Carried: a
+  popup of a background opener gets no lease (#226); the MCP trusted tools' focus/input race. Live waves run
+  autonomously (#33).
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
 

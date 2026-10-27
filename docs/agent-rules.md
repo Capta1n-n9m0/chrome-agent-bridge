@@ -103,7 +103,7 @@ our docs, tests and code first, then at most one targeted web search for an exte
 
 ## 6. Roles
 
-- **Step agent:** owns one stage: builder → independent verifier → fixer, at most two fix rounds and a third only by
+- **Step agent:** owns one stage: builder → independent verifier → fixer, at most three fix rounds and a fourth only by
   an Opus fixer (§7); a fresh verifier re-checks only the affected items after each. Reads its children's reports and
   the resulting files before accepting. Does not build or commit itself: after the verdict it starts a committer.
   Keeps the ledger only if the stage holds a wait.
@@ -125,7 +125,11 @@ our docs, tests and code first, then at most one targeted web search for an exte
   a STOP line. Every live wave leaves the safety state as it found it, read back by count and hash,
   never printed.
 - **Committer:** one task: stage the exact file list the brief names, commit with the verifier's verdict in the
-  message (§10), report the hash. No other edit.
+  message (§10), report the hash in one line. No other edit. The step agent writes the hash into the stage report
+  (Outputs), the session agent into the journal.
+- **Checker, investigator, auditor, measurer** (read-only leaves; Sonnet unless the phase doc says otherwise): run a
+  stated command set, answer a stated question from code or docs, or measure with the command shown. None edits or
+  commits; each writes `<STAGE>-<role>[n].md`.
 - **Lead cleaner / area cleaner:** `cleanup-pass` skill (roles, areas, models, report form).
 - Leaf agents (builder, verifier, fixer, runner, committer, area cleaner) never spawn agents.
 
@@ -142,12 +146,17 @@ each stage **low** or **standard**.
   committers, and the area cleaners the `cleanup-pass` table marks Sonnet. Headless `claude -p` E2E actors may run Sonnet.
 - **Effort is medium for every agent**, Opus and Sonnet alike. Every brief states `effort`, and every `Agent` call
   passes `effort` and `model` explicitly; none is left to a default.
-- **Fix rounds:** at most two per stage. A third runs only on an Opus fixer; if that fails, §3 item 9.
+- **Fix rounds:** at most three per stage (#320), counted per stage and never reset by a new attempt: a fix between two
+  live-run attempts is a round, as is a fix after a verifier's FAIL. A fourth runs only on an Opus fixer; if that fails,
+  §3 item 9. A live stage's limit on runner attempts is set in its phase doc.
 - **Committer:** a fresh agent the step agent starts after the verifier's verdict (§10); Sonnet.
 - **Small iterations (#271):** a stage whose build would exceed about 600 new lines or one coherent deliverable is
   split into slices before it starts, one step agent each. A brief names line ranges, never a whole file too large to
   read whole (the e2e plan), and states the slice's size cap. A builder that finds its slice larger than briefed stops
-  and reports DONE-PARTIAL with what remains, rather than growing its context.
+  and reports DONE-PARTIAL with what remains, rather than growing its context. A cap counts new lines of code and tests
+  together. A finished slice up to 1.5 times its cap may be accepted as a deviation when it is one coherent piece and
+  the extra is tests; its report states the size and the reason under Deviations. Beyond 1.5 times, or code alone
+  over the cap, is DONE-PARTIAL (#320).
 - Every report states the model and effort it ran on. Step reports record the verifier's findings per stage.
 
 ## 8. Waiting, and fresh agents

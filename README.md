@@ -49,7 +49,7 @@ folders agents may upload from to **Upload folders** on the extension's options 
 to file URLs** for the extension. A file outside those folders is refused `UPLOAD_REFUSED`, and the bridge never
 opens or acts on `file:` pages. See [`docs/setup.md` → Uploading files](docs/setup.md#uploading-files).
 
-**Step 11b (built; its close waits for the user's ruling on #318):** while a bridge `navigate`, `newTab` with a URL,
+**Step 11b (closed 2026-10-27, #320):** while a bridge `navigate`, `newTab` with a URL,
 `back`, `forward` or download runs, the block list also stops a redirect hop onto a blocked site (Runs 17 and 17b,
 2026-10-27).
 

@@ -156,7 +156,7 @@ acts on **this session's tab**.
 | `browser_list_tabs()` | List open tabs: handle, `*` on the human's active tab, the holding actor, title — URL |
 | `browser_select_tab(tab)` | Make `tab` this session's tab: claims it, **without** bringing it on screen |
 | `browser_focus_tab()` *tab* | Bring the tab on screen and focus its window (trusted click/type/press key do the same first); it does not change this session's tab |
-| `browser_new_tab(url?)` / `browser_close_tab(tab)` | Open a tab (it becomes this session's tab; it comes to the front only if you were looking at this session's tab, else it opens in the background) / close a tab by handle |
+| `browser_new_tab(url?)` / `browser_close_tab(tab)` | Open a tab (it becomes this session's tab; it comes to the front only if you were looking at this session's tab, else it opens in the background; with a URL it opens a blank page first ([Safety](#safety))) / close a tab by handle |
 | `browser_evaluate(expression, timeoutMs?, asRef?, saveTo?, overwrite?)` *tab* | Run JavaScript in the tab's page context and return the result (shows the debugging banner); `asRef:true` also returns a `[ref=eN]` for an element result, to act on with the other tools; `saveTo` (an absolute file path) writes the value to that file instead and answers only path, size, kind and sha256 — see [Running JavaScript](#running-javascript) |
 | `browser_network_requests(tab?, filter?, types?, failedOnly?, limit?, includeHeaders?, id?)` | List the network requests the tab has made — method, status, type, duration, size, URL — captured continuously with no banner; `id` shows one request's headers and body summary |
 | `browser_network_clear(tab?)` | Forget the recorded network requests, so the next `browser_network_requests` shows only what your next action caused |
@@ -392,7 +392,8 @@ connection, and with it the script's leases. `connect({failureReports: false})` 
 reports off (below).
 
 **Tabs and the cursor.**
-- `client.newTab(url?, {active?})` opens a tab in the background (unless `active: true`), leased to
+- `client.newTab(url?, {active?})` opens a tab in the background (unless `active: true`; with a URL, on a blank page
+  first, [Safety](#safety)), leased to
   the script, and returns a `Tab`. `client.claim("T3")` takes a free tab by handle;
   `client.claim({active: true})` takes the tab the human is looking at. `client.tabs()` lists every
   tab as `{handle, title, url, owner?, current}`, where `current` marks the human's tab.

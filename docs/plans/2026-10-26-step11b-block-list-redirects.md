@@ -1,6 +1,6 @@
 # Step 11b — The block list stops redirected requests (`declarativeNetRequest` session rules)
 
-**Date:** 2026-10-26 · **Status:** Built (Stage 0 → S5, 2026-10-26/27); Run 17 stopped at a pre-registered STOP that predates Step 11b (#307, #308); **the user ruled the gate 2026-10-27 (#311); S6, Run 17b (S7) and S8 built; D7.6 not met — #318 waits for the user** (kickoff was `docs/plans/next-session-prompt.md`)
+**Date:** 2026-10-26 · **Status:** Built (Stage 0 → S5, 2026-10-26/27); Run 17 stopped at a pre-registered STOP that predates Step 11b (#307, #308); **Closed 2026-10-27** (#311, #320): S6, Run 17b (S7) and S8 built; D7.6 not met, accepted by the user (#318 (a)); the helper fixes go to Step 12 (kickoff was `docs/plans/next-session-prompt.md`)
 **Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change (§6.5 the human, §10 protocol and codes, with the Step 9–11 dated notes) ·
 **Roadmap:** decisions.md · 2026-10-24 · The roadmap after Step 8 (#129), as amended by · 2026-10-25 · The user rules on
@@ -634,7 +634,7 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   note; a comment-only keeper edit. The seven failed carried rows are not described as fixed. CLAUDE.md proposals
   (`S8-claude-md-proposals.md` (a)–(f), cleanup P7, P8) applied by the session agent (#319). D8.1 met.
 
-### Gate checklist after the ruling · 2026-10-27 · **not met — #318 waits for the user**
+### Gate checklist after the ruling · 2026-10-27 · **D7.6 not met; accepted by the user, Step 11b closed (#318 (a), #320)**
 | Item | Met? | Evidence |
 |---|---|---|
 | Every-stage checks | yes | stage reports; tests 4535/183 → 4665/191, none removed |

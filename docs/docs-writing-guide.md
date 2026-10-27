@@ -38,7 +38,7 @@ Never duplicate across these places. Point to the source instead.
 **Records and living docs.** Living docs are kept true: the `CLAUDE.md` files, `docs/agent-rules.md`,
 the skills, the guide, `setup.md`, `e2e-test-plan.md` (§1–§4), `README.md`, `recipes/README.md`,
 `decisions.md`, the roadmap, open phase docs and the kickoff. Records are what happened and are not
-rewritten: closed phase docs, steps dirs, as-built files, `docs/decisions-archive/`, `handoffs.md`,
+rewritten: closed phase docs, steps dirs, as-built files, `docs/decisions-archive/`, `handoffs.md` (its old entries; new ones are added at the top),
 `e2e-test-plan.md` §5 run records, `docs/cleanup/`. A record that misleads gets a dated note, never an edit.
 
 ## Rules

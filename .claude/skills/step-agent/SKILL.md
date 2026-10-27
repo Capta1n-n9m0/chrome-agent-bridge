@@ -17,7 +17,7 @@ A brief points; it does not paste.
   phase doc section that holds them).
 - **Over ~1k words is a warning sign:** something was pasted.
 - **Size:** name line ranges and state the slice's size cap (`agent-rules.md` §7); a builder over it reports
-  DONE-PARTIAL. Do not ask for foreground children: the Agent tool may start any child in the background, and
+  DONE-PARTIAL, unless it is the accepted overrun of `agent-rules.md` §7. Do not ask for foreground children: the Agent tool may start any child in the background, and
   `agent-rules.md` §8 says how to wait.
 - **Verifiers get the same READ list as the builder**, plus the builder's report labelled "claims
   to audit". They read the phase doc and spec themselves.
@@ -45,7 +45,7 @@ agent-rules.md §10, trailer: <trailer>.
 ## LEAF BRIEF (step agent → builder / verifier / fixer / runner)
 
 ```
-ROLE: builder | verifier | fixer | live runner | committer — stage <STAGE> of Step <N>, chrome-agent-bridge.
+ROLE: builder | verifier | fixer | live runner | committer | checker | investigator | auditor | measurer — stage <STAGE> of Step <N>, chrome-agent-bridge.
 Read docs/agent-rules.md first (your role: §6 <role>); it applies in full except the deviations.
 GOAL: <one paragraph>.
 READ: <same list as the step brief, narrowed to the task>. <Verifier: + "claims to audit:
@@ -61,7 +61,7 @@ OUTPUT: <steps-dir>/<STAGE>-<role>[n].md. Commit: yes (trailer: …) | no.
 
 Append-only, one line per milestone: UTC time (`date -u`) · substep · state (started / done /
 failed) · artifacts (commit hash; evidence path) · PIDs and log paths · watcher state · next
-substep. It is the recovery path after outages and respawns.
+substep. It is the recovery path after outages and respawns. If you cannot read the clock, write `~` before the time.
 
 ## What a stage leaves in the steps dir
 
