@@ -192,6 +192,23 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-27 · S1-helpers-b: the Run 18 scanner, `raw-l1`, a missing list STOPs; two process slips (#346)
+**Decided:** S1-helpers-b (`1bf351e`, verifier 4 PASS-with-notes after three fix rounds) as ruled in
+`…-steps/S1-helpers-b.md` §5: `s11b scan18` follows §4.26's fixture definition and does not count a `://` with no
+scheme; the old scanner's false FAILs came from the helpers' own `SCAN …: ://=` text and from `127.0.0.1:8081`, not the
+extension's own page, so §4.26's stated cause and S7-run-record §5 item 8 are wrong on the cause (a finding; neither is
+edited, the sheet's rule is unchanged); `s11b raw-l1` makes R18-UP-L1's two raw calls once; a missing Upload-folders
+list element is a STOP, never a count of 0. S1-helpers-c's runner checks both option-page lists at R18-0 before any
+state change (an empty `uploadfolders-warned` list's UIA exposure is unmeasured), keeps an outer `try` and uses no
+`SilentlyContinue`. 757 lines (code 259 under its 350 cap) are within #344 (4). **Process slips, recorded:** the
+builder ran `git checkout -- recipes/s11-win.ps1` once (forbidden by `agent-rules.md` §10; no other agent's work was in
+that file), and verifier 1 wrote `core.autocrlf` into `.git/config` and removed it (checked absent at 2026-10-27
+session-agent time). No damage found.
+**Why:** the sheet's pass rules stand; the helpers read them.
+**Instead of:** editing §4.26 after its commit (forbidden).
+**Revisit if:** R18-0 shows the warned list is not exposed.
+**By:** Claude (build decision)
+
 ### 2026-10-27 · S3b: the console formatter's line form; its output is capped in S5b; the JavaScript-off line left for the gate (#345)
 **Decided:** S3b (`beaa805`, verifier PASS after one fix round): (1) for user review: `formatConsole`'s one-line form and
 its export on `@bridge/sdk/format` only (the SDK's eight values unchanged), as `…-steps/S3b-builder.md` §5. (2) Its

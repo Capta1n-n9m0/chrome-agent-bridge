@@ -35,3 +35,7 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
 - 2026-10-27T17:56Z · S3a · step agent · ended · spec note `7b29b5d`, code `e835eb5` · verifier FAIL (a stack via an Error preview) → PASS-with-notes (two fix rounds) · tests 4768 → 4856 (S3a's 56); 28 router methods; #344 recorded (Note A fixed fail-closed in S3b; caps count code from S3b on).
 - 2026-10-27T17:56Z · S3b · step agent · Opus · medium · started beside S1-helpers-b (sdk/mcp/setup + the reducer's Note A fix).
 - 2026-10-27T18:46Z · S3b · step agent · ended · `beaa805` · PASS (one fix round) · tests 4856 → 4881; 25 tools; #345 recorded (formatter cap → S5b); sdk/CLAUDE.md gotcha (no `console.` in sdk/src).
+- 2026-10-27T18:46Z · bookkeeping `c6ad96f` (S3 as-built, #343–#345).
+- 2026-10-27T18:46Z · S4a · step agent · Opus · medium · started beside S1-helpers-b (one new pure module + tests; unwired).
+- 2026-10-27T18:54Z · S1-helpers-b · step agent · ended · `1bf351e` · verifier FAIL ×3 → PASS-with-notes (three fix rounds, the limit) · recipes tests 1090 → 1131; #346 recorded (incl. two process slips, no damage; `.git/config` checked: no core.autocrlf).
+- 2026-10-27T18:54Z · S1-helpers-c · step agent · Opus · medium · started beside S4a (the Run 18 block runner).
