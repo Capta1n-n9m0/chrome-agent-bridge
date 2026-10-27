@@ -138,3 +138,92 @@ function Invoke-S12DevtRow([long]$Hwnd) {
   if (-not (Test-S9DaemonSafety ([bool]$global:S11Found.armed) ([bool]$global:S11Found.evaluate) ([int]$global:S11Found.count) 'UP-DEVT' 5000)) { Stop9 'UP-DEVT : daemon.status is not back to the found state'; return $false }
   $true
 }
+
+# ---- S1-helpers-b: OPT (poll to 15 s, the sheet's lines), the UP-RACE-A driver, class-only URL lines ---------------------------------
+$S12O2PollMaxMs = 15000
+# A function of another helper file, re-defined from its own text with regex patches (each must match exactly once, else a throw). The
+# patched text is dot-sourced at the top level below, so the new function lands in the scope that dot-sourced this file.
+function Get-S12PatchedFunction([string]$Name, [string]$NewName, [object[]]$Pairs) {
+  $t = (Get-Command $Name -CommandType Function -ErrorAction Stop).ScriptBlock.Ast.Extent.Text
+  foreach ($p in $Pairs) {
+    if ([regex]::Matches($t, $p[0]).Count -ne 1) { throw "patch of $Name did not match exactly once" }
+    $rep = $p[1]
+    $t = [regex]::Replace($t, $p[0], [Text.RegularExpressions.MatchEvaluator]{ param($m) $rep })
+  }
+  $t -replace ('^function ' + [regex]::Escape($Name)), "function $NewName"
+}
+# O2 is polled until its box holds the saved text or 15 000 ms have passed (Run 17b stopped at 6 s and recorded no match).
+function Wait-S12O2($O2, [string]$SetSha) {
+  $t0 = Get-S12NowMs; $at = $null
+  while ($true) {
+    $same = ((Get-S11Sha (Get-S11Box $O2 'uploadfolders')) -eq $SetSha)
+    $el = [int]((Get-S12NowMs) - $t0)
+    if ($same) { $at = $el; break }
+    if ($el -ge $S12O2PollMaxMs) { break }
+    Start-Sleep -Milliseconds 150
+  }
+  [pscustomobject]@{ Shown = ($null -ne $at); At = $at; PolledMs = [int]((Get-S12NowMs) - $t0) }
+}
+function Format-S12OptObserved($Standing, $Invalid, $Warned) { "OPT observed standing x$Standing invalid items $Invalid warned items $Warned" }
+function Format-S12OptO2($R) { "OPT O2 shown=$(if ($R.Shown) { 'yes' } else { 'no' }) at=$(if ($R.Shown) { $R.At } else { 'none' }) polled-ms=$($R.PolledMs)" }
+# The URL class a `window ... now shows` line prints instead of the URL (an own-page URL would count as non-fixture, Run 17b).
+function Get-S12UrlClass([string]$Url) {
+  if ($Url -eq 'about:blank') { return 'url-class=about-blank' }
+  if ($Url -match '^http://(127\.0\.0\.1|([a-z0-9-]+\.)*localhost):8081([/?#]|$)') { return 'url-class=fixture' }
+  if ($Url -match '^chrome://extensions([/?#]|$)') { return 'url-class=chrome-extensions' }
+  if ($Url -match "^chrome-extension://$S9Id([/?#]|$)") { return 'url-class=own-page' }
+  'url-class=other'
+}
+$S12OptPairs = @(
+  @('(?s)\$t0 = Get-Date; \$o2Ms = 0; \$o2Eq = \$false.*?if \(-not \$o2Eq\) \{[^}]*\}', '$o2 = Wait-S12O2 $O2 $setSha; $o2Eq = $o2.Shown; $o2Ms = $(if ($o2.Shown) { $o2.At } else { $o2.PolledMs })'),
+  @('Say9 "OPT observed:[^\r\n]*"', 'Say9 (Format-S12OptObserved $standing $invalidCount $warnedCount); Say9 (Format-S12OptO2 $o2)')
+)
+$S12OmniPairs = @(@('now shows \$Url"', 'now shows $(Get-S12UrlClass $Url)"'), @('did NOT reach \$Url within', 'did NOT reach $(Get-S12UrlClass $Url) within'))
+# Dot-source this file AFTER s9-win.ps1 and s11-win.ps1: Invoke-S12Opt is Invoke-S11Opt with the 15 s poll and the sheet's OPT lines;
+# Set-S9Omnibox is re-defined with class-only URL text. The runner calls Assert-S12Patched before the first row.
+if (Get-Command Invoke-S11Opt -CommandType Function -ErrorAction SilentlyContinue) { . ([scriptblock]::Create((Get-S12PatchedFunction 'Invoke-S11Opt' 'Invoke-S12Opt' $S12OptPairs))) }
+if (Get-Command Set-S9Omnibox -CommandType Function -ErrorAction SilentlyContinue) { . ([scriptblock]::Create((Get-S12PatchedFunction 'Set-S9Omnibox' 'Set-S9Omnibox' $S12OmniPairs))) }
+function Assert-S12Patched {
+  if (-not (Get-Command Invoke-S12Opt -CommandType Function -ErrorAction SilentlyContinue) -or (Get-Command Set-S9Omnibox).ScriptBlock.Ast.Extent.Text -notmatch 'Get-S12UrlClass') { Stop9 's12-win.ps1 was dot-sourced before s9-win.ps1 / s11-win.ps1: Invoke-S12Opt or the class-only omnibox line is missing'; throw 'unpatched' }
+}
+
+# The loop-done file's epoch ms; an empty or half-written read is retried for 200 ms (the actor writes it atomically, this is the second guard). 0 = none.
+function Read-S12ReplyMs([string]$File) {
+  $t0 = Get-S12NowMs
+  while (Test-Path -LiteralPath $File) {
+    $txt = try { ([IO.File]::ReadAllText($File, $S11Utf8)).Trim() } catch { '' }
+    $v = [long]0
+    if ([long]::TryParse($txt, [ref]$v)) { return $v }
+    if (((Get-S12NowMs) - $t0) -ge 200) { break }
+    Start-Sleep -Milliseconds 20
+  }
+  [long]0
+}
+# R18-UP-RACE-A: Invoke-S11bRaceA with the ON press timed from the LAST call's reply (run the actor as `s11b race --to-cap`). OFF is pressed at
+# ready + 1.5 s and `UP-RACE-A.press` written as before; the actor's loop-done signal holds the last reply's epoch ms; ON is pressed 1 600 ms
+# after it and `RACE ON pressed <ms> after last reply` printed. No loop-done within 120 s: ON at once (the state is restored first), a STOP.
+function Invoke-S12RaceA([long]$Btn) {
+  $id = 'UP-RACE-A'
+  if (-not (Test-S11ButtonReady $Btn)) { return $false }
+  Park-S9Cursor 'race A'
+  [void](Wait-S11Ready $id); $t0 = Get-S12NowMs
+  while (((Get-S12NowMs) - $t0) -lt 1500) { Start-Sleep -Milliseconds 5 }
+  [void](Invoke-S9ActionButton $Btn)
+  $pms = [long]0; $t1 = Get-S12NowMs
+  do { if (Test-S11bTitleOff $Btn) { $pms = Get-S12NowMs } else { Start-Sleep -Milliseconds 20 } } until ($pms -gt 0 -or (((Get-S12NowMs) - $t1) -gt 2000))
+  if ($pms -gt 0) { [IO.File]::WriteAllText((Join-Path $S11Out "$id.press"), "$pms", $S11Utf8) } else { Stop9 'RACE A: the toolbar title did not read OFF after the first press; no .press file' }
+  $f = Get-S11Signal "$id-loop-done" 'ready'; $w0 = Get-S12NowMs
+  while (-not (Test-Path -LiteralPath $f) -and (((Get-S12NowMs) - $w0) -lt 120000)) { Start-Sleep -Milliseconds 20 }
+  $reply = Read-S12ReplyMs $f
+  if ($reply -le 0) { Stop9 'RACE A: no loop-done reply time: ON is pressed at once' }
+  if (Test-Path -LiteralPath $f) { Remove-Item -LiteralPath $f -Force }
+  while ($reply -gt 0 -and (((Get-S12NowMs) - $reply) -lt 1600)) { Start-Sleep -Milliseconds 5 }
+  $onAt = Get-S12NowMs
+  [void](Invoke-S9ActionButton $Btn)
+  if ($reply -gt 0) { Say9 "RACE ON pressed $($onAt - $reply) after last reply" }
+  Wait-S9ActionTitle $Btn $S9TitleArmed 2000
+  if ("$(Get-S9ActionTitle $Btn)" -ne $S9TitleArmed) { Stop9 'the toolbar title does not read armed after the press pair'; return $false }
+  Write-S11Pressed $id
+  if ($reply -le 0) { return $false }
+  Test-S9DaemonSafety ([bool]$global:S11Found.armed) ([bool]$global:S11Found.evaluate) ([int]$global:S11Found.count) $id 5000
+}

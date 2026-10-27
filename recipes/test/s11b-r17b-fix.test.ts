@@ -4,8 +4,9 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { K17, parseCallRow } from "../s11b-rules.js";
-import { carriedRowLine, carriedVerdict, histReplyLine, judgeR17bRow, judgeRd2Snapshot, judgeSnapshotPage, msForJudge, parseTabRowLine, rd2TabRowLine } from "../s11b-r17b-rules.js";
+import { aggregateRows, carriedRowLine, carriedVerdict, histReplyLine, judgeR17bRow, judgeRd2Snapshot, judgeSnapshotPage, msForJudge, parseTabRowLine, rd2TabRowLine } from "../s11b-r17b-rules.js";
 import { STOP_MAP } from "../s11b-r17b-plan.js";
+import { NEWTAB_AWAITING, newtabTrialLine } from "../s11b-r17b-build.js";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const ps = readFileSync(join(REPO, "recipes", "s11b-r17b.ps1"), "utf8");
@@ -205,5 +206,25 @@ describe("F11: parse check and the manifest message", () => {
     expect(unit("r17b-newtab-load")).toMatch(/\$wc -eq 2\) \{ Stop9/);
     expect(unit("r17b-newtab-load")).not.toContain("[void](Read-R17bWatch");
     expect(unit("r17b-newtab-refused")).toMatch(/\$wc -eq 2\) \{ Stop9/);
+  });
+});
+
+describe("S1-helpers-b: the aggregator (G-23, S7-run-record 5 items 7-8)", () => {
+  it("a multi-token row id is one verdict line, not zero (R17B-SAVE-REFUSE printed NOT MEASURED because of it)", () => {
+    expect(carriedVerdict(["ROW SAVE-REFUSE-R sdk-leg PASS", "ROW OTHER FAIL: x"])).toEqual({ verdict: "FAIL", n: 2 });
+    expect(carriedVerdict(["ROW SAVE-REFUSE-R sdk-leg PASS"])).toEqual({ verdict: "PASS", n: 1 });
+    expect(carriedVerdict(["ROW X step ok message (10 ms)"])).toEqual({ verdict: "NOT MEASURED", n: 0 });
+  });
+  it("one ROW per id and slice: a second is WARN row printed twice, counted once at the worse verdict; the slices stay apart", () => {
+    const g = aggregateRows(["ROW R18-X PASS slice=A", "ROW R18-X FAIL: why slice=A", "ROW R18-X PASS slice=B", "ROW R18-Y PASS"]);
+    expect(g).toEqual({ verdict: "FAIL", n: 3, warns: ["WARN row printed twice: R18-X"] });
+    expect(aggregateRows([]).verdict).toBe("NOT MEASURED");
+    expect(aggregateRows(["ROW A PASS", "ROW B RECORD: r"])).toEqual({ verdict: "PASS", n: 2, warns: [] });
+  });
+  it("no interim NOT MEASURED ROW beside a PASS: the awaiting verdict prints a CHECK line", () => {
+    const j = { pass: false, notMeasured: true, why: NEWTAB_AWAITING };
+    expect(newtabTrialLine("R17B-NEWTAB-LOAD-1", j)).toBe("CHECK newtab-trial R17B-NEWTAB-LOAD-1 reply and page hold; blocked and RULES are read next");
+    expect(newtabTrialLine("R17B-NEWTAB-LOAD-1", { pass: true, why: "ok" })).toMatch(/^ROW R17B-NEWTAB-LOAD-1 PASS/);
+    expect(newtabTrialLine("R", { pass: false, notMeasured: true, why: "other reason" })).toMatch(/^ROW R NOT MEASURED/);
   });
 });

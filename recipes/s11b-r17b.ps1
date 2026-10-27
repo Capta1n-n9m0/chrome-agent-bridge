@@ -67,7 +67,8 @@ foreach ($r17bSt in $R17Ast.EndBlock.Statements) {
 if ($r17bEr.Count -ne 0 -or $R17Funcs -ne 49 -or $R17Blocks.Count -ne 49) { Write-Host 'STOP: Run 17''s block list was not read from s11b-r17.ps1'; exit 2 }
 
 # ---- Run 17b's own pieces ------------------------------------------------------------------------------------------------------------
-function Set-S17Raw([string]$Name) { $env:S9_RAW = if ($FramingBlocks -contains $Name -or $Name -like 'g1-*' -or $Name -in 'r17b-history', 'root-add') { $Framing } else { $Record } }
+# S1-helpers-b: r17b-history is not a framing block: its HIST/ACT set-up lines belong to the record stream.
+function Set-S17Raw([string]$Name) { $env:S9_RAW = if ($FramingBlocks -contains $Name -or $Name -like 'g1-*' -or $Name -eq 'root-add') { $Framing } else { $Record } }
 function Test-S17Gate([string]$Name) {
   if (($NeedsAccess -contains $Name) -and $global:S16Toggle -ne 'on') { Say9 "GATE block $Name refused: the file-URL toggle did not read on (G11-3); its rows stay NOT RUN"; return $false }
   $true

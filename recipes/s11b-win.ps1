@@ -349,7 +349,7 @@ function Set-S11bBlockList([long]$O, [string[]]$Extra = @()) {
 }
 
 # ---- H8: typed lines (F-HOME, RD-CAPS-WARN, R17-UP-OPT) and the block list as the stored-poller expects it ------------------------
-# K-opt-stand (extension/src/options-model.ts UPLOAD_FOLDERS_WARNING; tied by s11b-win-static.test.ts). Run 16's $S11Warning is the old text.
+# K-opt-stand (extension/src/options-model.ts UPLOAD_FOLDERS_WARNING; tied by s11b-win-static.test.ts). $S11Warning (s11-win.ps1) now holds the same S0F-a text; Run 16's runner is retired for UP-OPT.
 $S11bStand = 'An agent may upload any file inside these folders to any site it can open. Allow only folders that hold files you mean to share. A home folder, or a folder that holds home folders, is refused; never allow a folder that holds bridge.token or a .ssh folder. An agent that can also run programs on this computer can put any file into an allowed folder.'
 $S11bHomeTyped = @('C:\Users\fixture-home', 'C:\Users', 'C:\Users\fixture-home\work', '/home/fixture-home', '/root')
 # A long-host fixture (RD-CAPS-WARN): three labels of a, 24, 24 and $Last long, with the fixture port: a regex of 119, 120 or 121 characters.

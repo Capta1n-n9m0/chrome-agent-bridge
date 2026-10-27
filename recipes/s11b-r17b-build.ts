@@ -1,7 +1,7 @@
 // Step 11b S7-helpers slice H2: pure rules of Run 17b's build proof, tab watcher and timed newTab (docs/e2e-test-plan.md section 4.25,
 // rows R17B-0 (e) (f), R17B-RD-2, R17B-NEWTAB-PLAIN, R17B-NEWTAB-LOAD). No I/O here. Written 2026-10-27 by the S7-helpers H2 builder
 // (Claude Sonnet 5.5); NOT run against Chrome. The console expressions print labels and numbers only: never a URL or a title.
-import type { J17 } from "./s11b-rules.js";
+import { row17Line, type J17 } from "./s11b-rules.js";
 
 const lastLine = (dump: string, re: RegExp): RegExpExecArray | null => {
   let hit: RegExpExecArray | null = null;
@@ -87,6 +87,9 @@ export function pageClassOf(s: { url: string; title: string; elements: number })
   if (s.url === "about:blank") return "about:blank";
   return /^http:/.test(s.url) && (s.title.includes(PLAYGROUND_MARK) || s.elements > 0) ? "playground" : "other";
 }
+export const NEWTAB_AWAITING = "reply and page hold; blocked or RULES after not given";
+/** G-23: the interim \"not given\" verdict is a CHECK line, never a ROW printed beside the row's later PASS. */
+export const newtabTrialLine = (row: string, j: J17): string => (j.notMeasured && j.why === NEWTAB_AWAITING ? `CHECK newtab-trial ${row} reply and page hold; blocked and RULES are read next` : row17Line(row, j));
 /** One trial: the reply came after the page loaded (LAT >= 3 000 ms and the snapshot is the page). blocked > 0 and RULES > 0 after are STOPs; unread inputs are NOT MEASURED. */
 export function judgeNewtabTrial(i: { answer: string; ms: number; page: PageClass | null; blocked?: number | null; rulesAfter?: number | null }): J17 {
   if (i.answer !== "ok") return { pass: false, why: `answer ${i.answer}, not a success` };
@@ -94,7 +97,7 @@ export function judgeNewtabTrial(i: { answer: string; ms: number; page: PageClas
   if ((i.rulesAfter ?? 0) > 0) return { pass: false, stop: true, why: `RULES ${i.rulesAfter} after the reply` };
   if (i.ms < NEWTAB_HOLD_MS) return { pass: false, why: `reply after ${Math.round(i.ms)} ms, before the ${NEWTAB_HOLD_MS} ms hold (S6 "Revisit if", #313)` };
   if (i.page !== "playground") return { pass: false, why: `the snapshot is ${i.page ?? "unread"}, not the page` };
-  if (i.blocked == null || i.rulesAfter == null) return { pass: false, notMeasured: true, why: "reply and page hold; blocked or RULES after not given" };
+  if (i.blocked == null || i.rulesAfter == null) return { pass: false, notMeasured: true, why: NEWTAB_AWAITING };
   return { pass: true, why: `reply after ${Math.round(i.ms)} ms, page loaded, blocked 0, RULES 0` };
 }
 

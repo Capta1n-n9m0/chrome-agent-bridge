@@ -35,14 +35,14 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import { connect as netConnect } from "node:net";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, relative, resolve, isAbsolute, win32 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeUploadFolders } from "../extension/src/options-model.js";
 import { extensionIdFromPath } from "./s9-rules.js";
-import { bannerCtlLines, consoleLine, devtLines, isSlice, type Slice } from "./s12-rules.js";
-import { rawLeaks, refusalPageJudge, uploadPageJudge, type FileWant, type PageObs } from "./s11-rules.js";
+import { bannerCtlLines, consoleLine, devtLines, isSlice, legLine, rawLine, scan18, type Slice } from "./s12-rules.js";
+import { buildJudge, checkLine as checkLine11, judgeError, logsLine, logsVerdict, rawLeaks, refusalPageJudge, rowLine as rowLine11, uploadPageJudge, type FileWant, type Judged, type PageObs } from "./s11-rules.js";
 import {
   countHits, ctxExpression, expectedRuleCount, flipCounts, hitsLine, judgeCtl, judgeSampleThenZero, judgeStored, manifestExpression,
   parseCtxLine, parseManifestLine, parseRegexLines, parseRulesLine, parseRulesSamplesLine, preTypeCheck, regexExpression, regexProof,
@@ -52,11 +52,11 @@ import {
   historyPlan, historyBackTarget, histDiagRow17, pollUntil17, sameUrl17, HIST_POLL_MS, HIST_SETTLE_MS, HIST_WAIT_MS, unexpectedStop17, windowViolations, judgeCallAnswer, judgeCaps, judgeFHome, judgeHistoryRow, judgeTimedRules, judgeUpOpt, gapJudge, parseCtxTabs, parseRulesTimedLine, rulesTimedExpression, rulesSamplesLine, type TimedMode, RACE_MAX_CALLS, RACE_MIN_CALLS, RACE_SPACING_MS, WINDOW_AFTER_MS, WINDOW_BEFORE_MS,
   type Answer, type CallSpan, type HistoryKind, type J17, type K17Error, type Port, type RaceCall, type Reply,
 } from "./s11b-rules.js";
-import { buildLine, countS6Names, judgeBuild, judgeNewtabTrial, judgeTabwatch, pageClassOf, parseTabwatchLine, parseTabwatchStarted, s6CommitLine, S6_COMMIT, tabwatchLine, tabwatchReadExpression, tabwatchStartExpression, TABWATCH_ROWS, withOpened, type CreatedUrl } from "./s11b-r17b-build.js";
-import { actLine, ctlSlowLine, carriedRowLine, guardedActivate, histLine, histSetupBackOutcome, isActLabel, isR17bRow, judgeCtlSlow, judgeR17bRow, judgeRd2Snapshot, histReplyLine, parseTabRowLine, rd2TabRowLine, judgeSnapshotPage, msForJudge, R17B_ROWS, refusedStop, strictCall } from "./s11b-r17b-rules.js";
+import { buildLine, countS6Names, newtabTrialLine, NEWTAB_AWAITING, judgeBuild, judgeNewtabTrial, judgeTabwatch, pageClassOf, parseTabwatchLine, parseTabwatchStarted, s6CommitLine, S6_COMMIT, tabwatchLine, tabwatchReadExpression, tabwatchStartExpression, TABWATCH_ROWS, withOpened, type CreatedUrl } from "./s11b-r17b-build.js";
+import { actLine, aggregateRows, ctlSlowLine, carriedRowLine, guardedActivate, histLine, histSetupBackOutcome, isActLabel, isR17bRow, judgeCtlSlow, judgeR17bRow, judgeRd2Snapshot, histReplyLine, parseTabRowLine, rd2TabRowLine, judgeSnapshotPage, msForJudge, R17B_ROWS, refusedStop, strictCall } from "./s11b-r17b-rules.js";
 
 export class Stop extends Error {}
-export const BOOLEAN_FLAGS: readonly string[] = ["--dry", "--no-sampler", "--sock-console", "--activate"];
+export const BOOLEAN_FLAGS: readonly string[] = ["--dry", "--no-sampler", "--sock-console", "--activate", "--to-cap"];
 export interface Args { cmd: string; pos: string[]; opts: Record<string, string>; flags: string[] }
 /** `<cmd> [positional...] [--key value] [--flag]`; a `--key` without a value is a STOP. */
 export function parseArgs(argv: readonly string[]): Args {
@@ -442,8 +442,7 @@ function sockWindow(a: Args): SockWindow | undefined {
  * actors' transcripts as Run 16's `S11 scan` does (tool results only, `resultLines`) and needs no --file. A console capture loses its
  * window-title lines first (#283). `--sock-console` takes RD-DL-SOCKET's two console marks, `--sock-lines` its two daemon-log line counts.
  */
-async function scan(a: Args): Promise<void> {
-  const what = need(a, "what");
+async function scanTextOf(a: Args, what: string): Promise<string> {
   let text: string;
   if (what === "actors") {
     const dir = join(S11_OUT, "actors");
@@ -451,10 +450,26 @@ async function scan(a: Args): Promise<void> {
     text = existsSync(dir) ? readdirSync(dir).filter((f) => f.includes(".turn-")).map((f) => resultLines(readFileSync(join(dir, f), "utf8"))).join("\n") : "";
   } else text = readFileSync(need(a, "file"), "utf8");
   if (what === "console") text = dropTitleLines(text).text;
+  return text;
+}
+async function scan(a: Args): Promise<void> {
+  const what = need(a, "what");
+  const text = await scanTextOf(a, what);
   const ctx = scanCtx(a, what);
   const s = scan17(text, ctx, sockWindow(a));
   say(scanLine17(what, s));
   judged("RD-LOGS", verdict17(s, { consoleControl: what === "console" ? text.includes("safety: disarmed by the user") : undefined }));
+}
+
+/** `scan18 --what console|daemon|actors|other [--file <f>]`: Run 18's scan (section 4.26's fixture definition; a bare `://` is not a URL); the `SCAN` line and a CHECK. */
+async function scan18Cmd(a: Args): Promise<void> {
+  const what = need(a, "what");
+  const text = await scanTextOf(a, what);
+  const s = scan18(text, scanCtx(a, what));
+  say(logsLine(what, s));
+  const j = logsVerdict(s, { consoleControl: what === "console" ? text.includes("safety: disarmed by the user") : undefined });
+  say(checkLine11(`R18-LOGS scan ${what}`, j));
+  bump(j.pass ? 0 : j.notMeasured ? 3 : 2);
 }
 
 /** `redact-console --file <capture> --out <evidence>`: the capture with Chrome's blocked-request lines as a label (#306); prints the count only. */
@@ -577,7 +592,7 @@ const S11_OUT = process.env.S11_OUT?.trim() || join(process.env.TEMP ?? tmpdir()
 const S9_OUT = process.env.S9_OUT?.trim() || join(process.env.TEMP ?? tmpdir(), "bridge-e2e", "s9");
 const WAVE = join(S11_OUT, "wave");
 const ROOT = join(WAVE, "root");
-interface S11State { sentinel: string; tabs: Record<string, string>; files: Record<string, FileWant & { where: "root" | "sentinel" | "outside" }> }
+export interface S11State { sentinel: string; tabs: Record<string, string>; files: Record<string, FileWant & { where: "root" | "sentinel" | "outside" }> }
 function s11State(): S11State {
   const f = join(S11_OUT, "state.json");
   return existsSync(f) ? (JSON.parse(readFileSync(f, "utf8")) as S11State) : stop("no state.json for the s11 wave");
@@ -664,7 +679,9 @@ export const realIo: WinIo = {
   signal(name, content) {
     mkdirSync(S11_OUT, { recursive: true });
     rmSync(join(S11_OUT, `${name}.pressed`), { force: true });
-    writeFileSync(join(S11_OUT, `${name}.ready`), content ?? new Date().toISOString());
+    const f = join(S11_OUT, `${name}.ready`);
+    writeFileSync(`${f}.tmp`, content ?? new Date().toISOString());
+    renameSync(`${f}.tmp`, f); // atomic: the driver never reads a created-but-empty file
   },
   async pressed(name, ms) {
     const f = join(S11_OUT, `${name}.pressed`);
@@ -896,6 +913,8 @@ async function socket(a: Args): Promise<void> {
 }
 
 // race
+/** The race loop's end: Run 17b's rule, or with `--to-cap` (R18-UP-RACE-A) the cap alone. */
+export const raceLoopDone = (toCap: boolean, outcomes: readonly string[]): boolean => (toCap ? outcomes.length >= RACE_MAX_CALLS : raceDone17(outcomes));
 async function race(a: Args): Promise<void> {
   const id = "UP-RACE-A";
   if (dry(a, `id=${id} spacing=${RACE_SPACING_MS} calls=${RACE_MIN_CALLS}..${RACE_MAX_CALLS}`)) return;
@@ -909,7 +928,7 @@ async function race(a: Args): Promise<void> {
     const errs: Array<Obs17 | undefined> = [];
     const T0 = Date.now();
     realIo.signal(id, String(T0));
-    while (!raceDone17(calls.map((x) => x.outcome))) {
+    while (!raceLoopDone(a.flags.includes("--to-cap"), calls.map((x) => x.outcome))) {
       const n = calls.length + 1;
       await sleep(Math.max(0, T0 + raceDue(n) - Date.now()));
       const start = Date.now() - T0;
@@ -919,7 +938,7 @@ async function race(a: Args): Promise<void> {
       errs.push(r.err);
       say(callLine(x));
     }
-    realIo.signal(`${id}-loop-done`);
+    realIo.signal(`${id}-loop-done`, String(T0 + calls[calls.length - 1]!.reply)); // the last reply's epoch ms: R18's ON press is timed from it
     await realIo.pressed(id, 180_000);
     const pf = join(S11_OUT, `${id}.press`);
     const page = await readPage(c, h, "up-single");
@@ -987,15 +1006,67 @@ async function bannerctl(a: Args): Promise<void> {
     await claim(h);
     const r = await windowed(realIo, id, ledger, () => attempt(() => bcall(c, "evaluate", { tab: h, expression: "1", timeoutMs: 15_000 }, 20_000)));
     say(`CHECK bannerctl-pos violations=${r.violations}`);
-    say(`ANSWER R18-BANNER-CTL pos ${r.v.err?.code ?? (r.violations > 0 ? "VIOLATION" : "ok")}`); // another call in the window: not ok, the judge FAILs
+    say(`ANSWER R18-BANNER-CTL pos ${r.v.err?.code ?? "ok"}`); // the answer is the call's own; the CHECK line above carries the violations (the judge FAILs on > 0)
   });
 }
 function bannerctlJudge(a: Args): void {
   const seen = (k: string): "seen" | "none" => (a.opts[k] === "seen" ? "seen" : a.opts[k] === "none" ? "none" : stop(`--${k} is seen or none`));
-  const c = { idleMs: int(a, "idle-ms"), neg: seen("neg-banner"), pos: seen("pos-banner"), posAnswer: need(a, "pos-answer"), negPolls: int(a, "neg-polls"), posPolls: int(a, "pos-polls") };
+  const c = { idleMs: int(a, "idle-ms"), neg: seen("neg-banner"), pos: seen("pos-banner"), posAnswer: need(a, "pos-answer"), negPolls: int(a, "neg-polls"), posPolls: int(a, "pos-polls"), violations: int(a, "violations") };
   const ls = bannerCtlLines(sliceOf(a), c);
   for (const l of ls) say(l);
   bump(ls[2]!.includes(" PASS ") ? 0 : 1);
+}
+/** One raw call of R18-UP-L1 as `S11 l1` judges it (K-gate and a refusal page), printed with the same CHECK line and, beside it, the call's own `RAW` line. */
+export async function l1Step(label: string, err: Obs17 | undefined, page: PageObs): Promise<{ lines: string[]; j: Judged }> {
+  const { all } = await import("./s11.js");
+  const j = all([judgeError(err, "K-gate"), refusalPageJudge(page)]);
+  return { lines: [checkLine11(`UP-L1 ${label}`, j), rawLine("R18-UP-L1", label, err, K17)], j };
+}
+/**
+ * `raw-l1`: R18-UP-L1's whole raw-call step, in place of `S11 l1` (run `S11 foundcheck` first): the `daemon.status.build` check, then ONE
+ * `raw-root` (no target) and ONE `raw-outside` (`#up-single`, `s11-out.bin`) call, each with `S11 l1`'s CHECK and its `RAW` line, then `ROW UP-L1`.
+ * A failing step (an allowed upload included) is a STOP, as in `S11 l1`.
+ */
+async function rawL1(a: Args): Promise<void> {
+  if (dry(a, "calls=2")) return;
+  const s = s11State();
+  const h = handleOf("l1");
+  await session("s12-rawl1", async (c, claim) => {
+    await claim(h);
+    const v = await rawL1Run(c, h, s, createHash("sha256").update(readFileSync(join(REPO, "daemon", "dist", "index.js"))).digest("hex"));
+    bump(v.pass ? 0 : 1);
+    if (!v.pass) stop("UP-L1 failed: any FAIL here is a STOP");
+  });
+}
+/** The call and check sequence of `raw-l1` (the client and the build sha are injected, so a test feeds a fake): prints every line, returns the row's verdict. */
+export async function rawL1Run(c: Bc, h: string, s: S11State, distSha: string): Promise<Judged> {
+  const { all } = await import("./s11.js");
+  sdkMod ??= await import("@bridge/sdk");
+  const st = (await c.call("daemon.status")) as { build?: string };
+  const j = [buildJudge(String(st.build), distSha)];
+  say(checkLine11("UP-L1 build", j[0]!));
+  const calls: Array<[string, boolean, string]> = [["raw-root", false, "s11-1k.bin"], ["raw-outside", true, "s11-out.bin"]];
+  for (const [label, target, name] of calls) {
+    await resetPage(c, h);
+    const r = await attempt(() => bcall(c, "uploadFiles", { tab: h, ...(target ? { locator: { css: "#up-single" } } : {}), paths: [filePath(s, name)] }));
+    const x = await l1Step(label, r.err, await readPage(c, h));
+    for (const l of x.lines) say(l);
+    j.push(x.j);
+  }
+  const v = all(j);
+  say(rowLine11("UP-L1", v));
+  return v;
+}
+/** `leg-line --row R --leg L --from <file of the leg's record lines>`: the leg's verdict is the aggregate of its own ROW lines (none = NOT MEASURED). */
+function legLineCmd(a: Args): void {
+  const g = aggregateRows(lines(outsideRepo(need(a, "from"))));
+  say(legLine(need(a, "row"), need(a, "leg"), g.verdict === "PASS" ? "PASS" : g.verdict === "FAIL" || g.verdict === "STOP" ? "FAIL" : "NOT MEASURED"));
+}
+/** `rows18 --from <file>`: WARN per ROW printed twice for one id and slice; the counted verdict (a CHECK line). */
+function rows18(a: Args): void {
+  const g = aggregateRows(lines(outsideRepo(need(a, "from"))));
+  for (const w of g.warns) say(w);
+  say(`CHECK rows n=${g.n} verdict=${g.verdict}`);
 }
 function consoleLineCmd(a: Args): void {
   const f = outsideRepo(need(a, "file"));
@@ -1202,7 +1273,9 @@ async function newtabTimed(a: Args): Promise<void> {
     const s = await attempt(() => tab.snapshot());
     const page = s.value ? pageClassOf({ url: s.value.url, title: s.value.title, elements: s.value.elements.length }) : "other";
     say(recordLine(row, { page, elements: s.value ? s.value.elements.length : 0, snapshot: s.err ? s.err.code : "ok" }));
-    judged(row, judgeNewtabTrial({ answer: "ok", ms: r.ms, page, blocked: opt("blocked"), rulesAfter: opt("rules-after") }));
+    const nj = judgeNewtabTrial({ answer: "ok", ms: r.ms, page, blocked: opt("blocked"), rulesAfter: opt("rules-after") });
+    if (nj.notMeasured && nj.why === NEWTAB_AWAITING) { say(newtabTrialLine(row, nj)); return bump(3); } // G-23: no interim NOT MEASURED ROW
+    judged(row, nj);
   });
 }
 
@@ -1259,6 +1332,10 @@ export const cmds: Record<string, (a: Args) => void | Promise<void>> = {
   devt,
   bannerctl,
   "bannerctl-judge": bannerctlJudge,
+  scan18: scan18Cmd,
+  "raw-l1": rawL1,
+  "leg-line": legLineCmd,
+  rows18,
   "console-line": consoleLineCmd,
   up6,
   raw,

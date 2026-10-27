@@ -149,7 +149,24 @@ export function histReplyLine(row: string, kind: string, allMs: readonly number[
 /** F6: the R17B verdict of a carried block, derived from the block's own verdict lines (Run 17's file is not edited). */
 export type CarriedVerdict = "STOP" | "FAIL" | "NOT DISCRIMINATING" | "NOT MEASURED" | "NOT RUN" | "PASS";
 const CARRIED_RANK: readonly CarriedVerdict[] = ["STOP", "FAIL", "NOT DISCRIMINATING", "NOT MEASURED", "NOT RUN", "PASS"];
-const VERDICT_LINE = /^(?:\S+Z )?(?:s9-win: )?ROW \S+ (STOP|FAIL|NOT DISCRIMINATING|NOT MEASURED|NOT RUN|PASS|RECORD)(?=[ :]|$)/;
+// S1-helpers-b (G-23): the row id may be up to three tokens (`ROW SAVE-REFUSE-R sdk-leg PASS` is one verdict line, not zero).
+const VERDICT_LINE = /^(?:\S+Z )?(?:s9-win: )?ROW \S+(?: \S+){0,2}? (STOP|FAIL|NOT DISCRIMINATING|NOT MEASURED|NOT RUN|PASS|RECORD)(?=[ :]|$)/;
+/** S1-helpers-b: one verdict per (row id, slice); a second `ROW` for the same id is `WARN row printed twice: <id>`, counted once (at the worse verdict). */
+export function aggregateRows(lines: readonly string[]): { verdict: CarriedVerdict; n: number; warns: string[] } {
+  const seen = new Map<string, number>();
+  const warns: string[] = [];
+  for (const l of lines) {
+    const m = VERDICT_LINE.exec(l);
+    if (!m) continue;
+    const id = l.slice(l.indexOf("ROW ") + 4, m[0].length - m[1]!.length - 1).trim(); // everything between ROW and the verdict word
+    const key = `${id}|${/ slice=([AB])\b/.exec(l)?.[1] ?? ""}`;
+    const rank = CARRIED_RANK.indexOf((m[1] === "RECORD" ? "PASS" : m[1]) as CarriedVerdict);
+    if (seen.has(key)) warns.push(`WARN row printed twice: ${id}`);
+    seen.set(key, Math.min(seen.get(key) ?? rank, rank));
+  }
+  const n = seen.size;
+  return { verdict: n === 0 ? "NOT MEASURED" : CARRIED_RANK[Math.min(...seen.values())]!, n, warns };
+}
 export function carriedVerdict(lines: readonly string[]): { verdict: CarriedVerdict; n: number } {
   let best = CARRIED_RANK.length - 1;
   let n = 0;

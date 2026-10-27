@@ -7,7 +7,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { K, OPT_TYPED } from "../s11-rules.js";
+import { OPT_TYPED } from "../s11-rules.js";
+import { K17_TEXT } from "../s11b-rules.js";
 import { addLine, lineCount, SAFE_VARS, scanPs1Output, signalNamesFor } from "../s11-win-rules.js";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -130,7 +131,7 @@ describe("(b) no output line can print a folder, a pattern, a path or the token"
 
 describe("the helpers mirror the pure rules and the sheet", () => {
   it("the standing text and typed fixture lines are the ones in s11-rules.ts", () => {
-    expect(src).toContain(`$S11Warning = '${K["K-opt-stand"]}'`);
+    expect(src).toContain(`$S11Warning = '${K17_TEXT["K-opt-stand"]}'`); // S1-helpers-b: the S0F-a text (section 4.24 K17), not Run 16's
     expect(src).toContain(`$S11Typed = @('${OPT_TYPED[0]}', '${OPT_TYPED[1]}', '${OPT_TYPED[2]}')`);
   });
   it("the signal names the helpers build are the actor's (suffixes -sample, -sampled, -done, -loop-done)", () => {

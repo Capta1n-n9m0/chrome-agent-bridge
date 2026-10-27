@@ -21,7 +21,7 @@ function Format-S9Title([string]$t) {
 }
 
 # ---- constants mirrored from s11-rules.ts (a test ties each literal) ----------------------------------------------------
-$S11Warning = 'An agent may upload any file inside these folders to any site it can open. Allow only folders that hold files you mean to share. Never allow your home folder, or any folder that holds bridge.token or a .ssh folder. An agent that can also run programs on this computer can put any file into an allowed folder.'
+$S11Warning = 'An agent may upload any file inside these folders to any site it can open. Allow only folders that hold files you mean to share. A home folder, or a folder that holds home folders, is refused; never allow a folder that holds bridge.token or a .ssh folder. An agent that can also run programs on this computer can put any file into an allowed folder.'
 $S11Typed = @('relative\fixture-folder', 'C:\', 'C:\Users\fixture-home')
 $S11Boxes = @{ blocklist = @{ Save = 'save-blocklist'; Btn = 'Save blocked sites' }; uploadfolders = @{ Save = 'save-uploadfolders'; Btn = 'Save upload folders' } }
 $S11Out = if ($env:S11_OUT) { $env:S11_OUT } else { Join-Path ([IO.Path]::GetTempPath()) 'bridge-e2e\s11' }
@@ -293,8 +293,8 @@ function Invoke-S11Opt([long]$O, [string]$Root, [string]$ObsJson) {
   Start-Sleep -Milliseconds 400
   $doc = Get-S9Options $O
   $summaryTyped = Get-S11Summary $doc
-  $invalidItems = @(Find-S11Texts $doc ('^Line \d+: .(' + [regex]::Escape($S11Typed[0]) + '|' + [regex]::Escape($S11Typed[1]) + ').\s.\s'))
-  $warnedItems = @(Find-S11Texts $doc ('^Line \d+: .(' + [regex]::Escape($S11Typed[2]) + ').\s.\swarning: '))
+  $ulI = Get-S9ById $doc 'uploadfolders-invalid'; if (-not $ulI) { Stop9 'uploadfolders-invalid list not found'; throw 'uploadfolders-invalid list not found' }; $invalidItems = @(Find-S11Texts $ulI '^Line \d+: \u201c.*\u201d \u2014 (?!warning: )')   # S0F-a: every item of the Upload folders list only (the block list prints the same form)
+  $ulW = Get-S9ById $doc 'uploadfolders-warned'; if (-not $ulW) { Stop9 'uploadfolders-warned list not found'; throw 'uploadfolders-warned list not found' }; $warnedItems = @(Find-S11Texts $ulW '^Line \d+: \u201c.*\u201d \u2014 warning: ')
   $invalidCount = $invalidItems.Count; $warnedCount = $warnedItems.Count
   $O2 = Open-S11Options
   if (-not $O2) { throw 'no second options window' }
