@@ -1,6 +1,6 @@
 # Step 11b — The block list stops redirected requests (`declarativeNetRequest` session rules)
 
-**Date:** 2026-10-26 · **Status:** Built (Stage 0 → S5, 2026-10-26/27); Run 17 stopped at a pre-registered STOP that predates Step 11b (#307, #308); **gate not met — awaiting the user's ruling** (kickoff was `docs/plans/next-session-prompt.md`)
+**Date:** 2026-10-26 · **Status:** Built (Stage 0 → S5, 2026-10-26/27); Run 17 stopped at a pre-registered STOP that predates Step 11b (#307, #308); **the user ruled the gate 2026-10-27 (#311): accepted; S6 (`newTab` on `about:blank`) and Run 17b (S7) follow, then S8 and the close** (kickoff was `docs/plans/next-session-prompt.md`)
 **Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change (§6.5 the human, §10 protocol and codes, with the Step 9–11 dated notes) ·
 **Roadmap:** decisions.md · 2026-10-24 · The roadmap after Step 8 (#129), as amended by · 2026-10-25 · The user rules on
@@ -350,6 +350,50 @@ restore read back by hash; no test pattern in committed evidence.
       `…-steps/S5-claude-md-proposals.md` for the session agent.
 **Lane:** docs only. **Verifier focus:** every changed sentence about the limit cites a Run 17 row.
 
+### Stages added by the gate ruling (#311, 2026-10-27)
+Written by the session agent after the user's ruling, before any S6 or S7 work. Models, effort, lanes and sizes as
+above. Sequential: S6 → S7-sheet → S7-helpers → S7-live → S7-record → S8.
+
+### S6 — `newTab` on `about:blank` (1.5 h; risk: standard; ≤ ~400 lines)
+- [ ] `newTab` with a URL that is not `about:blank`: the gate's checks on the URL Chrome will open run first, unchanged
+      (#175); then the tab is created on `about:blank`, its tab rules are installed through the keeper exactly as for
+      `navigate`, then the tab is navigated to the URL, waited for as today, and the rules released on every path.
+      `newTab` without a URL, or with `about:blank`, is unchanged. The sequence is Stage 0's (#295 (a); `Stage0.md`,
+      the `newTab` finding; `stage0-dnr-newtab.txt`).
+- [ ] Fail closed (0.5, #292): if the install rejects, the URL is never opened, the blank tab is closed (no orphan
+      tab, no lease left), and the call is refused with the existing `DISARMED` / `STATE_UNREADABLE_MESSAGE` refusal.
+- [ ] The answers of a `newTab` on a page with no redirect do not change (code, message, the returned `id`); the one
+      accepted difference is `tabCreated.url` = `about:blank` and one more history entry (#311). The design spec §10's
+      `tabCreated` paragraph gets a dated note in a commit **before** the code commit.
+- [ ] Rows for `docs/e2e-test-plan.md` are written in S7-sheet, not here.
+**Lane:** `extension/src/handlers/tabs.ts`, `extension/src/safety-call.ts`, their tests, a new pure module if the
+sequence is factored out (with its test), the spec §10 note. **Verifier focus:** a mutant that navigates before the
+install resolves is red; a rejecting install opens nothing and leaves no tab; the daemon, shared, SDK and MCP are
+untouched; `newTab` without a URL is byte-for-byte today's path.
+
+### S7 — Run 17b (live), in slices (prep low, live standard)
+Same slices and rules as S4 (**S7-sheet → S7-helpers → S7-live → S7-record**), a new `docs/e2e-test-plan.md` §4.25
+(next free number checked), new row ids `R17B-…`; Run 17's rows and record are untouched. The rows:
+- **R17B-0** found state and the loaded-build proof, as RD-0, plus a proof that the loaded build includes S6.
+- **R17B-RD-2** RD-2 re-judged on the S6 build: `newTab` onto the 8083 redirect into the blocked port: the
+  pre-written answer and **blocked = 0**; `tabCreated.url` recorded.
+- **R17B-NEWTAB-PLAIN** `newTab` to an allowed page with no redirect: today's answer, the page loaded, blocked = 0.
+- **Back rows with an activated set-up** (#308, #311): RD-BACK, RD-FWD, RD-BACK-SAMEDOC and RD-BACK-EMPTY as
+  `R17B-` rows whose histories give each page a user activation before the tab leaves it, the way
+  `S4-investigation.md` measured working (8 of 8). Their pass rules are RD-BACK's as written, with the activation
+  method named before the run. **R17B-BACK-NOACT** (RECORD): one `back` on a history the bridge built with no
+  activation, its answer recorded as the documented limit.
+- **R17B-DISARM** RD-DISARM with the ON press after the reply (RD-DISARM's other pass rules unchanged).
+- Every other Run 17 row recorded NOT RUN or FAIL (`…-steps/S4-run-record.md`) re-run as an `R17B-` row with its
+  Run 17 pass rule, liveB included (G11-3's branch as written); then **R17B-LOGS** (RD-LOGS) and **R17B-RESTORE**.
+**Lane:** as S4, plus `recipes/s11b*` changes for the new rows, tested. **No product code.** **Verifier focus:** as S4;
+the activation is given only on fixture pages the wave opened; no pass rule of Run 17 is changed.
+
+### S8 — Docs (30 min, last; risk: low)
+- [ ] `docs/setup.md` Safety: `newTab` covered (from R17B-RD-2), `back`/`forward` from the R17B back rows, the #308
+      limit; `docs/progress-and-roadmap.md` Step 11b block; CLAUDE.md proposals in `…-steps/S8-claude-md-proposals.md`.
+**Lane:** docs only. **Verifier focus:** every changed sentence about the limit cites a Run 17 or Run 17b row.
+
 ## Exit checks (pre-registered)
 
 Every stage: `npm test` = before + n with no test removed unless listed per file; `npm run typecheck` and `npm run
@@ -376,11 +420,25 @@ before the stage (the verifier proves it).
   RD-4 shows 1 hit; RD-6 as its pre-written expectation; **D4.4** the found state read back equal by hash, none
   printed; **D4.5** every STOP or guard line matched to a return in the ledger (#193); **D4.6** RD-LOGS by count.
 - **D5.1** (S5) every changed sentence about the limit cites a Run 17 row; `node scripts/doc-check.mjs` passes.
+- **E6.1** (S6) a test with a fake keeper and fake tabs proves the order: create `about:blank` → install resolved →
+  navigate → release, on success, refusal, error and timeout; a mutant navigating before the install resolves is red;
+  **E6.2** a rejecting install: 0 navigations, the blank tab removed, the `DISARMED` refusal with
+  `STATE_UNREADABLE_MESSAGE`; **E6.3** `newTab` without a URL unchanged (its existing tests pass unchanged); **E6.4**
+  `git diff <S6 start> -- daemon shared sdk mcp` empty; 27 codes, 27 router methods, 24 tools; log-scan count +0;
+  **E6.5** the spec note's commit precedes the code commit.
+- **D7.1** (S7) §4.25 committed before the first observation; **D7.2** the first line proves the loaded build
+  includes Step 11b's permission and S6; **D7.3** R17B-RD-2 shows **0** blocked hits with the pre-written answer;
+  **D7.4** the activated back rows show 0 blocked hits and their pre-written answers; **D7.5** the found state read
+  back equal by hash, none printed; **D7.6** R17B-LOGS by count; **D7.7** every STOP or guard line matched to a return
+  in the ledger.
+- **D8.1** (S8) every changed sentence about the limit cites a Run 17 or Run 17b row; `node scripts/doc-check.mjs`
+  passes.
 
 ## Human gates
 
 - **G11b-0** — Step 11's gate ruled, and 0.3 and 0.4 ruled (the box at the top). **Met 2026-10-26** (#288, #290).
-- **G11b-1** — any push or tag; nothing of Step 11b is pushed without a fresh grant.
+- **G11b-1** — any push or tag; nothing of Step 11b is pushed without a fresh grant. *Granted 2026-10-27 (#311): push after the
+  ruling.*
 - **G11b-2** — any live row on a real site or with the user's credentials; Run 17 uses fixture servers on
   127.0.0.1 / `localhost` only.
 - **Carried:** live fixture waves are Claude's (#33); reloads by `recipes/reload-extension.ps1`, one re-run on exit 2
@@ -401,6 +459,12 @@ step exists to rewrite; anything pushed or tagged; a port-9234 holder that is no
 
 **Continues anyway, recorded:** the download half found impossible at Stage 0 (0.4's last paragraph); RD-7/RD-8's
 outcomes; a live row that fails (its fix is a proposed decision).
+
+*Added 2026-10-27 (#311), before S6:* every STOP rule above binds S6 and Run 17b. Also stops the gate: `newTab`
+opening its URL before its rules are installed, or leaving a blank tab after a refused install; R17B-RD-2 showing a
+blocked hit; an activation given on anything but a fixture page the wave opened. RD-BACK-EMPTY's STOP clause ("a bridge
+call answering differently from its pre-Step-11b text on a page with no redirect") reads, for back rows, against the
+activated set-up; R17B-BACK-NOACT is a RECORD row and cannot fire it.
 
 **Forbidden fixes:** deriving the rules from anything but the parsed `BlockList` of the gate's own read; matching by
 substring or a dot-less suffix in a rule (the `safety-match.ts` invariant); failing open when `updateSessionRules`
@@ -526,6 +590,10 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 | G11b-0 | met | #288, #290 |
 | G11b-1 (no push/tag) | met | nothing pushed |
 | G11b-2 (fixtures only) | met | `S4-run-record.md` |
+
+### Gate ruling · 2026-10-27 · the user accepts Step 11b (#311)
+- #307–#309 (a): accepted with Run 17 as recorded; D4.3 read by the pre-run note (**part**); fix 5 acknowledged.
+  #295 (a): `newTab` on `about:blank` → S6. #292 (a), #293 (a) confirmed. Push granted (G11b-1). Run 17b → S7.
 
 ## Open items
 
