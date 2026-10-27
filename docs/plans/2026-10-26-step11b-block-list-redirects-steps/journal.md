@@ -45,3 +45,4 @@ effort · start → end.
 - 2026-10-27T04:13Z · S6 · step agent · Opus · medium — ESCALATE (lane): the keeper lives in sw.ts; #312 grants one callDeps line; fresh step agent.
 - 2026-10-27T04:52Z · S6 · step agent · Opus · medium — DONE, 6259421 + db3f82e, verifier PASS-with-notes (one fix round); tests 4560/184; #313, #314.
 - 2026-10-27T05:18Z · S7-sheet · step agent · Opus · medium — DONE, 3cfbb95, verifier PASS (two fix rounds); #315.
+- 2026-10-27T06:39Z · S7-helpers · step agent · Opus · medium — DONE, 6c0eddc, verifier PASS-with-notes (three fix rounds); tests 4663/190; #316.

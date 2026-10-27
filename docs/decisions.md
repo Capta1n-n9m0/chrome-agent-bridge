@@ -178,6 +178,19 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-27 · S7-helpers accepted; three readings of the sheet adopted (#316)
+**Decided:** S7-helpers as built (`6c0eddc`; three Sonnet slices, four Opus verifier rounds, three fix rounds, the
+third Opus). Adopted from its report, each the sheet's own reading: (1) a leftover blank tab in R17B-NEWTAB-REFUSED
+fails that row and the wave continues, as the row says, not a STOP; (2) a wrong `created-url` inside group G1 fails
+R17B-NEWTAB-PLAIN, and only R17B-0 (f) STOPs on it; (3) R17B-RD-2's snapshot is judged on its own tab's row, found by
+handle. The sheet mismatches it worked around (R17B-CTL's 8085 tag, TABWATCH's `reply-ms` source, mapped `ROW R17B-…`
+lines beside Run 17's) are recorded, the sheet unedited. R17B-RD-2's background tab count before `newtab` is not
+recorded since the last fix; nothing judged depends on it.
+**Why:** the helpers follow the sheet; nothing pre-registered is re-read after the fact.
+**Instead of:** editing §4.25 after its commit.
+**Revisit if:** the live run shows a helper line the sheet's pass rule cannot read.
+**By:** Claude
+
 ### 2026-10-27 · S7-sheet: Run 17b's sheet committed; the activation is the bridge's own `evaluate`; two STOP readings (#315)
 **Decided:** §4.25 as committed in `3cfbb95` before any observation (D7.1). The activation for the back rows is a bridge
 `evaluate` of `1` on each fixture page the wave opened (8081/8091 only), which sends `Runtime.evaluate {userGesture:
