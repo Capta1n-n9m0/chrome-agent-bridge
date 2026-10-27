@@ -157,7 +157,7 @@ acts on **this session's tab**.
 | `browser_select_tab(tab)` | Make `tab` this session's tab: claims it, **without** bringing it on screen |
 | `browser_focus_tab()` *tab* | Bring the tab on screen and focus its window (trusted click/type/press key do the same first); it does not change this session's tab |
 | `browser_new_tab(url?)` / `browser_close_tab(tab)` | Open a tab (it becomes this session's tab; it comes to the front only if you were looking at this session's tab, else it opens in the background; with a URL it opens a blank page first ([Safety](#safety))) / close a tab by handle |
-| `browser_evaluate(expression, timeoutMs?, asRef?, saveTo?, overwrite?)` *tab* | Run JavaScript in the tab's page context and return the result (shows the debugging banner); `asRef:true` also returns a `[ref=eN]` for an element result, to act on with the other tools; `saveTo` (an absolute file path) writes the value to that file instead and answers only path, size, kind and sha256 — see [Running JavaScript](#running-javascript) |
+| `browser_evaluate(expression, timeoutMs?, asRef?, saveTo?, overwrite?, args?)` *tab* | Run JavaScript in the tab's page context and return the result (shows the debugging banner); `asRef:true` also returns a `[ref=eN]` for an element result, to act on with the other tools; `saveTo` (an absolute file path) writes the value to that file instead and answers only path, size, kind and sha256; `args` (any JSON value, at most 1 MiB) makes `expression` a function source called with it, such as `"(a) => a.rows.length"` (one function expression, no trailing `;`; an extension older than Step 12 answers `VERSION` — reload it) — see [Running JavaScript](#running-javascript) |
 | `browser_network_requests(tab?, filter?, types?, failedOnly?, limit?, includeHeaders?, id?)` | List the network requests the tab has made — method, status, type, duration, size, URL — captured continuously with no banner; `id` shows one request's headers and body summary |
 | `browser_network_clear(tab?)` | Forget the recorded network requests, so the next `browser_network_requests` shows only what your next action caused |
 | `browser_upload_file(ref \| locator, paths)` *tab* | Put 1–20 local files (absolute paths) into a file input, or a label or element holding exactly one, as if you had picked them in the file dialog. Refused `UPLOAD_REFUSED` unless each file is in an **Upload folders** folder you allowed and Chrome's **Allow access to file URLs** is on for the extension; the tab is not brought to the front; answers each file's name, size and sha256 — see [Uploading files](#uploading-files) |
@@ -1246,7 +1246,8 @@ S2 added `UPLOAD_REFUSED` (#237).*
   normal Chrome window to take "the tab you are looking at" from. Click a normal Chrome window and
   retry. (A focused DevTools window alone does not cause it: the bridge reads the last-focused
   *normal* window.)
-- **`VERSION` with "the Chrome extension is an older build — reload it at chrome://extensions"**: the
+- **`VERSION` with "the Chrome extension is an older build — reload it at chrome://extensions"** (or, on an
+  evaluate call with `args`, "…an older build without evaluate args — reload it at chrome://extensions"): the
   daemon was rebuilt but Chrome still runs the old extension. Reload it (§4).
 - **`trusted:true` "succeeds" but nothing happens on the page**: the tab was not in front when the
   input ran (see [What you see](#what-you-see-while-actors-work)) — the trusted tools focus first, but

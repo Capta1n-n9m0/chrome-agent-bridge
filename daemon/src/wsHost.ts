@@ -4,7 +4,7 @@ import { isEvent, type EventMessage, type ExtensionStatusParams, type WelcomeMes
 import { Bridge } from "./bridge.js";
 import { ExtensionConnection } from "./connection.js";
 import type { HandleNumbers } from "./handles.js";
-import { helloSession, parseHello } from "./handshake.js";
+import { helloFeatures, helloSession, parseHello } from "./handshake.js";
 import { TabLayer } from "./intercept.js";
 import { ClientRegistry, DEFAULT_CLIENT_NAME } from "./registry.js";
 import { route, CLOSE_UPGRADING, type RouteContext, type RouteHost } from "./route.js";
@@ -244,7 +244,7 @@ export class WsHost implements RouteHost {
           this.sendWelcome(ws, "extension");
           this.broadcastExtensionStatus(true);
           // S2b.5 (#74, #80): the session marker decides whether every handle is retired first.
-          this.tabs.extensionConnected(connection, proto, helloSession(data));
+          this.tabs.extensionConnected(connection, proto, helloSession(data), helloFeatures(data));
         } else {
           const ctx = this.routeContext();
           client = new ClientConnection(ws, ctx, () => this.ignoredClientFrames++);

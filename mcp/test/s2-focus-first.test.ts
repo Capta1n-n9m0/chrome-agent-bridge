@@ -218,9 +218,18 @@ describe("S2.3 the tool list's names and input schemas equal f45e3bf's; the desc
   // left untouched, and every other tool still deep-equals the fixture. S4 of Step 11 re-baselines from here.
   const S1_SAVETO_DESCRIPTION =
     'Absolute file path: write the value to this file instead of returning it (a string as is, anything else as JSON) and answer only the path, size, kind ("string" for a string saved as is, "json" for anything else) and sha256. The parent directory must exist; an existing file needs overwrite.';
+  // Re-baselined 2026-10-27 (Step 12 S2b; decisions.md #322, #330, #332; stage0-audit.md F13): `browser_evaluate`
+  // gains exactly one property, `args` (any JSON value: no `type`, only its description), written out below; its
+  // `required` and every other property are as above, every other tool still deep-equals the f45e3bf fixture, and
+  // the fixture file is left untouched.
+  const S2B_ARGS_PROPERTY = {
+    description:
+      'Any JSON value (null included). With args, expression is a function source called with args as its one argument, such as "(a) => a.rows.length" — one function expression, no trailing `;`. At most 1 MiB as JSON.',
+  };
   const EVALUATE_PROPERTIES = {
     ...S4_ADDED_EVALUATE_PROPERTIES,
     saveTo: { ...S4_ADDED_EVALUATE_PROPERTIES.saveTo, description: S1_SAVETO_DESCRIPTION },
+    args: S2B_ARGS_PROPERTY,
   };
 
   // Re-baselined 2026-10-25 (Step 11 S4; decisions.md #241, phase doc 0.9, exit check S4.3): the tool list gains
@@ -237,7 +246,7 @@ describe("S2.3 the tool list's names and input schemas equal f45e3bf's; the desc
       "Absolute paths of the files to put into the input (1–20; more than one only if the input takes several). Each must lie in a folder the user allowed in Chrome (extension options → Upload folders).",
   };
 
-  it("names and input schemas deep-equal the fixture captured at f45e3bf (browser_evaluate re-baselined by Step 10 S4 and Step 11 S1; browser_upload_file added by Step 11 S4)", async () => {
+  it("names and input schemas deep-equal the fixture captured at f45e3bf (browser_evaluate re-baselined by Step 10 S4, Step 11 S1 and Step 12 S2b; browser_upload_file added by Step 11 S4)", async () => {
     const fixture = JSON.parse(
       readFileSync(fileURLToPath(new URL("./fixtures/tool-schemas-f45e3bf.json", import.meta.url)), "utf8"),
     ) as Array<{ name: string; inputSchema: { properties: Record<string, unknown> } }>;
@@ -267,6 +276,14 @@ describe("S2.3 the tool list's names and input schemas equal f45e3bf's; the desc
       }
       expect(t.inputSchema, t.name).toEqual({ ...want, properties: { ...want.properties, ...EVALUATE_PROPERTIES } });
     }
+  });
+
+  // Step 12 S2b: the description (not pinned by the baseline) names the function form and the trailing-`;` rule.
+  it("browser_evaluate's description gives the args function form, once", () => {
+    const ARGS_SENTENCE =
+      ' To pass data in, give args (any JSON value) and write expression as a function source called with it, such as "(a) => a.rows.length" or "async (a) => …": one function expression with no trailing `;` (the value never needs pasting into the code).';
+    const { registered } = tools(fakeBridge().bridge);
+    expect((registered.browser_evaluate!.description ?? "").split(ARGS_SENTENCE)).toHaveLength(2);
   });
 
   it("browser_click, browser_type and browser_press_key end with the focus sentence; no other tool has it", () => {

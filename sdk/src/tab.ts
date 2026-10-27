@@ -17,7 +17,7 @@ import {
   type WaitForParams,
 } from "@bridge/shared";
 import { downloadToFile, type DownloadOutcome } from "./download.js";
-import { saveEvaluateToFile, type EvaluateToFileOptions, type EvaluateToFileResult } from "./evaluate-save.js";
+import { evaluateArgsParams, saveEvaluateToFile, type EvaluateToFileOptions, type EvaluateToFileResult } from "./evaluate-save.js";
 import { prepareUpload, type UploadOptions, type UploadResult } from "./upload.js";
 import { attachContext, type FailureReportConfig } from "./error.js";
 import { normalizeTarget, requireLocator, type Target } from "./locator.js";
@@ -309,10 +309,14 @@ export class Tab {
    * (`EvalEnvelope.value`); `undefined` for any other kind (a DOM node, a function, `undefined`, …).
    * For an element use `evaluateRef`. A page exception rejects with `PAGE_ERROR`. `timeoutMs`
    * (default 10 000) is clamped by the extension to [100, 60 000] (`extension/src/handlers/evaluate.ts`).
+   * Step 12: with `args` (any JSON value), `expression` is a function source as a string, called with `args` as its
+   * one argument (`"(a) => a.rows.length"`; one function expression, no trailing `;`). `args` is checked first
+   * (`BAD_PARAMS`, no call); an extension older than Step 12 answers `VERSION`.
    */
-  async evaluate<T = unknown>(expression: string, options: { timeoutMs?: number } = {}): Promise<T> {
+  async evaluate<T = unknown>(expression: string, options: { timeoutMs?: number; args?: unknown } = {}): Promise<T> {
+    const argsPart = evaluateArgsParams(expression, options);
     const t = options.timeoutMs ?? EVALUATE_DEFAULT_MS;
-    const envelope = (await this.#send("evaluate", { expression, timeoutMs: t }, t + EVALUATE_CALL_SLACK_MS)) as EvalEnvelope;
+    const envelope = (await this.#send("evaluate", { expression, timeoutMs: t, ...argsPart }, t + EVALUATE_CALL_SLACK_MS)) as EvalEnvelope;
     return envelope.value as T;
   }
 
@@ -331,11 +335,15 @@ export class Tab {
     return this.#reported(saveEvaluateToFile((m, p, o) => this.#host.call(m, p, o), this.handle, expression, options));
   }
 
-  /** A ref (for click/type/…) to the `Element` that `expression` evaluates to; `BAD_PARAMS` otherwise. */
-  async evaluateRef(expression: string): Promise<string> {
+  /**
+   * A ref (for click/type/…) to the `Element` that `expression` evaluates to; `BAD_PARAMS` otherwise. With `args`,
+   * `expression` is a function source called with it, as `evaluate`'s.
+   */
+  async evaluateRef(expression: string, options: { args?: unknown } = {}): Promise<string> {
+    const argsPart = evaluateArgsParams(expression, options);
     const envelope = (await this.#send(
       "evaluate",
-      { expression, timeoutMs: EVALUATE_DEFAULT_MS, asRef: true },
+      { expression, timeoutMs: EVALUATE_DEFAULT_MS, asRef: true, ...argsPart },
       EVALUATE_DEFAULT_MS + EVALUATE_CALL_SLACK_MS,
     )) as EvalEnvelope;
     if (typeof envelope.ref !== "string") {

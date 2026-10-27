@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import os from "node:os";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { UPLOAD_FILES_MAX_PATHS, isHiddenReason, isLocator, isSafetyState, type EvalEnvelope, type Locator, type SnapshotResult } from "@bridge/shared";
+import { UPLOAD_FILES_MAX_PATHS, checkEvaluateArgs, isHiddenReason, isLocator, isSafetyState, type EvalEnvelope, type Locator, type SnapshotResult } from "@bridge/shared";
 import { BridgeError, ErrorCodes, downloadToFile, type BridgeClient } from "@bridge/sdk";
 import { formatEntry, formatNetwork, formatSnapshot, type FormattableResult } from "@bridge/sdk/format";
 import { checkSaveTarget, prepareUpload, saveEvaluateToFile } from "@bridge/sdk/download";
@@ -792,7 +792,7 @@ export function registerTools(
 
   reg.tool(
     "browser_evaluate",
-    "Run JavaScript in the page context of this session's tab (the active tab is claimed on first use) or `tab` and return the result, like the DevTools console: the last expression's value is returned, top-level `await` works, and `return` is allowed. Results are JSON where possible; DOM nodes, functions and errors come back as short descriptions — use browser_snapshot refs to act on elements. Output is capped (~20k chars, 100 items per array, depth 6) — select what you need. Runs with the page's full logged-in authority and shows Chrome's 'is debugging this browser' banner while it runs. With saveTo the value is written to that file instead (a string as is, anything else as JSON, without the result caps above, up to 256 MiB) and the answer is only the path, size, kind and sha256; produce a very large value with `return …`, so it never crosses as one piece. Paging bulk data through browser_evaluate in chunks is a test device only, never a supported pattern: pass saveTo to write a large value to a file instead.",
+    "Run JavaScript in the page context of this session's tab (the active tab is claimed on first use) or `tab` and return the result, like the DevTools console: the last expression's value is returned, top-level `await` works, and `return` is allowed. Results are JSON where possible; DOM nodes, functions and errors come back as short descriptions — use browser_snapshot refs to act on elements. Output is capped (~20k chars, 100 items per array, depth 6) — select what you need. Runs with the page's full logged-in authority and shows Chrome's 'is debugging this browser' banner while it runs. With saveTo the value is written to that file instead (a string as is, anything else as JSON, without the result caps above, up to 256 MiB) and the answer is only the path, size, kind and sha256; produce a very large value with `return …`, so it never crosses as one piece. Paging bulk data through browser_evaluate in chunks is a test device only, never a supported pattern: pass saveTo to write a large value to a file instead. To pass data in, give args (any JSON value) and write expression as a function source called with it, such as \"(a) => a.rows.length\" or \"async (a) => …\": one function expression with no trailing `;` (the value never needs pasting into the code).",
     {
       expression: z
         .string()
@@ -819,8 +819,21 @@ export function registerTools(
           'Absolute file path: write the value to this file instead of returning it (a string as is, anything else as JSON) and answer only the path, size, kind ("string" for a string saved as is, "json" for anything else) and sha256. The parent directory must exist; an existing file needs overwrite.',
         ),
       overwrite: z.boolean().optional().describe("With saveTo: replace an existing file. Default false."),
+      // Step 12 S2b (#322, #330, #332): any JSON value; the schema re-baseline is s2-focus-first.test.ts's delta.
+      args: z
+        .any()
+        .optional()
+        .describe(
+          'Any JSON value (null included). With args, expression is a function source called with args as its one argument, such as "(a) => a.rows.length" — one function expression, no trailing `;`. At most 1 MiB as JSON.',
+        ),
     },
-    async ({ expression, timeoutMs, asRef, tab, saveTo, overwrite }) => {
+    async ({ expression, timeoutMs, asRef, tab, saveTo, overwrite, args }) => {
+      // Step 12 S2b: checked before any call (no claim either); JSON from the MCP can fail only the size cap.
+      const argsPart = args === undefined ? {} : { args };
+      if (args !== undefined) {
+        const check = checkEvaluateArgs(args);
+        if (!check.ok) throw new BridgeError(ErrorCodes.BAD_PARAMS, check.message);
+      }
       if (saveTo !== undefined) {
         // Step 10 S4: checked before any call (no claim either); the answer carries no part of the value.
         if (asRef === true) {
@@ -831,7 +844,12 @@ export function registerTools(
         }
         checkSaveTarget(saveTo, overwrite === true);
         return onTab(tab, async (t) => {
-          const r = await saveEvaluateToFile((m, p, o) => bridge.call(m, p, o), t, expression, { path: saveTo, overwrite, timeoutMs });
+          const r = await saveEvaluateToFile((m, p, o) => bridge.call(m, p, o), t, expression, {
+            path: saveTo,
+            overwrite,
+            timeoutMs,
+            ...argsPart,
+          });
           return text(`Saved ${r.path}\n${r.bytes} bytes · ${r.kind} · sha256 ${r.sha256}`);
         });
       }
@@ -840,7 +858,7 @@ export function registerTools(
         const envelope = (await bridge.call(
           "evaluate",
           // `asRef` only when asked, so today's params stay identical.
-          { expression, timeoutMs: pageTimeoutMs, ...(asRef === true ? { asRef: true } : {}), tab: t },
+          { expression, timeoutMs: pageTimeoutMs, ...(asRef === true ? { asRef: true } : {}), ...argsPart, tab: t },
           { timeoutMs: pageTimeoutMs + SERVER_TIMEOUT_SLACK_MS },
         )) as EvalEnvelope;
         const lines = [envelope.description];

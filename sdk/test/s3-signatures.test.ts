@@ -6,6 +6,8 @@
 // Exceptions by design (Step 10 phase doc 0.3, amended by Stage 0 F5; decisions.md #117, #206):
 // - `LocateResult` gains the optional `pastSnapshotCap?: true` (its other three fields are unchanged);
 // - `BridgeClient.on` gains one overload, `on("warning", (w: BridgeWarning) => …)`.
+// - Step 12 S2b (phase doc 0.4; decisions.md #322): `evaluate`'s options gain `args?: unknown`, and `evaluateRef`
+//   gains an optional `options?: { args?: unknown }` (on `Tab` and `BridgeClient` alike); the rest is unchanged.
 // The eight exported values are pinned at runtime by `sdk/test/index.test.ts`.
 import { describe, it, expect, expectTypeOf } from "vitest";
 import type {
@@ -64,9 +66,9 @@ describe("S3.3 the Step 8 SDK signatures are unchanged (type equality; checked b
     expectTypeOf<Tab["locate"]>().toEqualTypeOf<(locator: Locator) => Promise<LocateResult>>();
     expectTypeOf<Tab["waitFor"]>().toEqualTypeOf<(p: WaitForParams) => Promise<void>>();
     expectTypeOf<Tab["evaluate"]>().toEqualTypeOf<
-      <T = unknown>(expression: string, options?: { timeoutMs?: number }) => Promise<T>
+      <T = unknown>(expression: string, options?: { timeoutMs?: number; args?: unknown }) => Promise<T>
     >();
-    expectTypeOf<Tab["evaluateRef"]>().toEqualTypeOf<(expression: string) => Promise<string>>();
+    expectTypeOf<Tab["evaluateRef"]>().toEqualTypeOf<(expression: string, options?: { args?: unknown }) => Promise<string>>();
     expectTypeOf<Tab["network"]>().toEqualTypeOf<
       (options?: NetworkListOptions | { id: string }) => Promise<NetworkEntry[]>
     >();
@@ -108,9 +110,9 @@ describe("S3.3 the Step 8 SDK signatures are unchanged (type equality; checked b
     expectTypeOf<BridgeClient["locate"]>().toEqualTypeOf<(locator: Locator) => Promise<LocateResult>>();
     expectTypeOf<BridgeClient["waitFor"]>().toEqualTypeOf<(p: WaitForParams) => Promise<void>>();
     expectTypeOf<BridgeClient["evaluate"]>().toEqualTypeOf<
-      <T = unknown>(expression: string, options?: { timeoutMs?: number }) => Promise<T>
+      <T = unknown>(expression: string, options?: { timeoutMs?: number; args?: unknown }) => Promise<T>
     >();
-    expectTypeOf<BridgeClient["evaluateRef"]>().toEqualTypeOf<(expression: string) => Promise<string>>();
+    expectTypeOf<BridgeClient["evaluateRef"]>().toEqualTypeOf<(expression: string, options?: { args?: unknown }) => Promise<string>>();
     expectTypeOf<BridgeClient["network"]>().toEqualTypeOf<
       (options?: NetworkListOptions | { id: string }) => Promise<NetworkEntry[]>
     >();

@@ -13,7 +13,7 @@ import { createHash } from "node:crypto";
 import { statSync } from "node:fs";
 import { link as fsLink, open as fsOpen, rename, rm, type FileHandle } from "node:fs/promises";
 import path from "node:path";
-import { BridgeError, ErrorCodes, type EvaluateSaveChunkResult, type EvaluateSaveKind, type EvaluateSaveStartResult } from "@bridge/shared";
+import { BridgeError, ErrorCodes, checkEvaluateArgs, type EvaluateSaveChunkResult, type EvaluateSaveKind, type EvaluateSaveStartResult } from "@bridge/shared";
 
 /** Bytes per pull (the extension's ceiling too). */
 export const SAVE_CHUNK_BYTES = 1_048_576;
@@ -31,6 +31,24 @@ export interface EvaluateToFileOptions {
   overwrite?: boolean;
   /** The page-side bound, as `evaluate`'s (default 10 000; the extension clamps to [100, 60 000]). */
   timeoutMs?: number;
+  /** Step 12: with it, `expression` is a function source called with this one JSON value (`evaluateArgsParams`). */
+  args?: unknown;
+}
+
+/**
+ * Step 12 S2b (phase doc 0.4; #322, #330): the `args` part of an evaluate call's params — `{}` without the key, else
+ * `{args}` once the shared guard (`checkEvaluateArgs`) passed. `expression` must then be a function source as a
+ * string: a real function is refused, never turned into text (tsx's `__name(…)` wrappers break in the page).
+ * Throws `BAD_PARAMS` before any wire call; the message never holds a part of the value.
+ */
+export function evaluateArgsParams(expression: unknown, options: { args?: unknown }): { args?: unknown } {
+  if (!("args" in options)) return {};
+  if (typeof expression !== "string") {
+    throw badParams('args: pass the function source as a string, such as "(a) => a.rows.length" — not a function');
+  }
+  const check = checkEvaluateArgs(options.args);
+  if (!check.ok) throw badParams(check.message);
+  return { args: options.args };
 }
 
 /** What `evaluateToFile` wrote: never the value. */
@@ -141,6 +159,7 @@ export async function saveEvaluateToFile(
   options: EvaluateToFileOptions,
   io: SaveIo = {},
 ): Promise<EvaluateToFileResult> {
+  const argsPart = evaluateArgsParams(expression, options);
   const target = checkSaveTarget(options.path, options.overwrite === true);
   const part = `${target}.part`;
   const openFile = io.open ?? ((f: string, flags: string) => fsOpen(f, flags));
@@ -163,7 +182,7 @@ export async function saveEvaluateToFile(
       const pageMs = options.timeoutMs ?? PAGE_DEFAULT_MS;
       start = (await call(
         "evaluateSaveStart",
-        { expression, timeoutMs: pageMs, tab },
+        { expression, timeoutMs: pageMs, ...argsPart, tab },
         { timeoutMs: pageMs + SAVE_TRANSFER_MS + CALL_SLACK_MS },
       )) as EvaluateSaveStartResult;
       id = start.id;

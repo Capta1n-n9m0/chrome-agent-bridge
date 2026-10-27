@@ -12,6 +12,7 @@
 import {
   BridgeError,
   ErrorCodes,
+  FEATURE_EVALUATE_ARGS,
   isEvent,
   isSafetyStateEvent,
   isTabCreatedEvent,
@@ -35,6 +36,9 @@ import { DAEMON_SLACK_MS, DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, MIN_TIMEOUT_MS } f
 
 export const RELOAD_HINT =
   "the Chrome extension is an older build — reload it at chrome://extensions (↻ on Chrome Agent Bridge)";
+/** Step 12 S2b (#332): `args` sent to an extension whose hello did not list `"evaluateArgs"`. */
+export const ARGS_RELOAD_HINT =
+  "the Chrome extension is an older build without evaluate args — reload it at chrome://extensions (↻ on Chrome Agent Bridge)";
 export const NO_HUMAN_TAB =
   "No normal Chrome window is focused (a DevTools or popup window may have focus) — click a normal Chrome window and retry";
 
@@ -130,6 +134,8 @@ export class TabLayer {
   private readonly now: () => number;
   /** Extension connections whose hello carried `proto` ≥ 2 (#42). */
   private readonly protoConnections = new WeakSet<ExtensionConnection>();
+  /** Step 12 S2b (#332): extension connections whose hello listed `"evaluateArgs"`. */
+  private readonly argsConnections = new WeakSet<ExtensionConnection>();
   /**
    * The session marker of the last extension hello (S2b.5, #74 as amended by #80): a string, `null` for
    * a hello without one ("none" is a value), `undefined` before the first hello of this daemon's life.
@@ -186,7 +192,8 @@ export class TabLayer {
    * A new extension socket said hello. A changed session marker first retires every handle, synchronously
    * (S2b.5); then a proto:2 hello gets the F15 resync, which mints anew.
    */
-  extensionConnected(conn: ExtensionConnection, proto: boolean, session?: string): void {
+  extensionConnected(conn: ExtensionConnection, proto: boolean, session?: string, features: readonly string[] = []): void {
+    if (features.includes(FEATURE_EVALUATE_ARGS)) this.argsConnections.add(conn);
     const current = session ?? null;
     const previous = this.lastSession;
     this.lastSession = current;
@@ -479,6 +486,11 @@ export class TabLayer {
     // Tab-carrying (incl. closeTab and an unlisted method, which without a `tab` is refused below).
     if (!proto) throw new BridgeError(ErrorCodes.VERSION, RELOAD_HINT);
     const p = params ?? {};
+    // #332: an older extension would run the function source as an expression and ignore `args`; never forward.
+    if ((method === "evaluate" || method === "evaluateSaveStart") && "args" in p) {
+      const conn = this.deps.bridge.currentConnection();
+      if (conn === null || !this.argsConnections.has(conn)) throw new BridgeError(ErrorCodes.VERSION, ARGS_RELOAD_HINT);
+    }
     if (method === "networkClear" && p.tab === "all") return this.networkClearAll(caller, p, deadline);
     if ((method === "closeTab" || method === "focusTab") && p.id !== undefined) {
       throw bad(`${method} takes tab (a handle like "T3"), not a Chrome tab id`);

@@ -39,6 +39,19 @@ export function validateHello(data: string, expectedToken: string): HandshakeRes
 }
 
 /**
+ * The extension's `features` from an (already validated) hello: its strings, else `[]` — Step 12 S2b (#332). Read
+ * beside `parseHello`, as `helloSession` is.
+ */
+export function helloFeatures(data: string): string[] {
+  try {
+    const features = (JSON.parse(data) as { features?: unknown }).features;
+    return Array.isArray(features) ? features.filter((f): f is string => typeof f === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * The extension's session marker from an (already validated) hello: a non-empty string, else undefined
  * ("none") — Step 8 S2b.5 (decisions.md · 2026-10-23 · #74, amended by #80). Read beside `parseHello`,
  * whose result shape Step 6 tests pin. The marker is compared, never logged.

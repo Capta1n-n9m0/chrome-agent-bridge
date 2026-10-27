@@ -452,11 +452,11 @@ export class BridgeClient {
   async waitFor(p: WaitForParams): Promise<void> {
     return this.tab().waitFor(p);
   }
-  async evaluate<T = unknown>(expression: string, options?: { timeoutMs?: number }): Promise<T> {
+  async evaluate<T = unknown>(expression: string, options?: { timeoutMs?: number; args?: unknown }): Promise<T> {
     return this.tab().evaluate<T>(expression, options);
   }
-  async evaluateRef(expression: string): Promise<string> {
-    return this.tab().evaluateRef(expression);
+  async evaluateRef(expression: string, options?: { args?: unknown }): Promise<string> {
+    return this.tab().evaluateRef(expression, options);
   }
   /**
    * `Tab.evaluateToFile` on the cursor (Step 10 S4; Stage 0 F21). Produce a very large value with `return …`: it
