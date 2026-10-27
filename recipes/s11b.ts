@@ -41,6 +41,7 @@ import { dirname, join, relative, resolve, isAbsolute, win32 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeUploadFolders } from "../extension/src/options-model.js";
 import { extensionIdFromPath } from "./s9-rules.js";
+import { bannerCtlLines, consoleLine, devtLines, isSlice, type Slice } from "./s12-rules.js";
 import { rawLeaks, refusalPageJudge, uploadPageJudge, type FileWant, type PageObs } from "./s11-rules.js";
 import {
   countHits, ctxExpression, expectedRuleCount, flipCounts, hitsLine, judgeCtl, judgeSampleThenZero, judgeStored, manifestExpression,
@@ -934,9 +935,16 @@ async function race(a: Args): Promise<void> {
   });
 }
 
+const sliceOf = (a: Args): Slice => {
+  const s = need(a, "slice");
+  return isSlice(s) ? s : stop("--slice is liveA18 or liveB18");
+};
+
 // devt
 async function devt(a: Args): Promise<void> {
   if (dry(a, "id=UP-DEVT controls=2")) return;
+  const devtSlice = a.opts.slice === undefined ? undefined : sliceOf(a); // S12: --slice and --row are validated before any call
+  const devtRow = a.opts.row === undefined ? "R17-UP-DEVT" : rowOpt(a, ["R17-UP-DEVT", "R18-UP-DEVT"]);
   const s = s11State();
   const h = handleOf("x");
   await session("s11b-devt", async (c, claim) => {
@@ -954,8 +962,44 @@ async function devt(a: Args): Promise<void> {
     say(`ANSWER UP-DEVT control1 ${answerText(ctl1.err)}`);
     say(`ANSWER UP-DEVT upload ${answerText(up.err)}`);
     say(`ANSWER UP-DEVT control2 ${answerText(ctl2.err)}`);
-    finalRow("R17-UP-DEVT", devtJudges(ctl1.err, up.err, ctl2.err, page));
+    if (devtSlice !== undefined) for (const l of devtLines(devtSlice, ctl1.err?.code ?? "ok", ctl2.err?.code ?? "ok")) say(l); // S12: --slice adds the DEVT lines
+    finalRow(devtRow, devtJudges(ctl1.err, up.err, ctl2.err, page));
   });
+}
+/**
+ * R18-BANNER-CTL's actors (S12): `bannerctl --leg neg|pos [--tab T<n>]` runs ONE banner window through the banner rows' handshake
+ * (`R18-BANNER-CTL-<leg>-sample` / `-sampled`). neg: no session, no bridge call. pos: one `evaluate` of 1 on --tab, then
+ * `ANSWER R18-BANNER-CTL pos <ok|CODE>`. `bannerctl-judge --slice S --idle-ms N --neg-polls N --neg-banner B --pos-answer A --pos-polls N
+ * --pos-banner B` prints the three lines; `console-line --slice S --file <capture>` prints the CONSOLE line.
+ */
+async function bannerctl(a: Args): Promise<void> {
+  const leg = need(a, "leg");
+  if (leg !== "neg" && leg !== "pos") stop("--leg is neg or pos");
+  if (dry(a, `leg=${leg}`)) return;
+  const id = `R18-BANNER-CTL-${leg}`;
+  if (leg === "neg") {
+    const r = await windowed(realIo, id, ledger, async () => undefined);
+    say(`CHECK bannerctl-neg violations=${r.violations}`);
+    return;
+  }
+  const h = handleOf(need(a, "tab"));
+  await session("s12-bannerctl", async (c, claim) => {
+    await claim(h);
+    const r = await windowed(realIo, id, ledger, () => attempt(() => bcall(c, "evaluate", { tab: h, expression: "1", timeoutMs: 15_000 }, 20_000)));
+    say(`CHECK bannerctl-pos violations=${r.violations}`);
+    say(`ANSWER R18-BANNER-CTL pos ${r.v.err?.code ?? (r.violations > 0 ? "VIOLATION" : "ok")}`); // another call in the window: not ok, the judge FAILs
+  });
+}
+function bannerctlJudge(a: Args): void {
+  const seen = (k: string): "seen" | "none" => (a.opts[k] === "seen" ? "seen" : a.opts[k] === "none" ? "none" : stop(`--${k} is seen or none`));
+  const c = { idleMs: int(a, "idle-ms"), neg: seen("neg-banner"), pos: seen("pos-banner"), posAnswer: need(a, "pos-answer"), negPolls: int(a, "neg-polls"), posPolls: int(a, "pos-polls") };
+  const ls = bannerCtlLines(sliceOf(a), c);
+  for (const l of ls) say(l);
+  bump(ls[2]!.includes(" PASS ") ? 0 : 1);
+}
+function consoleLineCmd(a: Args): void {
+  const f = outsideRepo(need(a, "file"));
+  say(consoleLine(sliceOf(a), f.split(/[\\/]/).pop()!, readFileSync(f, "utf8")));
 }
 /** R17-UP-DEVT: control 1 must be K-devt (else NOT MEASURED "DevTools was not attached"), the upload K-devt with the mark added then removed, control 2 ok. */
 export function devtJudges(ctl1: Obs17 | undefined, up: Obs17 | undefined, ctl2: Obs17 | undefined, page: PageObs): J17[] {
@@ -1213,6 +1257,9 @@ export const cmds: Record<string, (a: Args) => void | Promise<void>> = {
   socket,
   race,
   devt,
+  bannerctl,
+  "bannerctl-judge": bannerctlJudge,
+  "console-line": consoleLineCmd,
   up6,
   raw,
   call,
