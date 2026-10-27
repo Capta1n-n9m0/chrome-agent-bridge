@@ -40,3 +40,4 @@ effort · start → end.
 - 2026-10-27T02:55Z · S4-investigation · investigator · Opus · medium — DONE: back refusal predates Step 11b (Chrome skips pages without user activation; 26/26 vs 8/8); RD-DISARM FAIL is the helper's ON timing. #308.
 - 2026-10-27T03:19Z · S4-record · step agent · Opus · medium — DONE, `105543f`, verifier PASS-with-notes (two fix rounds): 38 rows, PASS 14 / FAIL 4 / RECORD 4 / NOT RUN 15 / STOP 1; D4.3 part, D4.6 not met; #309.
 - 2026-10-27T03:31Z · S5 · step agent · Opus · medium — DONE, `c5d0099`, verifier PASS-with-notes; #310; CLAUDE.md proposals applied; gate checklist written (not met); close-out records, Current state, roadmap header, memory updated.
+- 2026-10-27T03:45Z · cleanup · lead cleaner · Opus · medium — DONE, `c1a78b1` (47 fixes, 21 proposals; extension/CLAUDE.md within budget via a new extension/src/CLAUDE.md). Kickoff not written: the gate waits for the user (long-run §5).
