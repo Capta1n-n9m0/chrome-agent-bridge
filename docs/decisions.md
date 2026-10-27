@@ -192,6 +192,22 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-27 · S4a: the keeper's eight edge rules; V4-1's fix goes in S4b (#347)
+**Decided:** S4a (`c9bb6cb`, verifier 4 PASS-with-notes after three fix rounds; two MAJOR races, each a session left
+attached, found by verifiers 1 and 3 and fixed) as its eight proposals (`…-steps/S4a.md` §5): a kept session detaches
+after any error of a use, a failed clean-up calls `drop()`; a re-check refusal of `JS_DISABLED` or `UPLOAD_REFUSED`
+keeps the session (the tab's page is still allowed; the idle bound ends it), any other refusal or failure detaches; a
+refusing re-check of a busy tab answers the refusal; a use waits at most 1 s for a pending detach on its tab; a session
+killed during its attach is detached when the attach lands; `onDetach` forgets the entry and re-reads `getTargets`
+within 1 s, detaching if the tab still reads attached or the read fails; the post-attach tab check releases only its
+own entry; S4b bounds `tabCheck` at its source. **V4-1** (MINOR: a slow detach can make one call answer a false
+`DEBUGGER_CANCELLED`, nothing left attached) and V3-4 (NIT, fails closed) are fixed in S4b, which reopens the module,
+rather than by a fourth (Opus) fix round now. S4a's tests ran 710 lines against 675, within §7's 1.5× bound.
+**Why:** each rule fails closed toward "nothing attached"; the known fix is one line in the slice that wires it.
+**Instead of:** a fourth fix round on an unwired module.
+**Revisit if:** S4b's verifier finds V4-1 changes an existing answer.
+**By:** Claude (build decision)
+
 ### 2026-10-27 · S1-helpers-b: the Run 18 scanner, `raw-l1`, a missing list STOPs; two process slips (#346)
 **Decided:** S1-helpers-b (`1bf351e`, verifier 4 PASS-with-notes after three fix rounds) as ruled in
 `…-steps/S1-helpers-b.md` §5: `s11b scan18` follows §4.26's fixture definition and does not count a `://` with no

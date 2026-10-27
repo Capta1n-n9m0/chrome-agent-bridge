@@ -39,3 +39,4 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
 - 2026-10-27T18:46Z · S4a · step agent · Opus · medium · started beside S1-helpers-b (one new pure module + tests; unwired).
 - 2026-10-27T18:54Z · S1-helpers-b · step agent · ended · `1bf351e` · verifier FAIL ×3 → PASS-with-notes (three fix rounds, the limit) · recipes tests 1090 → 1131; #346 recorded (incl. two process slips, no damage; `.git/config` checked: no core.autocrlf).
 - 2026-10-27T18:54Z · S1-helpers-c · step agent · Opus · medium · started beside S4a (the Run 18 block runner).
+- 2026-10-27T20:13Z · S4a · step agent · ended · `c9bb6cb` · verifier FAIL, PASS, FAIL → PASS-with-notes (three fix rounds) · 358 code / 710 tests; #347 recorded (V4-1 to S4b). S4b waits until Run 18 has run (a live slice needs a clean tree).

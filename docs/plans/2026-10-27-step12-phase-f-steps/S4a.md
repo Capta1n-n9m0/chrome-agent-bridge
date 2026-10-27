@@ -31,7 +31,7 @@ raw logs, the e2e plan.
 - Checks: per-package `tsc`, `npm run typecheck`, the seven recipes tsconfigs and `npm run build` all exit 0, and the
   build left no tracked change. `git diff c6ad96f -- daemon shared sdk mcp` is empty. Log sites +0, and
   `log-scan.test.ts` is green. All from verifier 4.
-- Commit: the hash is in the committer's line below.
+- Commit: `c9bb6cb` (the committer, Sonnet medium; 15 paths).
 
 ## 3. Verifier verdicts
 
