@@ -185,6 +185,22 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-27 · Run 17 stopped at a pre-registered STOP; the gate waits for the user; the write-up continues (#307)
+**Decided:** Run 17's liveA attempt 7 ended at RD-BACK-EMPTY's STOP ("a bridge call answering differently from its
+pre-Step-11b text on a page with no redirect": every `back` answered `INTERNAL "Cannot find a next page in
+history."`, with an empty block list). No further attempt and no re-run before the user rules; liveB, RD-LOGS and
+RD-RESTORE as rows did not run (the STOP path restored the state and read it back equal). The phase gate is not met.
+As the phase doc says, the write-up continues: the session agent has the root cause investigated (`long-run` §1's
+exception; `…-steps/S4-investigation.md`, a scratch Chrome per #294), then S4-record, S5 and the close-out run; the next
+kickoff waits for the ruling. Recorded with it: RD-REGEX found 120- and 121-character regexes supported, so the 119
+bound of #300/#303 is conservative (it over-warns, never under-blocks); RD-DISARM FAIL (investigated with the STOP);
+RD-2 leaked 1 request as #295 records. Five helper fixes made between attempts stand as committed (`041ea89`,
+`4446d17`, `344f386`, `9e3fbe4`, `2c1af4b`, each verified; none changed a pass rule, judge or expected text).
+**Why:** `docs/agent-rules.md` §3 item 1; the integrity floor forbids re-tuning the row or the helper to pass.
+**Instead of:** changing a helper or the back rows and re-running.
+**Revisit if:** the user rules.
+**By:** Claude
+
 ### 2026-10-27 · Before Run 17: Chrome's own blocked-request lines are counted apart in RD-LOGS (#306)
 **Decided:** before any Run 17 observation, RD-LOGS gains a dated note and its helper a tested category: a line Chrome
 itself writes into the worker console for a request DNR blocked (the `net::ERR_BLOCKED_BY_CLIENT` network-error form)
