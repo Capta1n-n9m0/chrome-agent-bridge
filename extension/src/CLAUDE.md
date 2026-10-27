@@ -1,8 +1,8 @@
-# extension/src/ — the safety gate's redirect, DNR and `file:` rules
+# extension/src/ — the safety gate's redirect, DNR and `file:` rules; the upload rules
 
 `extension/CLAUDE.md` also applies (Key files, the rest of the Safety gate). These bullets bind `safety.ts`,
-`safety-dnr.ts`, `safety-dnr-keeper.ts` and `safety-hop.ts`, which sit flat in `src/`, so this file loads with any
-file under `src/`.
+`safety-dnr.ts`, `safety-dnr-keeper.ts`, `safety-hop.ts`, `upload-exists.ts` and `upload-files.ts`, which sit flat in
+`src/`, and `handlers/upload.ts`, so this file loads with any file under `src/`.
 
 ## Safety gate (Step 9, Step 11, Step 11b)
 
@@ -28,3 +28,19 @@ file under `src/`.
   counts as `file:`); `listTabs` rows and tab events of a `file:` tab are listed hidden with the `"blocked"` reason, no `url`/`title` (Step 11b S0F-a, #288, `hiddenReason` in `safety.ts`; was listed, #259).
   `downloadStart` to a `file:` URL keeps its handler's `BAD_PARAMS` (`safety.ts` comment). For class `upload` the
   folder rule runs at receipt even for a gone tab, so a refused path never reaches the handler (#260).
+
+## Uploads
+
+- **`DOM.setFileInputFiles` needs the extension's "Allow access to file URLs"** (Chromium answers "Not
+  allowed" otherwise, `stage0-cdp.txt`): `handlers/upload.ts` reads `isAllowedFileSchemeAccess()` before attaching and
+  refuses `UPLOAD_REFUSED` (`NO_FILE_ACCESS_MESSAGE`). A wave never presses it (G11-3). With it on, an upload
+  reached a **background tab** with no focus or lock (Run 16 UP-1). Since Step 11b S0F-b the worker checks each path
+  before the attach (`upload-exists.ts`: a `file:` fetch, only a 200 with a readable first chunk is a file, one 5 s
+  bound for the whole check) and refuses anything else `BAD_PARAMS` naming `paths[i]`, never the path (#288; was
+  UP-RAW's `ok`, #284); missing and unreadable look the same to it; live proof Run 17 F-RAW. CDP calls: 15 s bound, unmeasured (#268). With the toggle on, "Not allowed" surfacing as `DEBUGGER_ATTACH` is
+  unmeasured.
+- **The three shipped upload page sources are closure-free literal strings** (`UPLOAD_FINDER_SRC`,
+  `UPLOAD_MARK_PAGE_FN`, `UPLOAD_UNMARK_PAGE_FN`): the guard `extension/test/s3-closure-free.test.ts` copies esbuild's
+  options instead of reading `build.mjs`, so `keepNames: true` there would pass the tests and ship a source calling
+  `__name` (S3 verifier 2 NIT A; same cause as tsx in `recipes/CLAUDE.md`). Extension tests are not type-checked
+  (tsconfig covers `src`; S2.md §6).

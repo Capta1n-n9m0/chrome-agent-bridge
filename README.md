@@ -49,16 +49,19 @@ folders agents may upload from to **Upload folders** on the extension's options 
 to file URLs** for the extension. A file outside those folders is refused `UPLOAD_REFUSED`, and the bridge never
 opens or acts on `file:` pages. See [`docs/setup.md` → Uploading files](docs/setup.md#uploading-files).
 
-**Step 11b (built, not closed):** while a bridge `navigate` or download runs, the block list also stops a redirect
-hop onto a blocked site (Run 17, 2026-10-27); its gate waits for the user's ruling.
+**Step 11b (built; its close waits for the user's ruling on #318):** while a bridge `navigate`, `newTab` with a URL,
+`back`, `forward` or download runs, the block list also stops a redirect hop onto a blocked site (Runs 17 and 17b,
+2026-10-27).
 
-4535 unit tests green in 183 files (`npm test` 2026-10-27 on Step 11b's tree). The Step 6 daemon split was E2E-tested in
+4665 unit tests green in 191 files (`npm test` 2026-10-27 on Step 11b's tree). The Step 6 daemon split was E2E-tested in
 wave W1 (2026-10-22), Step 7's multi-actor tabs in Runs 8–10 (2026-10-22/23), Step 8 in Runs 11–12
 (2026-10-23/24), Step 9's safety controls in Run 13 (2026-10-24; 24 rows passed, 7 failed — none
 shown to be a product defect; ratified by the user, #202), Step 10 in Runs 14–15 (2026-10-25; Run 15:
 27 passed, 3 failed, none a product defect), and Step 11's upload in Run 16 (2026-10-26; 19 passed, 3 failed,
 3 not measured, 4 recorded; two failures are a banner check that cannot tell the product from the wave's own
-page reads, one is an options-page timing bound with no cause stated). Before that, live
+page reads, one is an options-page timing bound with no cause stated), and Step 11b in Runs 17 and 17b (2026-10-27;
+Run 17b: 16 passed, 7 failed — rows carried from Run 16's uploads, on helper or sheet defects —, 3 not measured, 2
+recorded). Before that, live
 in-browser runs of 29 cases (2026-06-04), Phase C (13), Phase D (7) and
 Phase B (6) on 2026-09-03, the evaluate pass (20 of 22) and the network pass (15 of 15) on
 2026-09-07 — 6 runtime bugs found & fixed across them. Details in

@@ -24,7 +24,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `s11-csp.py` / `s11-r16.ps1` + `s11-r16-plan.ts`, `s11-r16-opt.ts` (block runner) / `s11-win.ps1` + `s11-win-rules.ts`
   (Step 11 S5, Run 16), `s11b.ts` (SDK-free actor) / `s11b-rules.ts` (pass rules) / `s11b-r17.ps1` + `s11b-r17-plan.ts`
   (block runner) / `s11b-win.ps1` + `s11b-win-rules.ts` / `s11b-{delay,flip,slow}.py` (fixture servers) (Step 11b S4,
-  Run 17), `tsconfig{,.fe,.s6,.s9,.s10,.s11,.s11b}.json` (recipes are not in `npm run typecheck`: `npx tsc
+  Run 17), `s11b-r17b.ps1` + `s11b-r17b-{plan,build,rules}.ts` (Run 17b's block runner, plan and pass rules; Step 11b S7), `tsconfig{,.fe,.s6,.s9,.s10,.s11,.s11b}.json` (recipes are not in `npm run typecheck`: `npx tsc
   --noEmit -p recipes/tsconfig.s6.json`; all seven exit 0, 2026-10-27). Fixtures: `test-fixtures/s10-{cap,mcpf,save}.html`,
   `test-fixtures/s11-{upload,frame,patched}.*`.
 

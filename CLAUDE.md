@@ -86,7 +86,7 @@ One `CLAUDE.md` per package holds its Key files (file by file) and its Runtime g
 - `sdk/` — the TypeScript client: `connect`, `BridgeClient`, `Tab`, failure reports, the formatters (`sdk/CLAUDE.md`).
 - `mcp/` — the MCP server as an SDK client: the 24 tools, the cursor, the no-crash link (`mcp/CLAUDE.md`).
 - `extension/` — the Chrome MV3 extension: service worker, offscreen socket, content script, handlers, the safety gate
-  (`extension/CLAUDE.md`; deeper files in `extension/src/` (redirects, DNR, `file:` pages), `extension/src/content/`,
+  (`extension/CLAUDE.md`; deeper files in `extension/src/` (redirects, DNR, `file:` pages, uploads), `extension/src/content/`,
   `extension/src/evaluate/`, `extension/src/handlers/`).
 - `recipes/` — scripts and live-run helpers, and the facts about driving Chrome and Windows tooling (`recipes/CLAUDE.md`).
 

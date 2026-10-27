@@ -151,7 +151,7 @@ acts on **this session's tab**.
 | `browser_scroll(ref? \| locator?, direction?)` *tab* | Scroll to a ref or locator, or the page up/down |
 | `browser_hover(ref \| locator)` *tab* | Hover a ref or locator |
 | `browser_select_option(ref \| locator, values)` *tab* | Select option(s) in a `<select>` |
-| `browser_back()` / `browser_forward()` *tab* | History navigation |
+| `browser_back()` / `browser_forward()` *tab* | History navigation; on a history the bridge built alone Chrome refuses it (`INTERNAL`, [Safety](#safety), #308) |
 | `browser_wait_for(text?, seconds?, networkIdle?, idleMs?, locator?, state?)` *tab* | Wait until text appears on the tab, for N seconds, — with `networkIdle:true` — until the tab has made no network request for `idleMs` (default 500, max 10 s wait), or — with `locator` — until an element matching it is visible (`state:"hidden"`: until none is; max 10 s) |
 | `browser_list_tabs()` | List open tabs: handle, `*` on the human's active tab, the holding actor, title — URL |
 | `browser_select_tab(tab)` | Make `tab` this session's tab: claims it, **without** bringing it on screen |

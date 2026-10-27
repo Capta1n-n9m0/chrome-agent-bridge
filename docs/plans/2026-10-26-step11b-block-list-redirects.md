@@ -662,6 +662,9 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   new rows; `newTab` on `about:blank` if #295 is ruled for it; a `back` that reaches bridge-built history (#308 (b),
   Step 12); `safety-hop.ts`'s `Date.now` → `performance.now()` and the unused `HopWatch.blocked()` (S3b verifier
   notes); the 119-character regex bound is conservative (RD-REGEX: 120 and 121 supported; #300, #303).
+  *Corrected 2026-10-27 (cleanup pass 2): ruled by #311; S6 built `newTab` on `about:blank`; Run 17b ran (§4.25,
+  #318; phase doc § As built). Left: #308 (b) (Step 12), the S3b notes, and the 119 bound, which stays, a raise
+  being a Claude follow-up (#311 item 4).*
 
 - If the user rules 0.4 (A) later: the profile-wide firewall as standing rules, an options-page sentence, a row on a
   human-opened tab.

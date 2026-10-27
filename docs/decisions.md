@@ -9,7 +9,7 @@ as a dated entry and point back.
 
 ## Open decisions
 
-Step 11b (the user ruled #292, #293, #295 and #307–#309 on 2026-10-27, #311):
+Step 11b:
 - **#318** 2026-10-27 · Run 17b: Step 11b's own rows pass (R17B-RD-2 and the activated back rows blocked 0), but D7.6
   is not met (R17B-LOGS not measured: one console path for both slices) and seven rows carried from Run 16's uploads
   fail, each on a helper or sheet defect or an unestablished banner reading. Options: (a) close Step 11b and carry
@@ -106,7 +106,7 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-24 · In-flight work at disarm and on a newly blocked tab (#137) — `decisions-archive/step9.md`
 - 2026-10-24 · Script URLs and the JavaScript switch; own pages of every extension (#138) — `decisions-archive/step9.md`; script URLs with JavaScript off answer `JS_DISABLED` since #202/#219
 - 2026-10-24 · The state is read per call, fails closed, and is locked to trusted contexts (#139) — `decisions-archive/step9.md`
-- 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140) — `decisions-archive/step9.md`; ruled by #202, and its network-rule step placed after Step 11 by #229; built in Step 11b (#290, #292, #296); the gate ruled by #311 (`newTab` to be covered by opening `about:blank` first, S6)
+- 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140) — `decisions-archive/step9.md`; ruled by #202, and its network-rule step placed after Step 11 by #229; built in Step 11b (#290, #292, #296); the gate ruled by #311; `newTab` covered by opening `about:blank` first (S6, #314), measured by Run 17b (#318)
 - 2026-10-24 · The shortcut is `_execute_action` (#142) — `decisions-archive/step9.md`
 - 2026-10-24 · Badge and title (#143) — `decisions-archive/step9.md`
 - 2026-10-24 · A re-arm right after a disarm is ignored (#144) — `decisions-archive/step9.md`

@@ -109,6 +109,6 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   resolves a link or junction and canonicalises case and 8.3 names, where `realpathSync` keeps the given form, so the
   extension's folder rule could judge the wrong location. Not measured: an unreadable file (`EACCES`) and a folder on
   a `subst` or mapped drive. Since Step 11b S0F-b the extension also refuses a missing file before the attach
-  (`BAD_PARAMS`, `extension/CLAUDE.md` Uploads; #288), so a raw `uploadFiles` no longer answers `ok` for one (UP-RAW, #284).
+  (`BAD_PARAMS`, `extension/src/CLAUDE.md` Uploads; #288), so a raw `uploadFiles` no longer answers `ok` for one (UP-RAW, #284).
 
 The daemon's own lifecycle (outliving its session, the bind being the lock) is in `daemon/CLAUDE.md`; the `saveTo` store is in `extension/CLAUDE.md`; the MCP's trusted tools focus first too (`mcp/CLAUDE.md`).

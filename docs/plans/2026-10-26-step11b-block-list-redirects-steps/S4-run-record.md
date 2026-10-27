@@ -93,6 +93,9 @@ never passed) and wrote nothing (`S4-live-runner8.md`). Five helper fixes betwee
 | D4.5 every STOP or guard line matched to a return in the ledger | met | returns 1–7 and runner 8's teardown STOP, each in `S4-live.ledger.md` |
 | D4.6 RD-LOGS by count | not met | the row did not run; only offline scans of the preserved captures (section 2), which are not the row |
 
+*Note 2026-10-27 (cleanup pass 2): the user ruled D4.3 **part**, reading RD-2 as the RECORD of the pre-run Stages
+note (#311 item 1); the verdict above stays as judged.*
+
 ## 4. Judging RD-6 and RD-8 (handoff remark in S4-live.md), and the CTX form
 
 - **RD-6** prints no `ROW RD-6` line. Judged by hand from the sheet's pass rule: `HITS rd6 redirect=1 blocked=1`, rules

@@ -310,6 +310,11 @@ If SMOKE-1/2 fail, stop and debug connection/injection before the rest.
 | TAB-5 | Focus a tab | After TAB-2 (this session's tab is the other tab, not on screen): `browser_focus_tab {}` | `Focused tab <T#>`; that tab comes on screen and its window is focused; it stays on screen afterwards (not restored). *Added 2026-10-22 (Step 7 T4): `browser_focus_tab` is the only tool that changes what the human sees.* |
 | HIST-1 | Back/forward | Navigate A → B, then `browser_back`, then `browser_forward` | Tab returns to A, then forward to B. |
 
+*Note 2026-10-27 (cleanup pass 2): HIST-1's expected text holds only when A and B had a user activation (a human
+click, or the bridge's `evaluate`). On a history the bridge built alone, `browser_back` answers `INTERNAL` "Cannot find
+a next page in history." (#308; Run 17b R17B-BACK-NOACT, R17B-ACT-CTL; `docs/setup.md` → Safety). A run of HIST-1
+names its activation first.*
+
 *Note 2026-10-25 (Step 10 S8): TAB-5's added sentence "`browser_focus_tab` is the only tool that changes what the
 human sees" no longer holds since Step 10 S2: `browser_click`, `browser_type` and `browser_press_key` with
 `trusted:true` bring the tab to the front of its window the same way first and leave it there (decisions.md ·
@@ -3123,6 +3128,10 @@ RD-4 (list without the pattern) shows 1; RD-6 (the human's own window) shows 1, 
 - **STOP clause met earlier (F1)** — RD-FWD's set-up `back` (attempts 6 and 7) met the phase doc's row-level STOP clause
   before RD-BACK-EMPTY, and fix 5 turned it into NOT BUILT; the user rules beside #307/#308.
 - **RD-REGEX** — #300's and #303's revisit trigger is met (the 119 bound over-warns, never under-blocks).
+
+*Ruled 2026-10-27 (#311): #307–#309 option (a); D4.3 **part**, reading RD-2 as the RECORD of the pre-run Stages note
+(item 1; the verdict in the table below stays as judged); fix 5 acknowledged as disclosed; the re-registered rows ran as
+Run 17b (§4.25, #318); the 119-character bound stays and raising it is a Claude follow-up (item 4).*
 
 Found state = read-back: armed=true evaluate=true, block list and Upload folders 0 lines at the start (R7:1-13); the file-access
 toggle found ON, never pressed. The STOP path's restore read back stored page, `daemon.status` and title equal, both texts the

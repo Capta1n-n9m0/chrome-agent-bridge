@@ -2,7 +2,8 @@
 
 The root `CLAUDE.md` and `docs/agent-rules.md` also apply. `src/` and three of its sub-folders have their own `CLAUDE.md`, loaded only when
 you open a file there; read the one whose topic you touch from elsewhere in `extension/`:
-- `src/` (any file under it) — the block list and redirect hops, the DNR rule builder's facts, the `file:` page rule.
+- `src/` (any file under it) — the block list and redirect hops, the DNR rule builder's facts, the `file:` page rule, the
+  upload's file-access, existence and closure-free rules.
 - `src/content/` — IIFE build, snapshot rules, `centerOf`, content-script failures, locators and `a11y.ts`, `locate` vs RefMap, marks.
 - `src/evaluate/` — `returnByValue` flattening, `replMode` levels, primitive values over CDP.
 - `src/handlers/` — `browser_download` from the worker, `tabId` and `targetTab`, `newTab` in the background, the CDP screenshot refusal.
@@ -52,6 +53,8 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   rebuild — since S3b only on a block-list edit or an unreadable state, #302 — the start-up clear, fail closed),
   `safety-hop.ts` (S3b: recognises a download's blocked hop from `onErrorOccurred` before `ingest`, keeps no URL),
   `handlers/history.ts` (`back`/`forward`: while the call holds rules, wait for the load it starts, at most 10 s, #302),
+  `newtab-open.ts` (S6: `newTab` with a URL opens `about:blank`, holds the rules, settles the blank load, then
+  navigates; removes the blank tab if the hold or navigation throws; pure, injected, #311),
   `upload-exists.ts` (Step 11b S0F-b: the pre-attach file check, its pure parts tested), `upload-paths.ts` (Step 11: the upload-folder matcher and, since S0F-a, the home-folder predicate, pure, no log;
   #236, #249, #258), `upload-files.ts` (Step 11: the upload's CDP steps in one session — finder in a
   `Page.createIsolatedWorld` world, `DOM.setFileInputFiles`, the unmark; the shipped strings are closure-free and
@@ -142,6 +145,8 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   stop or a crash.
 - **Build fact: esbuild keeps comments placed inside array literals** in the bundle (S0 bundle diff, S0.md
   §6 item 3) — keep comments out of literals where a bounded bundle diff is checked.
+
+The session marker's 2 s bound and the handle retirement on a Chrome restart are in `daemon/CLAUDE.md`.
 
 ### Tabs, trusted input and capture
 
@@ -245,20 +250,3 @@ Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind the
   armed.` 31 ms after (Run 15 R15-3R, #224); a second options window took 6061 ms in Run 16 UP-OPT (FAIL, cause
   unknown, #285). After a `write-failed` disarm the page shows the stored state while the badge says OFF (S2b
   verifier F4, by construction): the badge is the indicator.
-
-### Uploads (Step 11)
-- **`DOM.setFileInputFiles` needs the extension's "Allow access to file URLs"** (Chromium answers "Not
-  allowed" otherwise, `stage0-cdp.txt`): `handlers/upload.ts` reads `isAllowedFileSchemeAccess()` before attaching and
-  refuses `UPLOAD_REFUSED` (`NO_FILE_ACCESS_MESSAGE`). A wave never presses it (G11-3). With it on, an upload
-  reached a **background tab** with no focus or lock (Run 16 UP-1). Since Step 11b S0F-b the worker checks each path
-  before the attach (`upload-exists.ts`: a `file:` fetch, only a 200 with a readable first chunk is a file, one 5 s
-  bound for the whole check) and refuses anything else `BAD_PARAMS` naming `paths[i]`, never the path (#288; was
-  UP-RAW's `ok`, #284); missing and unreadable look the same to it; live proof Run 17 F-RAW. CDP calls: 15 s bound, unmeasured (#268). With the toggle on, "Not allowed" surfacing as `DEBUGGER_ATTACH` is
-  unmeasured.
-- **The three shipped upload page sources are closure-free literal strings** (`UPLOAD_FINDER_SRC`,
-  `UPLOAD_MARK_PAGE_FN`, `UPLOAD_UNMARK_PAGE_FN`): the guard `extension/test/s3-closure-free.test.ts` copies esbuild's
-  options instead of reading `build.mjs`, so `keepNames: true` there would pass the tests and ship a source calling
-  `__name` (S3 verifier 2 NIT A; same cause as tsx in `recipes/CLAUDE.md`). Extension tests are not type-checked
-  (tsconfig covers `src`; S2.md §6).
-
-The session marker's 2 s bound and the handle retirement on a Chrome restart are in `daemon/CLAUDE.md`.

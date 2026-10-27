@@ -23,7 +23,7 @@ E2E-run (Runs 14–15): 23 tools, 26 codes (25 on the wire), 26 router methods, 
 at `025bdef`); closed 2026-10-25, every open decision ruled (#229). *Corrected 2026-10-25 (cleanup pass): was "its gate waits on the user's open decisions".* Contracts and deviations:
 `docs/plans/2026-10-24-step10-step8-follow-ups-asbuilt.md`.* *Corrected 2026-10-26 (cleanup pass): Step 11 (D3 file
 upload: §10's Step 11 note) is built and E2E-run (Run 16): 24 tools, 27 codes (26 on the wire), 27 router methods,
-3811 tests in 154 files (`npm test` on S6's tree); not closed, its gate waits on the user. Contracts and deviations:
+3811 tests in 154 files (`npm test` on S6's tree); not closed, its gate waits on the user. *Corrected 2026-10-27: Step 11 closed 2026-10-26 (#288); Step 11b is built, its close waits on the user (#318); current status: `docs/progress-and-roadmap.md`.* Contracts and deviations:
 `docs/plans/2026-10-25-step11-file-upload.md` § As built.* Plans: `docs/plans/2026-10-21-step6-daemon-and-protocol-v2.md`, `…step7-multi-actor-tabs.md`, `…step8-sdk-surface-and-mcp-cursor.md`.
 - **Owner:** Abbas Aliyev (@Capta1n-n9m0)
 - **Supersedes in part:** `2026-06-04-chrome-real-profile-agent-bridge-design.md` §3 "Controller: MCP server", §4 topology, and the "Tab targeting: active tab" decision. Everything about the extension's perception/action model stands.
@@ -764,7 +764,7 @@ The block itself is left as written.*
     never requested; `navigate` still answers `DOMAIN_BLOCKED` with an existing block message (its post-check reads the
     blocked URL). `back`/`forward` holding rules wait for the load they start (at most 10 s, never an error) before they
     answer, so the rule outlives the hop. The human's own browsing, every other method and `newTab` (#295) are
-    unchanged; `downloadStart` follows in S3b.*
+    unchanged; `downloadStart` follows in S3b.* *(Superseded for `newTab` by the 2026-10-27 S6 note below.)*
   - *If a rule update fails, takes longer than 5 s, or the list needs more rules than Chrome allows, the covered call
     is refused before its side effect with the existing state-unreadable answer (`DISARMED {scope:"all"}`,
     `STATE_UNREADABLE_MESSAGE`), never Chrome's text; after a failed rebuild the running covered calls are refused
