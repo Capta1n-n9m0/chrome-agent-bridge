@@ -47,7 +47,7 @@ import {
   rulesExpectLine, redactChromeBlocked17, rulesExpression, rulesSampleExpression, row17Line, scan17, type Scan17Ctx, scanLine17, storedExpression, verdict17, REGEX_NOT_MEASURED,
   callLine, foundList, judgeErr17, judgeHistory, judgeRaceA, judgeSamedoc, judgeSocket, k17RawDir, k17RawMissing, K17, latLine, raceDone17, raceDue, recordLine, socketLine,
   answerOfRow, dlHopRecord, dropTitleLines, fileExistsFrom, judgeDlTrial, judgeFileTabHidden, judgeFileTabRow, type FileTabListRow, judgeRd0State, markExpression, parseCallRow, parseMarkLine, rd0StateLine, rd0ToggleLine, SOCK_MARKS, stateCompat, type SockWindow,
-  historyPlan, windowViolations, judgeCallAnswer, judgeCaps, judgeFHome, judgeHistoryRow, judgeTimedRules, judgeUpOpt, gapJudge, parseCtxTabs, parseRulesTimedLine, rulesTimedExpression, rulesSamplesLine, type TimedMode, RACE_MAX_CALLS, RACE_MIN_CALLS, RACE_SPACING_MS, WINDOW_AFTER_MS, WINDOW_BEFORE_MS,
+  historyPlan, historyBackTarget, pollUntil17, sameUrl17, HIST_POLL_MS, HIST_SETTLE_MS, HIST_WAIT_MS, unexpectedStop17, windowViolations, judgeCallAnswer, judgeCaps, judgeFHome, judgeHistoryRow, judgeTimedRules, judgeUpOpt, gapJudge, parseCtxTabs, parseRulesTimedLine, rulesTimedExpression, rulesSamplesLine, type TimedMode, RACE_MAX_CALLS, RACE_MIN_CALLS, RACE_SPACING_MS, WINDOW_AFTER_MS, WINDOW_BEFORE_MS,
   type Answer, type CallSpan, type HistoryKind, type J17, type K17Error, type Port, type RaceCall, type Reply,
 } from "./s11b-rules.js";
 
@@ -707,10 +707,26 @@ async function history(a: Args): Promise<void> {
   const plan = historyPlan(kind, a.opts.tag);
   if (dry(a, `kind=${kind} navigations=${plan.urls.length} backs=${plan.backs}`)) return;
   const tabKey = need(a, "tab");
-  await session("s11b-history", async (_c, claim) => {
+  histStep = "connect"; // S4-live fixer 4: an unexpected STOP names the build step it met
+  await session("s11b-history", async (c, claim) => {
+    histStep = "claim";
     const tab = await claim(handleOf(tabKey));
-    for (const u of plan.urls) await tab.navigate(u);
-    for (let i = 0; i < plan.backs; i++) await tab.back();
+    for (const [i, u] of plan.urls.entries()) {
+      histStep = `navigate ${i + 1}`;
+      await tab.navigate(u); // no wait added: the navigate handler answers only after the load (handlers/navigate.ts waitForLoad)
+    }
+    for (let i = 0; i < plan.backs; i++) {
+      histStep = `back ${i + 1}`;
+      await tab.back();
+      // S4-live fixer 4b: goBack answers before its load (handlers/history.ts) and no read exposes a load status
+      // (listTabs rows and TabInfo carry none), so wait until the tab's own row shows the entry the back lands on,
+      // then a fixed settle for commit → complete; compared here, never printed.
+      const want = historyBackTarget(plan, i + 1);
+      const ok = await pollUntil17(async () => sameUrl17((await c.tabs()).find((r) => r.handle === tab.handle)?.url ?? "", want), { timeoutMs: HIST_WAIT_MS, everyMs: HIST_POLL_MS, now: Date.now, sleep });
+      if (!ok) throw new Stop(`history set-up at=back ${i + 1}: the tab did not reach its history entry within ${HIST_WAIT_MS} ms`);
+      await sleep(HIST_SETTLE_MS);
+    }
+    histStep = undefined;
     say(`HISTORY ${kind} built navigations=${plan.urls.length} backs=${plan.backs}`);
   });
 }
@@ -1020,16 +1036,28 @@ export const cmds: Record<string, (a: Args) => void | Promise<void>> = {
 };
 export const SUBCOMMANDS: readonly string[] = Object.keys(cmds);
 
+/** The history build's current step (fixed labels), named by an unexpected STOP; reset by `main`. */
+let histStep: string | undefined;
+/** The STOP's deny filter: scan's own context (token, sentinel, alias, profile); a failed read leaves the profile only. */
+function stopCtx(a: Args | undefined): Scan17Ctx {
+  try {
+    return scanCtx(a ?? { cmd: "", pos: [], opts: {}, flags: [] }, "stop");
+  } catch {
+    return { token: token(), sentinel: "", profile: [homedir()] };
+  }
+}
 export async function main(argv: readonly string[]): Promise<number> {
   code = 0;
+  histStep = undefined;
+  let a: Args | undefined;
   try {
-    const a = parseArgs(argv);
+    a = parseArgs(argv);
     const fn = cmds[a.cmd];
     if (!fn) stop(`unknown or missing subcommand; known: ${SUBCOMMANDS.join(", ")}`);
     await fn!(a);
   } catch (e) {
-    // Never the error's message unless it is ours: a library error can carry a path or a URL.
-    say(`STOP: ${e instanceof Stop ? e.message : `unexpected ${e instanceof Error ? e.constructor.name : "throw"}`}`);
+    // Never the error's message unless it is ours, a sheet text or passes scan17's deny filter; never `data` (S4-live fixer 4).
+    say(`STOP: ${e instanceof Stop ? e.message : unexpectedStop17(e, { ctx: stopCtx(a), known: KNOWN_TEXTS, step: histStep })}`);
     return 2;
   }
   return code;

@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { runInNewContext } from "node:vm";
 import { countRules, rulesOf } from "../extension/src/safety-dnr.js";
 import { isUrlBlocked, parseBlockList } from "../extension/src/safety-match.js";
+import { isErrorCode } from "@bridge/shared/codes";
 import { median } from "./s9-rules.js";
 import { K, type Judged } from "./s11-rules.js";
 
@@ -653,6 +654,28 @@ export function verdict17(s: Scan17, o: { consoleControl?: boolean }): J17 {
   return ok17("all counts zero");
 }
 
+// S4-live fixer 4: an unexpected throw's STOP names its cause (Run 17 attempt 5 printed only `unexpected BridgeError`).
+/**
+ * A message is printable only when scan17 counts none of its patterns in it (any `://` URL, fixture or not, the token,
+ * localhost:8085, an a-run, bank.example, the alias, the sentinel, the profile path), and it holds no path separator or
+ * drive prefix, no run of 24+ token characters (an unknown token), and only printable ASCII, at most 200 characters.
+ */
+export function safeMessage17(msg: string, ctx: Scan17Ctx): boolean {
+  if (msg === "" || msg.length > 200 || !/^[\x20-\x7e]+$/.test(msg) || /[\\/]|\b[a-z]:/i.test(msg) || /[\w-]{24,}/.test(msg)) return false;
+  const s = scan17(msg, { ...ctx, consoleStream: false });
+  return s.urls + s.token + s.localhost8085 + s.a24 + s.bank + s.alias + s.sentinel + s.profile === 0;
+}
+/** `unexpected BridgeError <CODE> [at=<step>] "<message>"|<message withheld len=n>`; a code outside the enum by length; never `data`. */
+export function unexpectedStop17(e: unknown, o: { ctx: Scan17Ctx; known: ReadonlySet<string>; step?: string }): string {
+  const at = o.step ? ` at=${o.step}` : "";
+  if (!(e instanceof Error)) return `unexpected throw${at}`;
+  const c = (e as { code?: unknown }).code;
+  if (e.name !== "BridgeError" || typeof c !== "string") return `unexpected ${e.constructor.name}${at}`;
+  const code = isErrorCode(c) ? c : `<code len=${c.length}>`;
+  const msg = o.known.has(e.message) || safeMessage17(e.message, o.ctx) ? `"${e.message}"` : `<message withheld len=${e.message.length}>`;
+  return `unexpected BridgeError ${code}${at} ${msg}`;
+}
+
 // ===== H5: the SDK subcommands' pure parts (history URLs, race pacing, banner window, exact-error judge) =====
 /** Exact code, message and data (a missing `data` must be missing) against a K17 entry. Names no message text. */
 export function judgeErr17(obs: { code: string; message: string; data?: unknown } | undefined, want: K17Error, label: string): J17 {
@@ -672,6 +695,25 @@ export function historyPlan(kind: HistoryKind, tag?: string): { urls: string[]; 
   if (kind === "fwd") return { urls: [p81(`${tag ?? "fw"}0`), p81(`${tag ?? "fw"}1`), flip("fwd", tag ?? "fw")], backs: 2 };
   if (kind === "samedoc") return { urls: [p81(tag ?? "sd"), `${p81(tag ?? "sd")}#h2`], backs: 0 };
   return { urls: [p81(`${tag ?? "be"}0`), p81(`${tag ?? "be"}1`)], backs: 0 };
+}
+/** S4-live fixer 4b: the entry the set-up's back n (1-based) lands on — the n-th navigation from the end before the last. */
+export function historyBackTarget(plan: { urls: readonly string[] }, n: number): string {
+  return plan.urls[plan.urls.length - 1 - n]!;
+}
+const normUrl = (u: string): string => { try { return new URL(u).href; } catch { return u; } };
+export const sameUrl17 = (a: string, b: string): boolean => a !== "" && normUrl(a) === normUrl(b);
+export const HIST_WAIT_MS = 10_000;
+export const HIST_POLL_MS = 100;
+/** After the row shows the entry: a fixed settle, as no load status is readable (see `history()` in s11b.ts). */
+export const HIST_SETTLE_MS = 500;
+/** Polls `read` until it is true (→ true) or `timeoutMs` passes (→ false); a throw from `read` propagates. */
+export async function pollUntil17(read: () => Promise<boolean>, o: { timeoutMs: number; everyMs: number; now: () => number; sleep: (ms: number) => Promise<void> }): Promise<boolean> {
+  const end = o.now() + o.timeoutMs;
+  for (;;) {
+    if (await read()) return true;
+    if (o.now() >= end) return false;
+    await o.sleep(o.everyMs);
+  }
 }
 
 export const RACE_SPACING_MS = 150;
