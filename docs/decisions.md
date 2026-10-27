@@ -192,6 +192,20 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-27 · S1-helpers-c: the runner applies the per-slice banner rule; fresh output per attempt; teardown never restores (#348)
+**Decided:** S1-helpers-c (`8a8e1b0`, verifier 3 PASS-with-notes after two fix rounds) as proposed in
+`…-steps/S1-helpers-c.md` §5: the runner applies §4.26's per-slice banner-control rule (#340) and prints NOT MEASURED
+for a banner clause only when its other clauses passed; every slice and attempt gets a fresh `S11_OUT` and `-Att`;
+teardown never restores, and after a failed-restore STOP the runner returns (the live runner then escalates). Its
+findings: §4.26 lists the console capture before the reload, and only reload-then-capture works (the runner does
+that; §4.26 is not edited, and S1-record notes it); the UIA exposure of an empty warned list is unmeasured (R18-0
+STOPs before any state change if absent). Note H1 (the banner rule's pattern narrower than the verdict's) binds: no
+helper's `ROW`/`CHECK` wording changes before S1-live.
+**Why:** the sheet's rules, applied by code; a STOP never re-tries a restore blind.
+**Instead of:** S1-record applying the per-slice rule by hand.
+**Revisit if:** R18-0 STOPs on the warned list.
+**By:** Claude (build decision)
+
 ### 2026-10-27 · S4a: the keeper's eight edge rules; V4-1's fix goes in S4b (#347)
 **Decided:** S4a (`c9bb6cb`, verifier 4 PASS-with-notes after three fix rounds; two MAJOR races, each a session left
 attached, found by verifiers 1 and 3 and fixed) as its eight proposals (`…-steps/S4a.md` §5): a kept session detaches
