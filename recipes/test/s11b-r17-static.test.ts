@@ -32,6 +32,22 @@ function unitOf(lines: string[], i: number): Unit {
   return bm ? { kind: "block", name: bm[1]!, text } : { kind: "function", name: /^function ([\w-]+)/.exec(head)![1]!, text };
 }
 
+describe("s11b-r17.ps1 f-filetab and the options window O", () => {
+  it("closes the wave's own O before the file window opens, guarded by the own-window test", () => {
+    const lines = code.split("\n");
+    const at = lines.findIndex((l) => l.startsWith("$Blocks['f-filetab'] = {"));
+    expect(at).toBeGreaterThanOrEqual(0);
+    const text = unitOf(lines, at).text;
+    const guard = text.indexOf("if (Test-S11Own $global:O)");
+    const close = text.indexOf("Close-S11Window $global:O");
+    const open = text.indexOf("Open-S11bFileWindow");
+    expect(guard).toBeGreaterThanOrEqual(0);
+    expect(close).toBeGreaterThan(guard);
+    expect(open).toBeGreaterThan(close);
+    expect(text.indexOf("Save-S16")).toBeLessThan(open);
+  });
+});
+
 describe("s11b-r17.ps1 against the plan", () => {
   it("ValidateSet is the plan's list; the slices, framing, gate and not-built lists equal the plan's", () => {
     const vs = /\[ValidateSet\(([^)]*)\)\]/.exec(src)!;

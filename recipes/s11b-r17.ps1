@@ -471,6 +471,10 @@ $Blocks['r17-up-l1'] = {
 }
 $Blocks['rd-ctl'] = { [void](Invoke-R17Node 's11b' @('ctl', '--log85', (Join-Path $LogDir 'p8085.txt')) -StopOnFail) }   # STOP-MAP ctl-missed
 $Blocks['f-filetab'] = {
+  if (Test-S11Own $global:O) {
+    Close-S11Window $global:O; $global:O = 0; Save-S16
+    Say9 "F-FILETAB closed the wave's options window O before the file window (own page is hidden as blocked)"
+  }
   $FW = [long](@(Open-S11bFileWindow $Root (Join-Path $Root 's11b-file.html'))[-1])
   if ($FW -le 0) { throw 'no file window' }
   Start-Sleep -Seconds 2
