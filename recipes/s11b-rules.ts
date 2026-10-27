@@ -540,6 +540,8 @@ export interface Scan17Ctx {
   /** R17-UP-7 (b)'s fixture alias; counted, never printed. */
   alias?: string;
   ownId?: string;
+  /** True only for the worker console capture: the one stream in which Chrome's own blocked-request lines are counted apart (#306). */
+  consoleStream?: boolean;
 }
 /**
  * RD-DL-SOCKET's window: two marks (strings that stand in the console capture) or, for `daemon.log` (no mark can be written into it), the
@@ -562,13 +564,20 @@ export interface Scan17 {
   /** R17-UP-7's alias was given (an unknown alias makes `alias7=0` hold by construction, so it is NOT MEASURED, M3). */
   aliasKnown: boolean;
   sockMarksMissing: boolean;
+  /** Console lines Chrome wrote for a request DNR blocked, naming only the BLK fixture origin (#306); excluded from every other count. */
+  chromeBlocked: number;
 }
 const countOf = (hay: string, needle: string): number => (needle === "" ? 0 : hay.split(needle).length - 1);
 const A24 = "a".repeat(24);
-const OWN_SCAN_LINE = new RegExp(`^SCAN [\\w .-]+: ://=\\d+ \\(fixture \\d+, other \\d+\\) token=\\d+ localhost:8085=\\d+ ${A24}=\\d+ bank\\.example=\\d+ alias7=\\d+ sock127=\\d+ sentinel=\\d+ profile=\\d+$`);
+const OWN_SCAN_LINE = new RegExp(`^SCAN [\\w .-]+: ://=\\d+ \\(fixture \\d+, other \\d+\\) token=\\d+ localhost:8085=\\d+ ${A24}=\\d+ bank\\.example=\\d+ alias7=\\d+ sock127=\\d+ sentinel=\\d+ profile=\\d+(?: chrome-blocked=\\d+)?$`);
 /** Counts only. The scanner's own whole `SCAN …` lines are not scanned (their labels would count). */
 export function scan17(text: string, ctx: Scan17Ctx, sock?: SockWindow): Scan17 {
-  const body = text.split(/\r?\n/).filter((l) => !OWN_SCAN_LINE.test(l.trim())).join("\n");
+  let chromeBlocked = 0;
+  const body = text.split(/\r?\n/).filter((l) => {
+    if (OWN_SCAN_LINE.test(l.trim())) return false;
+    if (isChromeBlockedLine17(l, ctx)) { chromeBlocked++; return false; }
+    return true;
+  }).join("\n");
   let urls = 0;
   let fixture = 0;
   for (const m of body.matchAll(/[a-z][a-z0-9+.-]*:\/\/[^\s/'"`<>)\]\\,;]*/gi)) {
@@ -608,11 +617,30 @@ export function scan17(text: string, ctx: Scan17Ctx, sock?: SockWindow): Scan17 
     tokenKnown: !!ctx.token,
     aliasKnown: !!ctx.alias,
     sockMarksMissing,
+    chromeBlocked,
   };
 }
-/** RD-LOGS's Expected line, character for character. */
+const CHROME_BLOCKED_MARK = "net::ERR_BLOCKED_BY_CLIENT";
+/**
+ * #306: a console line is Chrome's own blocked-request line only if the stream is the console, it holds Chrome's `net::ERR_BLOCKED_BY_CLIENT`,
+ * it is not a `[bridge]` product line, it names `localhost:8085` and no other pattern (no non-fixture URL, token, alias, sentinel, profile path,
+ * bank.example, a-run) and no `127.0.0.1`. Anything else stays counted and a STOP.
+ */
+export function isChromeBlockedLine17(line: string, ctx: Scan17Ctx): boolean {
+  if (!ctx.consoleStream || !line.includes(CHROME_BLOCKED_MARK) || line.includes("[bridge]") || line.includes("127.0.0.1")) return false;
+  const i = scan17(line, { ...ctx, consoleStream: false });
+  return i.localhost8085 > 0 && i.other + i.token + i.a24 + i.bank + i.alias + i.sentinel + i.profile === 0;
+}
+export const CHROME_BLOCKED_LABEL = "[chrome-blocked line redacted]";
+/** Committed evidence holds a Chrome blocked-request line only as this label (#306). Qualifying is decided by `isChromeBlockedLine17`. */
+export function redactChromeBlocked17(text: string, ctx: Scan17Ctx): { text: string; redacted: number } {
+  let redacted = 0;
+  const out = text.split(/\r?\n/).map((l) => (isChromeBlockedLine17(l, { ...ctx, consoleStream: true }) ? (redacted++, CHROME_BLOCKED_LABEL) : l));
+  return { text: out.join("\n"), redacted };
+}
+/** RD-LOGS's Expected line, character for character; `chrome-blocked=<n>` is appended only when n > 0 (#306). */
 export function scanLine17(what: string, s: Scan17): string {
-  return `SCAN ${what}: ://=${s.urls} (fixture ${s.fixture}, other ${s.other}) token=${s.token} localhost:8085=${s.localhost8085} ${A24}=${s.a24} bank.example=${s.bank} alias7=${s.alias} sock127=${s.sock127} sentinel=${s.sentinel} profile=${s.profile}`;
+  return `SCAN ${what}: ://=${s.urls} (fixture ${s.fixture}, other ${s.other}) token=${s.token} localhost:8085=${s.localhost8085} ${A24}=${s.a24} bank.example=${s.bank} alias7=${s.alias} sock127=${s.sock127} sentinel=${s.sentinel} profile=${s.profile}${s.chromeBlocked > 0 ? ` chrome-blocked=${s.chromeBlocked}` : ""}`;
 }
 /** A non-zero count other than fixture `://` is a STOP; an unknown token, a missing control line or missing socket marks is NOT MEASURED. */
 export function verdict17(s: Scan17, o: { consoleControl?: boolean }): J17 {

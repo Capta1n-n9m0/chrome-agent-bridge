@@ -839,7 +839,9 @@ $Blocks['rd-logs'] = {
   $ac = @(if ($al) { '--alias', $al })
   $sc = @(); $sd = @()
   if ($global:R17SockRan) { $sc = @('--sock-console'); $sd = @('--sock-lines', "$($global:R17SockLog0),$($global:R17SockLog1)") }
-  [void](Invoke-R17Node 's11b' (@('scan', '--what', 'console', '--file', $cf) + $ac + $sc) -StopOnFail)   # STOP-MAP log-hit
+  $cn = (Invoke-R17Node 's11b' (@('scan', '--what', 'console', '--file', $cf) + $ac + $sc) -StopOnFail)   # STOP-MAP log-hit
+  if ($cn -eq 0) { [void](Invoke-R17Node 's11b' (@('redact-console', '--file', $cf, '--out', (Join-Path $env:S11_OUT 'console-evidence.txt')) + $ac + $sc)) }   # #306: the evidence copy holds Chrome's blocked-request lines as a label only; written only when the console scan passed
+  else { Say9 'CONSOLE evidence copy not written (scan not passed)' }
   [void](Invoke-R17Node 's11b' (@('scan', '--what', 'daemon', '--file', $df) + $ac + $sd) -StopOnFail)
   if ($global:R17ActorRan) { [void](Invoke-R17Node 's11b' (@('scan', '--what', 'actors') + $ac) -StopOnFail) } else { Say9 'RD-LOGS actors: no actor ran in this slice; nothing to scan' }
   Assert-R17TreeClean

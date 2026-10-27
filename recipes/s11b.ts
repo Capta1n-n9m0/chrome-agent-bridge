@@ -44,7 +44,7 @@ import { rawLeaks, refusalPageJudge, uploadPageJudge, type FileWant, type PageOb
 import {
   countHits, ctxExpression, expectedRuleCount, flipCounts, hitsLine, judgeCtl, judgeSampleThenZero, judgeStored, manifestExpression,
   parseCtxLine, parseManifestLine, parseRegexLines, parseRulesLine, parseRulesSamplesLine, preTypeCheck, regexExpression, regexProof,
-  rulesExpectLine, rulesExpression, rulesSampleExpression, row17Line, scan17, scanLine17, storedExpression, verdict17, REGEX_NOT_MEASURED,
+  rulesExpectLine, redactChromeBlocked17, rulesExpression, rulesSampleExpression, row17Line, scan17, type Scan17Ctx, scanLine17, storedExpression, verdict17, REGEX_NOT_MEASURED,
   callLine, foundList, judgeErr17, judgeHistory, judgeRaceA, judgeSamedoc, judgeSocket, k17RawDir, k17RawMissing, K17, latLine, raceDone17, raceDue, recordLine, socketLine,
   answerOfRow, dlHopRecord, dropTitleLines, fileExistsFrom, judgeDlTrial, judgeFileTabHidden, judgeFileTabRow, type FileTabListRow, judgeRd0State, markExpression, parseCallRow, parseMarkLine, rd0StateLine, rd0ToggleLine, SOCK_MARKS, type SockWindow,
   historyPlan, windowViolations, judgeCallAnswer, judgeCaps, judgeFHome, judgeHistoryRow, judgeTimedRules, judgeUpOpt, gapJudge, parseCtxTabs, parseRulesTimedLine, rulesTimedExpression, rulesSamplesLine, type TimedMode, RACE_MAX_CALLS, RACE_MIN_CALLS, RACE_SPACING_MS, WINDOW_AFTER_MS, WINDOW_BEFORE_MS,
@@ -377,6 +377,32 @@ function sockLines(v: string): SockWindow {
   const m = /^(\d+),(\d+)$/.exec(v);
   return m ? { fromLine: Number(m[1]), toLine: Number(m[2]) } : stop("--sock-lines is <from>,<to>");
 }
+/** The one Scan17Ctx of `scan` and `redact-console` (#306): token, state.json sentinel, `--alias` else state.json's, own extension id, profile. */
+function scanCtx(a: Args, what: string): Scan17Ctx {
+  let sentinel = "";
+  let alias: string | undefined = a.opts.alias;
+  try {
+    const sf = join(S11_OUT, "state.json");
+    const st = existsSync(sf) ? (JSON.parse(readFileSync(sf, "utf8")) as { sentinel?: string; alias?: string }) : {};
+    sentinel = String(st.sentinel ?? "");
+    alias = alias || st.alias;
+  } catch {
+    /* no sentinel and no alias known: the verdict says so */
+  }
+  return { token: token(), sentinel, profile: [homedir()], alias, ownId: extensionIdFromPath(join(REPO, "extension")), consoleStream: what === "console" };
+}
+
+/** The socket window of the scan's options (`--sock-console`, `--sock-lines`, `--mark-from/--mark-to`), shared with `redact-console`. */
+function sockWindow(a: Args): SockWindow | undefined {
+  return a.flags.includes("--sock-console")
+    ? { start: SOCK_MARKS.start, end: SOCK_MARKS.end }
+    : a.opts["sock-lines"]
+      ? sockLines(a.opts["sock-lines"])
+      : a.opts["mark-from"] && a.opts["mark-to"]
+        ? { start: a.opts["mark-from"], end: a.opts["mark-to"] }
+        : undefined;
+}
+
 /**
  * RD-LOGS: `scan --what console|daemon|actors|other [--file <f>] [--alias <a>] [--sock-console | --sock-lines <a>,<b> | --mark-from <s> --mark-to <s>]`.
  * The alias defaults to the one `S11 make` stored in state.json (never printed); a scan with no alias is NOT MEASURED. `actors` reads the
@@ -392,26 +418,23 @@ async function scan(a: Args): Promise<void> {
     text = existsSync(dir) ? readdirSync(dir).filter((f) => f.includes(".turn-")).map((f) => resultLines(readFileSync(join(dir, f), "utf8"))).join("\n") : "";
   } else text = readFileSync(need(a, "file"), "utf8");
   if (what === "console") text = dropTitleLines(text).text;
-  let sentinel = "";
-  let alias: string | undefined = a.opts.alias;
-  try {
-    const sf = join(S11_OUT, "state.json");
-    const st = existsSync(sf) ? (JSON.parse(readFileSync(sf, "utf8")) as { sentinel?: string; alias?: string }) : {};
-    sentinel = String(st.sentinel ?? "");
-    alias = alias || st.alias;
-  } catch {
-    /* no sentinel and no alias known: the verdict says so */
-  }
-  const sock: SockWindow | undefined = a.flags.includes("--sock-console")
-    ? { start: SOCK_MARKS.start, end: SOCK_MARKS.end }
-    : a.opts["sock-lines"]
-      ? sockLines(a.opts["sock-lines"])
-      : a.opts["mark-from"] && a.opts["mark-to"]
-        ? { start: a.opts["mark-from"], end: a.opts["mark-to"] }
-        : undefined;
-  const s = scan17(text, { token: token(), sentinel, profile: [homedir()], alias, ownId: extensionIdFromPath(join(REPO, "extension")) }, sock);
+  const ctx = scanCtx(a, what);
+  const s = scan17(text, ctx, sockWindow(a));
   say(scanLine17(what, s));
   judged("RD-LOGS", verdict17(s, { consoleControl: what === "console" ? text.includes("safety: disarmed by the user") : undefined }));
+}
+
+/** `redact-console --file <capture> --out <evidence>`: the capture with Chrome's blocked-request lines as a label (#306); prints the count only. */
+function redactConsole(a: Args): void {
+  const out = outsideRepo(need(a, "out"));
+  rmSync(out, { force: true }); // R3: a refusal leaves no earlier copy
+  const text = dropTitleLines(readFileSync(outsideRepo(need(a, "file")), "utf8")).text;
+  const ctx = scanCtx(a, "console");
+  const v = verdict17(scan17(text, ctx, sockWindow(a)), { consoleControl: text.includes("safety: disarmed by the user") });
+  if (!v.pass) stop("the console scan did not pass; no evidence copy is written");
+  const r = redactChromeBlocked17(text, ctx);
+  writeFileSync(out, r.text);
+  say(`CONSOLE chrome-blocked lines redacted=${r.redacted}`);
 }
 
 /** `clean-console --file <capture>`: drops the capture's window-title lines in place (#283); prints the count only. */
@@ -977,6 +1000,7 @@ export const cmds: Record<string, (a: Args) => void | Promise<void>> = {
   call,
   state: stateCmd,
   "clean-console": cleanConsole,
+  "redact-console": redactConsole,
   "judge-row": judgeRow,
   "dl-record": dlRecord,
   "judge-opt": judgeOpt,
