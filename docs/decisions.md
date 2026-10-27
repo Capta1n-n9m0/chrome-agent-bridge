@@ -20,6 +20,7 @@ were ruled on 2026-10-27, #311, #320). #322, #323, #325 and #326 are amended by 
 - 2026-10-27 · S2b: `browser_evaluate.args` as a written-out schema delta; the daemon's own reload text; the SDK's ninth refusal (#342)
 - 2026-10-27 · S3a: the reply `{entries}` and the `level` threshold … (#344, item 1)
 - 2026-10-27 · S3b: the console formatter's line form … the JavaScript-off line left for the gate (#345, items 1 and 3)
+- 2026-10-27 · S1-live: R18-LOGS slice A's `profile=2` stands as a FAIL … (#349, item (a): the MCP failure report's absolute screenshot path)
 - **G12-2 for the user:** add the `webNavigation` permission so G1 can be built? (#337)
 
 ## Standing decisions
@@ -191,6 +192,35 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
+
+### 2026-10-27 · S1-live: R18-LOGS slice A's `profile=2` stands as a FAIL; liveB18 runs; the two paths are named (#349)
+**Decided:** Run 18 liveA18 attempt 2 (built from `b8b493d`, a helper fix only; `…-steps/S1-live.md`) printed the
+actors scan's `profile=2`, a STOP line of the helper by §4.26's committed rule ("0 for … the profile path"). The rule
+is not changed and no match is excluded after the fact (`agent-rules.md` §2): **R18-LOGS slice A is judged FAIL as
+written**, with its cause recorded. The two matches, both in the `sv-cycle` actor's tool result (an MCP agent's
+transcript in the wave's own output folder, not a product log and not committed evidence): (a) the MCP failure
+report's `Screenshot: <absolute path under the user's home>\.chrome-agent-bridge\failures\….png` line, the product's
+designed reply to the caller since Step 8 (decisions-archive/step8.md #93, #120: the report names the saved
+screenshot); (b) Claude Code's own `[Image: source: …]` line for the image item, not product output. Neither breaks the
+root invariant (product code never **logs** a path) nor the phase doc's STOP rule (a path in a log or committed
+evidence), so it is not a phase STOP: the phase continues. (a) is a **product finding for the user**: an MCP failure
+report hands the agent an absolute path under the user's home; whether that reply should name only the file
+(`failures\<name>.png`) is the user's to rule (a contract change of #93's report text, not built here). A later run that
+wants the scan to discriminate gets a **new row**, written before its run (Run 19's R19-LOGS: the actors scan reads
+product log lines and tool text only, the failure report's own line and the client's image line counted separately and
+named), never an edit of R18-LOGS. **liveB18 starts as its attempt 1** (it runs no actor, so (a) and (b) cannot recur;
+the found state was restored and read back equal); liveA18 is not re-run (the same measurement). The R18-UP-L1 and
+R18-SAVE-REFUSE `ROW` lines were not printed because the runner prints them after R18-LOGS: S1-record judges those two
+rows from their printed clause lines against the pre-written rule, and any clause without its printed line is NOT
+MEASURED. R18-UP-OPT (O2 not shown within 15 s) and R18-UP-6 (`outside: banner seen`) FAIL with a passing control:
+product findings, proposed by S1-record.
+**Why:** the integrity floor forbids re-tuning a scan after its result; the slice's safety state is intact; the
+remaining rows measure different things.
+**Instead of:** excluding the two lines from the scan (weakening a pre-registered check); stopping the phase (no phase
+STOP fired); re-running liveA18 (the same answer).
+**Revisit if:** the user reads §4.26's "no path under the user's profile" as covering a tool result the product sends
+by design, and rules the report text.
+**By:** Claude (session agent's ruling of an escalation; (a) for user review)
 
 ### 2026-10-27 · S1-helpers-c: the runner applies the per-slice banner rule; fresh output per attempt; teardown never restores (#348)
 **Decided:** S1-helpers-c (`8a8e1b0`, verifier 3 PASS-with-notes after two fix rounds) as proposed in

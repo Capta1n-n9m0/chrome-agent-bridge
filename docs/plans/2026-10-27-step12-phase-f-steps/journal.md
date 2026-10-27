@@ -42,3 +42,5 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
 - 2026-10-27T20:13Z · S4a · step agent · ended · `c9bb6cb` · verifier FAIL, PASS, FAIL → PASS-with-notes (three fix rounds) · 358 code / 710 tests; #347 recorded (V4-1 to S4b). S4b waits until Run 18 has run (a live slice needs a clean tree).
 - 2026-10-27T20:29Z · S1-helpers-c · step agent · ended · `8a8e1b0` · FAIL, FAIL → PASS-with-notes (two fix rounds) · recipes tests 1131 → 1209; full 5008 / 210 files; #348 recorded.
 - 2026-10-27T20:29Z · S1-live · step agent · Opus · medium · started ALONE (tree clean at the next commit; 9234 and 8080–8089 not listening at 20:29Z).
+- 2026-10-27T20:54Z · S1-live · step agent · ended ESCALATE · fix round 1 `b8b493d` (the $o2/$O2 trap), S1-live files `e0a2489`; liveA18 att 2 ran every block, STOP at R18-LOGS (actors scan profile=2); restores equal by count and hash; daemon stopped, no listener on 9234/8080–8089. Ruled #349: R18-LOGS slice A FAIL as written; liveB18 runs as its attempt 1.
+- 2026-10-27T20:54Z · S1-live (liveB18) · step agent · Opus · medium · started fresh from `S1-live.ledger.md` (alone).
