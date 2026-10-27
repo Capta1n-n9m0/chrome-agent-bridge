@@ -7,12 +7,13 @@ file under `src/`.
 ## Safety gate (Step 9, Step 11, Step 11b)
 
 - **The block list is not a network firewall; since Step 11b it stops redirect hops of a bridge call in flight.**
-  While a `navigate` or `downloadStart` runs, session DNR rules built from the list hold, so a hop onto a blocked host
-  is never sent: the blocked fixture server saw 0 requests (Run 17 RD-1, RD-3; before: 1, SAFE-5b, R14-5c), answers
-  unchanged; the rules follow the list (RD-4, RD-5, RD-5b) and read 0 after each reply. `downloadStart` still checks
-  its own URL, then `res.url` (#140, #154). Not covered: `newTab`'s first request (RD-2 blocked 1; #295), the human's
-  own browsing (RD-6; 0.4 (C)), requests a page starts after the call (0.9), and a redirect through `back`/`forward`
-  is unmeasured (#308). A cross-origin frame of a blocked host shows in screenshots (stage0-audit F16, by reading).
+  While a `navigate`, `newTab` with a URL, `back`, `forward` or `downloadStart` runs, session DNR rules built from the
+  list hold, so a hop onto a blocked host is never sent: the blocked fixture server saw 0 requests (Run 17 RD-1, RD-3;
+  before: 1, SAFE-5b, R14-5c; `newTab` R17B-RD-2, was 1 in RD-2; `back`/`forward` R17B-BACK, R17B-FWD, once each, on
+  histories with a user activation), answers unchanged; the rules follow the list (RD-4, RD-5, RD-5b) and read 0 after
+  each reply. `newTab` opens `about:blank` first (S6, #311, #312). `downloadStart` still checks its own URL, then
+  `res.url` (#140, #154). Not covered: the human's own browsing (RD-6; 0.4 (C)) and requests a page starts after the
+  call (0.9). A cross-origin frame of a blocked host shows in screenshots (stage0-audit F16, by reading).
 - **DNR facts the rule builder binds (`safety-dnr.ts`, Step 11b; Chrome 156, `…step11b…-steps/Stage0.md` §4, `S1.md`).**
   `requestDomains` matches a host and its subdomains, ignores the port and suffix-matches IP literals (`0.0.1` blocked
   `127.0.0.1`), so IPs, `*.` and ports go by anchored regex; `regexFilter` sees the canonical URL with its port

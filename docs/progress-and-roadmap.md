@@ -837,7 +837,7 @@ RD-2: 1) and a bridge `back`/`forward` redirect hop stopped, once each (R17B-BAC
 `DOMAIN_BLOCKED`), on histories built with a user activation. A bridge `back`/`forward` reaches only pages a human
 or an activating call acted on (R17B-BACK-NOACT: `INTERNAL`, R17B-ACT-CTL: `ok` 4 of 4; #308). Run 17b: PASS 16,
 RECORD 2, FAIL 7, NOT MEASURED 3; the seven FAILs are carried upload rows (R17B-UP-L1, UP-OPT, UP-6, F-RAW, F-RAW-2,
-F-RAW-DIR, UP-RACE-A), not Step 11b claims; each fails on a helper or sheet defect or an unestablished banner reading
+F-RAW-DIR, UP-RACE-A), not Step 11b's own rows (#318); each fails on a helper or sheet defect or an unestablished banner reading
 (#318); R17B-LOGS is NOT MEASURED, so D7.6 is not met (#318). Not measured: `tabs.get().status` after `goBack`.
 Not pushed since `ce1f06d` (push granted, #311). Docs: S5 and S8 (`docs/setup.md` Safety). *Corrected 2026-10-27:
 was "**Next — Step 11b**" (planned, not started), because it is built and Runs 17 and 17b have run.*

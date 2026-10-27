@@ -1,6 +1,6 @@
 # Step 11b — The block list stops redirected requests (`declarativeNetRequest` session rules)
 
-**Date:** 2026-10-26 · **Status:** Built (Stage 0 → S5, 2026-10-26/27); Run 17 stopped at a pre-registered STOP that predates Step 11b (#307, #308); **the user ruled the gate 2026-10-27 (#311): accepted; S6 (`newTab` on `about:blank`) and Run 17b (S7) follow, then S8 and the close** (kickoff was `docs/plans/next-session-prompt.md`)
+**Date:** 2026-10-26 · **Status:** Built (Stage 0 → S5, 2026-10-26/27); Run 17 stopped at a pre-registered STOP that predates Step 11b (#307, #308); **the user ruled the gate 2026-10-27 (#311); S6, Run 17b (S7) and S8 built; D7.6 not met — #318 waits for the user** (kickoff was `docs/plans/next-session-prompt.md`)
 **Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change (§6.5 the human, §10 protocol and codes, with the Step 9–11 dated notes) ·
 **Roadmap:** decisions.md · 2026-10-24 · The roadmap after Step 8 (#129), as amended by · 2026-10-25 · The user rules on
@@ -627,6 +627,27 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - 28 rows: PASS 16, RECORD 2, FAIL 7 (all carried from Run 16's uploads), NOT MEASURED 3. D7.3 met (R17B-RD-2 blocked
   0), D7.4 met (R17B-BACK, R17B-FWD blocked 0; SAMEDOC, EMPTY `ok`), **D7.6 not met** (R17B-LOGS NOT MEASURED). §5 Run
   17b entry. Record `…-steps/S7-run-record.md`; #318.
+
+### S8 · 2026-10-27 · `474db85` · verifier PASS-with-notes (two fix rounds)
+- `docs/setup.md` Safety from Run 17 and Run 17b rows (`newTab` R17B-RD-2, R17B-NEWTAB-LOAD; `back`/`forward` R17B-BACK,
+  R17B-FWD; the #308 limit R17B-BACK-NOACT, R17B-ACT-CTL; cleanup P6); the roadmap's Step 11b block; a dated §10 spec
+  note; a comment-only keeper edit. The seven failed carried rows are not described as fixed. CLAUDE.md proposals
+  (`S8-claude-md-proposals.md` (a)–(f), cleanup P7, P8) applied by the session agent (#319). D8.1 met.
+
+### Gate checklist after the ruling · 2026-10-27 · **not met — #318 waits for the user**
+| Item | Met? | Evidence |
+|---|---|---|
+| Every-stage checks | yes | stage reports; tests 4535/183 → 4665/191, none removed |
+| E6.1–E6.5 | yes | `S6.md` |
+| D7.1, D7.2, D7.5, D7.7 | yes | `S7-run-record.md` |
+| D7.3 | yes | R17B-RD-2 blocked 0 (Run 17 RD-2: 1) |
+| D7.4 | yes | R17B-BACK, R17B-FWD blocked 0; SAMEDOC, EMPTY `ok` |
+| **D7.6** | **no** | R17B-LOGS NOT MEASURED (one console path for both slices; #318) |
+| D8.1 | yes | `S8.md` |
+| Carried rows (Run 16's) | 7 FAIL | UP-OPT, UP-6, F-RAW, F-RAW-2, F-RAW-DIR, UP-RACE-A, UP-L1; helper or sheet defects or an unestablished banner reading (#318) |
+| STOP rules | none fired | attempt 1's throw before any state change (#317) |
+| G11b-1 | granted | pushed to `ce1f06d` (#311) |
+| G11b-2 | met | fixtures only |
 
 ## Open items
 

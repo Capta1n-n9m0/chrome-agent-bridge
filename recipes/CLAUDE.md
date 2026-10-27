@@ -153,3 +153,9 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `state.json` without s9's `opened` list; the extension's own options tab is listed hidden as `blocked`, so "exactly one
   hidden row" needs the options window closed; a row that needs the state disarmed for N seconds times the ON press
   from the reply, not from the first press (RD-DISARM, #308).
+- **Run 17b's helper facts** (`…step11b…-steps/S7-live.md`, `S7-run-record.md` §5): a PowerShell 5.1 `powershell -File`
+  script runs at global scope, so a top-level `$o` replaced `$global:O` and the run threw before any state change
+  (attempt 1, #317) — name top-level variables so none shadows a global the helpers read; one console-capture path for
+  both slices lost liveA's capture, so R17B-LOGS was NOT MEASURED (#318) — give each slice its own path; the banner
+  sampler read positive on legs that send no call (R17B-UP-6 `missing`/`relative`), so a positive reading does not show
+  that the call raised the banner (cause of any banner FAIL not established).

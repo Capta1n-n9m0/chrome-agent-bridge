@@ -182,6 +182,16 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-27 · S8: the docs claim only Run 17 and Run 17b's rows; the CLAUDE.md proposals applied (#319)
+**Decided:** S8 as built (`474db85`). The session agent applied `S8-claude-md-proposals.md` (a) the firewall bullet in
+`extension/src/CLAUDE.md` (cleanup P7), (b) `handlers/history.ts` and the permission in `extension/CLAUDE.md` (P8),
+(c) the activation fact and `newTab`'s `about:blank` in `extension/src/handlers/CLAUDE.md`, (d) the root Current state
+and test count, (f) Run 17b's helper facts in `recipes/CLAUDE.md`; and the verifier's M1 wording in the roadmap.
+**Why:** D8.1; a gotcha lives with the code it binds (#232). #310's "Revisit if" is met and answered here.
+**Instead of:** leaving `back`/`forward` described as unmeasured.
+**Revisit if:** a later run contradicts R17B-BACK or R17B-FWD.
+**By:** Claude
+
 ### 2026-10-27 · Run 17b's record: Step 11b's rows pass; seven carried upload rows fail; D7.6 not met (#318)
 **Decided:** the record `…-steps/S7-run-record.md` as judged (`1e285d7`; 28 rows: PASS 16, RECORD 2, FAIL 7, NOT MEASURED
 3). D7.1–D7.5 and D7.7 met: **R17B-RD-2 blocked 0** (Run 17: 1), so S6 closes the `newTab` leak; R17B-BACK and R17B-FWD

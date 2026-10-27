@@ -48,3 +48,4 @@ effort · start → end.
 - 2026-10-27T06:39Z · S7-helpers · step agent · Opus · medium — DONE, 6c0eddc, verifier PASS-with-notes (three fix rounds); tests 4663/190; #316.
 - 2026-10-27T07:13Z · S7-live · step agent · Opus · medium — DONE, 6f3413c + 145ceb9, two attempts (attempt 1 a set-up throw before any state change, #317), no STOP; D7.2, D7.5, D7.7 met.
 - 2026-10-27T07:40Z · S7-record · step agent · Opus · medium — DONE, 1e285d7, verifier PASS-with-notes (two fix rounds): PASS 16 / RECORD 2 / FAIL 7 / NOT MEASURED 3; D7.3, D7.4 met; D7.6 not met; #318 (open for the user).
+- 2026-10-27T08:13Z · S8 · step agent · Opus · medium — DONE, 474db85, verifier PASS-with-notes (two fix rounds); CLAUDE.md proposals applied (#319); gate after ruling: D7.6 not met, #318 open.

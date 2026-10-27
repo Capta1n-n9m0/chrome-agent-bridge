@@ -13,7 +13,8 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply. `extension/CLAUDE.md`
   non-integer → `BAD_PARAMS`, a string `tab` (a handle an old daemon forwarded) → `BAD_PARAMS`, absent →
   `BAD_PARAMS "<method> requires tabId"`; `grep -rn "targetTab({}" extension/src` is empty. Don't
   restore the fallback (a Step 8 forbidden fix), and don't make the daemon omit `tabId`.
-- **`newTab` opens in the background unless `active: true` is passed** (`handlers/tabs.ts`; T3.4). The MCP's rule for `browser_new_tab` is in `mcp/CLAUDE.md`. Don't change the extension's default back.
+- **`newTab` opens in the background unless `active: true` is passed** (`handlers/tabs.ts`; T3.4). With a URL it opens
+  `about:blank` first, installs the rules, then navigates (S6; `tabCreated.url` reads `about:blank`; R17B-RD-2). The MCP's rule for `browser_new_tab` is in `mcp/CLAUDE.md`. Don't change the extension's default back.
 - **`screenshot {mode:"cdp"}` hung on a hidden or minimized tab, so it now refuses.** Run 8: a
   background tab → `TIMEOUT` after 35 s with the banner up, and the next `evaluate` on another tab got
   a transient `DEBUGGER_DEVTOOLS` (SCREEN-2); a minimized window → `TIMEOUT` after 25 s (SCREEN-4).
@@ -27,7 +28,9 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply. `extension/CLAUDE.md`
   history."`: 26 of 26 in a scratch Chrome 156, background or foreground, with or without the DNR permission; a page
   given a user activation before the tab left it makes `back` and `forward` work 8 of 8, and CDP still lists every
   entry (#308, `…step11b…-steps/S4-investigation.md`; Run 17 RD-BACK, RD-BACK-SAMEDOC, RD-BACK-EMPTY). It predates
-  Step 11b. A test of `back` must build its history with an activation, or expect the refusal.
+  Step 11b. A test of `back` must build its history with an activation, or expect the refusal. Run 17b: the bridge's
+  own `evaluate` (CDP `Runtime.evaluate`, `userGesture: true`, through `chrome.debugger`) before the tab leaves a page
+  made `back`/`forward` answer `ok` 4 of 4 (R17B-ACT-CTL); the same pages without it, `INTERNAL` 1 of 1 (R17B-BACK-NOACT).
 
 Redirects onto blocked hosts (the block list is not a network firewall) are in `extension/src/CLAUDE.md`, Safety gate.
 
