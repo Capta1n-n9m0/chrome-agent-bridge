@@ -21,6 +21,12 @@ Step 11b (contract-level; the conservative option applies until the user rules a
   open `about:blank`, install the rule, navigate (0 of 10 leaked; `tabCreated.url` = `about:blank`, two history
   entries) (recommended for security); (b) `newTab` as today, its first request escaping a blocked redirect, a known
   gap (applied, conservative).
+- **#307/#308** 2026-10-27 · Run 17 stopped at RD-BACK-EMPTY's STOP, which predates Step 11b — the gate is not met.
+  Options: (a) accept Step 11b with Run 17 as recorded, document that `back`/`forward` reach only pages a human acted
+  on, and re-measure the back rows, RD-DISARM (ON after the reply) and the unrun rows (liveB, RD-LOGS, RD-RESTORE) as
+  new rows in a short Run 17b (recommended); (b) the same, but change `back` to `history.back()`/CDP first (a Step 12
+  question); (c) hold Step 11b until a full re-run passes. Also to rule: clear the leftover
+  `%TEMP%\bridge-e2e\s11b\r17-globals.clixml` (the state is restored, read back equal) so the next wave's preflight runs.
 
 Step 11's were ruled on 2026-10-26 (#288, #289, #290); the lists of earlier steps' open decisions, with their rulings,
 are in the archive entries they cite and in git.
@@ -184,6 +190,26 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
+
+### 2026-10-27 · Run 17's STOP predates Step 11b: Chrome's `back` skips pages with no user activation; RD-DISARM's FAIL is the helper's timing (#308)
+**Decided (findings, for the user's ruling at the gate):** measured in a scratch Chrome 156 (#294;
+`…-steps/S4-investigation.md`, `stage4-back-*.txt`): a history built as the bridge builds it (`tabs.create`, then
+`tabs.update`, each waiting for the load) makes `chrome.tabs.goBack` answer exactly Run 17's "Cannot find a next page
+in history." 26 of 26 times — background or foreground, with or without Step 11b's permission — while a page given a
+user activation before the tab left it makes `back` and `forward` work 8 of 8; CDP still lists every entry. With an
+empty list Step 11b's `back` calls `goBack` exactly as before `c9db926`, and no earlier run ever measured a bridge
+`back` (HIST-1 never ran), so "`ok` before Step 11b" was an unmeasured assumption of the sheet. RD-DISARM: the press
+did disarm (title OFF in 53 ms, the console's disarm line), but the helper timed the ON press 1.6 s from the first, so
+the state was re-armed before the 4 s redirect and the product rightly answered `DOMAIN_BLOCKED`; its wait-safety
+compared with the found list instead of the group's. Both FAILs stay as recorded. Proposed for the ruling (listed under
+Open decisions): (a) document that `back`/`forward` reach only pages a human acted on, and re-measure the back rows and
+RD-DISARM as new rows (activated set-up; ON after the reply) in a later wave (recommended); (b) make `back` use
+`history.back()` in the page or CDP `Page.navigateToHistoryEntry`, which sidesteps a protection Chrome gives the user —
+a Step 12 question, not built here.
+**Why:** the user rules a fired STOP (#307); the evidence shows Step 11b did not cause it.
+**Instead of:** re-running with changed rows now (re-tuning after seeing a result).
+**Revisit if:** the user rules.
+**By:** Claude (findings measured; options for the user)
 
 ### 2026-10-27 · Run 17 stopped at a pre-registered STOP; the gate waits for the user; the write-up continues (#307)
 **Decided:** Run 17's liveA attempt 7 ended at RD-BACK-EMPTY's STOP ("a bridge call answering differently from its
