@@ -145,7 +145,8 @@ decision at Stage 0, not a STOP).
   as an unreadable state does (#139) — no new code. A rebuild on change that rejects marks the keeper unsynced: every
   live covered call is aborted with that refusal and new covered calls are refused until a rebuild succeeds. A list
   with more patterns than the caps allow is the same case; the options page may warn (0.9).
-- **Disarm.** Disarm already refuses every call; the keeper removes every rule in `onDisarm`.
+- **Disarm.** Disarm already refuses every call; the keeper removes every rule in `onDisarm`. *Superseded
+  2026-10-26 (#296): a disarm does not lift a running call's rules; `sweep()` removes only orphans.*
 
 *Instead of:* standing rules for the whole list rebuilt on change (that is 0.4 (A) or (B)); a cache of the list in the
 keeper (two sources); failing open when the API rejects.
@@ -168,7 +169,8 @@ Today's answers stay, so every test, row and client line stays valid:
   Any other fetch failure keeps today's answer. If Stage 0 shows the worker's own requests do not reach its
   `webRequest`, the fallback is: a fetch failure while the call's rules were non-empty answers `DOMAIN_BLOCKED` only if
   the request URL's own host is not blocked and a re-check finds no other cause — that fallback is a Stage 0 proposed
-  decision, flagged, since it may misname a genuine network error.
+  decision, flagged, since it may misname a genuine network error. *Note 2026-10-26: the fallback was dropped
+  (#296: the worker's requests do reach `webRequest`); the recognition as built is #303.*
 
 *Instead of:* a new code (`REDIRECT_BLOCKED`) — a wire change for no new information; `NAV_FAILED` with Chrome's
 `net::ERR_BLOCKED_BY_CLIENT` — exposes a Chrome detail and breaks SAFE-5b's text.
@@ -261,10 +263,8 @@ page's caps warning). 0.9 gains Stage 0's blind spots (F22). D3.3's `<start>` is
 `…-steps/stage0-s1-cases.md` with `Stage0.md` §6 item 7.
 
 **Lane** is the explicit grant a step agent needs (`docs/agent-rules.md` §3 item 5). **Risk** per `agent-rules.md` §7:
-every code stage here is on the safety side, so **standard**. Models and effort by `agent-rules.md` §7 as ruled
-2026-10-26 (#289): Opus builds and fixes the code stages (all safety code here) and runs every verifier and step agent;
-Sonnet builds the live helpers and docs and runs the live runner; **every agent at medium effort, passed explicitly**. Each code stage stays under about 600 new lines (#271); a builder that
-finds more stops DONE-PARTIAL. **Verifier focus** adds to `agent-rules.md` §6 and the stage's exit checks.
+every code stage here is on the safety side, so **standard**. Models, effort and the size cap: `agent-rules.md` §7
+(#289, #271). **Verifier focus** adds to `agent-rules.md` §6 and the stage's exit checks.
 
 ### Stage 0 — Spec audit (1.5 h, first, alone; risk: standard)
 - [ ] Four lenses over this doc, as Step 11's Stage 0: cited files and functions **executed**; counts recomputed
@@ -597,11 +597,9 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 
 ## Open items
 
-- **Ruled 2026-10-26:** 0.3 (A), 0.4 (C) (#290); S0F's what (#288).
-- **Contract-level, conservative rule applied, listed for the user at the gate:** 0.5 (fail closed with the existing
-  `DISARMED` refusal), 0.6 (answers unchanged; how a blocked download hop is recognised).
-- **Settled only by Stage 0:** #290's four checks; 3c's check (0.11); whether DNR applies to the worker's own `fetch` (the download half), `tab.url` after a
-  blocked main frame, the regex cap. Each changes a stage item, not the decisions above, unless a STOP rule fires.
+- *Rewritten 2026-10-27 (cleanup P12):* for the user at the gate: #292, #293, #295, #307–#309 — **ruled
+  2026-10-27 (#311)**. Settled by Stage 0: #290's four checks, 3c's check, the download half, `tab.url` after a
+  blocked main frame, the regex cap (#294–#296). Ruled 2026-10-26: 0.3 (A), 0.4 (C) (#290); S0F's what (#288).
 
 ## Follow-ups
 

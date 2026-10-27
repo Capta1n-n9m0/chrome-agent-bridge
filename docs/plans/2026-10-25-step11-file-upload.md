@@ -571,7 +571,7 @@ during S5). *Note 2026-10-26:* seven Step 11 commits say "verifier: pending"; th
 | S4.1–S4.4 (+S4b) | yes | `S4.md`, `S4b.md` |
 | S5.1–S5.4, S5.7 | yes | `S5-record.md` (whole run) |
 | **S5.5** | **no** (liveA); accepted by the user (#288) | two preflight STOPs relaunched instead of returned, no effect (#282); the user accepted the record |
-| **S5.6** | **part** (liveA); accepted (#288) | worker console not captured in liveA's first run: NOT MEASURED for UP-L1, UP-6, UP-7, SAVE-REFUSE-R (#282); re-run with the console in Run 17 (Step 11b 0.10) |
+| **S5.6** | **part** (liveA); accepted (#288) | worker console not captured in liveA's first run: NOT MEASURED for UP-L1, UP-6, UP-7, SAVE-REFUSE-R (#282); re-run with the console in Run 17 (Step 11b 0.10); *note 2026-10-27: not achieved there — R17-UP-L1 FAIL, RD-LOGS not run (#309); carried to Run 17b (#311)* |
 | S6.1 | yes | `S6.md` (25 texts byte-identical) |
 | STOP rule: a title in committed evidence | triggered, cleared | the profile's display name in `dbe6022` (was `262619f`); the user ruled a rewrite: the nine unpushed commits rewritten before the push, ids mapped in #288 |
 | G11-0 | met | #229 |
@@ -700,6 +700,8 @@ during S5). *Note 2026-10-26:* seven Step 11 commits say "verifier: pending"; th
   2026-10-25 · The user rules on Step 10's open decisions; Step 10 closes (#229)): a `declarativeNetRequest` session
   rule (a new permission) so a redirect hop of a download or a navigation onto a blocked site is never sent
   (decisions.md · 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140)). Its own small step.
+  *Note 2026-10-27: built as Step 11b (`docs/plans/2026-10-26-step11b-block-list-redirects.md`); its gate ruled
+  by #311.*
 - **Carried from Step 10:** a popup lease for a background opener, only as a design change (decisions.md ·
   2026-10-25 · S7: Run 15 stands as recorded; its follow-ups (#226)). SW-2 is in Run 16 (0.14).
 - **Later, if wanted:** the per-upload confirmation mode; drag-and-drop zones.

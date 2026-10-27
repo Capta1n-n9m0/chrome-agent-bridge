@@ -1,6 +1,7 @@
 # Lean procedures — rules by pointer, package CLAUDE.md files, risk-tiered models
 
-**Date:** 2026-10-25 · **Status:** In progress (built on the Linux research server; Step 11 on Windows is the trial)
+**Date:** 2026-10-25 · **Status:** Done (built on the Linux research server; trialled in Step 11, which closed 2026-10-26, #288). *Superseded
+in part 2026-10-26: models and effort are #289's (every agent at medium effort), `docs/agent-rules.md` §7.*
 **Decision:** decisions.md · 2026-10-25 · Lean procedures: rules by pointer, package CLAUDE.md files,
 risk-tiered models (#230) · **Steps dir:** `docs/plans/2026-10-25-lean-procedures-steps/`
 
@@ -9,7 +10,8 @@ risk-tiered models (#230) · **Steps dir:** `docs/plans/2026-10-25-lean-procedur
   150–180 lines; package gotchas load only where an agent works.
 - One copy of each rule: `docs/agent-rules.md`; briefs, kickoffs and skills point to it.
 - Fewer, shorter files per stage; the as-built lives in the phase doc.
-- Sonnet (effort high) builds and fixes low-risk stages; Opus verifies everything.
+- Sonnet (effort high) builds and fixes low-risk stages; Opus verifies everything. *Superseded 2026-10-26 (#289): every
+  agent at medium effort.*
 - Step 11 is measured against Step 10 for cost and quality (§ Trial).
 
 ## Why
