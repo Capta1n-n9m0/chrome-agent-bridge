@@ -3147,6 +3147,81 @@ return in LED (returns 1-7 and runner 8); RD-FWD's set-up `NOT BUILT` line (RUN7
 counts it NOT RUN (the five words have no NOT MEASURED, and the row was never observed). RD-0 is PASS on liveA only (liveB
 did not start). R17-UP-L1 is FAIL here (earlier drafts: PASS, then a sixth word PARTIAL) because its console clause was not met by the row.
 
+### Run 17b (S7) — 2026-10-27 (Step 11b: Run 17's FAIL and NOT RUN rows again, `newTab` on the S6 build, the back rows with an activation, §4.25)
+
+*Rows, expected text and pass rules committed before the first observation: §4.25 at `3cfbb95` (2026-10-27 05:17Z),
+unchanged since. Run by the S7-live runners (Sonnet, medium), the user not present (#33), in **two attempts**: attempt 1
+(06:42Z) ended on a helper throw inside R17B-0, before any state change (a `-File` script's top-level `$o` replaced the
+options-window handle `$global:O`; fix `6f3413c`, #317); attempt 2 (06:57-07:10Z) ran **liveA17B and liveB17B** (the
+file-URL toggle read `on`) to their end with no STOP line. No product code changed. Judged by the sheet's own pass rules
+against the committed records, in
+[`S7-run-record.md`](plans/2026-10-26-step11b-block-list-redirects-steps/S7-run-record.md); as in Run 17's entry, the
+per-row evidence lines stay in that record. Runs 1-17 above are unchanged.*
+
+Sources: **R2A / R2B** = `S7-live-run2A-record.md` / `-run2B-record.md` (by line), **CON** = `S7-live-run2-console.txt`
+(liveB's capture only), **LIVE** = `S7-live.md`, **LED** = `S7-live.ledger.md` (all in
+`plans/2026-10-26-step11b-block-list-redirects-steps/`).
+
+```
+Date: 2026-10-27 (UTC attempt 1 06:42, attempt 2 06:57-07:10)  HEAD at attempt 2: 6f3413c
+Rows: 28. PASS 16 / RECORD 2 / FAIL 7 / NOT MEASURED 3 / NOT RUN 0 / NOT DISCRIMINATING 0.
+PASS    R17B-0 CTL ACT-CTL RD-2 NEWTAB-PLAIN NEWTAB-LOAD BACK FWD BACK-SAMEDOC DISARM BACK-EMPTY RD-DL-SOCKET
+        UP-7 F-RAW-ENC F-RAW-OK RESTORE
+RECORD  R17B-BACK-NOACT (INTERNAL, 3 ms, no activation), R17B-NEWTAB-REFUSED (INTERNAL with Chrome's `javascript:` text;
+        tab count 18 before and after)
+FAIL    R17B-UP-L1 (R17B-LOGS NOT MEASURED, the sheet's rule), R17B-UP-OPT (O2 not shown within 5 000 ms), R17B-UP-6 (banner seen, 5 of 5 legs), R17B-F-RAW, -F-RAW-2, -F-RAW-DIR
+        (banner seen), R17B-UP-RACE-A (98 calls answered ok after P + 1 000 ms)
+NOT MEASURED  R17B-UP-DEVT (DevTools was not attached), R17B-SAVE-REFUSE and R17B-LOGS (liveA's console control line not retained)
+Exit checks: D7.1 met, D7.2 met, D7.3 met, D7.4 met, D7.5 met, D7.6 NOT MET, D7.7 met.
+```
+
+**What the redirect rows show.** With the list holding the blocked fixture: R17B-RD-2 shows `redirect=1 blocked=0` (Run
+17: `blocked=1`), the answer `{id, tab}` and the row `hidden=blocked`; R17B-BACK and R17B-FWD show `blocked=0` with the
+flip server's 200 then 302 (two requests, so discriminating) and K-tab answers at 37 ms; R17B-DISARM shows the rule
+outliving the disarm until the reply (`samples=[1,1,1]`, then 0). `RULES` reads 0 after every reply. Every `newTab`
+URL read `about:blank` at `tabs.onCreated` (10 calls) and the five slow-page replies came after the load (3074-3102 ms
+for a 3 s hold); #313's "Revisit if" is not met (S7-run-record §4).
+
+**Causes (from evidence only).** Run 17's back-row FAIL/STOP is the activation (#308): with `evaluate 1` on each page,
+`back`/`forward` answered `ok` 4 of 4 (R17B-ACT-CTL); without it `INTERNAL`, 1 of 1 (R17B-BACK-NOACT). R17B-UP-RACE-A's FAIL
+is the sheet's own steps against its pass rule: ON is pressed 1.6 s after OFF, and the failing calls (23-120) all started
+after that press (R2B:59-64, 90-167), the shape of Run 17's RD-DISARM. R17B-UP-6 saw the banner on two legs the SDK
+refuses before any call, so the banner is not shown to come from the call under test; the three F-RAW FAILs are the same
+clause. R17B-UP-OPT: O2 did not show the saved text within 5 000 ms; whether it showed it at all is not measured (the helper's poll stops at 6 s and does not record a match; 6105 ms here, 6 061 ms in Run 16), and the other text clauses held (the judge checks the O2 bound last). The banner FAILs have no established cause (the F-RAW legs do send a raw call). R17B-UP-L1 is FAIL because the sheet ties its console clause to R17B-LOGS, which is NOT MEASURED: liveA's raw console capture was overwritten by liveB's, so its control line (R17B-DISARM's `safety: disarmed by the user`) is not shown. All FAILs stay as recorded.
+
+**Open items** (recorded, not re-run; rulings by number):
+- **R17B-UP-RACE-A, R17B-UP-6, R17B-F-RAW(-2, -DIR), R17B-UP-OPT** — FAIL; new rows if the user wants them re-measured,
+  never edits (UP-RACE-A needs ON placed after the 1 000 ms bound). **R17B-UP-DEVT** — NOT MEASURED; a new row.
+- **#310's "Revisit if"** (Run 17b measures a back/forward redirect) — met by R17B-BACK and R17B-FWD (stopped, once each);
+  for the session agent and S8.
+- **Helper and evidence gaps** — liveA's console capture overwritten; the set-up `HIST` lines of the back rows are in the
+  framing file, not the record; the aggregator's one-token `VERDICT_LINE` labels R17B-SAVE-REFUSE NOT MEASURED, and the row is NOT MEASURED on the console clause
+  (S7-run-record §6). **R17B-LOGS, R17B-SAVE-REFUSE** — NOT MEASURED; a new row with a retained control line.
+
+Found state = read-back: armed=true evaluate=true, block list and Upload folders 0 lines at the start of both slices;
+the file-URL toggle found ON, never pressed. R17B-RESTORE read back stored page, `daemon.status` and title equal in
+both slices (R2A:584-589, R2B:243-248); only the empty text's hash is printed.
+
+STOP lines in the committed evidence: attempt 1's one (`A1:15`, the helper throw) is `LED` return 1; attempt 2 printed
+none.
+
+| Check | Verdict | Evidence |
+|---|---|---|
+| **D7.1** §4.25 before the first observation | **met** | `3cfbb95` 05:17Z; first record line 06:42:58Z |
+| **D7.2** first line proves the permission and S6 | **met** | `MANIFEST … BUILD disk-s6-names=2/2 created-url=about:blank`, `S6 commit=ancestor`, both slices |
+| **D7.3** R17B-RD-2 0 blocked hits, pre-written answer | **met** | `HITS bd2 redirect=1 blocked=0`, R2A:84-101 |
+| **D7.4** activated back rows 0 blocked hits | **met** | BACK, FWD `blocked=0`; SAMEDOC, BACK-EMPTY `ok`; set-up `HIST ... activated=` lines in the framing file `%TEMP%\bridge-e2e\s11b-r17b-2\r17b-framing.txt`, outside the repo |
+| **D7.5** found state read back equal | **met** | R2A:584-589, R2B:243-248 |
+| **D7.6** R17B-LOGS by count | **not met** | R17B-LOGS NOT MEASURED: counts 0 in both slices, liveA's control line not retained |
+| **D7.7** every STOP matched to a return | **met** | `A1:15` = `LED` return 1; none in attempt 2 |
+
+**Differences from the step reports' tallies:** the rows where this record's verdict differs from `S7-live.md`'s are
+three. R17B-UP-L1: `S7-live.md` PASS, this record FAIL (the sheet ties its console clause to R17B-LOGS, which is NOT
+MEASURED). R17B-LOGS: `S7-live.md` PASS in both slices, this record NOT MEASURED (liveA's control line is not retained).
+R17B-NEWTAB-REFUSED: `S7-live.md` PASS, this record RECORD (the sheet labels the row RECORD). R17B-SAVE-REFUSE is not a
+difference: both say NOT MEASURED, for different reasons (the helper printed 0 verdict lines; this record rests on the
+console clause). A row run in both slices (R17B-0, R17B-RESTORE, R17B-LOGS) is counted once.
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.
