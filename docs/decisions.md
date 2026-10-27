@@ -9,24 +9,29 @@ as a dated entry and point back.
 
 ## Open decisions
 
-Step 11b (contract-level; the conservative option applies until the user rules at the gate; Stage 0 attacks them):
+Step 11b (contract-level and Run 17's; the conservative option applies until the user rules at the gate; Stage 0 ran,
+#294–#296):
 - **#292** 2026-10-26 · Step 11b: the rule set stays equal to the block list and fails closed — options: (a) per-call
   rules from the gate's own parsed list, fail closed with the existing `DISARMED` refusal (recommended, applied);
-  (b) standing rules for the whole list (needs 0.4 (A)/(B)); (c) fail open when the API rejects (forbidden).
+  (b) standing rules for the whole list (needs 0.4 (A)/(B)); (c) fail open when the API rejects (forbidden). Amended
+  by #296 (a disarm does not lift a running call's rules), #301 (a re-sync when the last live call ends; a bound per
+  DNR call) and #302 (the rebuild runs only on a block-list edit or an unreadable state).
 - **#293** 2026-10-26 · Step 11b: the bridge's answers when a hop is blocked stay as today — options: (a) the existing
   codes and texts, a blocked download hop recognised by `onErrorOccurred` `ERR_BLOCKED_BY_CLIENT` (recommended,
   applied); (b) a new `REDIRECT_BLOCKED` code; (c) `NAV_FAILED` with Chrome's text. Amended by #296 (the fallback
-  dropped).
+  dropped); the recognition as built is #303.
 - **#295** 2026-10-26 · `newTab` stays uncovered until the user rules on opening it on `about:blank` — options: (a)
   open `about:blank`, install the rule, navigate (0 of 10 leaked; `tabCreated.url` = `about:blank`, two history
   entries) (recommended for security); (b) `newTab` as today, its first request escaping a blocked redirect, a known
   gap (applied, conservative).
-- **#307/#308** 2026-10-27 · Run 17 stopped at RD-BACK-EMPTY's STOP, which predates Step 11b — the gate is not met.
+- **#307–#309** 2026-10-27 · Run 17 stopped at RD-BACK-EMPTY's STOP, which predates Step 11b — the gate is not met.
   Options: (a) accept Step 11b with Run 17 as recorded, document that `back`/`forward` reach only pages a human acted
   on, and re-measure the back rows, RD-DISARM (ON after the reply) and the unrun rows (liveB, RD-LOGS, RD-RESTORE) as
   new rows in a short Run 17b (recommended); (b) the same, but change `back` to `history.back()`/CDP first (a Step 12
   question); (c) hold Step 11b until a full re-run passes. Also to rule: clear the leftover
   `%TEMP%\bridge-e2e\s11b\r17-globals.clixml` (the state is restored, read back equal) so the next wave's preflight runs.
+  Also to rule (#309): which reading of D4.3 holds (as written, RD-2 listed: not met; by the Stages note, RD-2 a
+  RECORD: part), and helper fix 5 (`2c1af4b`), disclosed as a fix past a STOP line; no judgment changed.
 
 Step 11's were ruled on 2026-10-26 (#288, #289, #290); the lists of earlier steps' open decisions, with their rulings,
 are in the archive entries they cite and in git.
@@ -54,6 +59,8 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-26 · Step agents never end their turn on a running child; commits carry the verifier's verdict (#286) — `decisions-archive/step11.md`; made permanent by #289; `agent-rules.md` §8, §10
 - 2026-10-26 · How agents are run from Step 11b on; #286 stands; the cleanup pass's proposals applied (#289) — this file (Log)
 - 2026-10-26 · Step 11b: the permission and the rule's scope ruled; Step 11's follow-ups become its stage S0F (#290) — this file (Log)
+- 2026-10-26 · Stage 0 measures DNR in a separate scratch Chrome on a temporary profile (#294) — this file (Log)
+- 2026-10-26 · Stage 0's incident: a stray `chrome.exe --version` reached the user's Chrome; never run Chrome without an own profile (#297) — this file (Log)
 
 **Product promises: the daemon, the clients and their lifecycle**
 - 2026-10-21 · The actor name carries the MCP's own process id (#2) — `decisions-archive/step6.md`
@@ -115,7 +122,7 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-24 · In-flight work at disarm and on a newly blocked tab (#137) — `decisions-archive/step9.md`
 - 2026-10-24 · Script URLs and the JavaScript switch; own pages of every extension (#138) — `decisions-archive/step9.md`; script URLs with JavaScript off answer `JS_DISABLED` since #202/#219
 - 2026-10-24 · The state is read per call, fails closed, and is locked to trusted contexts (#139) — `decisions-archive/step9.md`
-- 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140) — `decisions-archive/step9.md`; ruled by #202, and its network-rule step placed after Step 11 by #229
+- 2026-10-24 · `downloadStart` and redirects onto a blocked host (#140) — `decisions-archive/step9.md`; ruled by #202, and its network-rule step placed after Step 11 by #229; built in Step 11b (#290, #292, #296; `newTab` uncovered, #295), gate pending (#307–#309)
 - 2026-10-24 · The shortcut is `_execute_action` (#142) — `decisions-archive/step9.md`
 - 2026-10-24 · Badge and title (#143) — `decisions-archive/step9.md`
 - 2026-10-24 · A re-arm right after a disarm is ignored (#144) — `decisions-archive/step9.md`
@@ -168,10 +175,10 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-25 · Step 11: nothing logs an upload path, and the rest of the safety boundary is unchanged (#242) — `decisions-archive/step11.md`; accepted at the gate (#288)
 - 2026-10-25 · Stage 0: uploads need Chrome's file access, and the bridge never opens or reads `file:` pages (#245) — `decisions-archive/step11.md`; kept by #288
 - 2026-10-25 · Stage 0: a `webkitdirectory` input is refused; `files` is the count Chrome accepted (#247) — `decisions-archive/step11.md`
-- 2026-10-25 · Stage 0: who the folder rule protects against, and the broad-folder warning (#250) — `decisions-archive/step11.md`; changed by #288 (a home folder, or a folder of home folders, is refused as an Upload folder)
+- 2026-10-25 · Stage 0: who the folder rule protects against, and the broad-folder warning (#250) — `decisions-archive/step11.md`; changed by #288 (a home folder, or a folder of home folders, is refused as an Upload folder); built in S0F-a (#298)
 - 2026-10-25 · S2: the `paths` cap, the exact messages, and the folder-line rules (#257) — `decisions-archive/step11.md`
-- 2026-10-25 · S2: the `file:` rule's edges (#259) — `decisions-archive/step11.md`; changed by #288 (`listTabs` rows and tab events of a `file:` tab drop `title` and `url` and carry `hidden`)
-- 2026-10-26 · S5-liveB: the upload works on a background tab; a raw missing-file upload answers ok (#284) — `decisions-archive/step11.md`; changed by #288 (a missing file is an error in the extension too)
+- 2026-10-25 · S2: the `file:` rule's edges (#259) — `decisions-archive/step11.md`; changed by #288 (`listTabs` rows and tab events of a `file:` tab drop `title` and `url` and carry `hidden`); built in S0F-a (#298)
+- 2026-10-26 · S5-liveB: the upload works on a background tab; a raw missing-file upload answers ok (#284) — `decisions-archive/step11.md`; changed by #288 (a missing file is an error in the extension too); built in S0F-b (#299)
 - 2026-10-26 · The user rules Step 11's gate; Step 11 closes (#288) — `decisions-archive/step11.md`
 
 ## Archive
@@ -396,6 +403,7 @@ page with no redirect.
 **Instead of:** the phase doc's unmeasured guesses (an untyped download rule would have cut the bridge's own socket).
 **Revisit if:** S1–S3's tests or Run 17 contradict a measurement.
 **By:** Claude
+*Amended 2026-10-26 by #300: a default-port pattern makes two regex rules (item 7's "one regex per pattern").*
 
 ### 2026-10-26 · `newTab` stays uncovered until the user rules on opening it on `about:blank` (#295)
 **Decided (contract-level, for user review):** Stage 0 measured that `tabs.create({url})` sends its first request

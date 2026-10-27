@@ -22,13 +22,13 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply. `extension/CLAUDE.md`
   R9-SCREEN-4; decisions.md · 2026-10-23 · T5b's three fixes). `cdp` mode is useful only for a tab
   already in front of a visible window.
 
-Redirects onto blocked hosts (the block list is not a network firewall) are in `extension/CLAUDE.md`, Safety gate.
-
-The upload handler's file-access refusal, its background-tab fact and the finder's closure rule are in `extension/CLAUDE.md`, Uploads (Step 11).
-
 - **`chrome.tabs.goBack`/`goForward` skip pages no human acted on** (`history.ts`). A history the bridge builds alone
   (`tabs.create`, then `tabs.update`, each waiting for the load) is refused `INTERNAL "Cannot find a next page in
   history."`: 26 of 26 in a scratch Chrome 156, background or foreground, with or without the DNR permission; a page
   given a user activation before the tab left it makes `back` and `forward` work 8 of 8, and CDP still lists every
   entry (#308, `…step11b…-steps/S4-investigation.md`; Run 17 RD-BACK, RD-BACK-SAMEDOC, RD-BACK-EMPTY). It predates
   Step 11b. A test of `back` must build its history with an activation, or expect the refusal.
+
+Redirects onto blocked hosts (the block list is not a network firewall) are in `extension/src/CLAUDE.md`, Safety gate.
+
+The upload handler's file-access refusal, its background-tab fact and the finder's closure rule are in `extension/CLAUDE.md`, Uploads (Step 11).

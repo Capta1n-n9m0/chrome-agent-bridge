@@ -12,7 +12,7 @@ Changes are made in place. The history lives in `docs/decisions.md` and git; the
 - Read the files your brief names, at the sections it names. If a path or section does not exist,
   say so in your report. Never guess its content.
 - `CLAUDE.md` loads at start. Each package's own `CLAUDE.md` (`extension/`, `daemon/`, `sdk/`, `mcp/`,
-  `shared/`, `recipes/`, and `extension/src/{content,evaluate,handlers}/`) loads by itself the first time you open a file in that package. Its gotchas
+  `shared/`, `recipes/`, `extension/src/`, and `extension/src/{content,evaluate,handlers}/`) loads by itself the first time you open a file in that package. Its gotchas
   are measured facts and bind. If your work touches a package whose files you have not opened, read
   its `CLAUDE.md` before deciding anything about it.
 - If you were started outside the repo (your working directory is another folder), nothing loaded by
@@ -187,7 +187,7 @@ Area cleaners return numbered findings instead (`cleanup-pass` skill); everyone 
 
 ## 10. Commits
 
-Commit only when your brief says so (normally via the stage's builder, after the verifier's verdict, so the message carries it — #286). Exact file list; never
+Commit only when your brief says so (normally via the stage's committer, after the verifier's verdict, so the message carries it — #286). Exact file list; never
 `git add -A`, `dist/`, `bridge.token`, `.env`, `exports/`, screenshots or a wave's scratch files.
 Message `<type>(<scope>): <what>`; types `feat`, `fix`, `docs`, `test`, `chore`; scopes `server`,
 `extension`, `shared`, `daemon`, `sdk`, `mcp`, `docs`, `test`, `e2e` or none. A stage commit names the

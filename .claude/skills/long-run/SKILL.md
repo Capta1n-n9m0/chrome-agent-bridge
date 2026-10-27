@@ -1,6 +1,6 @@
 ---
 name: long-run
-description: Operating contract for the session agent of an autonomous multi-agent run in this repo — a build step (Step 11 file upload, …), a live E2E campaign, or any job that spans hours or sessions. Covers context discipline, the agent tree (session agent → step agent → builder/verifier/fixer), how decisions are taken while the user is away, revival, and the end of a phase. Use when acting as the orchestrator of a step or phase, launching anything long, or writing a kickoff for one.
+description: Operating contract for the session agent of an autonomous multi-agent run in this repo — a build step, a live E2E campaign, or any job that spans hours or sessions. Covers context discipline, the agent tree (session agent → step agent → builder/verifier/fixer), how decisions are taken while the user is away, revival, and the end of a phase. Use when acting as the orchestrator of a step or phase, launching anything long, or writing a kickoff for one.
 ---
 
 # Long-run contract (session agent)

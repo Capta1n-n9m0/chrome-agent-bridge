@@ -21,6 +21,7 @@ Reports: `docs/cleanup/<YYYY-MM-DD>[-n].md`.
 ```
 ROLE: area cleaner (<area>) — cleanup pass <date>, chrome-agent-bridge. Read docs/agent-rules.md
 first (§6 Lead cleaner / area cleaner) and .claude/skills/cleanup-pass/SKILL.md (your area's row).
+MODEL / EFFORT: <the table's model>, medium.
 SCOPE: git diff <base>..HEAD; the files of your area: <paths>. doc-check output: <path or "run it">.
 OUTPUT: <docs/cleanup/<date>-evidence/<area>.md>, numbered findings as above. Read only; no commit.
 ```

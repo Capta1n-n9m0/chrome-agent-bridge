@@ -1082,6 +1082,10 @@ tab instead of the failed one. Run order and the gate: `S6-wave-sheet.md` § "Re
 
 ### 4.20 SAFE rows (Step 9: the kill switch, the JavaScript switch, blocked sites)
 
+*Corrected 2026-10-27: SAFE-5b and SAFE-5c expect the redirect hop to be requested (1 hit on the blocked server); as
+built, Step 11b's rule stops it, so a re-run on the Step 11b build expects 0 hits (Run 17 RD-1, RD-3; Step 11b phase
+doc § As built). The rows stay as Run 13 ran them.*
+
 *Added 2026-10-24 by Step 9 stage S4's prep builder, before the Step 9 build was loaded and before any SAFE row
 ran (exit check S4.1: this commit precedes the build in `git log`). Sources merged, IDs kept:
 `docs/plans/2026-10-24-step9-phase-e-safety-steps/stage0-audit.md` §7 (SAFE-0…SAFE-11 with 1b, 4b, 5b–5d, 6b, 6c,
@@ -1205,6 +1209,10 @@ worker's console is shown by its content (SAFE-10's console half, 27 `safety: di
 edited after its run: the set-up row stays **FAIL (expected text)** for Run 13 ([`S4-live-verifier.md`](plans/2026-10-24-step9-phase-e-safety-steps/S4-live-verifier.md) finding 3).*
 
 ### 4.21 R14 rows (Step 10 S1, Run 14: Step 9's live follow-ups)
+
+*Corrected 2026-10-27: R14-5c expects the 8081 target logged once, "since the hop is still requested"; as built,
+Step 11b's rule stops the hop, so a re-run on the Step 11b build expects 0 hits (Run 17 RD-3; Step 11b phase doc § As
+built). The row stays as Run 14 ran it.*
 
 *Added 2026-10-25 by Step 10 stage S1's prep builder, before any R14 row ran, on the build already on disk (Step 9's
 code; daemon build `99bb55c5…`; no `npm run build` in this wave — phase doc 0.1). These rows are **re-measurements as new
@@ -1445,6 +1453,10 @@ blocked sites — a miss is a `STOP:`; the toolbar button presses need it pinned
 *Added 2026-10-25 (S7 Return 4, #222): RET-1's relaunch failed by our bug (`-ArgLine ''` dropped by PS 5.1); RET-1 is NOT MEASURED and re-measured once as RET-1R.*
 
 ### 4.23 R16 rows (Step 11 S5, Run 16: the upload rows, SAVE-REFUSE-R and SW-2)
+
+*Corrected 2026-10-27: the K-opt rows (K-opt-stand, K-opt-home and their `options-model.ts` lines) are Run 16's texts;
+as built, S0F-a refuses a home folder (`UPLOAD_HOME_REASON`, no `UPLOAD_HOME_WARNING`) and the lines moved: the
+current texts are §4.24's K17 (Step 11b phase doc § As built S0F-a).*
 
 *Added 2026-10-25 by Step 11 slice S5-sheet (Claude Sonnet 5.5), before any Run 16 row ran and before the Step 11 build was loaded (exit checks S5.1, R.2). Sources: phase doc `docs/plans/2026-10-25-step11-file-upload.md` 0.6, 0.12 with its correction (#251), 0.14 (a) and (c), § Stage S5, § Exit checks S5.1–S5.7, § Human gates; decisions.md #243, #245, #246, #251, #254, #262, #266, #267, #268, #271; `docs/plans/2026-10-25-step11-file-upload-steps/S3.md` §7 (twelve items; table at the end). §4.20–§4.22 are not edited; SAVE-REFUSE's and SW-1R's Run 15 records stand. Commands are placeholders (`⟨helper: …⟩`): S5-helpers and S5-driver build them to match this section, never the other way round. Fixtures are `s11-*` pages made by S5-fixtures; the CSP page is served on port 8084 (#251).*
 

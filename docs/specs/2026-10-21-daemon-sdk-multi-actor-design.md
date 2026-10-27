@@ -762,6 +762,11 @@ The block itself is left as written.*
     is refused before its side effect with the existing state-unreadable answer (`DISARMED {scope:"all"}`,
     `STATE_UNREADABLE_MESSAGE`), never Chrome's text; after a failed rebuild the running covered calls are refused
     that way and new ones too, until a rebuild or, once no covered call runs, a clear succeeds.*
+- *Amended 2026-10-27 (cleanup pass; Step 11b S3b, `7580d59`; phase doc 0.6 and § As built S3b; decisions.md #302,
+  #303). No method, code, event, field or message is added: `downloadStart` holds the typed download rules for its
+  fetch; a blocked hop (`safety-hop.ts`, read before `ingest`, no URL kept) answers `DOMAIN_BLOCKED` with R14-5c's
+  text; other failures keep today's answer (#303). The rebuild runs only on a block-list edit or an unreadable state
+  (`rebuildsRules`, #302).*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 

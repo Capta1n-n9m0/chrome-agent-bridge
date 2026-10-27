@@ -22,8 +22,10 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `s10-ret1.*` kills and relaunches the user's Chrome, only under a grant), `test/` (part of `npm test`),
   `s11.ts` (SDK actor) / `s11-rules.ts` (pass rules and expected texts) / `s11-evidence.ts` (leak counts) /
   `s11-csp.py` / `s11-r16.ps1` + `s11-r16-plan.ts`, `s11-r16-opt.ts` (block runner) / `s11-win.ps1` + `s11-win-rules.ts`
-  (Step 11 S5, Run 16), `tsconfig{,.fe,.s6,.s9,.s10,.s11}.json` (recipes are not in `npm run typecheck`: `npx tsc
-  --noEmit -p recipes/tsconfig.s6.json`; all six exit 0 since S3c). Fixtures: `test-fixtures/s10-{cap,mcpf,save}.html`,
+  (Step 11 S5, Run 16), `s11b.ts` (SDK-free actor) / `s11b-rules.ts` (pass rules) / `s11b-r17.ps1` + `s11b-r17-plan.ts`
+  (block runner) / `s11b-win.ps1` + `s11b-win-rules.ts` / `s11b-{delay,flip,slow}.py` (fixture servers) (Step 11b S4,
+  Run 17), `tsconfig{,.fe,.s6,.s9,.s10,.s11,.s11b}.json` (recipes are not in `npm run typecheck`: `npx tsc
+  --noEmit -p recipes/tsconfig.s6.json`; all seven exit 0, 2026-10-27). Fixtures: `test-fixtures/s10-{cap,mcpf,save}.html`,
   `test-fixtures/s11-{upload,frame,patched}.*`.
 
 ## Runtime gotchas (live runs, Windows tooling, driving Chrome from the outside)

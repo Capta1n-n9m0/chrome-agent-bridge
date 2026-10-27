@@ -87,7 +87,8 @@ don't lose CDP power, we just source it from inside the profile instead of from 
 - **Offscreen document** (Phase 5) — robust home for the WebSocket so MV3 service-worker culling
   cannot drop the connection; relays commands to the service worker.
 - **Permissions:** `debugger`, `tabs`, `scripting`, `activeTab`, `alarms`, `storage`,
-  `offscreen`, host permissions `<all_urls>`.
+  `offscreen`, host permissions `<all_urls>`. *Superseded 2026-10-27: Step 5 added `webRequest` and Step 11b
+  `declarativeNetRequestWithHostAccess` (#290 0.3 (A)); the list of record is `extension/manifest.json`.*
 
 ### 5.2 MCP server (Node/TypeScript)
 - **WS host** — binds `127.0.0.1`, performs the token handshake, accepts a single extension

@@ -14,11 +14,11 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
 ## Current state (2026-10-27, Step 11b built; its gate waits for the user's ruling)
 
 - **Shipped:** Steps 1–11 (Step 11, D3 file upload, closed 2026-10-26, #288; `docs/decisions-archive/step11.md`).
-  Public on GitHub (MIT); **Step 11b's ~45 commits are not pushed** (G11b-1). **24 tools, 27 codes (26 on the wire),
+  Public on GitHub (MIT); **Step 11b's 36 commits are not pushed** (`origin/main..39619cc`; G11b-1). **24 tools, 27 codes (26 on the wire),
   27 router methods** (the test count: Commands).
-- **Step 11b in one line:** while a bridge `navigate`, `back`, `forward` or `downloadStart` runs, session
-  `declarativeNetRequest` rules built from the block list stop a redirect hop onto a blocked host (Run 17 RD-1, RD-3:
-  0 requests reached it); `newTab` is uncovered (#295); plus Step 11's follow-ups (home folders refused, a missing
+- **Step 11b in one line:** while a bridge `navigate` or `downloadStart` runs, session `declarativeNetRequest`
+  rules built from the block list stop a redirect hop onto a blocked host (Run 17 RD-1, RD-3: 0 requests reached it);
+  `back`/`forward` hold the rules too, unmeasured (#308, #310); `newTab` is uncovered (#295); plus Step 11's follow-ups (home folders refused, a missing
   file refused, `file:` tabs hidden). Phase doc `docs/plans/2026-10-26-step11b-block-list-redirects.md`.
 - **How agents run (#289):** Opus builds contract and safety code and runs every verifier; Sonnet does recipes,
   fixtures, docs and live runners; every agent at medium effort, passed explicitly; a step agent never ends its turn
@@ -86,8 +86,8 @@ One `CLAUDE.md` per package holds its Key files (file by file) and its Runtime g
 - `sdk/` — the TypeScript client: `connect`, `BridgeClient`, `Tab`, failure reports, the formatters (`sdk/CLAUDE.md`).
 - `mcp/` — the MCP server as an SDK client: the 24 tools, the cursor, the no-crash link (`mcp/CLAUDE.md`).
 - `extension/` — the Chrome MV3 extension: service worker, offscreen socket, content script, handlers, the safety gate
-  (`extension/CLAUDE.md`; deeper files in `extension/src/content/`, `extension/src/evaluate/`,
-  `extension/src/handlers/`).
+  (`extension/CLAUDE.md`; deeper files in `extension/src/` (redirects, DNR, `file:` pages), `extension/src/content/`,
+  `extension/src/evaluate/`, `extension/src/handlers/`).
 - `recipes/` — scripts and live-run helpers, and the facts about driving Chrome and Windows tooling (`recipes/CLAUDE.md`).
 
 ## Invariants that bind every package
@@ -97,7 +97,7 @@ Details and measured facts are in the package file named; the integrity floor is
 - Product code never logs a URL, title, header value, body, path, locator text, evaluated value or block-list pattern;
   `extension/test/log-scan.test.ts` allowlists every log site (`extension/CLAUDE.md`).
 - Every extension router method passes the safety gate, and nothing on the wire changes the safety state
-  (`extension/CLAUDE.md`, Safety gate).
+  (`extension/CLAUDE.md` and `extension/src/CLAUDE.md`, Safety gate).
 - A new extension method enters both `METHOD_CLASSES` (`extension/src/safety.ts`) and `daemon/src/methods.ts`.
 - Clients name tabs by daemon-minted handle (`T3`), never by Chrome id; a tab call without `tab` is refused
   (`daemon/CLAUDE.md`).

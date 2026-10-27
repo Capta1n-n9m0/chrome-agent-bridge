@@ -49,7 +49,10 @@ folders agents may upload from to **Upload folders** on the extension's options 
 to file URLs** for the extension. A file outside those folders is refused `UPLOAD_REFUSED`, and the bridge never
 opens or acts on `file:` pages. See [`docs/setup.md` → Uploading files](docs/setup.md#uploading-files).
 
-3811 unit tests green in 154 files (`npm test` 2026-10-26 on Step 11 S6's tree). The Step 6 daemon split was E2E-tested in
+**Step 11b (built, not closed):** while a bridge `navigate` or download runs, the block list also stops a redirect
+hop onto a blocked site (Run 17, 2026-10-27); its gate waits for the user's ruling.
+
+4535 unit tests green in 183 files (`npm test` 2026-10-27 on Step 11b's tree). The Step 6 daemon split was E2E-tested in
 wave W1 (2026-10-22), Step 7's multi-actor tabs in Runs 8–10 (2026-10-22/23), Step 8 in Runs 11–12
 (2026-10-23/24), Step 9's safety controls in Run 13 (2026-10-24; 24 rows passed, 7 failed — none
 shown to be a product defect; ratified by the user, #202), Step 10 in Runs 14–15 (2026-10-25; Run 15:

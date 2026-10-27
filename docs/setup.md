@@ -96,7 +96,9 @@ machine that used the bridge before:
    `JS_DISABLED`.* *Updated 2026-10-26: Step 11 changed the extension, the daemon and the MCP again — reload the
    extension and run `/mcp` after upgrading; an extension not reloaded since Step 10 answers
    `browser_upload_file` with `unknown method: uploadFiles`. Uploads stay refused until you add Upload folders and
-   turn on Allow access to file URLs ([Uploading files](#uploading-files)).*
+   turn on Allow access to file URLs ([Uploading files](#uploading-files)).* *Updated 2026-10-27: Step 11b changed the
+   extension (a new permission, `declarativeNetRequestWithHostAccess`) — reload it after upgrading; an extension not
+   reloaded since Step 11 does not stop redirect hops ([Safety](#safety)).*
 
 Every client on a machine must use the same `BRIDGE_PORT`; see [The daemon](#the-daemon).
 
@@ -811,7 +813,8 @@ folder rule protects against, and the broad-folder warning (#250)):
 - A refusal tells an agent which of its paths are not allowed.
 - A raw client that skips the SDK can skip the real-path step. Since Step 11b the extension checks
   that each file exists before the page gets anything and refuses a missing (or unreadable) one, naming only its
-  position in the list (#288; Run 16 row UP-RAW had answered ok).
+  position in the list (#288; Run 16 row UP-RAW had answered ok). *Superseded 2026-10-26: was "a raw upload of a
+  missing file inside an allowed folder answered ok … a question for you", because S0F-b checks each file (#299).*
 - A file changed between the SDK's read and Chrome's read gives a hash that is not what the page got.
 - A refusal raised after the CDP call (you turn the bridge off, or remove the folder, during the call) can
   leave the file in the page.
@@ -995,7 +998,8 @@ a history the bridge built alone cannot be gone back through (`INTERNAL`, "Canno
 26 of 26 in a scratch Chrome; #308).
 
 The download's check of its final address was first measured in Step 10's Run 14 (row R14-5c): a download
-redirected onto a blocked host was refused `DOMAIN_BLOCKED` with no file written. *Superseded
+redirected onto a blocked host was refused `DOMAIN_BLOCKED` with no file written, and the test server saw the
+redirect hop and the target each requested once (before Step 11b's rule). *Superseded
 2026-10-25: was "unit-tested but **not yet measured live**: Run 13's redirect test timed out on its own
 test server, and Step 10 measures it again (decisions.md · 2026-10-24 · S4: SAFE-5c's redirect half,
 SAFE-POP-1, SAFE-3 and SAFE-4(b) are re-measured in the next live wave (Step 10))", because Run 14
@@ -1014,7 +1018,7 @@ or MCP method can read or change it (decisions.md · 2026-10-25 · S3: the Uploa
 
 The box's label is `Folders agents may upload files from, one absolute path per line (empty: no uploads)`
 (`extension/options.html:51`). The page shows this warning above it
-(`extension/src/options-model.ts:100`):
+(`extension/src/options-model.ts`, `UPLOAD_FOLDERS_WARNING`):
 
 ```text
 An agent may upload any file inside these folders to any site it can open. Allow only folders that hold files you mean to share. A home folder, or a folder that holds home folders, is refused; never allow a folder that holds bridge.token or a .ssh folder. An agent that can also run programs on this computer can put any file into an allowed folder.
@@ -1032,9 +1036,11 @@ Since Step 11b, a home folder, or a folder that holds home folders, is refused: 
 `/private/var/root`, in any letter case. Such a line is invalid, and the
 bridge never uses it, even one saved before this rule (decisions.md · 2026-10-26 · The user rules Step 11's gate;
 Step 11 closes (#288) item 3b). A folder inside your home, such as `C:\Users\you\Uploads`, is allowed.
+*Superseded 2026-10-26: was "a home folder, or a folder that holds home folders" among the lines **warned, not
+refused**, because S0F-a refuses them (#288 3b, #298).*
 
-The page marks each invalid line by its number with one of these reasons (`options-model.ts:103-107`,
-`:113-114`), and the line is not used:
+The page marks each invalid line by its number with one of these reasons (`options-model.ts`, the `UPLOAD_*_REASON`
+constants), and the line is not used:
 - `a whole drive or the filesystem root is never allowed`
 - `starts or ends with a space: a folder is taken exactly as typed`
 - `not an absolute folder path: write it from the drive letter (C:\…) or from / (/home/…)`
@@ -1043,12 +1049,12 @@ The page marks each invalid line by its number with one of these reasons (`optio
 
 A valid line inside a `.ssh` folder is **warned, not refused** (decisions.md · 2026-10-25 · Stage 0: who the
 folder rule protects against, and the broad-folder warning (#250)); the page shows this next to the line
-(`options-model.ts:115`):
+(`options-model.ts`, `UPLOAD_SSH_WARNING`):
 - `a .ssh folder, or a folder inside one: it holds private keys`
 
 Under the box a summary reads `No upload folder: every upload is refused.` or the count, `1 upload folder.` or
 `<n> upload folders.`, and, when lines are invalid, adds `1 invalid line is not used (marked below).` or `<n> invalid
-lines are not used (marked below).` (`options-model.ts:162-164`). If the saved folders change elsewhere while you
+lines are not used (marked below).` (`options-model.ts:196-199`). If the saved folders change elsewhere while you
 edit, the page says:
 
 `The saved folders were changed elsewhere while you were editing; Save replaces them with the text shown here.`
@@ -1056,8 +1062,8 @@ edit, the page says:
 (`options.ts:93`).
 
 What the folder rule does not stop: an agent with a shell on this computer can copy a file into an allowed
-folder or drive the options page itself. Allow only folders that hold what you mean to share, never your
-home folder or a folder with `bridge.token` or `.ssh`. If the setting cannot be read (a wrong-typed value),
+folder or drive the options page itself. Allow only folders that hold what you mean to share, never a
+folder with `bridge.token` or `.ssh` (a home folder is refused, above). If the setting cannot be read (a wrong-typed value),
 the bridge fails closed as for the other settings: every call is refused `DISARMED` ([When the state cannot
 be read or saved](#when-the-state-cannot-be-read-or-saved)).
 
@@ -1075,7 +1081,8 @@ toggle is on or off, the bridge refuses every tab call on a tab showing a `file:
 Since Step 11b, `browser_list_tabs` lists a `file:` tab as it lists a tab on a blocked site, `(hidden: blocked
 site)`, without its URL or title, and tab events drop them too (design spec §10, the 2026-10-26 note). A
 `browser_download` to a `file:` URL keeps its own `BAD_PARAMS`. You can still open a `file:` page yourself;
-agents just cannot act on it.
+agents just cannot act on it. *Superseded 2026-10-26: was "`browser_list_tabs` still lists a `file:` tab with its
+URL", because S0F-a hides it (#288 3d).*
 
 ### The bridge never opens its own pages
 

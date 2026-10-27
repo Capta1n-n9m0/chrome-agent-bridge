@@ -1,7 +1,8 @@
 # extension/ — Key files and runtime gotchas
 
-The root `CLAUDE.md` and `docs/agent-rules.md` also apply. Three sub-folders have their own `CLAUDE.md`, loaded only when
+The root `CLAUDE.md` and `docs/agent-rules.md` also apply. `src/` and three of its sub-folders have their own `CLAUDE.md`, loaded only when
 you open a file there; read the one whose topic you touch from elsewhere in `extension/`:
+- `src/` (any file under it) — the block list and redirect hops, the DNR rule builder's facts, the `file:` page rule.
 - `src/content/` — IIFE build, snapshot rules, `centerOf`, content-script failures, locators and `a11y.ts`, `locate` vs RefMap, marks.
 - `src/evaluate/` — `returnByValue` flattening, `replMode` levels, primitive values over CDP.
 - `src/handlers/` — `browser_download` from the worker, `tabId` and `targetTab`, `newTab` in the background, the CDP screenshot refusal.
@@ -226,21 +227,7 @@ Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind the
   not allowed in API based extension navigations. …`, page unchanged (Run 13 SAFE-6c, JavaScript on,
   record). With JavaScript off the gate refuses first (Run 13: `DISARMED`, scope `evaluate`, SAFE-6; since Step 10
   S4b `JS_DISABLED` with no `data`, measured live in Run 15 JSD; #202, #219).
-- **The block list is not a network firewall; since Step 11b it stops redirect hops of a bridge call in flight.**
-  While a `navigate` or `downloadStart` runs, session DNR rules built from the list hold, so a hop onto a blocked host
-  is never sent: the blocked fixture server saw 0 requests (Run 17 RD-1, RD-3; before: 1, SAFE-5b, R14-5c), answers
-  unchanged; the rules follow the list (RD-4, RD-5, RD-5b) and read 0 after each reply. `downloadStart` still checks
-  its own URL, then `res.url` (#140, #154). Not covered: `newTab`'s first request (RD-2 blocked 1; #295), the human's
-  own browsing (RD-6; 0.4 (C)), requests a page starts after the call (0.9), and a redirect through `back`/`forward`
-  is unmeasured (#308). A cross-origin frame of a blocked host shows in screenshots (stage0-audit F16, by reading).
-- **DNR facts the rule builder binds (`safety-dnr.ts`, Step 11b; Chrome 156, `…step11b…-steps/Stage0.md` §4, `S1.md`).**
-  `requestDomains` matches a host and its subdomains, ignores the port and suffix-matches IP literals (`0.0.1` blocked
-  `127.0.0.1`), so IPs, `*.` and ports go by anchored regex; `regexFilter` sees the canonical URL with its port
-  (never a default one), RE2 without lookaround or backreferences, compiled in Latin-1 under a 2048-byte memory cap
-  (read in Chromium's source by S1's verifier): a default-port pattern makes two regex rules, and a host of about 80+
-  characters with a port or `*.` makes a regex Chrome rejects, so the covered call fails closed. Caps 5000 session
-  rules, 1000 regex. A download rule must be typed `resourceTypes:["xmlhttprequest"]`: an untyped `tabIds:[-1]` +
-  own-initiator rule refuses the offscreen document's new WebSocket handshakes (measured 3 of 3).
+- **Redirect hops, the DNR rule builder and `file:` pages** (Step 11b): in `src/CLAUDE.md`, which loads with any file under `src/`.
 - **Never log a pattern, URL or title from the safety code.** Nor a URL from anywhere else in the service worker: URLs
   carry tokens, the network code prints counts only (`[bridge] network: rehydrated N entries`), and the same rule holds for
   header values and bodies. The gate, matcher and state modules have no
@@ -257,13 +244,6 @@ Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind the
   armed.` 31 ms after (Run 15 R15-3R, #224); a second options window took 6061 ms in Run 16 UP-OPT (FAIL, cause
   unknown, #285). After a `write-failed` disarm the page shows the stored state while the badge says OFF (S2b
   verifier F4, by construction): the badge is the indicator.
-
-- **The gate refuses `file:` pages whatever the file-URL toggle says** (Step 11): every tab call on a tab showing a
-  `file:` URL (`closeTab`, `focusTab` included) and every `navigate`/`newTab` to one is `DOMAIN_BLOCKED`
-  (`FILE_PAGE_MESSAGE`, `FILE_URL_MESSAGE`; order own page > `file:` > block list; a wrapper deeper than the unwrap bound
-  counts as `file:`); `listTabs` rows and tab events of a `file:` tab are listed hidden with the `"blocked"` reason, no `url`/`title` (Step 11b S0F-a, #288, `hiddenReason` in `safety.ts`; was listed, #259).
-  `downloadStart` to a `file:` URL keeps its handler's `BAD_PARAMS` (`safety.ts` comment). For class `upload` the
-  folder rule runs at receipt even for a gone tab, so a refused path never reaches the handler (#260).
 
 ### Uploads (Step 11)
 - **`DOM.setFileInputFiles` needs the extension's "Allow access to file URLs"** (Chromium answers "Not
