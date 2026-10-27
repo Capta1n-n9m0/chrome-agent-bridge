@@ -18,6 +18,8 @@ were ruled on 2026-10-27, #311, #320). #322, #323, #325 and #326 are amended by 
 - 2026-10-27 · Step 12: how every item passes the safety gate (#327)
 - 2026-10-27 · Stage 0: the kept session's lifecycle; an overlapping call keeps today's answer (#335)
 - 2026-10-27 · S2b: `browser_evaluate.args` as a written-out schema delta; the daemon's own reload text; the SDK's ninth refusal (#342)
+- 2026-10-27 · S3a: the reply `{entries}` and the `level` threshold … (#344, item 1)
+- 2026-10-27 · S3b: the console formatter's line form … the JavaScript-off line left for the gate (#345, items 1 and 3)
 - **G12-2 for the user:** add the `webNavigation` permission so G1 can be built? (#337)
 
 ## Standing decisions
@@ -189,6 +191,49 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
+
+### 2026-10-27 · S3b: the console formatter's line form; its output is capped in S5b; the JavaScript-off line left for the gate (#345)
+**Decided:** S3b (`beaa805`, verifier PASS after one fix round): (1) for user review: `formatConsole`'s one-line form and
+its export on `@bridge/sdk/format` only (the SDK's eight values unchanged), as `…-steps/S3b-builder.md` §5. (2) Its
+output is not capped and can reach ~400 KB at 200 entries (S3b verifier F4), while `formatNetwork` caps at 20 000
+characters: the conservative option is a cap of the same form and size, built in **S5b** (the next slice in the
+sdk/mcp lane), with a test; the new tool has no earlier answer, so nothing existing changes. (3) A refused
+`browser_console_messages` with JavaScript off prints the shared `JS_DISABLED` line, which says every other call still
+works (F3): the line is not changed in Step 12 (a changed message is a forbidden fix to make a row pass, and the line is
+contract); the user rules it with #334, which would remove the case.
+**Why:** an uncapped tool result can flood the agent's context; the message is the user's with the class.
+**Instead of:** measuring the size live first (CON-MCP still records it).
+**Revisit if:** the user rules #334 for class `tab`.
+**By:** Claude (build decision for (2); (1) and (3) for user review)
+
+### 2026-10-27 · S3a: the reply `{entries}` and the `level` threshold; a shortened preview fails closed now; caps count code from here on (#344)
+**Decided:** S3a (spec note `7b29b5d`, code `e835eb5`, verifier PASS-with-notes after two fix rounds): (1)
+contract-level, for user review: the reply is `{entries}` and `level` is a severity threshold (`error > warning > info
+> debug`, the level and everything more severe); (2) build decisions as `…-steps/S3a-builder.md` §5: the arm floor in
+worker memory from the worker's start, failing closed; the source set, an entry with no source dropped; a 100 ms settle
+and a 10 s bound; (3) **Note A is fixed now, not left to a live row:** a preview value V8 shortened (a cut part ending
+in `…`) counts as an unknown source and drops its entry, the fail-closed option, built in S3b with the lane widened to
+the reducer and its test (security at least as strict; a few lines). (4) S3a's 898 lines (code 351 under the 450 cap)
+are accepted; #341's "Revisit if" has now been met twice, so **from S3b on a slice's cap counts code only, and tests
+up to 1.5 times the cap on top**; a slice past either bound is DONE-PARTIAL.
+**Why:** the shortening is unmeasured and a leak cannot be judged after the fact; the old caps under-counted the test
+rows the exit checks require.
+**Instead of:** waiting for a live row on Note A; keeping caps that every standard slice overran.
+**Revisit if:** the live row shows entries dropped that should not be (then the rule is narrowed with a measurement);
+a code-only overrun.
+**By:** Claude (build decisions; (1) for user review; (3) the conservative option)
+
+### 2026-10-27 · S1-helpers: the Run 18 block runner is its own slice, S1-helpers-c (#343)
+**Decided:** S1-helpers-a (`8a3053b`) found that no slice of #339's split builds the Run 18 block runner (the script that
+runs §4.26's blocks in order and calls the helpers). It becomes **S1-helpers-c** (risk low, cap 400), after
+S1-helpers-b (UP-RACE-A, UP-OPT, the aggregator fixes, G-23's items, and S1-helpers-a's open MINOR F-b, the
+`answer=VIOLATION` word outside §4.26's `answer=<ok|CODE>`). S1-helpers-a's ruling that an idle under 15 s on the
+negative leg is that row's FAIL (§4.26's pass rule), while an `IDLE` under 15 s before a banner row is a helper STOP
+(#340), reads the sheet as written.
+**Why:** the runner is one coherent deliverable; adding it to S1-helpers-b's 350 would break the cap.
+**Instead of:** raising S1-helpers-b's cap.
+**Revisit if:** S1-helpers-b finishes well under its cap with the runner trivially small.
+**By:** Claude (build decision)
 
 ### 2026-10-27 · S2b: `browser_evaluate.args` as a written-out schema delta; the daemon's own reload text; the SDK's ninth refusal (#342)
 **Decided (contract-level for the schema and texts, for user review):** S2b's three proposals (`…-steps/S2b-builder.md`

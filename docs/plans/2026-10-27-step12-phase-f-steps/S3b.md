@@ -11,7 +11,7 @@ under § Stage 0; decisions #323, #333, #334, #342, #344; `git show 7b29b5d`; `S
 
 ## 2. Outputs
 
-- Commit: see the committer's hash below (Outputs line filled by the step agent after the commit).
+- Commit: `beaa805` (23 files; this line was added after the commit and is uncommitted).
 - Code (numbers from `S3b-builder.md` §2 and `S3b-fixer.md`): `Tab.consoleMessages(opts)` and the client mirror;
   `formatConsole` on the `@bridge/sdk/format` subpath (the eight values unchanged); `browser_console_messages {tab?,
   level?, limit?}`, the 25th tool; the #214 delta written out in `mcp/test/s2-focus-first.test.ts`; Note A in

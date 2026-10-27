@@ -28,3 +28,10 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
 - 2026-10-27T16:00Z · S2a · committer · ended · `e481efe` (18 files).
 - 2026-10-27T16:00Z · S2b · step agent · Opus · medium · started beside S1-helpers-a (daemon/sdk/mcp + setup row; recipes untouched). S1-live waits for a clean tree, so it now follows S2b's commit too (#340's condition, applied).
 - 2026-10-27T16:33Z · S2b · step agent · ended · `9921715` · PASS-with-notes (one fix round) · tests 4728 → 4734; #342 recorded; spec §10 dated note for the two texts (F2); S1-sheet and S2 as-built written.
+- 2026-10-27T16:34Z · bookkeeping `81b8c49` (S1-sheet and S2 as-built, #340–#342, spec note).
+- 2026-10-27T16:34Z · S3a · step agent · Opus · medium · started beside S1-helpers-a (shared/extension/daemon methods line; class `evaluate` per #334).
+- 2026-10-27T16:40Z · S1-helpers-a · step agent · ended · `8a3053b` · verifier FAIL → PASS-with-notes (one fix round); 557 lines (code 240; tests-only overrun as #341); recipes tests 1056 → 1090; open MINOR F-b passed on; the runner gap → S1-helpers-c (#343).
+- 2026-10-27T16:40Z · S1-helpers-b · step agent · Opus · medium · started beside S3a (recipes lane).
+- 2026-10-27T17:56Z · S3a · step agent · ended · spec note `7b29b5d`, code `e835eb5` · verifier FAIL (a stack via an Error preview) → PASS-with-notes (two fix rounds) · tests 4768 → 4856 (S3a's 56); 28 router methods; #344 recorded (Note A fixed fail-closed in S3b; caps count code from S3b on).
+- 2026-10-27T17:56Z · S3b · step agent · Opus · medium · started beside S1-helpers-b (sdk/mcp/setup + the reducer's Note A fix).
+- 2026-10-27T18:46Z · S3b · step agent · ended · `beaa805` · PASS (one fix round) · tests 4856 → 4881; 25 tools; #345 recorded (formatter cap → S5b); sdk/CLAUDE.md gotcha (no `console.` in sdk/src).

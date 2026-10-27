@@ -31,6 +31,9 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `@bridge/sdk/format` subpath (`sdk/package.json` `exports["./format"]`) and from `index.ts`.
 
 ## Runtime gotchas
+- **No `console.` text anywhere in `sdk/src`**: `sdk/test/failure-report.test.ts` (the "no 'console.' in any sdk/src
+  file" test) fails on the substring, even inside a module path or a comment, so a console-related file or import is
+  named without it (`consoleMessages`, a `format/` module named otherwise; seen in Step 12 S3b, 2026-10-27).
 - **The call timeout is per-call** — `client.call(method, params, { timeoutMs })`. The daemon bounds
   it to `[100, 600000]` and waits 5 s longer; the client waits 1 s more than the daemon (`route.ts`,
   `sdk/src/client.ts`). The default is still 30 s, so anything that may run longer (`browser_evaluate`,
