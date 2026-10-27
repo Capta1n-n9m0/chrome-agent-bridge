@@ -178,6 +178,17 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-27 · S6's lane gains one `sw.ts` line: a keeper call for a tab known only later (#312)
+**Decided:** S6 option (A) of `…-steps/S6.md`: `extension/src/sw.ts` joins S6's lane for one `callDeps` entry that
+hands `safety-call.ts` a keeper handle for a tab id known after the call started (`dnrKeeper.call("navigate",
+{tabId})`); the keeper itself (`safety-dnr-keeper.ts`) is not edited, so its caps, rebuild, release and fail-closed
+rules apply to the new tab as to `navigate`. No listener, log or top-level `await` is added.
+**Why:** the keeper is built only in `sw.ts`, and a `newTab` call's own handle has no tab when it starts; the phase
+doc's lane missed this (a plain plan defect). (A) touches one line of glue and none of S2's verified logic.
+**Instead of:** (B) a new keeper method taking a tab id later, which reopens S2's verified module.
+**Revisit if:** the verifier finds the second handle escapes the keeper's release or re-sync accounting.
+**By:** Claude
+
 ### 2026-10-27 · The user rules Step 11b's gate: accept, `newTab` on `about:blank` (S6), then Run 17b (#311)
 **Decided:** the user accepted every recommendation of the gate write-up (the session report of 2026-10-27, after
 `6f7bc3d`):

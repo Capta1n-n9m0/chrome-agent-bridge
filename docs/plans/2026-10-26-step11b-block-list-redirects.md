@@ -367,7 +367,8 @@ above. Sequential: S6 → S7-sheet → S7-helpers → S7-live → S7-record → 
       `tabCreated` paragraph gets a dated note in a commit **before** the code commit.
 - [ ] Rows for `docs/e2e-test-plan.md` are written in S7-sheet, not here.
 **Lane:** `extension/src/handlers/tabs.ts`, `extension/src/safety-call.ts`, their tests, a new pure module if the
-sequence is factored out (with its test), the spec §10 note. **Verifier focus:** a mutant that navigates before the
+sequence is factored out (with its test), the spec §10 note; *added 2026-10-27 (#312):* one `callDeps` line in
+`extension/src/sw.ts`. **Verifier focus:** a mutant that navigates before the
 install resolves is red; a rejecting install opens nothing and leaves no tab; the daemon, shared, SDK and MCP are
 untouched; `newTab` without a URL is byte-for-byte today's path.
 

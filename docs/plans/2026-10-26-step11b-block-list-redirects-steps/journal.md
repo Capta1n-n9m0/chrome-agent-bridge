@@ -42,3 +42,4 @@ effort · start → end.
 - 2026-10-27T03:31Z · S5 · step agent · Opus · medium — DONE, `c5d0099`, verifier PASS-with-notes; #310; CLAUDE.md proposals applied; gate checklist written (not met); close-out records, Current state, roadmap header, memory updated.
 - 2026-10-27T03:45Z · cleanup · lead cleaner · Opus · medium — DONE, `c1a78b1` (47 fixes, 21 proposals; extension/CLAUDE.md within budget via a new extension/src/CLAUDE.md). Kickoff not written: the gate waits for the user (long-run §5).
 - 2026-10-27T04:10Z · gate · session agent · Opus · medium — the user ruled the gate (#311): accepted; S6 (newTab on about:blank), S7 (Run 17b: sheet, helpers, live, record), S8 (docs) added to the phase doc with exit checks E6/D7/D8 and STOP additions before any work; leftover r17-globals.clixml deleted; push granted.
+- 2026-10-27T04:13Z · S6 · step agent · Opus · medium — ESCALATE (lane): the keeper lives in sw.ts; #312 grants one callDeps line; fresh step agent.
