@@ -191,6 +191,17 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-27 · S5: the docs claim only what Run 17 measured; the CLAUDE.md proposals applied (#310)
+**Decided:** S5 as built (`c5d0099`): no doc says a `back`/`forward` redirect hop is stopped, since no Run 17 row
+measured one (RD-BACK failed, RD-FWD did not run). The session agent applied `S5-claude-md-proposals.md` (a) the
+rewritten "not a network firewall" bullet in `extension/CLAUDE.md` (keeping the `res.url` clause), (b) the #308
+`back`/`forward` gotcha in `extension/src/handlers/CLAUDE.md`, (c) Run 17's helper facts in `recipes/CLAUDE.md`; (d)
+the S3b notes are listed in the phase doc's Follow-ups.
+**Why:** D5.1: every sentence about the limit cites a row; a gotcha lives with the code it binds (#232).
+**Instead of:** the brief's wording that `back`/`forward` hops are never sent (unmeasured).
+**Revisit if:** Run 17b measures a `back`/`forward` redirect.
+**By:** Claude
+
 ### 2026-10-27 · Run 17's record: D4.3 part, D4.6 not met; a helper fix met the STOP clause earlier (#309)
 **Decided:** the record `…-steps/S4-run-record.md` as judged (R17-UP-L1 FAIL, not a new word, since its scan never
 ran). D4.3 is **part**: RD-1 and RD-3 show 0 blocked hits, RD-4 and RD-6 1, as written; RD-2's 1 is the RECORD the

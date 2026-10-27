@@ -226,11 +226,13 @@ Editing `tabs.ts`' `targetTab` or `cdpCaptureRefusal`? Two gotchas that bind the
   not allowed in API based extension navigations. …`, page unchanged (Run 13 SAFE-6c, JavaScript on,
   record). With JavaScript off the gate refuses first (Run 13: `DISARMED`, scope `evaluate`, SAFE-6; since Step 10
   S4b `JS_DISABLED` with no `data`, measured live in Run 15 JSD; #202, #219).
-- **The block list is not a network firewall.** A redirect hop of a bridge `navigate` or `downloadStart`
-  onto a blocked host is still requested; the post-check refuses the reply and a download drops its bytes
-  (`downloadStart` checks its own URL, then `res.url`, #140, #154). Measured live: a download redirected onto a
-  blocked host was refused `DOMAIN_BLOCKED` with no file (Run 14 R14-5c, threaded `s9-redirect.py`).
-  A cross-origin frame of a blocked host shows in screenshots (stage0-audit F16, by reading).
+- **The block list is not a network firewall; since Step 11b it stops redirect hops of a bridge call in flight.**
+  While a `navigate` or `downloadStart` runs, session DNR rules built from the list hold, so a hop onto a blocked host
+  is never sent: the blocked fixture server saw 0 requests (Run 17 RD-1, RD-3; before: 1, SAFE-5b, R14-5c), answers
+  unchanged; the rules follow the list (RD-4, RD-5, RD-5b) and read 0 after each reply. `downloadStart` still checks
+  its own URL, then `res.url` (#140, #154). Not covered: `newTab`'s first request (RD-2 blocked 1; #295), the human's
+  own browsing (RD-6; 0.4 (C)), requests a page starts after the call (0.9), and a redirect through `back`/`forward`
+  is unmeasured (#308). A cross-origin frame of a blocked host shows in screenshots (stage0-audit F16, by reading).
 - **DNR facts the rule builder binds (`safety-dnr.ts`, Step 11b; Chrome 156, `…step11b…-steps/Stage0.md` §4, `S1.md`).**
   `requestDomains` matches a host and its subdomains, ignores the port and suffix-matches IP literals (`0.0.1` blocked
   `127.0.0.1`), so IPs, `*.` and ports go by anchored regex; `regexFilter` sees the canonical URL with its port

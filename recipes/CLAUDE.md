@@ -146,3 +146,8 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
 - **A scratch worktree checks `.ps1` files out with CRLF**, and 9 tests of `recipes/test/s11-r16-runner.test.ts` fail
   there while the main tree passes (Step 11b S0F-a and S1, seen by two verifiers). Compare a worktree's red there
   against the main tree before calling it a regression.
+- **Run 17's helper facts** (`…step11b…-steps/S4-live.md` §6): `s9.ts` prints `ROW`/`CHECK` lines after an ISO time
+  while `s11`/`s11b` print them bare, so a judge keyed on a line start needs both forms; `s11.ts make` writes
+  `state.json` without s9's `opened` list; the extension's own options tab is listed hidden as `blocked`, so "exactly one
+  hidden row" needs the options window closed; a row that needs the state disarmed for N seconds times the ON press
+  from the reply, not from the first press (RD-DISARM, #308).

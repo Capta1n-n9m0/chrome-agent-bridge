@@ -1,6 +1,6 @@
 # Step 11b — The block list stops redirected requests (`declarativeNetRequest` session rules)
 
-**Date:** 2026-10-26 · **Status:** Ready to start — Step 11's gate, 0.3 and 0.4 ruled 2026-10-26 (#288, #289, #290); not started (kickoff `docs/plans/next-session-prompt.md`)
+**Date:** 2026-10-26 · **Status:** Built (Stage 0 → S5, 2026-10-26/27); Run 17 stopped at a pre-registered STOP that predates Step 11b (#307, #308); **gate not met — awaiting the user's ruling** (kickoff was `docs/plans/next-session-prompt.md`)
 **Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change (§6.5 the human, §10 protocol and codes, with the Step 9–11 dated notes) ·
 **Roadmap:** decisions.md · 2026-10-24 · The roadmap after Step 8 (#129), as amended by · 2026-10-25 · The user rules on
@@ -503,6 +503,30 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - 38 rows judged: PASS 14, FAIL 4 (RD-BACK, RD-BACK-SAMEDOC, RD-DISARM — causes in #308 — and R17-UP-L1, whose console
   scan never ran), RECORD 4, NOT RUN 15, STOP 1. §5 Run 17 entry. Record `…-steps/S4-run-record.md`; #309.
 
+### S5 · 2026-10-27 · `c5d0099` · verifier PASS-with-notes (one fix round)
+- `docs/setup.md` Safety: what the list now stops (RD-1, RD-3; RD-4, RD-5, RD-5b) and what it does not (RD-2, RD-6,
+  0.9; `back`/`forward` redirects unmeasured), the #308 `back` limit; `docs/progress-and-roadmap.md`'s Step 11b block;
+  the attempt-6 port corrected (8091) in the record. No sentence claims `back`/`forward` hops are stopped: no row
+  measured it. CLAUDE.md proposals (`S5-claude-md-proposals.md`) applied by the session agent (#310). D5.1 met.
+
+### Gate checklist · 2026-10-27 · **not met — awaiting the user's ruling** (#307–#309)
+| Item | Met? | Evidence |
+|---|---|---|
+| Every-stage checks | yes | stage reports; tests 3811/154 → 4535/183, none removed; typecheck, build, seven recipes tsconfigs exit 0 (`S4-live.md` §2) |
+| Z.1 | yes | `…-steps/Stage0.md` (#290's checks (1)–(4) measured) |
+| F.1 | yes | `S0F-a.md`, `S0F-b.md` |
+| D1.1 | yes | `S1.md` |
+| D2.1–D2.4 | yes | `S2.md` |
+| D3.1–D3.5 | yes | `S3a.md`, `S3b.md` |
+| D4.1, D4.2, D4.4, D4.5 | yes | `S4-run-record.md` §3 (D4.4 by the STOP path's read-back) |
+| **D4.3** | **part** | RD-1 0, RD-3 0, RD-4 1, RD-6 1 as written; RD-2 1, a RECORD by the pre-run note (#295), though D4.3 lists it (#309) |
+| **D4.6** | **no** | RD-LOGS did not run; offline counts 0, some consoles not measured (#309) |
+| D5.1 | yes | `S5.md` |
+| STOP rules | **fired** | RD-BACK-EMPTY (#307), first met in attempt 6 past a helper fix (#309); cause predates Step 11b (#308) |
+| G11b-0 | met | #288, #290 |
+| G11b-1 (no push/tag) | met | nothing pushed |
+| G11b-2 (fixtures only) | met | `S4-run-record.md` |
+
 ## Open items
 
 - **Ruled 2026-10-26:** 0.3 (A), 0.4 (C) (#290); S0F's what (#288).
@@ -512,6 +536,12 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   blocked main frame, the regex cap. Each changes a stage item, not the decisions above, unless a STOP rule fires.
 
 ## Follow-ups
+
+- *Added 2026-10-27:* the user's ruling on #307–#309 (Open decisions), then a short **Run 17b** of the rows not run
+  (liveB, RD-FWD, the back rows with an activated set-up, RD-DISARM with ON after the reply, RD-LOGS, RD-RESTORE) as
+  new rows; `newTab` on `about:blank` if #295 is ruled for it; a `back` that reaches bridge-built history (#308 (b),
+  Step 12); `safety-hop.ts`'s `Date.now` → `performance.now()` and the unused `HopWatch.blocked()` (S3b verifier
+  notes); the 119-character regex bound is conservative (RD-REGEX: 120 and 121 supported; #300, #303).
 
 - If the user rules 0.4 (A) later: the profile-wide firewall as standing rules, an options-page sentence, a row on a
   human-opened tab.

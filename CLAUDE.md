@@ -11,27 +11,27 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-26, Step 11 closed; next: Step 11b, not started)
+## Current state (2026-10-27, Step 11b built; its gate waits for the user's ruling)
 
-- **Shipped:** Steps 1–11 (Step 11, D3 file upload, closed 2026-10-26 on the user's ruling, #288; phase doc
-  `docs/plans/2026-10-25-step11-file-upload.md`, decisions in `docs/decisions-archive/step11.md`). Public on GitHub
-  (MIT), pushed. **24 tools, 27 codes (26 on the wire), 27 router methods** (the test count: Commands).
-- **Step 11 in one line:** `Tab.upload` / `client.upload` / `browser_upload_file` put local files into a page's file
-  input through CDP `DOM.setFileInputFiles`, only from the human's Upload folders and only with "Allow access to file
-  URLs" on, else `UPLOAD_REFUSED`; the gate refuses every call on a `file:` page (#245). Run 16: the upload works on a
-  background tab with no focus.
+- **Shipped:** Steps 1–11 (Step 11, D3 file upload, closed 2026-10-26, #288; `docs/decisions-archive/step11.md`).
+  Public on GitHub (MIT); **Step 11b's ~45 commits are not pushed** (G11b-1). **24 tools, 27 codes (26 on the wire),
+  27 router methods** (the test count: Commands).
+- **Step 11b in one line:** while a bridge `navigate`, `back`, `forward` or `downloadStart` runs, session
+  `declarativeNetRequest` rules built from the block list stop a redirect hop onto a blocked host (Run 17 RD-1, RD-3:
+  0 requests reached it); `newTab` is uncovered (#295); plus Step 11's follow-ups (home folders refused, a missing
+  file refused, `file:` tabs hidden). Phase doc `docs/plans/2026-10-26-step11b-block-list-redirects.md`.
 - **How agents run (#289):** Opus builds contract and safety code and runs every verifier; Sonnet does recipes,
   fixtures, docs and live runners; every agent at medium effort, passed explicitly; a step agent never ends its turn
   on a running child (#286). Rules: `docs/agent-rules.md` §6–§8, §10.
 - **Reloads need no human:** `recipes/reload-extension.ps1` (#65; one re-run on exit 2, #99). The loaded extension is
-  the Step 11 build (Run 16); interactive sessions using the bridge need `/mcp` or a fresh session.
-- **Resume: Step 11b** — the block list stops redirected requests (#140), with 0.3 (A) and 0.4 (C) ruled (#290);
-  phase doc `docs/plans/2026-10-26-step11b-block-list-redirects.md`, kickoff `docs/plans/next-session-prompt.md`. Its
-  first code stage S0F builds Step 11's three changes (#288: a home folder refused as an Upload folder, a missing file
-  refused by the extension, `file:` tabs listed hidden) and the tool's background-tab sentence; Stage 0 measures
-  #290's four MV3 checks first. Then **Step 12** — Phase F (`args` for `browser_evaluate`, console capture,
-  keep-attached debugger, the native file chooser). Carried: a popup of a background opener gets no lease (#226); the
-  MCP trusted tools' focus/input race. Live waves run autonomously (#33).
+  the Step 11b build (Run 17's RD-0); interactive sessions using the bridge need `/mcp` or a fresh session.
+- **Resume: the user's ruling on Step 11b's gate** (`docs/decisions.md` → Open decisions: #292, #293, #295, #307–#309).
+  Run 17 stopped at a pre-registered STOP: every bridge `back` is refused on a history the bridge built alone —
+  Chrome skips pages no human acted on; it predates Step 11b (#308). Recommended: accept, then a short Run 17b of the
+  unrun rows. The leftover `%TEMP%\bridge-e2e\s11b\r17-globals.clixml` blocks the next wave's preflight until ruled.
+  Then **Step 12** — Phase F (`args` for `browser_evaluate`, console capture, keep-attached debugger, the native file
+  chooser; #308 (b) a `back` that reaches bridge-built history). Carried: a popup of a background opener gets no
+  lease (#226); the MCP trusted tools' focus/input race. Live waves run autonomously (#33).
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
 
@@ -109,7 +109,7 @@ Details and measured facts are in the package file named; the integrity floor is
 ```bash
 npm install
 npm run build        # daemon/dist/index.js + mcp/dist/index.js + extension/dist/{sw,options,offscreen,content}.js
-npm test             # vitest — 4472 passed, 177 files (`npm test` 2026-10-27, Step 11b S4-helpers; recipes/test included)
+npm test             # vitest — 4535 passed, 183 files (`npm test` 2026-10-27, Step 11b S4-live; recipes/test included)
 npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension (chained with `&&`; see the cross-package gotchas below)
 npm run recipe -- recipes/<file>.ts [args]   # a script against the SDK, run with tsx (= npx tsx recipes/<file>.ts)
 npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10, .s11, .s11b cover the others; all seven exit 0 at Step 11b S4-helpers — run them: a code stage can break one, as S3 did)
