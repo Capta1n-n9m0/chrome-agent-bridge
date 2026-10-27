@@ -4,7 +4,8 @@
  * passes the real API), no log call.
  *
  * - **Per call.** A covered call (`dnrScopeOf`: `navigate`, `back`, `forward` on their tab; `downloadStart` from the
- *   worker; `newTab` is not covered, #295) installs its rules once, on its first `install` (the first `effect()`;
+ *   worker; `newTab` with a URL borrows a `navigate` handle for its blank tab through `sw.ts`'s `callDeps.dnrForTab`,
+ *   S6, #312) installs its rules once, on its first `install` (the first `effect()`;
  *   F7: `effect()` is shared and runs twice for a download), and removes them on `release` (after the post-check, on
  *   every path). Ids come from one counter that only grows, so two calls never share an id and a released id is never
  *   reused while the worker lives.

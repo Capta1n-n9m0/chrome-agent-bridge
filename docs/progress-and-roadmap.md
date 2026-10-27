@@ -169,7 +169,7 @@ out of.
 | Step 9 | Phase E safety: the kill switch (toolbar button, `Alt+Shift+K`, options page), the JavaScript switch, a block list, the own-page block; one gate over every router method; `DISARMED`/`DOMAIN_BLOCKED`; the `Safety:` line and `client.safety()` | Built and E2E-run 2026-10-24 (Run 13); closed 2026-10-24 (#202) *(superseded 2026-10-25: was "gate open for the user (#192)", because #202 ruled it)* |
 | Step 10 | The Step 8 follow-ups: the MCP's trusted tools focus first, the 800-cap warning, `browser_evaluate {saveTo}` + `tab.evaluateToFile`, `JS_DISABLED`, `bb-login.ps1`'s condition wait, `release/step8`, Step 9's re-measurements, a live retire row; the chunked recipe retired | Built and E2E-run 2026-10-25 (Runs 14–15); closed 2026-10-25 (#229) |
 | Step 11 | D3 file upload: `browser_upload_file` / `Tab.upload` / `client.upload` via `DOM.setFileInputFiles`; the human-held Upload folders list on the options page; the code `UPLOAD_REFUSED`; the bridge never opens or acts on `file:` pages; Step 10's `saveTo` follow-ups (#227 (b), the `kind` text) | Built and E2E-run 2026-10-25/26 (Run 16); docs S6; closed 2026-10-26 (#288) |
-| Step 11b | The block list stops redirected requests: session `declarativeNetRequest` rules from the block list held while a bridge `navigate`, `back`, `forward` or `downloadStart` runs (a new permission); S0F, Step 11's three follow-ups (a home folder refused, a missing file refused, `file:` tabs hidden) | Built 2026-10-26/27; Run 17 stopped at a pre-registered STOP (#307, #308); gate not met, waits for the user (#309) |
+| Step 11b | The block list stops redirected requests: session `declarativeNetRequest` rules from the block list held while a bridge `navigate`, `back`, `forward` or `downloadStart` runs (a new permission); S0F, Step 11's three follow-ups (a home folder refused, a missing file refused, `file:` tabs hidden) | Built 2026-10-26/27; Run 17 stopped at a pre-registered STOP (#307, #308); gate accepted (#311); S6 built, Run 17b run (R17B-RD-2, R17B-BACK, R17B-FWD blocked 0; D7.6 not met); close waits for the user (#318) |
 
 **Quality state:** 542 unit tests pass in 42 files (`npm test` at D5b commit `033b1bc`,
 2026-10-22); `tsc` typecheck clean across all five packages (`shared daemon sdk mcp extension`);
@@ -825,14 +825,22 @@ defect, #226); SAFE-3 as R14-3, NOT MEASURED, then R15-3R, PASS (#224). No produ
 
 **Step 11b — the block list stops redirected requests** (#202, planned 2026-10-24; phase doc
 `docs/plans/2026-10-26-step11b-block-list-redirects.md`, 0.3 (A) and 0.4 (C) ruled 2026-10-26 (#290)). **Built
-2026-10-26/27, gate not met, waiting for the user's ruling.** Stages S0F (Step 11's three follow-ups, #288), S1–S3
-(a `declarativeNetRequest` rule set from the block list, a new Chrome permission) and S4 (Run 17) are done. Run 17
+2026-10-26/27; the gate is accepted (#311); S6 and Run 17b are done; closing waits for the user's ruling on #318.**
+Stages S0F (Step 11's three follow-ups, #288), S1–S3 (a `declarativeNetRequest` rule set from the block list, a new
+Chrome permission), S4 (Run 17), S6 (`newTab` with a URL opens `about:blank` first) and S7 (Run 17b) are done. Run 17
 measured: a redirect hop of a bridge `navigate` or `downloadStart` onto a blocked host is never sent (RD-1, RD-3:
-blocked server 0 requests, was 1); the human's own browsing is unchanged (RD-6); `newTab`'s first request still
-escapes (RD-2, #295). Run 17 stopped at a pre-registered STOP, RD-BACK-EMPTY (`back` answered `INTERNAL`; #307);
-the cause predates Step 11b: Chrome's back skips pages no human acted on (#308). Gate check D4.3 is part (RD-2's leak; the user rules which
-reading holds) and D4.6 is not met (#309); the gate awaits the user's ruling. Docs: S5 (`docs/setup.md` Safety updated). *Corrected 2026-10-27: was
-"**Next — Step 11b**" (planned, not started), because it is built and Run 17 has run.*
+blocked server 0 requests, was 1); the human's own browsing is unchanged (RD-6); `newTab`'s first request escaped
+(RD-2, #295). Run 17 stopped at a pre-registered STOP, RD-BACK-EMPTY (`back` answered `INTERNAL`; #307); the cause
+predates Step 11b: Chrome's back skips pages no human acted on (#308). Gate check D4.3 is part (ruled, #311) and D4.6
+is not met (#309). Run 17b then measured the `newTab` leak closed (R17B-RD-2: blocked server 0 requests; Run 17
+RD-2: 1) and a bridge `back`/`forward` redirect hop stopped, once each (R17B-BACK, R17B-FWD: 0 blocked requests,
+`DOMAIN_BLOCKED`), on histories built with a user activation. A bridge `back`/`forward` reaches only pages a human
+or an activating call acted on (R17B-BACK-NOACT: `INTERNAL`, R17B-ACT-CTL: `ok` 4 of 4; #308). Run 17b: PASS 16,
+RECORD 2, FAIL 7, NOT MEASURED 3; the seven FAILs are carried upload rows (R17B-UP-L1, UP-OPT, UP-6, F-RAW, F-RAW-2,
+F-RAW-DIR, UP-RACE-A), not Step 11b claims; each fails on a helper or sheet defect or an unestablished banner reading
+(#318); R17B-LOGS is NOT MEASURED, so D7.6 is not met (#318). Not measured: `tabs.get().status` after `goBack`.
+Not pushed since `ce1f06d` (push granted, #311). Docs: S5 and S8 (`docs/setup.md` Safety). *Corrected 2026-10-27:
+was "**Next — Step 11b**" (planned, not started), because it is built and Runs 17 and 17b have run.*
 
 **Phase F — Ergonomics.** `wait_for` variants (element-visible; network-idle shipped in Step 5's
 Part N6) — ✅ **element-visible done in Step 8** (2026-10-23: `browser_wait_for({locator, state})`

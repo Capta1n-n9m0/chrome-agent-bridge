@@ -783,6 +783,11 @@ The block itself is left as written.*
   itself fails), the URL is never opened, the blank tab is closed, and the call answers the existing refusal
   (`DISARMED {scope:"all"}`, `STATE_UNREADABLE_MESSAGE`, for a failed install). The visible differences: the
   `tabCreated` event reads `url: "about:blank"` and the tab has one more history entry (§6.2's 2026-10-27 note).*
+- *Note 2026-10-27 (Step 11b S8; S6 verifier N1/N3, decisions.md #313): "never on the blank page's load" above is slightly
+  too strong. The wait ignores the blank page's own `complete` only while that event arrives within the 2 s settle; three
+  narrow cases are unmeasured in Chrome (the blank page silent over 2 s then completing, a doubled blank `complete`, a
+  `tabs.get` reading `complete` ahead of its event). Run 17b saw none of the first two: five 3 s pages answered after
+  3074-3102 ms, `completes=1` (R17B-NEWTAB-LOAD); the third is not measured. R17B-RD-2: the blocked server saw 0 requests.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 

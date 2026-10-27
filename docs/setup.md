@@ -98,7 +98,8 @@ machine that used the bridge before:
    `browser_upload_file` with `unknown method: uploadFiles`. Uploads stay refused until you add Upload folders and
    turn on Allow access to file URLs ([Uploading files](#uploading-files)).* *Updated 2026-10-27: Step 11b changed the
    extension (a new permission, `declarativeNetRequestWithHostAccess`) — reload it after upgrading; an extension not
-   reloaded since Step 11 does not stop redirect hops ([Safety](#safety)).*
+   reloaded since Step 11 does not stop redirect hops ([Safety](#safety)). Since Step 11b, `browser_new_tab` with a URL
+   opens a blank page first (R17B-RD-2).*
 
 Every client on a machine must use the same `BRIDGE_PORT`; see [The daemon](#the-daemon).
 
@@ -974,28 +975,41 @@ What a blocked site means for agents:
 **What the block list does not do.** It is not a network firewall. It refuses bridge calls on a tab
 whose top-level address is blocked, and navigations the bridge itself starts to one. It does not stop
 a page from loading a blocked site: script on an allowed page (an agent's `evaluate` included), a meta
-refresh, a link, or `back`/`forward` can make Chrome load it with your cookies; the bridge refuses to
-read or act there only afterwards. *Superseded 2026-10-27: was "A redirect hop is still requested … blocking the hop
+refresh or a link can make Chrome load it with your cookies; the bridge refuses to read or act there
+only afterwards. A bridge `back`/`forward` holds the rules since Step 11b (below; measured on a redirect hop, R17B-BACK, R17B-FWD). *Superseded 2026-10-27: was "A redirect hop is still requested … blocking the hop
 itself would need a `declarativeNetRequest` rule, which is not built", because Step 11b built the rule (Run 17 RD-1,
 RD-3).*
 
-*Redirects, since Step 11b.* While a bridge `navigate` or `downloadStart` runs, the extension holds a Chrome
+*Redirects, since Step 11b.* While a bridge `navigate`, `browser_new_tab` with a URL, `back`, `forward` or
+`downloadStart` runs, the extension holds a Chrome
 network rule (`declarativeNetRequest`, built from your list), so a redirect hop that lands on a blocked host is
 never sent. Run 17 measured it on fixture servers: the blocked server saw 0 requests for a `browser_navigate`
 (row RD-1) and for a `browser_download` (RD-3), with the same answers as before (`DOMAIN_BLOCKED`, no file);
 before Step 11b it saw 1 (Run 13 SAFE-5b, Run 14 R14-5c). The rules follow your list: with the pattern
-removed, the same redirect loads (RD-4), and a pattern added just before or during a call counts (RD-5, RD-5b). What is still not covered:
-- `browser_new_tab` with a URL: its first request still goes out (RD-2: the blocked server saw 1; #295). The new
-  tab is refused afterwards.
-- `back` and `forward` hold the rules while they wait for their load (#302), but Run 17 did not measure a redirect
-  through them: RD-BACK failed and RD-FWD did not run, both on Chrome's refusal below (#308).
+removed, the same redirect loads (RD-4), and a pattern added just before or during a call counts (RD-5, RD-5b).
+Run 17b measured more calls on fixture servers (the back rows use a server that answers 200, then 302 to the blocked server):
+- `browser_new_tab` with a URL is covered: the tab opens on a blank page, the rules go in, then it goes to the URL.
+  The blocked server saw 0 requests (R17B-RD-2; Run 17 RD-2 saw 1). The tab's first address reads `about:blank`,
+  its history has one more entry (by design, #311; not measured), and a slow page still makes the call wait for the page's load (R17B-NEWTAB-LOAD:
+  five 3 s pages, replies after 3074-3102 ms).
+- `back` and `forward` hold the rules too. Measured once each, on a history whose pages had a user activation
+  (without one, `back` cannot run at all; see below): the blocked server saw 0 requests and the answer was
+  `DOMAIN_BLOCKED` (R17B-BACK, R17B-FWD); the rules read 0 after each reply.
+What is still not covered:
 - Your own browsing: the rules cover only a bridge call in flight (decisions.md · 2026-10-26 · #290, 0.4 (C)); a
   page you load yourself still reaches a blocked host (RD-6: the blocked server saw 1).
 - Requests a page starts by itself after a bridge call ends, such as a script or a meta refresh (phase doc 0.9).
 
+*Superseded 2026-10-27: was "`browser_new_tab` with a URL: its first request still goes out (RD-2 …; #295)", "`back` and
+`forward` … Run 17 did not measure a redirect through them", and "or `back`/`forward` can make Chrome load it" (in the
+paragraph above), because S6 (`browser_new_tab` opens a blank page first) and Run 17b measured them (R17B-RD-2,
+R17B-BACK, R17B-FWD).*
+
 `back` and `forward` have a separate limit, not caused by Step 11b: Chrome's back skips pages no human acted on, so
 a history the bridge built alone cannot be gone back through (`INTERNAL`, "Cannot find a next page in history.",
-26 of 26 in a scratch Chrome; #308).
+26 of 26 in a scratch Chrome; #308; Run 17b R17B-BACK-NOACT: `INTERNAL` again, message length equal, 1 of 1). A bridge `back`/`forward`
+therefore reaches only pages a human, or a call that gave the page an activation (the bridge's own `evaluate`:
+R17B-ACT-CTL, `ok` 4 of 4), acted on.
 
 The download's check of its final address was first measured in Step 10's Run 14 (row R14-5c): a download
 redirected onto a blocked host was refused `DOMAIN_BLOCKED` with no file written, and the test server saw the
