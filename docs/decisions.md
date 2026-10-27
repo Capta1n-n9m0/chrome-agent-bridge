@@ -9,8 +9,13 @@ as a dated entry and point back.
 
 ## Open decisions
 
-None. Step 11b's were ruled on 2026-10-27 (#311, #320); the lists of earlier steps' open decisions, with
-their rulings, are in the archive entries they cite and in git.
+Step 12's contract-level proposals, recorded before Stage 0 so the audit can attack them; each stays open for the
+gate (Step 11b's were ruled on 2026-10-27, #311, #320):
+- 2026-10-27 · Step 12: `args` for evaluate is a function source called with one JSON value (#322)
+- 2026-10-27 · Step 12: `consoleMessages`: read on demand, the entry shape, class `tab` (#323)
+- 2026-10-27 · Step 12: `uploadFiles {chooser: true}` intercepts the chooser only inside the call (#325)
+- 2026-10-27 · Step 12: G1 and G2 as ruled, their contract left to Stage 0 (#326)
+- 2026-10-27 · Step 12: how every item passes the safety gate (#327)
 
 ## Standing decisions
 
@@ -181,6 +186,100 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
+
+
+### 2026-10-27 · Step 12: the stage order and Run 18's rows (#329)
+**Decided:** the order of the phase doc's note under the box (2026-10-27): Stage 0, S1–S5, S6 as S6-G1 and S6-G2, S7,
+S8; F not in scope. Run 18's rows as 0.3, §4.26 or the next free number (Stage 0 checks), the carried pass rules word
+for word except #320's two re-writes.
+**Why:** #320 item 1, #321.
+**Instead of:** running B before A (Run 19 must use the fixed helpers).
+**Revisit if:** Stage 0 finds a dependency the order breaks.
+**By:** Claude (build decision)
+
+### 2026-10-27 · Step 12: Run 19's seed rows and what Step 12 does not build (#328)
+**Decided (proposed):** phase doc 0.11 (Run 19's seed rows, §4.27 or the next free number, fixture pages only,
+expected text committed before any observation) and 0.12 (not in Step 12, with F parked by #321 and 0.8 (b)/(c) not
+built). The G1/G2 rows join 0.11 from S6's as-built.
+**Why:** the plan's proposal; the rows are written before the measurements (`agent-rules.md` §2).
+**Instead of:** rows written after the build has been seen.
+**Revisit if:** Stage 0 finds a row that cannot discriminate.
+**By:** Claude (proposed)
+
+### 2026-10-27 · Step 12: how every item passes the safety gate (#327)
+**Decided (proposed, contract-level, safety, for user review):** phase doc 0.10 as written: only C adds a method,
+entered in both tables in one commit; B and E keep their methods' classes; nothing on the wire reads or changes the
+safety state; no new log site (the allowlist grows by 0) and `log-sentinel.test.ts` gains a sentinel in `args` and in a
+console reply; a refusal reveals what it reveals today. G2's change to the lock touches no safety class.
+**Why:** the root `CLAUDE.md` invariants; #139, #202.
+**Instead of:** exempting or reclassifying any method (forbidden).
+**Revisit if:** the audit finds an item that reaches a page or the debugger outside the gate.
+**By:** Claude (proposed)
+
+### 2026-10-27 · Step 12: G1 and G2 as ruled, their contract left to Stage 0 (#326)
+**Decided (proposed, contract-level, for user review):** **G1** (#226): the extension's `tabCreated` carries the real
+opener only if Stage 0 measures that `webNavigation.onCreatedNavigationTarget`'s `sourceTabId` (or another source the
+current manifest already allows) names it for a background opener; the daemon's opener rule then grants the lease to
+the opener's holder. A needed new permission returns to the user (G12-2) and G1 stays a documented limit until then.
+**G2** (#321 Q6): a trusted click or typing holds the daemon's visibility lock from the focus through the input and a
+settle pause after it; Stage 0 picks between (i) one wire call (a trusted input that focuses itself, under the lock)
+and (ii) the daemon holding the lock across the existing `focusTab` and the input call, and measures the pause
+(starting near 500 ms). The conservative reading until Stage 0 rules: no existing call's answer changes; a call without
+`trusted` is untouched; the pause only adds time.
+**Why:** #321; phase doc 0.9 leaves the mechanism to measurement.
+**Instead of:** guessing a mechanism before the audit; G1 by a new permission without the user.
+**Revisit if:** Stage 0's measurements.
+**By:** Claude (proposed)
+
+### 2026-10-27 · Step 12: `uploadFiles {chooser: true}` intercepts the chooser only inside the call (#325)
+**Decided (proposed, contract-level, for user review):** phase doc 0.7 as written: interception on only inside the
+call and off on every path; the same gate as `uploadFiles` (class `upload`, Upload folders, the file-URL check, the
+missing-file check, `paths` caps, no path logged); the activating click by `Runtime.evaluate {userGesture: true}` (i),
+else a trusted click with focus first (ii); `TIMEOUT` with a fixed message after 5 s with no chooser; E on one call's
+own session if Stage 0 shows it receives `Page.fileChooserOpened`, else on D's. While JavaScript is off the
+conservative reading applies until the audit weighs it: the chooser path is refused `JS_DISABLED` (its click runs a
+script in the page).
+**Why:** #321 Q4 (a); 0.7; the conservative option for the JavaScript switch.
+**Instead of:** interception for a kept session's life (G12-2); a non-input target treated as a chooser without the
+flag.
+**Revisit if:** Stage 0 shows the click does not open the chooser on a background tab, or the audit argues the switch.
+**By:** Claude (proposed)
+
+### 2026-10-27 · Step 12: the kept debugger session's lifecycle (#324)
+**Decided (proposed):** phase doc 0.6 as written: a pure keeper, at most one session per tab, reference-counted,
+detached 5 s after the count reaches 0 (#321 Q3 (a)), and on disarm, on a blocked, own or `file:` page, on close or
+replace, on every `onDetach` reason and at a worker restart; the gate re-check before every use; no wire, daemon, SDK or
+MCP change; answers unchanged.
+**Why:** #321 Q3 (a); the lifecycle is internal, and what the human sees is the ruled bound.
+**Instead of:** (b) a session only for event-driven features; (c) none.
+**Revisit if:** Stage 0 measures that a kept session changes an existing answer, or the banner outlives the bound.
+**By:** Claude (proposed)
+
+### 2026-10-27 · Step 12: `consoleMessages`: read on demand, the entry shape, class `tab` (#323)
+**Decided (proposed, contract-level, for user review):** phase doc 0.5: C1 (#321 Q2 (a)) if Stage 0 measures that
+`Runtime.enable` reports messages logged before it, else C2 (#321's fallback). A new router method `consoleMessages
+{tabId, level?, limit?}` and tool `browser_console_messages {tab?, level?, limit?}`; entries `{level, text, ts, kind}`,
+`text` ≤ 2 000 characters, ≤ 200 per reply, newest last, no source URL and no stack; the SDK `tab.consoleMessages`.
+Class `tab` in `METHOD_CLASSES` and a lease-checked tab method without the visibility lock in `daemon/src/methods.ts`;
+not gated by the JavaScript switch, because reading runs no page script (the conservative alternative, class
+`evaluate`, is the audit's to weigh).
+**Why:** #321 Q2; the plan's shape; a refusal reveals what a refused `snapshot` reveals.
+**Instead of:** C3 (a page hook, not ruled); URLs or stacks in entries.
+**Revisit if:** Stage 0's replay measurement; the audit argues the class.
+**By:** Claude (proposed)
+
+### 2026-10-27 · Step 12: `args` for evaluate is a function source called with one JSON value (#322)
+**Decided (proposed, contract-level, for user review):** phase doc 0.4 (i): `evaluate` and `evaluateSaveStart` gain an
+optional `args`; with it, `expression` is a function source called with `args` by `Runtime.callFunctionOn
+{arguments: [{value}]}`, else today's expression byte for byte; `args` must survive `JSON.stringify`, ≤ 1 MiB, else
+`BAD_PARAMS` with a fixed message that never shows the value; checked by the SDK, the shared guard and the extension;
+an old extension's `kind: "function"` answer maps to `VERSION` in the SDK; the MCP `browser_evaluate {args}`, the #214
+baseline re-pinned only by a recorded decision.
+**Why:** #321 Q1; Playwright's shape; no injection by string building.
+**Instead of:** (ii) a lexical binding (the fallback if (i) fails at Stage 0); (iii) a JSON literal pasted into the
+string.
+**Revisit if:** Stage 0 shows `callFunctionOn` leaves a page global, breaks the CSP page, or loses `awaitPromise`.
+**By:** Claude (proposed)
 
 ### 2026-10-27 · The user rules Step 12's scope (G12-0) (#321)
 **Decided (user):** the six questions of `docs/plans/2026-10-27-step12-phase-f.md` § For the user at G12-0:
