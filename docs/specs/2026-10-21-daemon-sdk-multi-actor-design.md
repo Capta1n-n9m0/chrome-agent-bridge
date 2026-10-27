@@ -845,6 +845,39 @@ The block itself is left as written.*
     "carries `args`" when the key is present, `null` included. The SDK adds a ninth fixed refusal before any wire call,
     `BAD_PARAMS` "args: pass the function source as a string, such as \"(a) => a.rows.length\" — not a function", for a
     non-string `fn` with `args`; the MCP tool runs `checkEvaluateArgs` itself.*
+- *Amended 2026-10-27 (Step 12 S3a; phase doc `docs/plans/2026-10-27-step12-phase-f.md` 0.5 and 0.10 with its Stage 0
+  note; decisions.md · 2026-10-27 · Step 12: `consoleMessages`: read on demand, the entry shape, class `tab` (#323),
+  amended by · Stage 0: the console read — C1 on the tab's session, filtered before stripping (#333); · Stage 0:
+  `consoleMessages` is class `evaluate` until the user rules (#334); · Step 12: how every item passes the safety gate
+  (#327). All proposed, for the user at Step 12's gate. One method is added (28 router methods); no code or event):*
+  - *`consoleMessages {tab, level?, limit?}` (the daemon forwards `tabId`) answers `{entries: ConsoleEntry[]}`, oldest
+    first, newest last. `ConsoleEntry` is `{level, text, ts, kind}`: `level` one of `"error" | "warning" | "info" |
+    "debug"` (`console.error`/`assert` and every uncaught error → `error`, `warning` → `warning`, `debug` → `debug`,
+    every other console call → `info`); `text` at most `CONSOLE_TEXT_MAX` (2 000) characters, a cut text ending with
+    `…`; `ts` the message's own time in ms since the epoch; `kind` `"console"` or `"exception"`. **No CDP-supplied source URL
+    or stack** in any field (a description or preview value is cut at its first stack line); text the page itself
+    logs (a string argument, say `err.stack`) is passed as logged. `level` keeps that level and every more severe one (absent: all four); `limit` is an
+    integer 1–`CONSOLE_ENTRIES_MAX` (200), default 200, and keeps the newest. Anything else is `BAD_PARAMS`, no
+    `data`: `consoleMessages: level must be one of "error", "warning", "info", "debug"` or `consoleMessages: limit
+    must be an integer from 1 to 200` (`checkConsoleMessagesParams`, `shared/src/protocol.ts`).*
+  - *The read: one debugger session on the tab (the tab's own target only; out-of-process frames are not read),
+    `Runtime.enable` — Chrome replays the messages and uncaught errors it stored for the page, up to its own bound
+    (Stage 0 m1 C1–C3) — a 100 ms settle, `Runtime.disable` on every path, then the detach; the whole read bounded
+    at 10 s (today's `TIMEOUT` text). Never `Log.enable`, never `Runtime.discardConsoleEntries`. One top-level
+    `chrome.debugger.onEvent` listener feeds the call's collector (`consoleAPICalled`, `exceptionThrown`,
+    `exceptionRevoked`, `executionContextCreated`, no child session's event). Text comes from each argument's
+    `value`, `unserializableValue`, `description` and `preview` only, never a page call; an exception's text is
+    `exceptionDetails.text` and its exception's description, cut at the first stack line (`\n    at `).*
+  - *The filters, before anything is stripped: an entry is dropped when any of its sources — a stack frame URL, the
+    exception's `url`, a URL in the cut part of a description, the execution context's origin — is on the block list
+    (read afresh after the read, as the network query reads it), one of this extension's pages, or `file:`; when it
+    has no known source; when its exception was revoked; and when its time is before the latest arm this worker saw
+    (its start, until it sees an arm).*
+  - *Class `evaluate` in `METHOD_CLASSES` (#334): refused while disarmed (`DISARMED {scope:"all"}`), while
+    JavaScript is off (`JS_DISABLED`; the replay can run a page's own Error `message` getter, m1 C8), and on a
+    blocked, own or `file:` page (`DOMAIN_BLOCKED`, the existing messages), at receipt, before the attach and at the
+    post-check, as `evaluate` is. A tab method in `daemon/src/methods.ts`: lease-checked, no visibility lock. No log
+    line carries an entry. The banner shows during the call.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
