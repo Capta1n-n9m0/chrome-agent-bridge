@@ -7,7 +7,10 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   BridgeError,
+  checkConsoleMessagesParams,
   ErrorCodes,
+  type ConsoleEntry,
+  type ConsoleMessagesParams,
   type EvalEnvelope,
   type LocateResult,
   type Locator,
@@ -377,6 +380,19 @@ export class Tab {
       result = (await this.#send("networkRequests", { ...options })) as { entries: NetworkEntry[] };
     }
     return result.entries;
+  }
+
+  /**
+   * Step 12 S3b (#323, #334): the console messages and uncaught errors Chrome kept for this tab's page, oldest first,
+   * newest last (`{level, text, ts, kind}`, no source URL or stack). `level` keeps that level and every more severe
+   * one; `limit` (1–200, default 200) keeps the newest. Checked before any call (`BAD_PARAMS`). Refused while
+   * JavaScript is off (`JS_DISABLED`) and wherever `snapshot` is; frames' messages are not read.
+   */
+  async consoleMessages(options: ConsoleMessagesParams = {}): Promise<ConsoleEntry[]> {
+    this.#guard();
+    const check = checkConsoleMessagesParams({ ...options });
+    if (!check.ok) throw new BridgeError(ErrorCodes.BAD_PARAMS, check.message);
+    return ((await this.#send("consoleMessages", { level: options.level, limit: options.limit })) as { entries: ConsoleEntry[] }).entries;
   }
 
   /** Forgets this tab's recorded requests; resolves with how many were dropped. */

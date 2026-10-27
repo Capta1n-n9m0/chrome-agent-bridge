@@ -11,3 +11,5 @@ export {
   scopeLabel,
 } from "./network.js";
 export type { FormattableEntry, FormattableResult, FormatNetworkOptions, NetworkScope } from "./network.js";
+// Step 12 S3b: the console formatter, on this subpath only — the main surface keeps its eight values (#344).
+export { formatConsole, NO_CONSOLE_MESSAGES } from "./console-messages.js";

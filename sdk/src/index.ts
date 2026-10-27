@@ -16,6 +16,9 @@ export type {
 export type { Target } from "./locator.js";
 export { BridgeError, ErrorCodes } from "@bridge/shared";
 export type {
+  ConsoleEntry,
+  ConsoleLevel,
+  ConsoleMessagesParams,
   ErrorCode,
   EvalEnvelope,
   EventMessage,

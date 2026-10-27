@@ -2,9 +2,9 @@ import { readFile } from "node:fs/promises";
 import os from "node:os";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { UPLOAD_FILES_MAX_PATHS, checkEvaluateArgs, isHiddenReason, isLocator, isSafetyState, type EvalEnvelope, type Locator, type SnapshotResult } from "@bridge/shared";
+import { CONSOLE_ENTRIES_MAX, CONSOLE_LEVELS, UPLOAD_FILES_MAX_PATHS, checkEvaluateArgs, isHiddenReason, isLocator, isSafetyState, type ConsoleMessagesResult, type EvalEnvelope, type Locator, type SnapshotResult } from "@bridge/shared";
 import { BridgeError, ErrorCodes, downloadToFile, type BridgeClient } from "@bridge/sdk";
-import { formatEntry, formatNetwork, formatSnapshot, type FormattableResult } from "@bridge/sdk/format";
+import { formatConsole, formatEntry, formatNetwork, formatSnapshot, type FormattableResult } from "@bridge/sdk/format";
 import { checkSaveTarget, prepareUpload, saveEvaluateToFile } from "@bridge/sdk/download";
 import { attachContext, isAttachCode, safetyRefusalLine, type FailureReportConfig } from "@bridge/sdk/report";
 import { CONNECTING_REASON } from "../link.js";
@@ -928,6 +928,22 @@ export function registerTools(
       onNetworkScope(params.tab, async (tab) => {
         const { cleared } = (await bridge.call("networkClear", { ...params, tab })) as { cleared: number };
         return text(`Cleared ${cleared} requests.`);
+      }),
+  );
+
+  // Step 12 S3b (#323, #333, #334, #344): the 25th tool; the schema re-baseline is s2-focus-first.test.ts's delta.
+  reg.tool(
+    "browser_console_messages",
+    "List the console messages and uncaught errors Chrome kept for the page of this session's tab (the active tab is claimed on first use) or `tab`, those logged before this call included: one line per entry, oldest first — time (UTC), level, `uncaught` for an uncaught error, text. No source URL and no stack; a text is cut at 2000 characters. Messages of the page's frames are not read; entries from a blocked site, this extension or a file: page, and those logged before the bridge was last switched on or before the extension's worker last restarted, are left out. Refused while JavaScript is off for the bridge (as browser_evaluate is) and on the pages browser_snapshot is refused on. Shows Chrome's 'is debugging this browser' banner while it reads.",
+    {
+      tab: z.string().optional().describe(TAB_DESCRIPTION),
+      level: z.enum(CONSOLE_LEVELS).optional().describe("Keep this level and every more severe one (error > warning > info > debug). Default: all four."),
+      limit: z.number().int().min(1).max(CONSOLE_ENTRIES_MAX).optional().describe("How many of the newest entries to print (1–200). Default 200."),
+    },
+    async ({ tab, level, limit }) =>
+      onTab(tab, async (t) => {
+        const result = (await bridge.call("consoleMessages", { ...(level !== undefined ? { level } : {}), ...(limit !== undefined ? { limit } : {}), tab: t })) as ConsoleMessagesResult;
+        return text(formatConsole(result.entries));
       }),
   );
 }

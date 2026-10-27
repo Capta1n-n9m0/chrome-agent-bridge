@@ -23,6 +23,7 @@ const RESULTS: Record<string, unknown> = {
   evaluate: { kind: "json", value: { n: 1 }, description: "{n:1}", truncated: false },
   networkRequests: { entries: [{ id: "r1" }], total: 1 },
   networkClear: { cleared: 4 },
+  consoleMessages: { entries: [{ level: "info", text: "hi", ts: 5, kind: "console" }] },
   downloadStart: {
     id: "d1",
     size: 3,
@@ -219,6 +220,13 @@ const CASES: [string, (t: Tab) => Promise<unknown>, Expected[]][] = [
   ["focus", (t) => t.focus(), [{ method: "focusTab", params: { tab: "T3" } }]],
   ["close", (t) => t.close(), [{ method: "closeTab", params: { tab: "T3" } }]],
   ["release", (t) => t.release(), [{ method: "tabs.release", params: { tab: "T3" } }]],
+  // Step 12 S3b: absent options are dropped, never sent as undefined.
+  ["consoleMessages()", (t) => t.consoleMessages(), [{ method: "consoleMessages", params: { tab: "T3" } }]],
+  [
+    "consoleMessages({level, limit})",
+    (t) => t.consoleMessages({ level: "warning", limit: 5 }),
+    [{ method: "consoleMessages", params: { level: "warning", limit: 5, tab: "T3" } }],
+  ],
 ];
 
 async function claimedTab() {
@@ -558,6 +566,7 @@ const MIRRORED: [string, (o: BridgeClient | Tab) => Promise<unknown>][] = [
   ],
   ["network", (o) => o.network({ limit: 3 })],
   ["networkClear", (o) => o.networkClear()],
+  ["consoleMessages", (o) => o.consoleMessages({ level: "error", limit: 2 })],
   ["focus", (o) => o.focus()],
   ["release", (o) => o.release()],
 ];
@@ -698,5 +707,52 @@ describe("a 4002 reconnect voids the cursor and every older Tab (#11, #79; stage
     const err = await rejection(old.snapshot());
     expect(err.code).toBe(ErrorCodes.NOT_CONNECTED);
     expect(client.tab()).toBe(old);
+  });
+});
+
+// Step 12 S3b (#323, #334, #344): Tab.consoleMessages answers the entries; the shared guard runs before any call;
+// a refusal reaches the caller as the same BridgeError a refused snapshot does, with no failure report.
+describe("Tab.consoleMessages (Step 12 S3b)", () => {
+  it("resolves with the reply's entries", async () => {
+    const { tab } = await claimedTab();
+    expect(await tab.consoleMessages()).toEqual([{ level: "info", text: "hi", ts: 5, kind: "console" }]);
+  });
+
+  it("refuses a bad level or limit BAD_PARAMS with the shared texts, before any call", async () => {
+    const { tab, conn } = await claimedTab();
+    const bad: [Record<string, unknown>, string][] = [
+      [{ level: "verbose" }, 'consoleMessages: level must be one of "error", "warning", "info", "debug"'],
+      [{ limit: 0 }, "consoleMessages: limit must be an integer from 1 to 200"],
+      [{ limit: 201 }, "consoleMessages: limit must be an integer from 1 to 200"],
+      [{ limit: 1.5 }, "consoleMessages: limit must be an integer from 1 to 200"],
+    ];
+    for (const [opts, message] of bad) {
+      const err = await rejection(tab.consoleMessages(opts as never));
+      expect(err.code).toBe(ErrorCodes.BAD_PARAMS);
+      expect(err.message).toBe(message);
+    }
+    expect(frames(conn)).toHaveLength(0);
+  });
+
+  it("C3.2 client side: JS_DISABLED, DISARMED and DOMAIN_BLOCKED reach the caller as snapshot's do, one call each, no report", async () => {
+    const refusals = [
+      new BridgeError(ErrorCodes.JS_DISABLED, "JavaScript is off"),
+      new BridgeError(ErrorCodes.DISARMED, "off", { scope: "all" }),
+      new BridgeError(ErrorCodes.DOMAIN_BLOCKED, "blocked"),
+    ];
+    for (const refusal of refusals) {
+      const conn = new FakeConnection((m, c) => {
+        if (m.method === "tabs.claim") return c.emit({ id: m.id, result: { tab: "T3" } });
+        if (typeof m.method === "string") c.emit({ id: m.id, error: refusal.toWire() });
+      });
+      const { client } = await connected([conn]);
+      const tab = await client.claim("T3");
+      conn.sent.length = 0;
+      const viaConsole = await rejection(tab.consoleMessages());
+      const viaSnapshot = await rejection(tab.snapshot());
+      expect(viaConsole.code).toBe(refusal.code);
+      expect([viaConsole.code, viaConsole.message, viaConsole.data]).toEqual([viaSnapshot.code, viaSnapshot.message, viaSnapshot.data]);
+      expect(frames(conn).map((f) => f.method)).toEqual(["consoleMessages", "snapshot"]);
+    }
   });
 });

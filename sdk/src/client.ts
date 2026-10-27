@@ -23,7 +23,7 @@ import {
   type TabGoneParams,
   type WelcomeMessage,
 } from "@bridge/shared";
-import type { LocateResult, Locator, NetworkEntry, SnapshotResult, WaitForParams } from "@bridge/shared";
+import type { ConsoleEntry, ConsoleMessagesParams, LocateResult, Locator, NetworkEntry, SnapshotResult, WaitForParams } from "@bridge/shared";
 import type { DownloadOutcome } from "./download.js";
 import type { EvaluateToFileOptions, EvaluateToFileResult } from "./evaluate-save.js";
 import type { UploadOptions, UploadResult } from "./upload.js";
@@ -470,6 +470,9 @@ export class BridgeClient {
   }
   async networkClear(): Promise<number> {
     return this.tab().networkClear();
+  }
+  async consoleMessages(options?: ConsoleMessagesParams): Promise<ConsoleEntry[]> {
+    return this.tab().consoleMessages(options);
   }
   async download(url: string, path: string, options?: DownloadOptions): Promise<DownloadOutcome> {
     return this.tab().download(url, path, options);

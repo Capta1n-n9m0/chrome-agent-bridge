@@ -77,9 +77,11 @@ describe("registerTools", () => {
   });
 
   // Amended 2026-10-25 (Step 11 S4, #241): 24 tools — browser_upload_file is added.
-  it("registers 24 tools (Step 8 S5 adds browser_use_active_tab, Step 11 S4 browser_upload_file)", () => {
+  // Amended 2026-10-27 (Step 12 S3b): 25 tools — browser_console_messages is added.
+  it("registers 25 tools (Step 8 S5 adds browser_use_active_tab, Step 11 S4 browser_upload_file, Step 12 S3b browser_console_messages)", () => {
     const names = Object.keys(tools(fakeBridge().bridge).registered);
-    expect(names).toHaveLength(24);
+    expect(names).toHaveLength(25);
+    expect(names).toContain("browser_console_messages");
     expect(names).toContain("browser_use_active_tab");
     expect(names).toContain("browser_upload_file");
   });
@@ -298,6 +300,8 @@ describe("tab resolution (T4.4)", () => {
       "browser_focus_tab", "browser_network_requests", "browser_network_clear",
       // Amended 2026-10-25 (Step 11 S4, #241): the new tab tool.
       "browser_upload_file",
+      // Amended 2026-10-27 (Step 12 S3b): the console tool.
+      "browser_console_messages",
     ];
     for (const name of Object.keys(registered)) {
       const shape = registered[name].inputSchema?.shape ?? {};
@@ -310,7 +314,7 @@ describe("tab resolution (T4.4)", () => {
         expect(shape.tab, name).toBeUndefined();
       }
     }
-    expect(tabTouching.filter((n) => registered[n])).toHaveLength(19); // 18 + browser_upload_file (Step 11 S4)
+    expect(tabTouching.filter((n) => registered[n])).toHaveLength(20); // 18 + browser_upload_file (Step 11 S4) + browser_console_messages (Step 12 S3b)
   });
 });
 
@@ -769,6 +773,7 @@ describe("no daemon (connect() failing)", () => {
     browser_use_active_tab: {},
     // Step 11 S4 (#241): a real file (this test file), so the preflight passes and the call reaches the link.
     browser_upload_file: { ref: "e1", paths: [fileURLToPath(import.meta.url)] },
+    browser_console_messages: {},
   };
 
   async function linkWithFailingConnect() {
@@ -785,10 +790,11 @@ describe("no daemon (connect() failing)", () => {
   }
 
   // Amended 2026-10-25 (Step 11 S4, #241): 24 tools.
-  it("registers all 24 tools and a tool call carries the stored reason", async () => {
+  // Amended 2026-10-27 (Step 12 S3b): 25 tools.
+  it("registers all 25 tools and a tool call carries the stored reason", async () => {
     const { link, connect } = await linkWithFailingConnect();
     const t = tools(link);
-    expect(Object.keys(t.registered)).toHaveLength(24);
+    expect(Object.keys(t.registered)).toHaveLength(25);
     expect(connect).toHaveBeenCalledTimes(1);
     await expect(t.run("browser_snapshot")).rejects.toThrow(REASON);
     expect(textOf(await t.run("browser_status"))).toBe(`Daemon: not connected\nProblem: ${REASON}`);

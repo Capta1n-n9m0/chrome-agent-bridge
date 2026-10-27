@@ -246,12 +246,29 @@ describe("S2.3 the tool list's names and input schemas equal f45e3bf's; the desc
       "Absolute paths of the files to put into the input (1–20; more than one only if the input takes several). Each must lie in a folder the user allowed in Chrome (extension options → Upload folders).",
   };
 
-  it("names and input schemas deep-equal the fixture captured at f45e3bf (browser_evaluate re-baselined by Step 10 S4, Step 11 S1 and Step 12 S2b; browser_upload_file added by Step 11 S4)", async () => {
+  // Re-baselined 2026-10-27 (Step 12 S3b; decisions.md #323, #334, #342's form, #344): the list gains exactly one
+  // entry, `browser_console_messages`, whose input schema is written out below (`tab` is
+  // browser_snapshot's own field). Every other tool is as above; the fixture file is left untouched.
+  const CONSOLE_TOOL = "browser_console_messages";
+  const CONSOLE_PROPERTIES = {
+    level: {
+      type: "string",
+      enum: ["error", "warning", "info", "debug"],
+      description: "Keep this level and every more severe one (error > warning > info > debug). Default: all four.",
+    },
+    limit: { type: "integer", minimum: 1, maximum: 200, description: "How many of the newest entries to print (1–200). Default 200." },
+  };
+
+  it("names and input schemas deep-equal the fixture captured at f45e3bf (browser_evaluate re-baselined by Step 10 S4, Step 11 S1 and Step 12 S2b; browser_upload_file added by Step 11 S4, browser_console_messages by Step 12 S3b)", async () => {
     const fixture = JSON.parse(
       readFileSync(fileURLToPath(new URL("./fixtures/tool-schemas-f45e3bf.json", import.meta.url)), "utf8"),
     ) as Array<{ name: string; inputSchema: { properties: Record<string, unknown> } }>;
     const all = await captureToolSchemas();
-    expect(all).toHaveLength(24);
+    expect(all).toHaveLength(25);
+    const consoleTool = all.filter((t) => t.name === CONSOLE_TOOL);
+    expect(consoleTool).toHaveLength(1);
+    const snapshot = fixture.find((t) => t.name === "browser_snapshot")!.inputSchema as { properties: Record<string, unknown> } & Record<string, unknown>;
+    expect(consoleTool[0]!.inputSchema).toEqual({ ...snapshot, properties: { tab: snapshot.properties.tab, ...CONSOLE_PROPERTIES } });
     const upload = all.filter((t) => t.name === UPLOAD_TOOL);
     expect(upload).toHaveLength(1);
     const click = fixture.find((t) => t.name === "browser_click")!.inputSchema as { properties: Record<string, unknown> } & Record<string, unknown>;
@@ -265,7 +282,7 @@ describe("S2.3 the tool list's names and input schemas equal f45e3bf's; the desc
       },
       required: ["paths"],
     });
-    const live = all.filter((t) => t.name !== UPLOAD_TOOL);
+    const live = all.filter((t) => t.name !== UPLOAD_TOOL && t.name !== CONSOLE_TOOL);
     expect(live.map((t) => t.name)).toEqual(fixture.map((t) => t.name));
     expect(fixture).toHaveLength(23);
     for (const [i, t] of live.entries()) {

@@ -133,20 +133,31 @@ const str = (v: unknown): string | undefined => (typeof v === "string" && v !== 
 const STACK_LINE = /\n\s*at\s/;
 const URL_IN_TEXT = /[a-z][a-z0-9+.-]*:\/\/[^\s()]+/gi;
 
+/** Marks a cut part V8 shortened (it ends in `…`): its sources are unknown, so the entry is dropped (#344 (3)). */
+const SHORTENED = "\u0000shortened";
+
 /** A description cut at its first stack line; the cut part's URLs are sources. */
 function cutStack(s: string, sources: string[]): string {
   const m = STACK_LINE.exec(s);
   if (!m) return s;
-  for (const u of s.slice(m.index).match(URL_IN_TEXT) ?? []) sources.push(u);
+  const cut = s.slice(m.index);
+  for (const u of cut.match(URL_IN_TEXT) ?? []) sources.push(u);
+  if (cut.trimEnd().endsWith("…")) sources.push(SHORTENED);
   return s.slice(0, m.index).trimEnd();
 }
 
-/** A preview's properties; each value cut like a description (an Error-valued property's value is its stack, F1). */
+/**
+ * A preview's properties; each value cut like a description (an Error-valued property's value is its stack, F1).
+ * A non-string value V8 shortened (ends in `…`) is an unknown source whether or not a stack line survived (S3b F1);
+ * a string value is shortened in the middle and carries no source.
+ */
 function previewText(p: Obj, sources: string[]): string {
   const props = Array.isArray(p.properties) ? (p.properties as unknown[]).map(obj) : [];
   const isArray = p.subtype === "array";
   const parts = props.map((q) => {
-    const v = cutStack(String(q.value ?? ""), sources);
+    const raw = String(q.value ?? "");
+    if (q.type !== "string" && raw.trimEnd().endsWith("…")) sources.push(SHORTENED);
+    const v = cutStack(raw, sources);
     return isArray ? v : `${String(q.name)}: ${v}`;
   });
   if (p.overflow === true) parts.push("…");
@@ -231,7 +242,7 @@ export function reduceConsole(events: readonly CdpEvent[], o: ReduceOptions): Co
     // The filters, before anything is stripped (#333): every source must pass, and there must be a real one. A string
     // that is not a URL with a host or a known scheme (`null`, `<anonymous>`, a bare `//# sourceURL=` name) still meets
     // the predicate, but does not count as the one source (M-1).
-    if (sources.some((u) => o.dropSource(u)) || !sources.some(isSourceUrl)) continue;
+    if (sources.includes(SHORTENED) || sources.some((u) => o.dropSource(u)) || !sources.some(isSourceUrl)) continue;
     if (typeof entry.ts !== "number" || !Number.isFinite(entry.ts) || entry.ts < o.floor) continue;
     if (CONSOLE_LEVELS.indexOf(entry.level) > maxRank) continue;
     out.push({ ...entry, text: capText(entry.text) });

@@ -245,8 +245,10 @@ describe("S3.3 — no tool added, removed or renamed", () => {
   // `browser_upload_file`, registered right after `browser_select_option`; Step 8's 23 keep their order.
   it("the 23 tool names, in registration order, are Step 8's; Step 11 adds browser_upload_file after browser_select_option", () => {
     const names = Object.keys(tools(fakeBridge().bridge).registered);
-    expect(names.filter((n) => n !== "browser_upload_file")).toEqual(STEP8_TOOLS);
-    expect(names).toHaveLength(24);
+    // Amended 2026-10-27 (Step 12 S3b): browser_console_messages is registered last; 25 tools.
+    expect(names.filter((n) => n !== "browser_upload_file" && n !== "browser_console_messages")).toEqual(STEP8_TOOLS);
+    expect(names).toHaveLength(25);
+    expect(names[names.length - 1]).toBe("browser_console_messages");
     expect(names.indexOf("browser_upload_file")).toBe(names.indexOf("browser_select_option") + 1);
   });
 

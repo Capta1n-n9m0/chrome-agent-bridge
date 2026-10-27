@@ -154,6 +154,40 @@ describe("reduceConsole — the source filter runs before stripping (G-7, F8 (c)
     expect(JSON.stringify(out)).not.toMatch(/https?:|\bat t\b|SECRET-TOK/);
   });
 
+  it("Note A (#344 (3)): a preview value V8 shortened (its cut part ends in `…`) is an unknown source and drops its entry", () => {
+    const withVal = (v: string) => ({ type: "object", className: "Object", description: "Object", preview: { type: "object", properties: [{ name: "e", type: "object", subtype: "error", value: v }] } });
+    const out = reduceConsole(
+      [
+        ctx(1, "https://www.shop.example"),
+        log({ args: [withVal("Error: secret-msg\n    at t (https://ads.ba…")], ts: 2001 }),
+        log({ args: [withVal("Error: secret-msg\n    at t (https://ads.bank.exa…  ")], ts: 2002 }),
+        log({ args: [withVal(`Error: kept\n    at t (${PAGE}:1:1)`)], ts: 2003 }),
+      ],
+      opts(),
+    );
+    expect(out.map((e) => e.text)).toEqual(["Object {e: Error: kept}"]);
+    expect(JSON.stringify(out)).not.toContain("secret-msg");
+  });
+
+  const shortVal = (v: string, type = "object") => ({ type: "object", className: "Object", description: "Object", preview: { type: "object", properties: [{ name: "e", type, subtype: type === "object" ? "error" : undefined, value: v }] } });
+
+  it("Note A, S3b F1: a non-string preview value shortened inside the message (no stack line left) drops its entry; a string value stays", () => {
+    const out = reduceConsole(
+      [ctx(1, "https://www.shop.example"), log({ args: [shortVal(`Error: secret-msg-${"x".repeat(80)}…`)], ts: 2001 }), log({ args: [shortVal("str-kept…", "string")], ts: 2002 })],
+      opts(),
+    );
+    expect(out.map((e) => e.text)).toEqual(["Object {e: str-kept…}"]);
+    expect(JSON.stringify(out)).not.toContain("secret-msg");
+  });
+
+  it("Note A, S3b F1: a non-string preview value shortened inside `at` (no stack line matched) drops its entry", () => {
+    const out = reduceConsole(
+      [ctx(1, "https://www.shop.example"), log({ args: [shortVal("Error: secret-msg\n    at…")], ts: 2001 }), log({ args: [shortVal("Error: secret-msg\n    at…  ")], ts: 2002 })],
+      opts(),
+    );
+    expect(out).toEqual([]);
+  });
+
   it("M-1: a source that is not a URL with a host or a known scheme does not count (no other source → dropped)", () => {
     const events: CdpEvent[] = [];
     ["null", "foo.js", "<anonymous>", "webpack-internal:///./a.js"].forEach((u, i) => events.push(log({ ctx: 99, url: u, ts: 2001 + i })));

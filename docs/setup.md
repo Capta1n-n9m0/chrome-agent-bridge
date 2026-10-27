@@ -134,7 +134,7 @@ automation in a window of its own and verifies it; see `docs/e2e-test-plan.md` �
 
 ## 5. Use it
 
-With the daemon running and the extension connected, call the 24 tools from your client. Every tool
+With the daemon running and the extension connected, call the 25 tools from your client. Every tool
 marked *tab* also takes an optional `tab` argument — see [Tabs](#tabs) below; without it the tool
 acts on **this session's tab**.
 
@@ -160,6 +160,7 @@ acts on **this session's tab**.
 | `browser_evaluate(expression, timeoutMs?, asRef?, saveTo?, overwrite?, args?)` *tab* | Run JavaScript in the tab's page context and return the result (shows the debugging banner); `asRef:true` also returns a `[ref=eN]` for an element result, to act on with the other tools; `saveTo` (an absolute file path) writes the value to that file instead and answers only path, size, kind and sha256; `args` (any JSON value, at most 1 MiB) makes `expression` a function source called with it, such as `"(a) => a.rows.length"` (one function expression, no trailing `;`; an extension older than Step 12 answers `VERSION` — reload it) — see [Running JavaScript](#running-javascript) |
 | `browser_network_requests(tab?, filter?, types?, failedOnly?, limit?, includeHeaders?, id?)` | List the network requests the tab has made — method, status, type, duration, size, URL — captured continuously with no banner; `id` shows one request's headers and body summary |
 | `browser_network_clear(tab?)` | Forget the recorded network requests, so the next `browser_network_requests` shows only what your next action caused |
+| `browser_console_messages(level?, limit?)` *tab* | List the console messages and uncaught errors Chrome kept for the tab's page, those logged before the call included: one line per entry, oldest first (time in UTC, level, `uncaught`, text); `level` keeps that level and every more severe one (`error` > `warning` > `info` > `debug`), `limit` 1–200 (default 200) the newest. Limits: no source URL or stack, a text cut at 2000 characters; the page's frames are not read; entries from a blocked site, the extension or a `file:` page, and those logged before the bridge was last switched on or before the extension's worker last restarted, are left out; refused `JS_DISABLED` while JavaScript is off, and wherever `browser_snapshot` is refused; shows the debugging banner while it reads (Step 12, #323, #334) |
 | `browser_upload_file(ref \| locator, paths)` *tab* | Put 1–20 local files (absolute paths) into a file input, or a label or element holding exactly one, as if you had picked them in the file dialog. Refused `UPLOAD_REFUSED` unless each file is in an **Upload folders** folder you allowed and Chrome's **Allow access to file URLs** is on for the extension; the tab is not brought to the front; answers each file's name, size and sha256 — see [Uploading files](#uploading-files) |
 | `browser_download(url, path, overwrite?, timeoutMs?)` | Save a URL to disk with the profile's cookies (fetched by the extension's service worker: no CORS, cross-origin redirects followed). `path` is absolute — a file, or a directory to use the response's filename. Reports size, type and sha256 |
 
@@ -640,7 +641,7 @@ this browser" banner for the duration, exactly like `trusted:true` input.
 
 **The JavaScript switch.** Untick **Allow JavaScript (browser_evaluate)** in the options page and
 every `browser_evaluate` (with `asRef` or `saveTo` too) is refused `JS_DISABLED`, while every other
-tool keeps working; the Blackboard recipes need it ticked. See [Safety](#the-javascript-switch).
+tool except `browser_console_messages` (refused too) keeps working; the Blackboard recipes need it ticked. See [Safety](#the-javascript-switch).
 *Superseded 2026-10-25: was "refused `DISARMED` with scope `evaluate`", because Step 10 S4b gave
 "JavaScript is off" its own code (#202, #219).*
 
@@ -906,11 +907,11 @@ closes an open options page.
 With **Allow JavaScript (browser_evaluate)** unticked, `browser_evaluate` (with or without `asRef`, with
 or without `saveTo`; the SDK's `tab.evaluate`, `tab.evaluateRef` and `tab.evaluateToFile`) and a
 `browser_navigate`/`browser_new_tab` to a `javascript:`, `data:` or `blob:` URL are refused with the
-code `JS_DISABLED`, with no `data`; every other tool keeps working (decisions.md · 2026-10-24 · The user
+code `JS_DISABLED`, with no `data`; so is `browser_console_messages` (Step 12); every other tool keeps working (decisions.md · 2026-10-24 · The user
 rules on the 32 Step 9 open decisions; Step 9 closes (#202); · Script URLs and the JavaScript switch; own
 pages of every extension). The extension's message is "The user has turned JavaScript off for the bridge
 in Chrome (browser_evaluate and script URLs are refused). Every other tool still works; ask the user
-before relying on browser_evaluate." Claude sees one line instead of a failure report (no screenshot, no
+before relying on browser_evaluate." (`browser_console_messages` is refused too, though this text predates it.) Claude sees one line instead of a failure report (no screenshot, no
 snapshot): `JS_DISABLED: the user has turned JavaScript off for the bridge in Chrome, so evaluate
 (browser_evaluate) is refused; every other call still works. Ask the user before relying on it; do not
 retry it.` (`extension/src/safety.ts` `JS_DISABLED_MESSAGE`; `sdk/src/error.ts` `safetyRefusalLine`). The
@@ -1172,7 +1173,7 @@ S2 added `UPLOAD_REFUSED` (#237).*
   logged-in page, plus a user gesture — anything you could do in that tab's DevTools console the
   agent can do: read tokens out of `localStorage`, call authenticated APIs with the page's cookies,
   submit forms, open popups, write the clipboard. Untick **Allow JavaScript** in the options page to
-  refuse it while keeping every other tool ([Safety](#safety)).
+  refuse it while keeping every other tool except `browser_console_messages` ([Safety](#safety)).
   Neither the expression nor its result is ever logged — the service worker records only the
   expression's length. *Superseded 2026-10-24: was "The localhost bind and the shared token remain
   the only boundary; there is no per-domain allow-list yet (an arm/disarm toggle is on the roadmap)",
