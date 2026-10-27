@@ -109,7 +109,7 @@ describe("extension hello (#42)", () => {
   it("is a v2 hello with role extension and proto 2", () => {
     const h = parse(helloFrame("tok"));
     expect(isHello(h)).toBe(true);
-    expect(h).toEqual({ type: "hello", token: "tok", role: "extension", proto: 2 });
+    expect(h).toEqual({ type: "hello", token: "tok", role: "extension", proto: 2, features: ["evaluateArgs"] });
   });
 });
 
@@ -117,8 +117,8 @@ describe("extension hello carries the session marker (Step 8 S2b.5, decisions.md
   it("adds session when a marker is given; omits it when none or empty", () => {
     const h = parse(helloFrame("tok", "marker-1"));
     expect(isHello(h)).toBe(true);
-    expect(h).toEqual({ type: "hello", token: "tok", role: "extension", proto: 2, session: "marker-1" });
-    expect(parse(helloFrame("tok", ""))).toEqual({ type: "hello", token: "tok", role: "extension", proto: 2 });
-    expect(parse(helloFrame("tok", undefined))).toEqual({ type: "hello", token: "tok", role: "extension", proto: 2 });
+    expect(h).toEqual({ type: "hello", token: "tok", role: "extension", proto: 2, session: "marker-1", features: ["evaluateArgs"] });
+    expect(parse(helloFrame("tok", ""))).toEqual({ type: "hello", token: "tok", role: "extension", proto: 2, features: ["evaluateArgs"] });
+    expect(parse(helloFrame("tok", undefined))).toEqual({ type: "hello", token: "tok", role: "extension", proto: 2, features: ["evaluateArgs"] });
   });
 });

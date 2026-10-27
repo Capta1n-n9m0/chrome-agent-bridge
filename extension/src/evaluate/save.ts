@@ -187,11 +187,20 @@ async function release(send: Send, objectId: string | undefined): Promise<void> 
 export async function collectSaveText(expression: string, timeoutMs: number, deps: SaveCollectDeps): Promise<SaveText> {
   const { send } = deps;
   const evalRace = deps.evalRace ?? identity;
+  const raw = (await evalRace(send("Runtime.evaluate", saveEvaluateParams(expression, timeoutMs)))) as CdpEvaluateResponse;
+  return collectSaveFromRaw(raw, deps);
+}
+
+/**
+ * Steps 2–5 from a completion value already produced (step 1's reply, or Step 12's `args` call: `evaluate/call.ts`,
+ * whose own race and deadline stop bound it).
+ */
+export async function collectSaveFromRaw(raw: CdpEvaluateResponse, deps: SaveCollectDeps): Promise<SaveText> {
+  const { send } = deps;
+  const evalRace = deps.evalRace ?? identity;
   const transferRace = deps.transferRace ?? identity;
   const maxUnits = deps.maxUnits ?? SAVE_MAX_VALUE_BYTES;
   const sliceUnits = Math.max(1, Math.floor(deps.sliceUnits ?? SAVE_SLICE_UNITS));
-
-  const raw = (await evalRace(send("Runtime.evaluate", saveEvaluateParams(expression, timeoutMs)))) as CdpEvaluateResponse;
   if (raw.exceptionDetails) throw pageError(raw.exceptionDetails);
   const r: CdpRemoteObject = raw.result ?? { type: "undefined" };
   if (typeof r.objectId !== "string") return primitiveSaveText(r, maxUnits);

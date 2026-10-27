@@ -50,7 +50,15 @@ export interface HelloMessage {
    * mechanism, amended (#80)).
    */
   session?: string;
+  /**
+   * Step 12 S2a (#332): what this extension build can do, e.g. `["evaluateArgs"]` (`FEATURE_EVALUATE_ARGS`). Optional,
+   * an array of strings when present; proto stays 2. The daemon refuses `args` to an extension that did not list it.
+   */
+  features?: string[];
 }
+
+/** The hello feature of an extension that runs `evaluate`/`evaluateSaveStart` with `args` (Step 12, #332). */
+export const FEATURE_EVALUATE_ARGS = "evaluateArgs";
 
 /** The daemon's answer to a client's hello (spec §10). */
 export interface WelcomeMessage {
@@ -160,6 +168,12 @@ export function isErrorResponse(value: ResponseMessage): value is ErrorResponse 
   return "error" in value;
 }
 
+function isStringArray(value: unknown): value is string[] {
+  if (!Array.isArray(value)) return false;
+  for (let i = 0; i < value.length; i++) if (typeof value[i] !== "string") return false;
+  return true;
+}
+
 export function isHello(value: unknown): value is HelloMessage {
   if (!isObject(value)) return false;
   const v = value;
@@ -169,6 +183,7 @@ export function isHello(value: unknown): value is HelloMessage {
   if ("build" in v && typeof v.build !== "string") return false;
   if ("proto" in v && typeof v.proto !== "number") return false;
   if ("session" in v && typeof v.session !== "string") return false;
+  if ("features" in v && !isStringArray(v.features)) return false;
   return true;
 }
 
@@ -392,6 +407,79 @@ export interface EvaluateSaveStartParams {
   expression: string;
   /** The page-side bound, as `evaluate`'s (default 10 000, clamped to [100, 60 000]). */
   timeoutMs?: number;
+  /** Step 12: with it, `expression` is a function source called with this one JSON value (`checkEvaluateArgs`). */
+  args?: unknown;
+}
+
+// ── Step 12 S2a: `args` for `evaluate` and `evaluateSaveStart` (phase doc 0.4 with its Stage 0 note; decisions.md
+// #322, #330, #331; spec §10's Step 12 note). With `args`, `expression` is a function source; the extension evaluates
+// it to a function object and calls it through a fixed wrapper with `JSON.stringify(args)` as a CDP argument, never
+// inside an expression. This guard holds the caps and refusals; the SDK and the extension call it.
+
+/** `args` is at most this many bytes of UTF-8 JSON (1 MiB). */
+export const EVALUATE_ARGS_MAX_BYTES = 1_048_576;
+
+/** `checkEvaluateArgs`' answer: the exact JSON to send, or a fixed refusal message (never a part of the value). */
+export type EvaluateArgsCheck = { ok: true; json: string } | { ok: false; message: string };
+
+const ARGS_REFUSALS = {
+  undefined: "args: the value holds undefined, which JSON cannot carry — use null, or leave the key out",
+  function: "args: the value holds a function, which JSON cannot carry — pass plain JSON data",
+  symbol: "args: the value holds a symbol, which JSON cannot carry — pass plain JSON data",
+  bigint: "args: the value holds a BigInt, which JSON cannot carry — pass it as a string or a number",
+  nonFinite: "args: the value holds NaN or an infinite number, which JSON turns into null — pass null or a string",
+  cycle: "args: the value holds a cycle (an object that contains itself), which JSON cannot carry",
+  threw: "args: JSON.stringify threw on the value (a throwing toJSON or getter) — pass plain JSON data",
+} as const;
+
+/** The replacer's own stop, told apart from anything the value's own code throws. */
+class ArgsRefusal {
+  constructor(readonly message: string) {}
+}
+
+function utf8Bytes(s: string): number {
+  let n = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c < 0x80) n += 1;
+    else if (c < 0x800) n += 2;
+    else if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length && (s.charCodeAt(i + 1) & 0xfc00) === 0xdc00) {
+      n += 4;
+      i++;
+    } else n += 3;
+  }
+  return n;
+}
+
+/**
+ * `args` must pass `JSON.stringify` with nothing dropped, thrown on or turned into `null` (the value a `toJSON`
+ * returns is what is checked), and give at most `EVALUATE_ARGS_MAX_BYTES` of UTF-8. Every refusal is one of fixed
+ * texts naming the type or the size.
+ */
+export function checkEvaluateArgs(args: unknown): EvaluateArgsCheck {
+  let json: string | undefined;
+  try {
+    json = JSON.stringify(args, (_key, v: unknown) => {
+      const t = typeof v;
+      if (t === "undefined") throw new ArgsRefusal(ARGS_REFUSALS.undefined);
+      if (t === "function") throw new ArgsRefusal(ARGS_REFUSALS.function);
+      if (t === "symbol") throw new ArgsRefusal(ARGS_REFUSALS.symbol);
+      if (t === "bigint") throw new ArgsRefusal(ARGS_REFUSALS.bigint);
+      if (t === "number" && !Number.isFinite(v)) throw new ArgsRefusal(ARGS_REFUSALS.nonFinite);
+      return v;
+    });
+  } catch (e) {
+    if (e instanceof ArgsRefusal) return { ok: false, message: e.message };
+    // V8 "circular structure", SpiderMonkey "cyclic object value", JSC "cyclic structures".
+    if (e instanceof TypeError && /circular|cyclic/i.test(e.message)) return { ok: false, message: ARGS_REFUSALS.cycle };
+    return { ok: false, message: ARGS_REFUSALS.threw };
+  }
+  if (typeof json !== "string") return { ok: false, message: ARGS_REFUSALS.undefined };
+  const bytes = utf8Bytes(json);
+  if (bytes > EVALUATE_ARGS_MAX_BYTES) {
+    return { ok: false, message: `args: the value is ${bytes} bytes as JSON, over the 1 MiB cap (${EVALUATE_ARGS_MAX_BYTES} bytes)` };
+  }
+  return { ok: true, json };
 }
 
 /**

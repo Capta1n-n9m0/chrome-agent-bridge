@@ -1,16 +1,23 @@
+import { FEATURE_EVALUATE_ARGS } from "@bridge/shared";
+
 type MessageHandler = (data: string) => void;
 
 /**
  * The extension's first frame: a v2 hello saying `role:"extension", proto:2` (decisions.md ·
  * 2026-10-22 · A stale extension is refused for tab calls, detected by its hello (#42)). A Step 6
  * daemon accepts it as the extension (Stage 0 probe P1). Step 8 S2b adds the session marker when there
- * is one (decisions.md · 2026-10-23 · #74, amended by #80); it is sent, never logged.
+ * is one (decisions.md · 2026-10-23 · #74, amended by #80); it is sent, never logged. Step 12 S2a adds
+ * `features` (#332; proto stays 2).
  */
 export function helloFrame(token: string, session?: string): string {
   const hello: Record<string, unknown> = { type: "hello", token, role: "extension", proto: 2 };
   if (typeof session === "string" && session !== "") hello.session = session;
+  hello.features = [...EXTENSION_FEATURES];
   return JSON.stringify(hello);
 }
+
+/** Step 12 S2a (#332): what this build can do, sent in every hello; the daemon refuses `args` to a build without it. */
+export const EXTENSION_FEATURES: readonly string[] = [FEATURE_EVALUATE_ARGS];
 
 export interface ClientOptions {
   url: string;

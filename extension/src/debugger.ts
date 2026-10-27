@@ -5,7 +5,8 @@ import { BridgeError, ErrorCodes } from "./errors.js";
 import { DebuggerSessions, runWithDebugger, type EffectGuard } from "./safety-debugger.js";
 import { SERIALIZER_SRC, type SerializeLimits } from "./evaluate/serialize.js";
 import { shapeEvaluateResult, pendingPromiseId, type CdpEvaluateResponse } from "./evaluate/result.js";
-import { collectSaveText, type SaveText } from "./evaluate/save.js";
+import { collectSaveFromRaw, collectSaveText, type SaveText } from "./evaluate/save.js";
+import { callWithArgs, type ArgsCallDeps, type PausedEvent } from "./evaluate/call.js";
 import { UPLOAD_CDP_TIMEOUT_MS, setFilesByMark, uploadTimeoutMessage } from "./upload-files.js";
 
 const PROTOCOL = "1.3";
@@ -204,34 +205,95 @@ export async function evaluateInPage(
           )) as CdpEvaluateResponse;
         }
 
-        return shapeEvaluateResult(raw, {
-          limits,
-          callFn: async (objectId, lim) => {
-            const res = (await raceTimeout(
-              send(tabId, "Runtime.callFunctionOn", {
-                objectId,
-                functionDeclaration: SERIALIZER_SRC,
-                arguments: [{ value: lim }],
-                returnByValue: true,
-              }),
-              remaining(),
-              timeoutMessage(timeoutMs),
-            )) as CdpEvaluateResponse;
-            if (res.exceptionDetails) throw new Error("the in-page serialiser threw");
-            try {
-              await send(tabId, "Runtime.releaseObject", { objectId });
-            } catch {
-              /* best effort — the context may already be gone */
-            }
-            return res.result?.value as EvalEnvelope;
-          },
-        });
+        return shapeEvaluateResult(raw, { limits, callFn: serializerCall(tabId, remaining, timeoutMs) });
       },
       "browser_evaluate",
       guard,
     );
   } catch (err) {
     // Whichever branch it came through, a CDP-terminated script reads as a timeout to the agent.
+    if (isExecutionTerminated(err)) throw new BridgeError(ErrorCodes.TIMEOUT, timeoutMessage(timeoutMs));
+    throw err;
+  }
+}
+
+/** The in-page serialiser over a result's objectId (`shapeEvaluateResult`'s `callFn`), on the call's deadline. */
+function serializerCall(tabId: number, remaining: () => number, timeoutMs: number) {
+  return async (objectId: string, lim: SerializeLimits): Promise<EvalEnvelope> => {
+    const res = (await raceTimeout(
+      send(tabId, "Runtime.callFunctionOn", {
+        objectId,
+        functionDeclaration: SERIALIZER_SRC,
+        arguments: [{ value: lim }],
+        returnByValue: true,
+      }),
+      remaining(),
+      timeoutMessage(timeoutMs),
+    )) as CdpEvaluateResponse;
+    if (res.exceptionDetails) throw new Error("the in-page serialiser threw");
+    try {
+      await send(tabId, "Runtime.releaseObject", { objectId });
+    } catch {
+      /* best effort — the context may already be gone */
+    }
+    return res.result?.value as EvalEnvelope;
+  };
+}
+
+/**
+ * Step 12 S2a: this tab's next `Debugger.paused` params, or undefined after `ms`. The listener lives only for this
+ * wait and is removed on both outcomes; the event is handed to `callWithArgs` and never logged.
+ */
+function waitPaused(tabId: number, ms: number): Promise<PausedEvent | undefined> {
+  return new Promise((resolve) => {
+    const listener = (source: chrome.debugger.Debuggee, method: string, params?: object) => {
+      if (source.tabId === tabId && method === "Debugger.paused") done(params as PausedEvent | undefined);
+    };
+    const timer = setTimeout(() => done(undefined), ms);
+    function done(v: PausedEvent | undefined): void {
+      clearTimeout(timer);
+      chrome.debugger.onEvent.removeListener(listener);
+      resolve(v);
+    }
+    chrome.debugger.onEvent.addListener(listener);
+  });
+}
+
+function argsCallDeps(tabId: number, remaining: () => number, timeoutMs: number): ArgsCallDeps {
+  return {
+    send: (method, params) => send(tabId, method, params),
+    race: (p) => raceTimeout(p, remaining(), timeoutMessage(timeoutMs)),
+    waitPaused: (ms) => waitPaused(tabId, ms),
+  };
+}
+
+/**
+ * Step 12 S2a (#330, #331): `evaluate` with `args` — `callWithArgs` (`evaluate/call.ts`: the source as a function
+ * object, the fixed wrapper with the JSON text as an argument, the pause-terminate bound, `Debugger.disable`) in ONE
+ * session, the result through the same serialiser as `evaluateInPage`, one deadline. A terminated script reads as
+ * today's timeout.
+ */
+export async function evaluateFunctionInPage(
+  tabId: number,
+  source: string,
+  argsJson: string,
+  timeoutMs: number,
+  limits: SerializeLimits,
+  guard?: EffectGuard,
+): Promise<EvalEnvelope> {
+  const deadline = Date.now() + timeoutMs;
+  const remaining = () => Math.max(0, deadline - Date.now());
+  try {
+    return await withDebugger(
+      tabId,
+      () =>
+        callWithArgs(source, argsJson, timeoutMs, argsCallDeps(tabId, remaining, timeoutMs), (raw) =>
+          shapeEvaluateResult(raw, { limits, callFn: serializerCall(tabId, remaining, timeoutMs) }),
+        ),
+      "browser_evaluate",
+      guard,
+    );
+  } catch (err) {
     if (isExecutionTerminated(err)) throw new BridgeError(ErrorCodes.TIMEOUT, timeoutMessage(timeoutMs));
     throw err;
   }
@@ -260,6 +322,32 @@ export async function evaluateToSave(tabId: number, expression: string, timeoutM
           evalRace: (p) => raceTimeout(p, left(evalDeadline), timeoutMessage(timeoutMs)),
           transferRace: (p) => raceTimeout(p, left(transferDeadline), transferMessage),
         }),
+      "browser_evaluate",
+      guard,
+    );
+  } catch (err) {
+    if (isExecutionTerminated(err)) throw new BridgeError(ErrorCodes.TIMEOUT, timeoutMessage(timeoutMs));
+    throw err;
+  }
+}
+
+/** Step 12 S2a: `evaluateSaveStart` with `args` — `callWithArgs`, then the save path from its result (`collectSaveFromRaw`). */
+export async function evaluateFunctionToSave(tabId: number, source: string, argsJson: string, timeoutMs: number, guard?: EffectGuard): Promise<SaveText> {
+  const evalDeadline = Date.now() + timeoutMs;
+  const transferDeadline = evalDeadline + SAVE_TRANSFER_MS;
+  const left = (deadline: number) => Math.max(0, deadline - Date.now());
+  const transferMessage = `Timed out after ${SAVE_TRANSFER_MS / 1000}s reading the value out of the page — nothing was saved`;
+  try {
+    return await withDebugger(
+      tabId,
+      () =>
+        callWithArgs(source, argsJson, timeoutMs, argsCallDeps(tabId, () => left(evalDeadline), timeoutMs), (raw) =>
+          collectSaveFromRaw(raw, {
+            send: (method, params) => send(tabId, method, params),
+            evalRace: (p) => raceTimeout(p, left(evalDeadline), timeoutMessage(timeoutMs)),
+            transferRace: (p) => raceTimeout(p, left(transferDeadline), transferMessage),
+          }),
+        ),
       "browser_evaluate",
       guard,
     );

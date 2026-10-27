@@ -1,6 +1,7 @@
 import type { EvaluateSaveChunkResult, EvaluateSaveStartResult } from "@bridge/shared";
 import { pageTab, requireTabId } from "../tabs.js";
-import { evaluateToSave } from "../debugger.js";
+import { evaluateFunctionToSave, evaluateToSave } from "../debugger.js";
+import { evaluateArgsJson } from "./evaluate.js";
 import { wrapExpression } from "../evaluate/wrap.js";
 import { toBase64 } from "../download.js";
 import { BridgeError, ErrorCodes } from "../errors.js";
@@ -53,11 +54,16 @@ export async function evaluateSaveStart(p: Record<string, unknown>, call?: Handl
   if (!expression.trim()) {
     throw new BridgeError(ErrorCodes.BAD_PARAMS, 'evaluateSaveStart requires a non-empty "expression" string');
   }
+  const argsJson = evaluateArgsJson(p);
   const timeoutMs = clampTimeout(p.timeoutMs);
   const tab = await pageTab(p, "evaluateSaveStart");
   const tabId = tab.id!;
-  // The gate is re-checked before the debugger attaches (`call` as withDebugger's guard, #137).
-  const { text, kind } = await evaluateToSave(tabId, wrapExpression(expression), timeoutMs, call);
+  // The gate is re-checked before the debugger attaches (`call` as withDebugger's guard, #137). Step 12: with
+  // `args`, the source runs as a function and `args` travels only as a CDP argument.
+  const { text, kind } =
+    argsJson === undefined
+      ? await evaluateToSave(tabId, wrapExpression(expression), timeoutMs, call)
+      : await evaluateFunctionToSave(tabId, expression, argsJson, timeoutMs, call);
   const bytes = new TextEncoder().encode(text);
   if (bytes.length > SAVE_MAX_VALUE_BYTES) throw tooLargeError();
   const id = store.put(tabId, bytes, kind);

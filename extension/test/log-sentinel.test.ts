@@ -622,3 +622,47 @@ describe("Step 11b S0F-b sentinel test — the missing-file probe names no path 
     expect(captured).toHaveLength(1); // the capture is live, so the empty check above is not vacuous
   });
 });
+
+describe("Step 12 S2a sentinel test — no args value in any captured log line", () => {
+  it("extension: evaluate and evaluateSaveStart with args — success, the deadline stop, every refusal", async () => {
+    const ARGS_SENT = "sentinel-args-value-T5W8";
+    const { EngineCdp } = await import("./s12-engine-cdp.js");
+    const { evaluate } = await import("../src/handlers/evaluate.js");
+    const saves = await import("../src/handlers/evaluate-save.js");
+    const cdp = new EngineCdp();
+    let listeners: Array<(s: { tabId?: number }, m: string, p?: object) => void> = [];
+    cdp.override["Debugger.pause"] = () => {
+      queueMicrotask(() => listeners.forEach((l) => l({ tabId: 4 }, "Debugger.paused", { callFrames: [{ location: { scriptId: "fn-script-1", url: ARGS_SENT } }] })));
+      return {};
+    };
+    vi.stubGlobal("chrome", {
+      tabs: { get: async (tabId: number) => ({ id: tabId, url: OTHER_URL, discarded: false }) },
+      debugger: {
+        attach: async () => {},
+        detach: async () => {},
+        sendCommand: async (_t: unknown, m: string, p: Record<string, unknown>) => cdp.send(m, p),
+        onEvent: { addListener: (l: (typeof listeners)[number]) => void listeners.push(l), removeListener: (l: (typeof listeners)[number]) => void (listeners = listeners.filter((x) => x !== l)) },
+      },
+    });
+    const args = { s: ARGS_SENT, n: null };
+    try {
+      expect(await evaluate({ tabId: 4, expression: "(a) => a.s", args })).toMatchObject({ value: ARGS_SENT });
+      await evaluate({ tabId: 4, expression: "(a) => { throw new Error(a.s); }", args }).catch(() => {});
+      await evaluate({ tabId: 4, expression: "42", args }).catch(() => {});
+      await evaluate({ tabId: 4, expression: "(a) => a", args: { s: ARGS_SENT.repeat(50_000) } }).catch(() => {});
+      await evaluate({ tabId: 4, expression: "(a) => a", args: { s: ARGS_SENT, f: () => ARGS_SENT } }).catch(() => {});
+      const start = await saves.evaluateSaveStart({ tabId: 4, expression: "(a) => a", args });
+      await saves.evaluateSaveChunk({ tabId: 4, id: start.id, offset: 0 });
+      cdp.override["Runtime.callFunctionOn"] = (p) => (String(p.functionDeclaration).includes("JSON.parse(json)") ? new Promise(() => {}) : undefined);
+      const { evaluateFunctionInPage } = await import("../src/debugger.js");
+      const { DEFAULT_LIMITS } = await import("../src/evaluate/serialize.js");
+      await evaluateFunctionInPage(4, "(a) => { while (true) {} }", JSON.stringify(args), 50, DEFAULT_LIMITS).catch(() => {});
+      expect(cdp.calls.some((c) => c.method === "Debugger.resume")).toBe(true); // the stop path ran
+    } finally {
+      saves.clearEvaluateSaves();
+      vi.unstubAllGlobals();
+    }
+    expect(captured.some((l) => l.includes("[bridge] evaluate"))).toBe(true); // the capture is live
+    for (const line of captured) expect(line.toLowerCase().includes(ARGS_SENT.toLowerCase()), `an args sentinel in a log line: ${line.length} chars`).toBe(false);
+  });
+});
