@@ -178,6 +178,17 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 11b), newest first. Step 11's are in `decisions-archive/step11.md`.
 
+### 2026-10-27 · S7-live: attempt 1's throw before any state change was a set-up failure, not a STOP (#317)
+**Decided:** Run 17b's attempt 1 threw inside R17B-0, after the read-only reads and before the first state change: a
+PowerShell 5.1 `-File` script's top-level `$o` overwrote `$global:O` (the options-window handle; names are
+case-insensitive). The helper was fixed (`6f3413c`, a test red on the old file, Opus verifier PASS-with-notes) and the
+wave re-ran as attempt 2, which ran both slices with no STOP.
+**Why:** the pre-registered STOP lines name "any throw after the first state change" (`agent-rules.md` §6, §4.25);
+this throw came before it, so no STOP line was crossed and nothing measured was re-tuned.
+**Instead of:** returning for a ruling on a throw no STOP rule names.
+**Revisit if:** attempt 1's record shows any state change before the throw.
+**By:** Claude
+
 ### 2026-10-27 · S7-helpers accepted; three readings of the sheet adopted (#316)
 **Decided:** S7-helpers as built (`6c0eddc`; three Sonnet slices, four Opus verifier rounds, three fix rounds, the
 third Opus). Adopted from its report, each the sheet's own reading: (1) a leftover blank tab in R17B-NEWTAB-REFUSED

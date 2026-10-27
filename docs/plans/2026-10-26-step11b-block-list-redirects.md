@@ -616,6 +616,13 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   modules, `B17 history --activate`, `tabwatch`, `build-proof`, `newtab-timed`, `ctl-slow`, `Invoke-S11bPressAfterReply`.
   Offline only. Tests 4560/184 → 4663/190, none removed. #316. Report `…-steps/S7-helpers.md`.
 
+### S7-live · 2026-10-27 · `6f3413c` (helper fix), `145ceb9` (evidence) · two attempts, no STOP
+- Attempt 1 threw in R17B-0 before any state change (a helper variable clash; #317); attempt 2 ran liveA17B and
+  liveB17B (file-URL toggle ON) to the end. D7.2: the first line proves Step 11b's permission and the S6 build
+  (`created-url=about:blank`). D7.5: both slices read back equal. D7.7: attempt 1's return in the ledger. Helper output
+  (judged in S7-record): R17B-RD-2 `blocked=0`; the activated back rows blocked 0. Tests 4663/190 → 4665/191. Report
+  `…-steps/S7-live.md`.
+
 ## Open items
 
 - *Rewritten 2026-10-27 (cleanup P12):* for the user at the gate: #292, #293, #295, #307–#309 — **ruled

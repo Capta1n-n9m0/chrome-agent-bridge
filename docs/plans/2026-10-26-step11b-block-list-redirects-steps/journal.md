@@ -46,3 +46,4 @@ effort · start → end.
 - 2026-10-27T04:52Z · S6 · step agent · Opus · medium — DONE, 6259421 + db3f82e, verifier PASS-with-notes (one fix round); tests 4560/184; #313, #314.
 - 2026-10-27T05:18Z · S7-sheet · step agent · Opus · medium — DONE, 3cfbb95, verifier PASS (two fix rounds); #315.
 - 2026-10-27T06:39Z · S7-helpers · step agent · Opus · medium — DONE, 6c0eddc, verifier PASS-with-notes (three fix rounds); tests 4663/190; #316.
+- 2026-10-27T07:13Z · S7-live · step agent · Opus · medium — DONE, 6f3413c + 145ceb9, two attempts (attempt 1 a set-up throw before any state change, #317), no STOP; D7.2, D7.5, D7.7 met.
