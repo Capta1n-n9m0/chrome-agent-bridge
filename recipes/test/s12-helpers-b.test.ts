@@ -138,6 +138,38 @@ Remove-Item (Join-Path $S11Out 'UP-RACE-A-loop-done.ready') -ErrorAction Silentl
 $global:C0 = $global:Clock; $ret = Invoke-S12RaceA 1; Write-Host "RACEA2 ret=$ret"
 `;
 
+// Fixer round 1 (S1-live attempt 1): PowerShell variable names are case-insensitive, so a patched-in `$o2` result overwrote the second
+// options window's `$O2` and the next Get-S9Options (a [long] parameter) threw. The stubs below keep the real [long] parameters and record
+// the handle each later call received: it must still be the handle Open-S11Options returned (777).
+const HANDLE_BODY = `
+function Open-S11Options { 777 }
+function Get-S9Options([long]$o) { Write-Host "HANDLE Get-S9Options $o"; $null }
+function Close-S11Window([long]$o) { Write-Host "HANDLE Close-S11Window $o" }
+$q1 = [string][char]0x201c; $q2 = [string][char]0x201d; $dd = [string][char]0x2014
+function L($n, $t, $why) { 'Line {0}: {1}{2}{3} {4} {5}' -f $n, $q1, $t, $q2, $dd, $why }
+$global:MatchAt = 0
+$global:Page = @('STAND', (L 1 'C:\\\\found-bad' 'not absolute'))
+try { [void](Invoke-S12Opt 5 'R' (Join-Path $S11Out 'h.json')); Write-Host 'HANDLE-RUN ok' } catch { Write-Host "HANDLE-RUN threw $($_.Exception.GetType().Name)" }
+`;
+describe.skipIf(!hasPs)("Invoke-S12Opt keeps the second options window's handle (variable names are case-insensitive)", () => {
+  const d = mkdtempSync(join(tmpdir(), "s12h-"));
+  const f = join(d, "t.ps1");
+  writeFileSync(f, PRE(join(d, "out")) + HANDLE_BODY, "utf8");
+  const r = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", f], { encoding: "utf8", timeout: 90_000 });
+  rmSync(d, { recursive: true, force: true });
+  const out = r.stdout.split(/\r?\n/);
+  it("the Get-S9Options and Close-S11Window calls after the O2 poll receive the O2 handle, and the run does not throw", () => {
+    expect(out).toContain("HANDLE Get-S9Options 777");
+    expect(out).toContain("HANDLE Close-S11Window 777");
+    expect(out.filter((l) => l === "HANDLE Close-S11Window 777").length).toBe(2);
+    expect(out).toContain("HANDLE-RUN ok");
+  });
+  it("the OPT lines still print as before", () => {
+    expect(out.some((l) => /^SAY OPT O2 shown=yes at=0 polled-ms=0$/.test(l))).toBe(true);
+    expect(out.some((l) => /^SAY OPT observed standing x1 invalid items \d+ warned items \d+$/.test(l))).toBe(true);
+  });
+});
+
 describe.skipIf(!hasPs)("the s12 PowerShell pieces, run with stubbed helpers", () => {
   const d = mkdtempSync(join(tmpdir(), "s12b-"));
   const f = join(d, "t.ps1");

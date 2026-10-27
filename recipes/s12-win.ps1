@@ -175,8 +175,8 @@ function Get-S12UrlClass([string]$Url) {
   'url-class=other'
 }
 $S12OptPairs = @(
-  @('(?s)\$t0 = Get-Date; \$o2Ms = 0; \$o2Eq = \$false.*?if \(-not \$o2Eq\) \{[^}]*\}', '$o2 = Wait-S12O2 $O2 $setSha; $o2Eq = $o2.Shown; $o2Ms = $(if ($o2.Shown) { $o2.At } else { $o2.PolledMs })'),
-  @('Say9 "OPT observed:[^\r\n]*"', 'Say9 (Format-S12OptObserved $standing $invalidCount $warnedCount); Say9 (Format-S12OptO2 $o2)')
+  @('(?s)\$t0 = Get-Date; \$o2Ms = 0; \$o2Eq = \$false.*?if \(-not \$o2Eq\) \{[^}]*\}', '$o2Res = Wait-S12O2 $O2 $setSha; $o2Eq = $o2Res.Shown; $o2Ms = $(if ($o2Res.Shown) { $o2Res.At } else { $o2Res.PolledMs })'),
+  @('Say9 "OPT observed:[^\r\n]*"', 'Say9 (Format-S12OptObserved $standing $invalidCount $warnedCount); Say9 (Format-S12OptO2 $o2Res)')
 )
 $S12OmniPairs = @(@('now shows \$Url"', 'now shows $(Get-S12UrlClass $Url)"'), @('did NOT reach \$Url within', 'did NOT reach $(Get-S12UrlClass $Url) within'))
 # Dot-source this file AFTER s9-win.ps1 and s11-win.ps1: Invoke-S12Opt is Invoke-S11Opt with the 15 s poll and the sheet's OPT lines;
