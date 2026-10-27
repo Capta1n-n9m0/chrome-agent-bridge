@@ -195,7 +195,7 @@ describe("F6: the carried blocks and R17B-CTL print R17B ROW lines derived from 
 
 describe("F11: parse check and the manifest message", () => {
   it("(a) Run 17's file must parse clean and give exactly the 49 functions and 49 blocks", () => {
-    expect(ps).toContain("$er.Count -ne 0 -or $R17Funcs -ne 49 -or $R17Blocks.Count -ne 49");
+    expect(ps).toContain("$r17bEr.Count -ne 0 -or $R17Funcs -ne 49 -or $R17Blocks.Count -ne 49");
   });
   it("(d) the manifest read's STOP does not say the console cannot evaluate", () => {
     expect(ps).not.toContain("the console cannot evaluate or printed a STOP");

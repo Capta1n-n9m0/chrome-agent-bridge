@@ -46,7 +46,7 @@ describe("s11b-r17b.ps1 against the plan and the sheet", () => {
     const carried = ROW_BLOCKS.filter((r) => r.carried).map((r) => r.block);
     for (const b of named) expect([...own, ...carried], b).toContain(b);
     for (const b of ALL_BLOCKS.filter((x) => !["liveA17B", "liveB17B", "plan"].includes(x))) {
-      const viaFor = /foreach \(\$n in ([^)]*)\) \{ \$Blocks\[\$n\]/.exec(src)![1]!;
+      const viaFor = /foreach \(\$r17bN in ([^)]*)\) \{ \$Blocks\[\$r17bN\]/.exec(src)![1]!;
       expect(own.includes(b) || carried.includes(b) || viaFor.includes(`'${b}'`), b).toBe(true);
     }
   });
@@ -95,7 +95,7 @@ describe("s11b-r17b.ps1 against the plan and the sheet", () => {
     expect(NOT_RUN_LINE).toBe(`NOT RUN — waits for G11-3`);
     expect(e).toContain("return $false");
     expect(src).toMatch(/Read-S17Early\)\[-1\]\) \{ exit 3 \}/);
-    expect(src).toMatch(/Test-S17Gate \$b\)\) \{ Invoke-S17Block 'teardown'; exit 3 \}/);
+    expect(src).toMatch(/Test-S17Gate \$r17bSlot\)\) \{ Invoke-S17Block 'teardown'; exit 3 \}/);
   });
   it("R17B-DISARM presses ON after the reply, reads G1's count (found + 1), and R17B-CTL skips the two servers not started", () => {
     const d = /\$Blocks\['r17b-disarm'\] = \{[\s\S]*?\n\}/.exec(src)![0];

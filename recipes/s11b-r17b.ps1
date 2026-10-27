@@ -25,7 +25,7 @@ $SliceB = @('preflight', 'servers', 'files', 'window', 'reload', 'console', 'r17
 $NeedsAccess = @('root-add', 'r17b-f-raw', 'r17b-f-raw-2', 'r17b-f-raw-dir', 'r17b-f-raw-enc', 'r17b-f-raw-ok', 'r17b-up-race-a', 'r17b-up-devt')
 $Carried = @{ 'r17b-up-l1' = 'r17-up-l1'; 'r17b-rd-dl-socket' = 'rd-dl-socket'; 'r17b-up-opt' = 'r17-up-opt'; 'r17b-up-6' = 'r17-up-6'; 'r17b-up-7' = 'r17-up-7'; 'r17b-save-refuse' = 'r17-save-refuse'; 'r17b-f-raw' = 'f-raw'; 'r17b-f-raw-2' = 'f-raw-2'; 'r17b-f-raw-dir' = 'f-raw-dir'; 'r17b-f-raw-enc' = 'f-raw-enc'; 'r17b-f-raw-ok' = 'f-raw-ok'; 'r17b-up-race-a' = 'r17-up-race-a'; 'r17b-up-devt' = 'r17-up-devt'; 'r17b-restore' = 'rd-restore'; 'r17b-logs' = 'rd-logs' }
 $GateRows = @('R17B-F-RAW', 'R17B-F-RAW-2', 'R17B-F-RAW-DIR', 'R17B-F-RAW-ENC', 'R17B-F-RAW-OK', 'R17B-UP-RACE-A', 'R17B-UP-DEVT')
-if ($Block -eq 'plan') { $ids = $SliceA -join ' '; Write-Host "PLAN liveA17B: $ids"; $ids = $SliceB -join ' '; Write-Host "PLAN liveB17B: $ids"; exit 0 }
+if ($Block -eq 'plan') { $r17bIds = $SliceA -join ' '; Write-Host "PLAN liveA17B: $r17bIds"; $r17bIds = $SliceB -join ' '; Write-Host "PLAN liveB17B: $r17bIds"; exit 0 }
 if (-not $env:S11_OUT) { $env:S11_OUT = Join-Path $env:TEMP 'bridge-e2e\s11b' }
 New-Item -ItemType Directory -Force $env:S11_OUT | Out-Null
 $env:S9_OUT = $env:S11_OUT
@@ -55,16 +55,16 @@ $global:S16Stops = 0; $global:S16Fail = 0; $global:S16NM = 0; $global:S16Gone = 
 
 # ---- Run 17's helpers, read by its parser (s11b-r17.ps1 is not edited and has a main that must not run) ---------------------------
 $R17Blocks = @{}; $R17Funcs = 0
-$tk = $null; $er = $null
-$R17Ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 's11b-r17.ps1'), [ref]$tk, [ref]$er)
-foreach ($st in $R17Ast.EndBlock.Statements) {
-  if ($st -is [Management.Automation.Language.FunctionDefinitionAst]) { $R17Funcs++; . ([scriptblock]::Create($st.Extent.Text)) }
-  elseif ($st -is [Management.Automation.Language.AssignmentStatementAst] -and $st.Left.Extent.Text.StartsWith('$Blocks[')) {
-    $nm = [regex]::Match($st.Left.Extent.Text, "'([^']+)'").Groups[1].Value
-    $R17Blocks[$nm] = & ([scriptblock]::Create($st.Right.Extent.Text))
+$r17bTk = $null; $r17bEr = $null
+$R17Ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 's11b-r17.ps1'), [ref]$r17bTk, [ref]$r17bEr)
+foreach ($r17bSt in $R17Ast.EndBlock.Statements) {
+  if ($r17bSt -is [Management.Automation.Language.FunctionDefinitionAst]) { $R17Funcs++; . ([scriptblock]::Create($r17bSt.Extent.Text)) }
+  elseif ($r17bSt -is [Management.Automation.Language.AssignmentStatementAst] -and $r17bSt.Left.Extent.Text.StartsWith('$Blocks[')) {
+    $r17bNm = [regex]::Match($r17bSt.Left.Extent.Text, "'([^']+)'").Groups[1].Value
+    $R17Blocks[$r17bNm] = & ([scriptblock]::Create($r17bSt.Right.Extent.Text))
   }
 }
-if ($er.Count -ne 0 -or $R17Funcs -ne 49 -or $R17Blocks.Count -ne 49) { Write-Host 'STOP: Run 17''s block list was not read from s11b-r17.ps1'; exit 2 }
+if ($r17bEr.Count -ne 0 -or $R17Funcs -ne 49 -or $R17Blocks.Count -ne 49) { Write-Host 'STOP: Run 17''s block list was not read from s11b-r17.ps1'; exit 2 }
 
 # ---- Run 17b's own pieces ------------------------------------------------------------------------------------------------------------
 function Set-S17Raw([string]$Name) { $env:S9_RAW = if ($FramingBlocks -contains $Name -or $Name -like 'g1-*' -or $Name -in 'r17b-history', 'root-add') { $Framing } else { $Record } }
@@ -159,7 +159,7 @@ $Blocks['servers'] = {
   if (-not (Test-S16Port 8090)) { Fail-S16 'port 8090 (the closed port) is bound' }
   Say9 'SERVERS 8081 8083 8085 8086 8087 8091 up on 127.0.0.1 under the wave''s own PIDs; 8088 8089 8090 not started; 8080 unused'
 }
-foreach ($n in 'files', 'window', 'reload', 'console', 'teardown', 'g1-open', 'g1-close', 'root-add') { $Blocks[$n] = $R17Blocks[$n] }
+foreach ($r17bN in 'files', 'window', 'reload', 'console', 'teardown', 'g1-open', 'g1-close', 'root-add') { $Blocks[$r17bN] = $R17Blocks[$r17bN] }
 $Blocks['r17b-0'] = {
   if ($global:S16Changed) { Fail-S16 'R17B-0 after a state change would overwrite the found texts; refused' }
   # Every line of the block goes to a scratch file first; the record gets the joined first line, then the sheet's other lines.
@@ -346,25 +346,25 @@ $Blocks['r17b-back-empty'] = {
   else { Say9 'R17B-BACK-EMPTY RULES samples NOT MEASURED (console eval unavailable)'; $global:S16NM++ }
   Close-R17Tab 'R17B-BACK-EMPTY' 'he'
 }
-foreach ($k in $Carried.Keys) { $o = $Carried[$k]; $Blocks[$k] = [scriptblock]::Create("Invoke-R17bCarried '$($k.ToUpper())' '$o'") }
+foreach ($r17bK in $Carried.Keys) { $r17bO = $Carried[$r17bK]; $Blocks[$r17bK] = [scriptblock]::Create("Invoke-R17bCarried '$($r17bK.ToUpper())' '$r17bO'") }
 
 try {
   Load-S16
   $Name = $Block
   if ($Block -eq 'liveA17B' -or $Block -eq 'liveB17B') {
-    foreach ($b in $(if ($Block -eq 'liveA17B') { $SliceA } else { $SliceB })) {
-      if (-not (Test-S17Gate $b)) { Invoke-S17Block 'teardown'; exit 3 }
-      Invoke-S17Block $b
-      if ($Block -eq 'liveB17B' -and $b -eq 'preflight' -and -not @(Read-S17Early)[-1]) { exit 3 }
+    foreach ($r17bSlot in $(if ($Block -eq 'liveA17B') { $SliceA } else { $SliceB })) {
+      if (-not (Test-S17Gate $r17bSlot)) { Invoke-S17Block 'teardown'; exit 3 }
+      Invoke-S17Block $r17bSlot
+      if ($Block -eq 'liveB17B' -and $r17bSlot -eq 'preflight' -and -not @(Read-S17Early)[-1]) { exit 3 }
     }
-    $n = $global:S16Fail; $k = $global:S16NM
-    Say9 "SLICE $Name done: calls with a failed check $n, not measured $k (the rows are in the record)"
+    $r17bFailN = $global:S16Fail; $r17bNmN = $global:S16NM
+    Say9 "SLICE $Name done: calls with a failed check $r17bFailN, not measured $r17bNmN (the rows are in the record)"
   } else {
     if (-not (Test-S17Gate $Name)) { exit 3 }
     Invoke-S17Block $Name
   }
 } catch {
-  $tag = Get-S11bStopCause $_
-  Stop-S16Wave "an exception in block $Name ($tag)"
+  $r17bTag = Get-S11bStopCause $_
+  Stop-S16Wave "an exception in block $Name ($r17bTag)"
 }
 exit 0
