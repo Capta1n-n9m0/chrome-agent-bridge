@@ -5,7 +5,7 @@
 //
 //   node --import tsx recipes/s11b.ts <sub> [args]
 //
-// THE CONSOLE CONTRACT (H6's `Invoke-S11bConsoleEval`). Console subcommands: manifest, rules, ctx, regex, stored. Two phases:
+// THE CONSOLE CONTRACT (H6's `Invoke-S11bConsoleEval`). Console subcommands: manifest, rules, ctx, regex, stored, tabwatch (`--mode start|read`, S7-helpers H2). Two phases:
 //   phase 1  `<sub> --expr <file> [opts]`   writes ONE line (no newline) to <file>: the expression to type into the worker's
 //            DevTools console. Before writing, preTypeCheck(text, {token, alias, profilePath}) runs; a match prints
 //            `STOP: console input holds a pattern`, exits 2 and writes nothing. Prints `EXPR <sub> ok len=<n>`. The expression
@@ -31,6 +31,7 @@
 // Other subs: hits, ctl, scan, state, mark, judge-row, dl-record, state-compat, clean-console (below). H5's SDK subcommands are added at the marked place in `cmds`.
 //
 // Exit: 0 every check passed, 1 a check failed, 2 a STOP, 3 not measured / not discriminating.
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import { connect as netConnect } from "node:net";
@@ -47,12 +48,14 @@ import {
   rulesExpectLine, redactChromeBlocked17, rulesExpression, rulesSampleExpression, row17Line, scan17, type Scan17Ctx, scanLine17, storedExpression, verdict17, REGEX_NOT_MEASURED,
   callLine, foundList, judgeErr17, judgeHistory, judgeRaceA, judgeSamedoc, judgeSocket, k17RawDir, k17RawMissing, K17, latLine, raceDone17, raceDue, recordLine, socketLine,
   answerOfRow, dlHopRecord, dropTitleLines, fileExistsFrom, judgeDlTrial, judgeFileTabHidden, judgeFileTabRow, type FileTabListRow, judgeRd0State, markExpression, parseCallRow, parseMarkLine, rd0StateLine, rd0ToggleLine, SOCK_MARKS, stateCompat, type SockWindow,
-  historyPlan, historyBackTarget, histNotBuilt17, histDiagRow17, pollUntil17, sameUrl17, HIST_POLL_MS, HIST_SETTLE_MS, HIST_WAIT_MS, unexpectedStop17, windowViolations, judgeCallAnswer, judgeCaps, judgeFHome, judgeHistoryRow, judgeTimedRules, judgeUpOpt, gapJudge, parseCtxTabs, parseRulesTimedLine, rulesTimedExpression, rulesSamplesLine, type TimedMode, RACE_MAX_CALLS, RACE_MIN_CALLS, RACE_SPACING_MS, WINDOW_AFTER_MS, WINDOW_BEFORE_MS,
+  historyPlan, historyBackTarget, histDiagRow17, pollUntil17, sameUrl17, HIST_POLL_MS, HIST_SETTLE_MS, HIST_WAIT_MS, unexpectedStop17, windowViolations, judgeCallAnswer, judgeCaps, judgeFHome, judgeHistoryRow, judgeTimedRules, judgeUpOpt, gapJudge, parseCtxTabs, parseRulesTimedLine, rulesTimedExpression, rulesSamplesLine, type TimedMode, RACE_MAX_CALLS, RACE_MIN_CALLS, RACE_SPACING_MS, WINDOW_AFTER_MS, WINDOW_BEFORE_MS,
   type Answer, type CallSpan, type HistoryKind, type J17, type K17Error, type Port, type RaceCall, type Reply,
 } from "./s11b-rules.js";
+import { buildLine, countS6Names, judgeBuild, judgeNewtabTrial, judgeTabwatch, pageClassOf, parseTabwatchLine, parseTabwatchStarted, s6CommitLine, S6_COMMIT, tabwatchLine, tabwatchReadExpression, tabwatchStartExpression, TABWATCH_ROWS, withOpened, type CreatedUrl } from "./s11b-r17b-build.js";
+import { actLine, ctlSlowLine, carriedRowLine, guardedActivate, histLine, histSetupBackOutcome, isActLabel, isR17bRow, judgeCtlSlow, judgeR17bRow, judgeRd2Snapshot, histReplyLine, parseTabRowLine, rd2TabRowLine, judgeSnapshotPage, msForJudge, R17B_ROWS, refusedStop, strictCall } from "./s11b-r17b-rules.js";
 
 export class Stop extends Error {}
-export const BOOLEAN_FLAGS: readonly string[] = ["--dry", "--no-sampler", "--sock-console"];
+export const BOOLEAN_FLAGS: readonly string[] = ["--dry", "--no-sampler", "--sock-console", "--activate"];
 export interface Args { cmd: string; pos: string[]; opts: Record<string, string>; flags: string[] }
 /** `<cmd> [positional...] [--key value] [--flag]`; a `--key` without a value is a STOP. */
 export function parseArgs(argv: readonly string[]): Args {
@@ -140,6 +143,7 @@ function readTimed(a: Args, dump: string, expect: number | undefined): void {
   judged(`${a.opts.row ?? "RULES"} rules-${mode}`, r.verdict);
 }
 
+const twMode = (a: Args): "start" | "read" => (a.opts.mode === "start" || a.opts.mode === "read" ? a.opts.mode : stop("tabwatch needs --mode start or --mode read"));
 type Console = { expr: (a: Args) => string; read: (a: Args, dump: string) => void };
 const consoles: Record<string, Console> = {
   manifest: {
@@ -191,6 +195,24 @@ const consoles: Record<string, Console> = {
       const l = need(a, "label");
       if (!parseMarkLine(dump, l)) return noLine("RD-DL-SOCKET mark");
       judged(`RD-DL-SOCKET mark-${l}`, j17(true, "the mark stands in the console capture"));
+    },
+  },
+  tabwatch: {
+    // S7-helpers H2: `--mode start` types the listener (prints `TABWATCH started`), `--mode read` removes it and prints the one TABWATCH line.
+    // Read phase options: `--reply-ms <n>` (the helper's LAT of the newTab reply, appended as reply-ms), `--row R17B-NEWTAB-PLAIN|R17B-RD-2|R17B-NEWTAB-LOAD`.
+    expr: (a) => (twMode(a) === "read" ? tabwatchReadExpression() : tabwatchStartExpression()),
+    read(a, dump) {
+      if (twMode(a) === "start") {
+        if (!parseTabwatchStarted(dump)) return noLine("TABWATCH started");
+        return say("TABWATCH started");
+      }
+      const t = parseTabwatchLine(dump);
+      if (!t) return noLine("TABWATCH");
+      say(tabwatchLine(t, a.opts["reply-ms"] === undefined ? undefined : int(a, "reply-ms")));
+      if (a.opts.row !== undefined) {
+        if (!(TABWATCH_ROWS as readonly string[]).includes(a.opts.row)) stop(`tabwatch --row is one of ${TABWATCH_ROWS.join(", ")}`);
+        judged(a.opts.row, judgeTabwatch(a.opts.row, t));
+      }
     },
   },
   regex: {
@@ -358,18 +380,28 @@ export async function ctl(a: Args): Promise<void> {
   try {
     await sleep(200);
     const two = async (port: number, i: number): Promise<Answer[]> => Promise.all([get(port, `/s11b-ctl?n=${i}a`), get(port, `/s11b-ctl?n=${i}b`)]);
-    const ports: Record<Port, Answer[]> = { 8083: await two(p.p83, 1), 8088: await two(p.p88, 2), 8089: await two(p.p89, 3), 8086: await two(p.p86, 4) };
+    const skip = (a.opts.skip ?? "").split(",").filter(Boolean).map(Number); // R17B-CTL: `--skip 8088,8089` (those servers are not started)
+    const ports: Partial<Record<Port, Answer[]>> = { 8083: await two(p.p83, 1), 8086: await two(p.p86, 4) };
+    if (!skip.includes(8088)) ports[8088] = await two(p.p88, 2);
+    if (!skip.includes(8089)) ports[8089] = await two(p.p89, 3);
     const fp = `/h/ctl?s11b=ctlflip${Date.now()}`;
     const f1 = await get(p.p91, fp);
     const f2 = await get(p.p91, fp);
     await get(p.p85, "/e2e-playground.html?s11b=ctl");
     await sleep(300);
-    const r = judgeCtl({ idleSocket: held, ports, flip: [f1.status, f2.status], ctlBlocked: countHits(lines(log85), "ctl") });
+    const r = judgeCtl({ idleSocket: held, ports, flip: [f1.status, f2.status], ctlBlocked: countHits(lines(log85), "ctl"), skipped: skip });
     for (const l of r.lines) say(l);
     judged("RD-CTL", r.verdict);
   } finally {
     idle.destroy();
   }
+}
+
+/** R17B-CTL: `ctl-slow [--p87 8087]`: one timed GET of the slow server (tag bctl); prints the sheet's `CTL 8087 slow answered after <ms> ms`. A miss is a STOP. */
+export async function ctlSlow(a: Args): Promise<void> {
+  const r = await get(int(a, "p87", 8087), "/slow/e2e-playground.html?s11b=bctl");
+  say(ctlSlowLine(r.ms));
+  judged("R17B-CTL 8087", judgeCtlSlow(r));
 }
 
 /** `--sock-lines a,b`: the daemon-log window as two line counts. */
@@ -484,6 +516,26 @@ function judgeRow(a: Args): void {
   if (kind === "dl-hop") return judged(label, judgeDlTrial("hop", row, { fileExists: fileExistsFrom(text, step), blocked: opt("blocked"), rulesAfter: opt("rules-after") }));
   if (kind === "tabs-hidden") return judged(label, judgeFileTabRow(row));
   judged(label, judgeCallAnswer(kind, answerOfRow(row), label));
+}
+/**
+ * `r17b-clause --kind snap-page|rd2-snap --from <S9 output file of the snapshot call> [--tabrow-from <output file of `rd2-row`>] --row <label>`
+ * (S7-helpers fixer F1, F2): one clause of an R17B row as a CHECK line, with the exit code of the clause (0, 1, 3).
+ */
+function r17bClause(a: Args): void {
+  const kind = need(a, "kind");
+  const label = need(a, "row");
+  const snap = parseCallRow(readFileSync(outsideRepo(need(a, "from")), "utf8"), "snap");
+  let j: J17;
+  if (kind === "snap-page") j = judgeSnapshotPage(snap);
+  else if (kind === "rd2-snap") j = judgeRd2Snapshot(parseTabRowLine(lines(outsideRepo(need(a, "tabrow-from"))), "R17B-RD-2"), snap);
+  else return stop("--kind is snap-page or rd2-snap");
+  say(checkLine(label, j));
+  bump(j.pass ? 0 : j.notMeasured ? 3 : 1);
+}
+/** `carried-row --row <R17B id> --orig <Run 17 block> --from <file of the block's new record lines>` (S7-helpers fixer F6): prints the R17B row line, bumps nothing. */
+function carriedRow(a: Args): void {
+  const t = readFileSync(outsideRepo(need(a, "from")), "utf8");
+  say(carriedRowLine(need(a, "row"), need(a, "orig"), t.split(/\r?\n/)));
 }
 /** `state-compat [--file <state.json>]` (S4-live fixer 2): adds the keys s9.ts needs to the state.json s11.ts wrote (stateCompat); prints key names only. */
 function stateCompatCmd(a: Args): void {
@@ -672,8 +724,22 @@ const dry = (a: Args, text: string): boolean => {
   return true;
 };
 
+/** The handles this wave's helpers opened: `opened` of the s11 and s9 state files (the activation guard's list). */
+function openedHandles(): string[] {
+  const out: string[] = [];
+  for (const f of [join(S11_OUT, "state.json"), join(S9_OUT, "state.json")]) {
+    try {
+      const o = (JSON.parse(readFileSync(f, "utf8")) as { opened?: unknown }).opened;
+      if (Array.isArray(o)) out.push(...o.filter((x): x is string => typeof x === "string"));
+    } catch {
+      /* no such state file */
+    }
+  }
+  return out;
+}
+
 // back / forward / history
-const HISTORY_ROWS = ["RD-BACK", "RD-FWD", "RD-BACK-SAMEDOC", "RD-BACK-EMPTY"] as const;
+const HISTORY_ROWS = ["RD-BACK", "RD-FWD", "RD-BACK-SAMEDOC", "RD-BACK-EMPTY", ...R17B_ROWS] as const;
 async function historyCall(a: Args, op: "back" | "forward"): Promise<void> {
   const row = rowOpt(a, HISTORY_ROWS);
   const tabKey = need(a, "tab");
@@ -683,19 +749,27 @@ async function historyCall(a: Args, op: "back" | "forward"): Promise<void> {
   await session(`s11b-${op}`, async (_c, claim) => {
     const tab = await claim(handleOf(tabKey));
     let last: { err?: Obs17; ms: number } = { ms: 0 };
+    const allMs: number[] = []; // S7-helpers fixer F5: R17B-ACT-CTL judges every call's reply time
     let lastStart = 0;
     for (let i = 1; i <= times; i++) {
       lastStart = Date.now();
       last = await attempt(() => (op === "back" ? tab.back() : tab.forward()));
+      allMs.push(last.ms);
       say(latLine(times > 1 && i < times ? `${row}-${i}` : row, last.ms));
       say(`ANSWER ${row}${times > 1 ? ` #${i}` : ""} ${answerText(last.err)}`);
+      // S7-helpers H1 (#311): on an activated set-up with no redirect a refusal is a STOP, also the first call of a pair.
+      if (last.err && isR17bRow(row) && strictCall(row, i, times)) return judged(row, refusedStop(row, last.err.code));
       if (i < times && last.err) return judged(row, j17(false, `the first ${op} did not answer ok`));
     }
-    say(`HISTREPLY ${row} kind=${!last.err ? "ok" : last.err.code === K17["K-tab"].code && last.err.message === K17["K-tab"].message ? "K-tab" : last.err.code} ms=${Math.round(last.ms)} start=${lastStart} reply=${lastStart + Math.round(last.ms)}`);
+    say(histReplyLine(row, !last.err ? "ok" : last.err.code === K17["K-tab"].code && last.err.message === K17["K-tab"].message ? "K-tab" : last.err.code, allMs, last.ms, lastStart));
     say(recordLine(row, { answer: last.err ? last.err.code : "ok", "reply-ms": Math.round(last.ms), "status-after": "NOT MEASURED (the SDK exposes no tab status)" }));
     const reply = asReply(last.err);
+    const r17bKind = !last.err ? "ok" : last.err.code === K17["K-tab"].code && last.err.message === K17["K-tab"].message ? "K-tab" : last.err.code;
+    const opt = (k: string): number | undefined => (a.opts[k] === undefined ? undefined : int(a, k));
+    if (row === "R17B-BACK-NOACT") return judged(row, judgeR17bRow(row, { kind: r17bKind, ms: last.ms, rulesAfter: null }));
     if (a.opts["rules-after"] === undefined) return;
     const rules = int(a, "rules-after");
+    if (isR17bRow(row)) return judged(row, judgeR17bRow(row, { kind: r17bKind, ms: msForJudge(row, allMs), rulesAfter: rules, blocked: opt("blocked"), flipTotal: opt("flip-total") }));
     if (row === "RD-BACK" || row === "RD-FWD") judged(row, judgeHistory({ blocked: int(a, "blocked"), flipTotal: int(a, "flip-total"), replyMs: last.ms, answer: reply, rulesAfter: rules }));
     else if (row === "RD-BACK-SAMEDOC") judged(row, judgeSamedoc({ replyMs: last.ms, answer: reply, rulesAfter: rules }));
     else judged(row, rules !== 0 ? j17(false, `RULES ${rules} after the reply`, { stop: true }) : reply === "ok" ? j17(true, "ok, as before Step 11b") : j17(false, `answer ${reply.code}, not ok`));
@@ -703,19 +777,37 @@ async function historyCall(a: Args, op: "back" | "forward"): Promise<void> {
 }
 async function history(a: Args): Promise<void> {
   const kind = need(a, "kind") as HistoryKind;
-  if (!["back", "fwd", "samedoc", "empty"].includes(kind)) stop("--kind is back, fwd, samedoc or empty");
+  if (!["back", "fwd", "samedoc", "empty", "p3"].includes(kind)) stop("--kind is back, fwd, samedoc, empty or p3");
+  const activate = a.flags.includes("--activate");
+  if (activate && !isActLabel(a.opts.label)) stop("history --activate needs --label <word>");
   const plan = historyPlan(kind, a.opts.tag);
-  if (dry(a, `kind=${kind} navigations=${plan.urls.length} backs=${plan.backs}`)) return;
+  if (dry(a, `kind=${kind} navigations=${plan.urls.length} backs=${plan.backs}${activate ? ` activate=yes label=${a.opts.label}` : ""}`)) return;
   const tabKey = need(a, "tab");
   histStep = "connect"; // S4-live fixer 4: an unexpected STOP names the build step it met
   await session("s11b-history", async (c, claim) => {
     histStep = "claim";
     const tab = await claim(handleOf(tabKey));
     let navs = 0;
+    let activated = 0;
+    const opened = activate ? openedHandles() : [];
     for (const [i, u] of plan.urls.entries()) {
       histStep = `navigate ${i + 1}`;
       await tab.navigate(u); // no wait added: the navigate handler answers only after the load (handlers/navigate.ts waitForLoad)
       navs++;
+      if (activate) {
+        // S7-helpers H1 (#308): `evaluate 1` right after each load, on a wave fixture page the helper opened (the guard runs first).
+        histStep = `activate ${i + 1}`;
+        await guardedActivate({
+          handle: tab.handle,
+          url: (await c.tabs()).find((r) => r.handle === tab.handle)?.url,
+          opened,
+          stop: (m) => new Stop(m),
+          activate: async () => {
+            await ev(c, tab.handle, "1");
+            activated++;
+          },
+        });
+      }
     }
     for (let i = 0; i < plan.backs; i++) {
       histStep = `back ${i + 1}`;
@@ -723,7 +815,8 @@ async function history(a: Args): Promise<void> {
         await tab.back();
       } catch (e) {
         // S4-live fixer 5: a set-up back's BridgeError is recorded (labels only), the build NOT BUILT and exit 3; else a STOP.
-        const nb = histNotBuilt17(e, { kind, step: histStep, ctx: stopCtx(a), known: KNOWN_TEXTS });
+        // Under --activate a refused set-up back is a STOP (rethrown), never NOT BUILT (S7-helpers H1, section 4.25).
+        const nb = histSetupBackOutcome(e, activate, { kind, step: histStep, ctx: stopCtx(a), known: KNOWN_TEXTS });
         if (!nb) throw e;
         const row = await c.tabs().then((rs) => histDiagRow17(plan, `http://127.0.0.1:8081/e2e-playground.html?s11b=${tabKey}`, rs.find((r) => r.handle === tab.handle)?.url), () => "unread");
         say(`HISTDIAG ${kind} row=${row} navigations=${navs} backs-done=${i}`);
@@ -742,6 +835,10 @@ async function history(a: Args): Promise<void> {
     }
     histStep = undefined;
     say(`HISTORY ${kind} built navigations=${plan.urls.length} backs=${plan.backs}`);
+    if (activate) {
+      say(histLine(a.opts.label!, navs, activated));
+      say(actLine(a.opts.label!, activated));
+    }
   });
 }
 
@@ -750,6 +847,25 @@ export function reportFileTabRows(rows: readonly FileTabListRow[]): void {
   const r = judgeFileTabHidden(rows);
   say(r.line);
   judged("F-FILETAB tabs hidden row", r.verdict);
+}
+// rd2-row (S7-helpers fixer 3, M1): R17B-RD-2's `r2` row of the SDK's tab list, found by its handle. Prints the TABROW line only (labels and
+// counts, never a URL, title or handle); a key with no handle or a failed read prints an unreadable line, never a STOP. Bumps nothing.
+async function rd2Row(a: Args): Promise<void> {
+  const key = need(a, "tab");
+  if (dry(a, "reads the tab list; prints the r2 row's hidden label only")) return;
+  let h: string | null = null;
+  try {
+    h = handleOf(key);
+  } catch {
+    h = null;
+  }
+  let rows: { handle: string; hidden?: string }[] | null = null;
+  try {
+    rows = await session("s11b-rd2row", async (c) => (await c.tabs()).map((t) => ({ handle: t.handle, ...(t.hidden === undefined ? {} : { hidden: t.hidden }) })));
+  } catch {
+    rows = null;
+  }
+  say(rd2TabRowLine("R17B-RD-2", rows, h));
 }
 async function filetab(a: Args): Promise<void> {
   if (dry(a, "reads the tab list; prints labels and counts only")) return;
@@ -992,6 +1108,60 @@ async function call(a: Args): Promise<void> {
   });
 }
 
+// ── S7-helpers H2: build-proof (R17B-0 (e)) and newtab-timed (R17B-NEWTAB-LOAD) ──────────────────────────────────
+/**
+ * `build-proof --tabwatch <file with a TABWATCH read> [--sw <built file>] [--ref <hex commit>]`: counts the S6 names in `extension/dist/sw.js` on
+ * disk, asks git whether `--ref` (default db3f82e) is an ancestor of HEAD, takes the created-url from the file's TABWATCH line, prints the
+ * BUILD and S6 lines and the verdict. Any miss is a STOP before any state change; no URL or path is printed.
+ */
+function buildProof(a: Args): void {
+  const ref = a.opts.ref ?? S6_COMMIT;
+  if (!/^[0-9a-f]{7,40}$/.test(ref)) stop("--ref is a hex commit id");
+  const sw = a.opts.sw ?? join(REPO, "extension", "dist", "sw.js");
+  if (!existsSync(sw)) stop("the built file extension/dist/sw.js is missing (npm run build)");
+  const names = countS6Names(readFileSync(sw, "utf8"));
+  const g = spawnSync("git", ["merge-base", "--is-ancestor", ref, "HEAD"], { cwd: REPO, stdio: "ignore" });
+  if (g.error || (g.status !== 0 && g.status !== 1)) stop("git could not answer the ancestor question");
+  const ancestor = g.status === 0;
+  const tw = a.opts.tabwatch !== undefined && existsSync(a.opts.tabwatch) ? parseTabwatchLine(readDump(a.opts.tabwatch)) : null;
+  const created: CreatedUrl | null = tw ? tw.createdUrl : null;
+  if (created) say(buildLine(names, created));
+  say(s6CommitLine(ancestor));
+  judged("R17B-0 (e)(f)", judgeBuild({ names, ancestor, createdUrl: created }));
+}
+
+/** `newtab-timed --row <id> --url <fixture url> --as <key> [--blocked n --rules-after n]`: newTab, `LAT <row> <ms> ms`, then the snapshot's page class. */
+async function newtabTimed(a: Args): Promise<void> {
+  const row = need(a, "row");
+  const url = need(a, "url");
+  const key = need(a, "as");
+  if (!/^[A-Za-z0-9-]{1,40}$/.test(row) || !/^[A-Za-z0-9]{1,20}$/.test(key)) stop("--row and --as are plain words");
+  if (!/^http:\/\/(127\.0\.0\.1|localhost):\d{4,5}\//.test(url)) stop("--url is a fixture page on loopback");
+  if (dry(a, `row=${row} as=${key}`)) return;
+  await session("s11b-newtab", async (c) => {
+    const r = await attempt(() => c.newTab(url));
+    say(latLine(row, r.ms));
+    say(`ANSWER ${row} ${answerText(r.err)}`);
+    const opt = (k: string): number | undefined => (a.opts[k] === undefined ? undefined : int(a, k));
+    if (r.err || !r.value) return judged(row, judgeNewtabTrial({ answer: r.err?.code ?? "none", ms: r.ms, page: null }));
+    const tab = r.value;
+    // The same record as s9.ts `newtab --as`: the handle joins `opened`, the key names it (the activation guard and handleOf read it).
+    const sf = join(S9_OUT, "state.json");
+    let st = { id: "s11b", tabs: {} as Record<string, string>, opened: [] as string[], at: new Date().toISOString() };
+    try {
+      st = { ...st, ...(JSON.parse(readFileSync(sf, "utf8")) as typeof st) };
+    } catch {
+      /* no s9 state yet: a new one */
+    }
+    mkdirSync(S9_OUT, { recursive: true });
+    writeFileSync(sf, JSON.stringify(withOpened(st, tab.handle, key), null, 2));
+    const s = await attempt(() => tab.snapshot());
+    const page = s.value ? pageClassOf({ url: s.value.url, title: s.value.title, elements: s.value.elements.length }) : "other";
+    say(recordLine(row, { page, elements: s.value ? s.value.elements.length : 0, snapshot: s.err ? s.err.code : "ok" }));
+    judged(row, judgeNewtabTrial({ answer: "ok", ms: r.ms, page, blocked: opt("blocked"), rulesAfter: opt("rules-after") }));
+  });
+}
+
 /** `judge-opt --kind fhome|upopt|caps --obs <json outside the repo>`: F-HOME, R17-UP-OPT, RD-CAPS-WARN's pass rules. */
 function judgeOpt(a: Args): void {
   const f = resolve(need(a, "obs"));
@@ -1008,6 +1178,7 @@ function judgeOpt(a: Args): void {
 function judgeHistoryCmd(a: Args): void {
   const row = rowOpt(a, HISTORY_ROWS);
   const opt = (k: string): number | undefined => (a.opts[k] === undefined ? undefined : int(a, k));
+  if (isR17bRow(row)) return judged(row, judgeR17bRow(row, { kind: need(a, "answer"), ms: int(a, "ms"), rulesAfter: opt("rules-after") ?? null, blocked: opt("blocked"), flipTotal: opt("flip-total") }));
   judged(row, judgeHistoryRow(row, { kind: need(a, "answer"), ms: int(a, "ms"), rulesAfter: opt("rules-after") ?? null, blocked: opt("blocked"), flipTotal: opt("flip-total") }));
 }
 /** `judge-gap --press <ms> --readback <ms> --call <ms>`: RD-5's `GAP` line and verdict. */
@@ -1022,16 +1193,23 @@ export const cmds: Record<string, (a: Args) => void | Promise<void>> = {
   rules: consoleSub,
   ctx: consoleSub,
   mark: consoleSub,
+  tabwatch: consoleSub,
+  "r17b-clause": r17bClause,
+  "carried-row": carriedRow,
+  "build-proof": buildProof,
+  "newtab-timed": newtabTimed,
   regex: consoleSub,
   stored,
   hits,
   ctl,
+  "ctl-slow": ctlSlow,
   scan,
   foundlist,
   back: (a) => historyCall(a, "back"),
   forward: (a) => historyCall(a, "forward"),
   history,
   filetab,
+  "rd2-row": rd2Row,
   socket,
   race,
   devt,

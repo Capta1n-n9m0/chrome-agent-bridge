@@ -427,16 +427,18 @@ export const ctlFlipLine = (f: readonly [number, number]): string => `CTL 8091 f
 /** RD-CTL: every control must hold or the rows would not discriminate; any miss is a STOP. */
 export function judgeCtl(i: {
   idleSocket: boolean;
-  ports: Record<Port, readonly Answer[]>;
+  ports: Partial<Record<Port, readonly Answer[]>>;
   flip: readonly [number, number];
   ctlBlocked: number;
+  skipped?: readonly number[];
 }): { lines: string[]; verdict: J17 } {
   const lines: string[] = [];
   const miss: string[] = [];
   if (!i.idleSocket) miss.push("no idle socket was held open");
   for (const port of [8083, 8088, 8089, 8086] as const) {
     const two = i.ports[port];
-    if (two.length !== 2) {
+    if (two === undefined && i.skipped?.includes(port)) continue; // R17B-CTL: 8088 and 8089 are not started (ctl --skip)
+    if (two === undefined || two.length !== 2) {
       miss.push(`${port}: not two answers`);
       continue;
     }
@@ -707,11 +709,13 @@ export function judgeErr17(obs: { code: string; message: string; data?: unknown 
   return ok17(`${label}: exact`);
 }
 
-export type HistoryKind = "back" | "fwd" | "samedoc" | "empty";
+export type HistoryKind = "back" | "fwd" | "samedoc" | "empty" | "p3";
 /** The tab histories built before G1 (the list as found): the urls to `navigate` in order, then how many `back` calls follow. */
 export function historyPlan(kind: HistoryKind, tag?: string): { urls: string[]; backs: number } {
   const p81 = (q: string): string => `http://localhost:8081/e2e-playground.html?s11b=${q}`;
   const flip = (p: string, t: string): string => `http://localhost:8091/h/${p}?s11b=${t}`;
+  // S7-helpers H1: three 8081 pages, no set-up back (R17B-ACT-CTL, R17B-BACK-NOACT): ?s11b=<tag>1, 2, 3.
+  if (kind === "p3") return { urls: [1, 2, 3].map((n) => p81(`${tag ?? "ac"}${n}`)), backs: 0 };
   if (kind === "back") return { urls: [flip("back", tag ?? "bk"), p81(`${tag ?? "bk"}p`)], backs: 0 };
   if (kind === "fwd") return { urls: [p81(`${tag ?? "fw"}0`), p81(`${tag ?? "fw"}1`), flip("fwd", tag ?? "fw")], backs: 2 };
   if (kind === "samedoc") return { urls: [p81(tag ?? "sd"), `${p81(tag ?? "sd")}#h2`], backs: 0 };

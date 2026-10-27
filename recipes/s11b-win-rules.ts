@@ -41,12 +41,12 @@ export function escapeSendKeys(text: string): string | null {
 }
 
 /** The only B17 lines the helper prints (anchored: the console's echo of the typed input can never match). */
-export const S11B_PRINTABLE_RE = /^(MANIFEST |RULES |CTX |REGEX |STORED |STOREDAT |EXPR |ROW |STOP: |NOT MEASURED: |FALLBACK: )/;
+export const S11B_PRINTABLE_RE = /^(MANIFEST |RULES |CTX |REGEX |STORED |STOREDAT |EXPR |ROW |STOP: |NOT MEASURED: |FALLBACK: |TABWATCH |BUILD |S6 commit=|LAT |RECORD |HIST |ACT )/;
 export const FALLBACK_LINE = "FALLBACK: console eval unavailable";
 /** Returned by Invoke-S11bConsoleEval beside B17's own exits (0 pass, 1 fail, 2 STOP, 3 not measured / not discriminating). */
 export const FALLBACK_CODE = 10;
 
-export const S11B_SUBS = ["manifest", "rules", "ctx", "regex", "stored", "mark"] as const;
+export const S11B_SUBS = ["manifest", "rules", "ctx", "regex", "stored", "mark", "tabwatch"] as const;
 /** One sampler pass per refusal id (builder 5, section 5 item 3). */
 export const S11B_SAMPLER_IDS = ["R17-UP-6-outside", "R17-UP-6-missing", "R17-UP-6-relative", "R17-UP-6-raw-dotdot", "R17-UP-6-raw-notarget", "F-RAW", "F-RAW-2", "F-RAW-DIR"] as const;
 
@@ -54,4 +54,41 @@ export const S11B_SAMPLER_IDS = ["R17-UP-6-outside", "R17-UP-6-missing", "R17-UP
 export const PRINT_OK_MARK = "# s11b-print-ok";
 export function scanS11bOutput(src: string): string[] {
   return scanPs1Output(src.split(/\r?\n/).map((l) => (l.includes(PRINT_OK_MARK) ? "" : l)).join("\n"));
+}
+
+// ===== S7-helpers H2: R17B-DISARM's ON press, timed from the reply (the sheet: 1.6 s after the call's reply, not from the first press) =====
+export const ON_AFTER_REPLY_MS = 1600;
+/** The `reply=<epoch ms>` of the last `CALLT <row> start=<ms> reply=<ms>` line in a call's output so far, or null while the call is in flight. */
+export function replyAtFrom(text: string): number | null {
+  let at: number | null = null;
+  for (const l of text.split(/\r?\n/)) {
+    const m = /^CALLT \S+ start=\d+ reply=(\d+)\s*$/.exec(l);
+    if (m) at = Number(m[1]);
+  }
+  return at;
+}
+/** Milliseconds still to wait before the ON press: reply + 1 600 - now, never negative. */
+export const onPressDelay = (replyAt: number, nowAt: number): number => Math.max(0, replyAt + ON_AFTER_REPLY_MS - nowAt);
+export interface PressIo { now(): number; sleep(ms: number): Promise<void>; pressOff(): Promise<void>; pressOn(): Promise<void>; replyAt(): number | null }
+export interface PressResult { replyAt: number | null; offAt: number; onAt: number; lateMs: number }
+/**
+ * OFF is pressed at once (the caller timed it as the existing press helper does); then the reply is polled; ON is pressed 1 600 ms after the reply, timed from
+ * the reply and not from the OFF press. No reply within `timeoutMs`: ON is pressed at once (the safety state is restored first), replyAt null.
+ * lateMs = how much later than reply + 1 600 the ON press went (0 when on time).
+ */
+export async function pressAfterReply(io: PressIo, o: { pollMs: number; timeoutMs: number }): Promise<PressResult> {
+  const offAt = io.now();
+  await io.pressOff();
+  let r = io.replyAt();
+  while (r === null && io.now() - offAt < o.timeoutMs) {
+    await io.sleep(o.pollMs);
+    r = io.replyAt();
+  }
+  if (r !== null) {
+    const d = onPressDelay(r, io.now());
+    if (d > 0) await io.sleep(d);
+  }
+  const onAt = io.now();
+  await io.pressOn();
+  return { replyAt: r, offAt, onAt, lateMs: r === null ? 0 : Math.max(0, onAt - (r + ON_AFTER_REPLY_MS)) };
 }

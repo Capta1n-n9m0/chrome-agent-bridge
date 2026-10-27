@@ -9,9 +9,9 @@
 # row names and B17's own sheet lines (filtered by $S11bPrintRe).
 
 $S11bUrlRe = '^http://(127\.0\.0\.1|localhost):(8083|8081)(/|$)'
-$S11bPrintRe = '^(MANIFEST |RULES |CTX |REGEX |STORED |STOREDAT |EXPR |ROW |STOP: |NOT MEASURED: |FALLBACK: )'
+$S11bPrintRe = '^(MANIFEST |RULES |CTX |REGEX |STORED |STOREDAT |EXPR |ROW |STOP: |NOT MEASURED: |FALLBACK: |TABWATCH |BUILD |S6 commit=|LAT |RECORD |HIST |ACT )'
 $S11bFallbackCode = 10
-$S11bSubs = @('manifest', 'rules', 'ctx', 'regex', 'stored', 'mark')
+$S11bSubs = @('manifest', 'rules', 'ctx', 'regex', 'stored', 'mark', 'tabwatch')
 $S11bSamplerIds = @('R17-UP-6-outside', 'R17-UP-6-missing', 'R17-UP-6-relative', 'R17-UP-6-raw-dotdot', 'R17-UP-6-raw-notarget', 'F-RAW', 'F-RAW-2', 'F-RAW-DIR')
 
 # ---- pure rules (mirrored in s11b-win-rules.ts) -------------------------------------------------------------------------
@@ -429,4 +429,38 @@ function Save-S11bBlockList([long]$O, [string[]]$Extra = @()) {
   $t = Get-S11FoundText 'blocklist'
   foreach ($l in $Extra) { $t = Add-S11Line $t $l }
   [void](Set-S11Box $O 'blocklist' $t)
+}
+
+# ---- R17B-DISARM (S7-helpers H2): the ON press timed from the call's reply (docs/e2e-test-plan.md 4.25; #308) ----------------------
+# Mirrors s11b-win-rules.ts replyAtFrom / onPressDelay / pressAfterReply (static test). The reply time is the `reply=<epoch ms>` of the
+# CALLT line the call prints (Invoke-R17Node redirects it to $S11_OUT\node-out.txt while the call runs): pass that file as -ReplyFile.
+function Get-S11bReplyAt([string]$File) {
+  if (-not $File -or -not (Test-Path -LiteralPath $File)) { return $null }
+  $at = $null
+  $rows = @(Get-Content -LiteralPath $File -Encoding UTF8)
+  foreach ($l in $rows) { if ($l -match '^CALLT \S+ start=\d+ reply=(\d+)\s*$') { $at = [long]$Matches[1] } }
+  $at
+}
+function Get-S11bOnDelay([long]$ReplyAt, [long]$NowAt) { [long][Math]::Max(0, $ReplyAt + 1600 - $NowAt) }
+# <Row>.ready, then OFF pressed FirstDelayMs later (as Invoke-S11ButtonPair with -At: unchanged), then ON 1600 ms after the reply. No reply within
+# TimeoutSec: ON at once (the safety state is restored first) and a STOP line. Returns $true when the title reads armed again and the reply was seen.
+function Invoke-S11bPressAfterReply([long]$Hwnd, [string]$Row, [string]$ReplyFile, [int]$FirstDelayMs = 1000, [int]$TimeoutSec = 30, [switch]$Checked) {
+  Assert-S11Own $Hwnd 'toolbar button'
+  if (-not $Checked -and -not (Test-S11ButtonReady $Hwnd)) { return $false }
+  [void](Wait-S11Ready $Row 60)
+  $at = (Get-Date).AddMilliseconds($FirstDelayMs)
+  while ((Get-Date) -lt $at) { Start-Sleep -Milliseconds 5 }
+  $off = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+  [void](Invoke-S9ActionButton $Hwnd)
+  Wait-S9ActionTitle $Hwnd $S9TitleOff.Substring(0, 25) 2000
+  $reply = $null
+  while ($null -eq $reply -and ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - $off) -lt ($TimeoutSec * 1000)) { $reply = Get-S11bReplyAt $ReplyFile; if ($null -eq $reply) { Start-Sleep -Milliseconds 20 } }
+  $ms = if ($null -ne $reply) { Get-S11bOnDelay $reply ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()) } else { 0 }
+  if ($null -eq $reply) { Stop9 'the call printed no reply time: ON is pressed at once' }
+  if ($ms -gt 0) { Start-Sleep -Milliseconds $ms }
+  [void](Invoke-S9ActionButton $Hwnd)
+  Say9 "PRESS ON timed from the reply: waited $ms ms after seeing it"
+  Wait-S9ActionTitle $Hwnd $S9TitleArmed 2000
+  if ("$(Get-S9ActionTitle $Hwnd)" -ne $S9TitleArmed) { Stop9 'the toolbar title does not read armed after the ON press'; return $false }
+  $null -ne $reply
 }

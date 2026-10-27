@@ -33,7 +33,7 @@ describe("the file", () => {
   });
   it("is ASCII only and within the line cap", () => {
     expect(/[^\x00-\x7f]/.test(src)).toBe(false);
-    expect(src.split("\n").length).toBeLessThanOrEqual(440);
+    expect(src.split("\n").length).toBeLessThanOrEqual(480);
   });
   it("starts no process of its own but B17's node, never chrome.exe, never clicks", () => {
     expect(code).not.toMatch(/Start-Process|chrome\.exe/);
