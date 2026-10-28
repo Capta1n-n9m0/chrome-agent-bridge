@@ -219,3 +219,256 @@ export async function setFilesByMark(send: CdpSend, mark: string, paths: readonl
   }
   return paths.length;
 }
+
+// ── Step 12 S5a: `uploadFiles {chooser: true}` — the native file chooser (phase doc
+// `docs/plans/2026-10-27-step12-phase-f.md` 0.7 with its Stage 0 note; decisions.md #325, #336; spec §10's Step 12 S5a
+// note). The target is an element whose click opens the page's file chooser. On the call's own session: Page.enable →
+// interception on → the clicker (isolated world, `userGesture`) → `Page.fileChooserOpened` → the chooser's own input
+// rules → `DOM.setFileInputFiles {files, backendNodeId}`; interception off and `Page.disable` on every path. A refusal
+// after the click is thrown, so the use ends with an error and the session is detached (the keeper, #347): the chooser
+// is never ended by `files: []` (Stage 0 m2 E8). Pure: no `chrome.*`, no log call; no path or mark in a message.
+
+/** How long the call waits for `Page.fileChooserOpened` after the click's reply (#325). */
+export const CHOOSER_WAIT_MS = 5_000;
+
+/** No chooser opened within the bound. Fixed; names no path. */
+export const CHOOSER_TIMEOUT_MESSAGE =
+  "No file chooser opened within 5s of the click — target an element whose click opens the page's file chooser; nothing was uploaded";
+/** The event carried no `backendNodeId` (a page picker such as `showOpenFilePicker`, Stage 0 m2 E2). */
+export const CHOOSER_NO_INPUT_MESSAGE =
+  "the file chooser that opened belongs to no file input (a page file picker such as showOpenFilePicker); the bridge cannot fill it; nothing was uploaded";
+
+/** The CDP methods of one chooser upload that succeeds, in order (the last two run in a `finally`). */
+export const CHOOSER_STEP_METHODS = [
+  "Page.enable",
+  "Page.setInterceptFileChooserDialog",
+  "Page.getFrameTree",
+  "Page.createIsolatedWorld",
+  "Runtime.evaluate",
+  "DOM.describeNode",
+  "DOM.setFileInputFiles",
+  "Page.setInterceptFileChooserDialog",
+  "Page.disable",
+] as const;
+
+/**
+ * Closure-free on purpose (shipped as `String(fn)`, as the finder): finds this call's upload mark (document, open
+ * shadow roots, same-origin frames), removes it from every carrier, and clicks the one element carrying it. Runs in
+ * the session's isolated world under `userGesture`, so the page's own patched prototypes are not called. Never throws.
+ */
+function chooserClickFn(mark: string): string {
+  const found: any[] = [];
+  function visit(root: any): void {
+    let all: any;
+    try {
+      all = root.querySelectorAll("*");
+    } catch (e) {
+      return;
+    }
+    for (let i = 0; i < all.length; i++) {
+      const el = all[i];
+      try {
+        if (el.getAttribute("data-__bridge-upload") === mark) found.push(el);
+        if (el.shadowRoot) visit(el.shadowRoot);
+        const tag = String(el.tagName).toUpperCase();
+        if (tag === "IFRAME" || tag === "FRAME") {
+          let doc = null;
+          try {
+            doc = el.contentDocument;
+          } catch (e) {
+            doc = null;
+          }
+          if (doc) visit(doc);
+        }
+      } catch (e) {
+        /* a poisoned element must not stop the search */
+      }
+    }
+  }
+  try {
+    visit(document);
+  } catch (e) {
+    /* nothing found */
+  }
+  for (let j = 0; j < found.length; j++) {
+    try {
+      found[j].removeAttribute("data-__bridge-upload");
+    } catch (e) {
+      /* best effort */
+    }
+  }
+  if (found.length === 0) return "none";
+  if (found.length > 1) return "many";
+  const el = found[0];
+  try {
+    if (typeof el.click === "function") el.click();
+    else el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true }));
+  } catch (e) {
+    return "failed";
+  }
+  return "clicked";
+}
+
+/** The exact source the isolated world runs for the click. */
+export const CHOOSER_CLICK_SRC: string = String(chooserClickFn);
+
+export function chooserClickExpression(mark: string): string {
+  return `(${CHOOSER_CLICK_SRC})(${JSON.stringify(mark)})`;
+}
+
+/**
+ * The content-script call that marks the chooser's target (no file-input rule: the input is known from the event).
+ * Closure-free: Chrome ships it as source into the content script's isolated world, where `__agentBridge` lives. A
+ * missing ref answers the content script's own `REF_STALE` marker (read by `unwrapResult`).
+ */
+export const CHOOSER_MARK_PAGE_FN = (r: unknown, m: unknown): unknown => {
+  const el = typeof r === "string" && typeof m === "string" && m !== "" ? window.__agentBridge!.refs.get(r) : undefined;
+  if (!el) return { __bridgeError: "REF_STALE:ref " + String(r) + " not found — call browser_snapshot to re-snapshot" };
+  el.setAttribute("data-__bridge-upload", m as string);
+  return { ok: true };
+};
+
+/** `Page.fileChooserOpened`'s params as far as they are read. */
+export interface ChooserEvent {
+  backendNodeId?: unknown;
+  mode?: unknown;
+}
+
+/**
+ * One call's wait for `Page.fileChooserOpened`: the listener feeds it, the call arms it right before the click (an
+ * event before that is someone else's and ignored), and the first event after the arm is kept. Never logs the event.
+ */
+export class ChooserWaiter {
+  private armed = false;
+  private closed = false;
+  private event: ChooserEvent | undefined;
+  private resolve: ((e: ChooserEvent | undefined) => void) | null = null;
+
+  arm(): void {
+    if (!this.closed) this.armed = true;
+  }
+
+  feed(params: unknown): void {
+    if (!this.armed || this.closed || this.event) return;
+    this.event = params !== null && typeof params === "object" ? (params as ChooserEvent) : {};
+    this.resolve?.(this.event);
+  }
+
+  /** The event, or undefined after `ms` (or once closed). */
+  wait(ms: number): Promise<ChooserEvent | undefined> {
+    if (this.event || this.closed) return Promise.resolve(this.event);
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => done(undefined), ms);
+      const done = (e: ChooserEvent | undefined): void => {
+        clearTimeout(timer);
+        this.resolve = null;
+        resolve(e);
+      };
+      this.resolve = done;
+    });
+  }
+
+  close(): void {
+    this.closed = true;
+    this.resolve?.(this.event);
+  }
+}
+
+/** One chooser call per tab at a time (#336). */
+export class ChooserTabs {
+  private readonly busy = new Set<number>();
+  /** False when the tab already has a chooser call in flight. */
+  take(tabId: number): boolean {
+    if (this.busy.has(tabId)) return false;
+    this.busy.add(tabId);
+    return true;
+  }
+  release(tabId: number): void {
+    this.busy.delete(tabId);
+  }
+}
+
+export interface ChooserDeps {
+  send: CdpSend;
+  waiter: Pick<ChooserWaiter, "arm" | "wait">;
+  /** The call's gate re-check (`HandlerSafety.effect`), run after the event and before the input is read (S5a V2). */
+  effect?: () => Promise<void>;
+}
+
+const ownRefusal = (code: string, message: string): BridgeError => markOwnRefusal(new BridgeError(code, message));
+
+/** `DOM.describeNode`'s attribute list (`[name, value, name, value, …]`) → its names, lower-cased. */
+function attributeNames(node: { attributes?: unknown }): Set<string> {
+  const out = new Set<string>();
+  const a = node.attributes;
+  if (Array.isArray(a)) for (let i = 0; i < a.length; i += 2) if (typeof a[i] === "string") out.add((a[i] as string).toLowerCase());
+  return out;
+}
+
+/**
+ * The CDP steps of one chooser upload, inside one debugger session (the caller attaches, races the 15 s bound and
+ * detaches or keeps the session). Returns the number of paths handed to `DOM.setFileInputFiles` after it returned ok
+ * (#247). The interception off and `Page.disable` run in a `finally` on every path; a failure of either is swallowed
+ * (a failed command drops a kept session, S4b).
+ */
+export async function setFilesByChooser(deps: ChooserDeps, mark: string, paths: readonly string[]): Promise<number> {
+  const { send } = deps;
+  let intercepting = false;
+  try {
+    await send("Page.enable", {});
+    intercepting = true;
+    await send("Page.setInterceptFileChooserDialog", { enabled: true });
+    const tree = (await send("Page.getFrameTree", {})) as { frameTree?: { frame?: { id?: unknown } } } | undefined;
+    const frameId = tree?.frameTree?.frame?.id;
+    if (typeof frameId !== "string" || frameId === "") throw breakdown("no main frame");
+    const world = (await send("Page.createIsolatedWorld", { frameId, worldName: UPLOAD_WORLD_NAME })) as
+      | { executionContextId?: unknown }
+      | undefined;
+    const contextId = world?.executionContextId;
+    if (typeof contextId !== "number") throw breakdown("no isolated world");
+    deps.waiter.arm();
+    const res = (await send("Runtime.evaluate", {
+      expression: chooserClickExpression(mark),
+      contextId,
+      userGesture: true,
+      returnByValue: true,
+      awaitPromise: false,
+    })) as { result?: { value?: unknown }; exceptionDetails?: unknown } | undefined;
+    const status = res && res.exceptionDetails === undefined ? res.result?.value : undefined;
+    if (status === "none" || status === "many") throw finderRefusal(status);
+    if (status !== "clicked") throw breakdown("the click failed");
+    const ev = await deps.waiter.wait(CHOOSER_WAIT_MS);
+    if (!ev) throw ownRefusal(ErrorCodes.TIMEOUT, CHOOSER_TIMEOUT_MESSAGE);
+    // S5a V2: the wait makes the set depend on page timing; the gate is read again before the event's input is touched.
+    // A refusal here ends the chooser as every refusal after the click does (the `finally`, then the session dropped),
+    // and passes through `withDebugger` unprefixed, as the gate's refusal before the use does.
+    try {
+      await deps.effect?.();
+    } catch (err) {
+      throw err instanceof Error ? markOwnRefusal(err) : err;
+    }
+    const backendNodeId = ev.backendNodeId;
+    if (typeof backendNodeId !== "number") throw ownRefusal(ErrorCodes.BAD_PARAMS, CHOOSER_NO_INPUT_MESSAGE);
+    if (paths.length > 1 && ev.mode !== "selectMultiple") throw finderRefusal("single");
+    const desc = (await send("DOM.describeNode", { backendNodeId })) as { node?: { attributes?: unknown } } | undefined;
+    if (!desc?.node) throw breakdown("no node description");
+    const attrs = attributeNames(desc.node);
+    if (attrs.has("webkitdirectory")) throw finderRefusal("directory");
+    if (attrs.has("disabled")) throw finderRefusal("disabled");
+    await send("DOM.setFileInputFiles", { files: [...paths], backendNodeId });
+    return paths.length;
+  } finally {
+    if (intercepting) {
+      try {
+        await send("Page.setInterceptFileChooserDialog", { enabled: false });
+      } catch {
+        /* the use's failed command drops the session; interception ends with it (m2 E4 (ii)) */
+      }
+    }
+    try {
+      await send("Page.disable", {});
+    } catch {
+      /* as above */
+    }
+  }
+}

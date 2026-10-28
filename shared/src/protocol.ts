@@ -665,8 +665,12 @@ export function isLocator(value: unknown): value is Locator {
 /** At most this many paths in one `uploadFiles` call (S2's build decision on 0.6's cap). */
 export const UPLOAD_FILES_MAX_PATHS = 20;
 
-/** `uploadFiles`'s own params: the target (a ref or a locator) and 1–`UPLOAD_FILES_MAX_PATHS` absolute paths. */
-export type UploadFilesParams = ActionTarget & { paths: string[] };
+/**
+ * `uploadFiles`'s own params: the target (a ref or a locator) and 1–`UPLOAD_FILES_MAX_PATHS` absolute paths. Step 12
+ * S5a (#325, #336): `chooser: true` — the target is an element whose click opens the native file chooser (spec §10's
+ * Step 12 S5a note); absent or false, the call is as before.
+ */
+export type UploadFilesParams = ActionTarget & { paths: string[]; chooser?: boolean };
 
 /**
  * The value of an `uploadFiles` call: `files` is the number of paths Chrome accepted (`DOM.setFileInputFiles`
@@ -696,7 +700,7 @@ export function isUploadFilesParams(value: unknown): value is UploadFilesParams 
     const p: unknown = paths[i];
     if (typeof p !== "string" || p === "") return false;
   }
-  return true;
+  return value.chooser === undefined || typeof value.chooser === "boolean";
 }
 
 // ── Step 9 (docs/plans/2026-10-24-step9-phase-e-safety.md; spec §10's Step 9 note) ───────────────────

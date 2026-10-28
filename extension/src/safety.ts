@@ -44,7 +44,8 @@ import { uploadPathsAllowed, type UploadFolders } from "./upload-paths.js";
  * - `downloadStart`: its own URL (and, at the post-check, the final URL after redirects).
  * - `state`: no tab, no URL — the state only (`downloadChunk`, `downloadEnd`).
  * - `upload` (Step 11 S2, #237, #256): `uploadFiles` — the tab's tests as `tab`, then the folder rule on every path
- *   (`uploadRefusal` → `UPLOAD_REFUSED`); the JavaScript switch does not apply.
+ *   (`uploadRefusal` → `UPLOAD_REFUSED`); the JavaScript switch does not apply, except to `chooser` (Step 12 S5a,
+ *   #336: refused `JS_DISABLED` while JavaScript is off, a params rule in `safetyDecision`).
  */
 export type MethodClass =
   | "tab"
@@ -321,6 +322,9 @@ export function safetyDecision(
   // Step 10 S4b (#202): JavaScript off → JS_DISABLED (was DISARMED {scope:"evaluate"}); the same calls.
   if (!state.evaluate) {
     if (cls === "evaluate") return jsDisabled();
+    // Step 12 S5a (#336, the conservative reading): the chooser's click runs a script in the page, so `uploadFiles`
+    // with `chooser` present and not null/false is refused while JavaScript is off; without it the switch does not apply.
+    if (cls === "upload" && params.chooser !== undefined && params.chooser !== null && params.chooser !== false) return jsDisabled();
     if ((cls === "navigate" || cls === "newTab") && target.kind === "own" && typeof target.url === "string") {
       const scheme = urlScheme(target.url);
       if (scheme !== null && SCRIPT_SCHEMES.has(scheme)) return jsDisabled();
