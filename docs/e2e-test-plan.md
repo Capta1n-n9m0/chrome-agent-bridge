@@ -1896,6 +1896,12 @@ UP-OPT investigator, `…-steps/S7-up-opt-investigator.md`: a fully covered O2 i
 `…-steps/S7-drivers-C.md` §6 (the 1 024-byte file, CHOOSE-2 (b) by a raw call, CHOOSE-4 leg a's and the JSOFF control's
 counts, CHOOSE-1's page per call, one CLOSERPROBE) are read as that report states.
 
+*Note 2026-10-29, before any Run 19 observation (session agent; decisions.md #364):* R19-UP-OPT's fix lives in
+`Invoke-S19Opt` (`recipes/s12-win.ps1`), Run 19's own copy, so the Run 16–18 helpers stay as measured. It prints
+`OPT O2 front after-save=<…> before-conflict-read=<…>` and then the `FIX R19-UP-OPT: …` line. Both are record lines,
+never judged, and they come before the row's `OPT O2 shown=…` line. The judged line, the 15 s poll and the 5 000 ms
+bound are unchanged.
+
 ## 5. Results template
 
 Copy this and fill it in during the run:

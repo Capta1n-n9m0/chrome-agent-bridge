@@ -26,7 +26,7 @@
 - **Counts:** `npm test` went from 230 files / 5506 tests (the builder's run before the change) to **231 files / 5520 passed** (verifier2, main tree). `npm run typecheck` exit 0. All seven recipes tsconfigs exit 0.
 - **Sizes** (`git diff --numstat HEAD -- recipes` and `wc -l`): **15 code lines** against a cap of 150, and **140 test lines** against a cap of 300.
 - **Files:** `recipes/s12-win.ps1`, `recipes/s12-r19-b.ps1`, `recipes/s12-r19-lib.ps1`, `recipes/s12-r19.ps1`, `recipes/test/s12-helpers-e.test.ts` (new), `recipes/test/s12-r19-c.test.ts`, `recipes/test/s12-r19-static.test.ts`. The reports are `S7-helpers-e{,-builder,-verifier,-fixer,-verifier2}.md` and the two `-evidence.txt` files.
-- **Commit:** see §7. The step agent writes the hash there.
+- **Commit:** `afccec8`.
 
 ## 3. Verifier verdict
 - **Builder** (`S7-helpers-e-builder.md`, Sonnet, medium): DONE. The new tests were red on the unchanged tree.
@@ -65,6 +65,6 @@
 
 ## 7. Handoff
 - Nothing is running. Both verifiers removed and pruned their scratch worktrees, and `git worktree list` shows the main tree only. `wtv` was not touched.
-- Commit: _(filled in below by the step agent)_.
+- Commit: `afccec8` (14 files; this hash line was added after it).
 - **Next:** S7-drivers-DE. liveD19 and liveE19 do not yet call `Write-R19Dialogs`; that belongs to -DE.
 - **For the session agent:** the §4.27 note for the `OPT O2 front` line, and the three proposed decisions.

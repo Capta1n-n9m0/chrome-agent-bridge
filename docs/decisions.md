@@ -195,6 +195,26 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · S7-helpers-e accepted; the UP-OPT fix lives in Run 19's own helper copy (#364)
+**Decided:** S7-helpers-e (`afccec8`, PASS-with-notes after one fix round; 15 code / 140 test lines) as proposed in
+`…-steps/S7-helpers-e.md` §5:
+- **The fix is in `Invoke-S19Opt`, not in `Invoke-S11Opt` as #363 worded it.** It is a patched copy that only Run 19
+  calls.
+- **Its two new lines are record lines.** `OPT O2 front …` and `FIX R19-UP-OPT …` are never judged; a dated §4.27 note
+  says so before any Run 19 observation.
+- **MINOR-1b is carried.** Four deliberate want-override forms still pass the tests (alias, `delete`, a `calls` edit).
+  It is fixed by the next slice that edits `WANT` or the `calls` table.
+- **liveD19's and liveE19's `DIALOGS` line goes to S7-drivers-DE.**
+- **The verifiers' finding is a gotcha candidate for the close-out.** A worktree with its own `npm ci` still holds
+  `node_modules/@bridge/*` junctions, which `git worktree remove` cannot delete; they are removed one by one first, as
+  #220 says.
+
+**Why:** Runs 16–18 stay reproducible as they were measured. The overrides that are likely to be written by accident
+are already killed.
+**Instead of:** editing the shared helper; a second fix round for deliberate forms.
+**Revisit if:** R19-UP-OPT still reads `shown=no`.
+**By:** Claude (session agent's rulings)
+
 ### 2026-10-28 · S7-drivers-C accepted; UP-OPT's cause is the helper's poll, fixed in S7-helpers-e (#363)
 **Decided:** S7-drivers-C (`836a79e`, PASS-with-notes after one fix round; every liveC19 block driven; 662 code / 462
 tests) with its proposals (`…-steps/S7-drivers-C.md` §5): the two RECORD rows print `RECORD`; JSOFF's MCP half is
