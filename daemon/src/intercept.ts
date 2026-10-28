@@ -31,7 +31,7 @@ import type { ExtensionConnection } from "./connection.js";
 import { HandleTable, type HandleNumbers } from "./handles.js";
 import { LeaseTable } from "./leases.js";
 import { VisibilityLock } from "./lock.js";
-import { classify, takesLock, NETWORK_METHODS, REMOVED_METHODS } from "./methods.js";
+import { classify, takesLock, trustedFocus, NETWORK_METHODS, REMOVED_METHODS, TRUSTED_SETTLE_MS } from "./methods.js";
 import { DAEMON_SLACK_MS, DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, MIN_TIMEOUT_MS } from "./route.js";
 
 export const RELOAD_HINT =
@@ -498,6 +498,7 @@ export class TabLayer {
 
     const target = await this.resolveTarget(method, p, deadline);
     this.checkLease(target.handle, caller);
+    if (trustedFocus(method, p)) return this.trustedInput(caller, method, p, target.handle, deadline);
 
     let release: (() => void) | undefined;
     let tabId = target.tabId;
@@ -528,6 +529,41 @@ export class TabLayer {
     } finally {
       if (method === "closeTab" && this.closing.get(tabId) === caller.clientId) this.closing.delete(tabId);
       release?.();
+    }
+  }
+
+  /**
+   * Step 12 S6-G2 (#321 Q6, #338; spec §6.4): a trusted input as one blocking action. One acquisition covers a forwarded
+   * `focusTab`, the input and the settle pause, so no other actor's capture or focus comes between. Caller and lease are
+   * re-checked after the wait and again between the forwards; a failure there, or of the focus, or a focus that settled
+   * at or past the deadline (`TIMEOUT`), forwards no input and releases at once. The reply goes out first; the pause (`min(500, deadline − now)`, #44) follows every input outcome.
+   */
+  private async trustedInput(caller: Caller, method: string, p: Params, handle: string, deadline: number): Promise<unknown> {
+    const gone = () => new BridgeError(ErrorCodes.NOT_CONNECTED, "client disconnected");
+    if (this.deps.nameOf(caller.clientId) === undefined) throw gone();
+    const release = await this.lock.acquire(caller.clientId, deadline);
+    let tabId: number;
+    try {
+      tabId = this.resolveHandle(handle);
+      this.checkLease(handle, caller);
+      await this.forward("focusTab", { tabId }, deadline);
+      if (this.deps.nameOf(caller.clientId) === undefined) throw gone();
+      tabId = this.resolveHandle(handle);
+      this.checkLease(handle, caller);
+      // S6-G2 fixer r1 (MINOR-3): a focus that settled at or past the deadline sends no input.
+      if (this.now() >= deadline) throw new BridgeError(ErrorCodes.TIMEOUT, `Timed out before calling ${method}`);
+    } catch (err) {
+      release();
+      throw err;
+    }
+    const forwarded = without(p, "tab");
+    forwarded.tabId = tabId;
+    try {
+      return await this.forward(method, forwarded, deadline);
+    } finally {
+      const pause = Math.min(TRUSTED_SETTLE_MS, deadline - this.now());
+      if (pause > 0) void this.sleep(pause).then(release);
+      else release();
     }
   }
 

@@ -117,6 +117,8 @@ describe("method table", () => {
     for (const m of ["click", "snapshot", "closeTab", "newTab", "listTabs", "networkClear", "slow"]) {
       expect(takesLock(m, {})).toBe(false);
     }
+    // Step 12 S6-G2 (G6.5; Stage0.md §6, V-5, N-3): a trusted input's hold is `trustedFocus`'s, never `takesLock`'s.
+    for (const m of ["click", "type", "pressKey"]) expect(takesLock(m, { trusted: true })).toBe(false);
   });
 
   it("names the network methods", () => {

@@ -86,3 +86,18 @@ export function takesLock(method: string, params: Record<string, unknown> | unde
   if (method !== "screenshot") return false;
   return params?.mode !== "cdp" && !params?.fullPage;
 }
+
+/** Step 12 S6-G2 (#338; spec §6.4): the inputs that become one blocking action when trusted. */
+const TRUSTED_INPUTS: ReadonlySet<string> = new Set(["click", "type", "pressKey"]);
+
+/** Step 12 S6-G2 (#338): how long the lock stays held after a trusted input's reply (#321 Q6; m2 G2 needs ~10 ms). */
+export const TRUSTED_SETTLE_MS = 500;
+
+/**
+ * Step 12 S6-G2 (#321 Q6, #338; spec §6.4): a trusted `click`/`type`/`pressKey` without focus emulation. The tab layer
+ * holds the visibility lock from a forwarded `focusTab` through the input and the settle pause. Kept apart from
+ * `takesLock`, which stays false for these methods: their lock covers two forwards, not one.
+ */
+export function trustedFocus(method: string, params: Record<string, unknown> | undefined): boolean {
+  return TRUSTED_INPUTS.has(method) && params?.trusted === true && params?.focusEmulation !== true;
+}
