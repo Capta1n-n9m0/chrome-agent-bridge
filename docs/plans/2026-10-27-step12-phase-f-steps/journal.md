@@ -51,3 +51,4 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
 - 2026-10-28T04:18Z · S4b · step agent · ended · `63c771c` · PASS (two fix rounds) · tests 5010 → 5028; #352 recorded.
 - 2026-10-28T04:18Z · S4b · measurer · Opus · medium · started (CON-KEPT, SWEEP-HELD in a scratch Chrome, #352).
 - 2026-10-28T04:18Z · S5a · step agent · Opus · medium · started beside the measurer.
+- 2026-10-28T04:28Z · S4b · measurer · ended · CON-KEPT 5/5, SWEEP-HELD 15/15 (flagged scratch Chrome); #352 annotated; no product change needed.

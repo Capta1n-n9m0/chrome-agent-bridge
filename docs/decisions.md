@@ -212,6 +212,13 @@ across sessions (Stage 0 m1 C7).
 **Revisit if:** either measurement fails: then a proposed fix slice before S5, or C's handler detaches its own session
 (a keeper bypass for `consoleMessages`).
 **By:** Claude (build decisions; the measurement is the conservative option)
+*Measured 2026-10-28 (`…-steps/S4b-measurer.md`, scratch Chrome 156 on a temporary profile, with
+`--enable-unsafe-extension-debugging`, the no-flag case unmeasured): CON-KEPT holds 5 of 5 (a second `Runtime.enable` in
+the same session replays every earlier message, in order, same timestamps), so `consoleMessages` on a kept tab answers
+as on a fresh one; SWEEP-HELD holds 15 of 15 (our `detach` of a tab another client holds answers `Debugger is not
+attached to the tab with id: N.`, the other client keeps working; the sweep ignores it). Two extensions attached to one
+tab at once in that flagged setup (SH-4): `extension/CLAUDE.md`'s one-debugger-per-tab bullet stays until Run 19's
+no-flag DevTools row measures the real profile (#339).*
 
 ### 2026-10-28 · Run 18's findings: UP-OPT measured first, the banner FAILs carried to Run 19, DevTools proven by a probe, three helper fixes in S7 (#351)
 **Decided:** Run 18 (`…-steps/S1-run-record.md`, `63f2f89`; 17 verdicts: 10 PASS, 6 FAIL, 1 NOT MEASURED; both banner
