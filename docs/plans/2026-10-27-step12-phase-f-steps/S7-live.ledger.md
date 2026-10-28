@@ -30,3 +30,17 @@
   PASS-with-notes (`S7-live-verifier.md`): 5570 passed, typecheck and 7 recipes tsconfigs exit 0; new tests 12 red on
   HEAD's code; 15 mutants, 11 killed, 4 survived = MINOR F1-F4 (test pins only, accepted as notes, not a blocker).
   Next: committer, then attempt 2 from the fix commit.
+- Fix round 1 committed `079a063` (verifier PASS-with-notes).
+- liveA19 att2 (runner Sonnet medium; out `$TEMP/bridge-e2e/s19-live/a2`; HEAD 079a063, build clean): exit 2 at
+  22:46:05Z, ~3 min in. R19-0 PASS, R19-BANNER-CTL PASS; R19-ARGS-1 `clauses=3 failed=1` (sdk value-equal=4 json-equal=5,
+  mcp 5/5; control-2 ok, `kind=undefined`); ARGS-2/-GLOBAL/-CSP/-STOP, CON-1/-2/-REJ/-BIG/-NAV/-MCP/-CAP failed=0 (console
+  clauses pending R19-LOGS). STOP in r19-con-banner: `window 44303224 is not one this wave opened (banner sampler)` ->
+  `STOP throw-after-state` -> `RETURN 1 ... restored=n/a readback=n/a` (no state change yet; ARGS-3 comes later).
+- Diagnosis (step agent): 44303224 is W itself (evidence line 24). conBanner opens `s12-console.html` ACTIVE in W
+  (`s12-r19-a.ts:569`), so W's title became `S12 console fixture`, which Format-S9Title (`s11-win.ps1:16`) maps to
+  `<other window>`; Test-S9Live then refuses W. Helper defect (first reached now: att1 stopped earlier). Not a product
+  result; no restore needed.
+- After: `-Block teardown` a2 exit 0 (`CHECK clean PASS`); daemon PID 35924 stopped (`s9.ts daemon-shutdown`); the
+  con-banner driver PID 38644 had exited by itself; nothing on 9234/8080-8089. Attempts 2 of 3; fix rounds 1 of 3.
+- Next: fix round 2 (Sonnet fixer -> `S7-live-fixer2.md`, Opus verifier -> `S7-live-verifier2.md`): Run 19's own titles
+  (`S12 console fixture`, `S12 chooser fixture`, `S12 chooser frame`) taken as the wave's own in `s12-win.ps1`; then att3.

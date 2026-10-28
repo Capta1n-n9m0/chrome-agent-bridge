@@ -103,3 +103,64 @@ pass rule. **By:** Claude (proposed; one fix round with an Opus verifier, togeth
 - Budget: liveA19 has used 1 of 3 attempts; fix rounds used are 0 of 3. Attempt 2 needs a fresh `S11_OUT`, for example
   `$TEMP/bridge-e2e/s19-live/a2`, and `-Att 2`, after the ruling and the helper fix.
 - Needs the user's keyboard: nothing.
+
+---
+
+# Attempt 2 (2026-10-29; fresh step agent, Claude Opus 5.5, medium)
+
+Fix round 1 (`079a063`; fixer Sonnet `S7-live-fixer.md`, verifier Opus `S7-live-verifier.md` PASS-with-notes) applied
+#366: control-2 must answer `ok` and its kind is recorded; ARGS-OLD's raw twin sends `function f() {}`; the scripted MCP
+client re-sends on the connecting reply for at most 15 s; an empty tab handle is a `HelperDefect`. Runner: Claude
+Sonnet 5.5, medium (`S7-live-runner-liveA19-att2.md`). Out `$TEMP/bridge-e2e/s19-live/a2`, `-Att 2`, HEAD `079a063`,
+build from a clean tree (`built extension → dist/`), tree clean after.
+
+## A2.1 Verdict
+Slice ended by a **helper-defect STOP** in R19-CON-BANNER, about 3 minutes in (exit 2). No state change had run, so
+there was nothing to restore. Not a failed restore and not an integrity-floor item.
+
+## A2.2 Rows as printed (counts)
+- Preflight and R19-0: `ROW RD-0 (a) PASS`, `ROW RULES PASS: RULES 0`, `ROW RD-0 (c) PASS`, `ROW RD-0 (d) PASS`,
+  `ROW R17B-0 (e)(f) PASS` (twice); `LOADED consoleMessages=answered entries=11 console=10 exception=1 args=answered`;
+  `ROW R19-0 PASS slice=A`.
+- `ROW R19-BANNER-CTL PASS slice=A` (neg `idle-ms=20004 polls=16 banner=none`; pos `answer=ok polls=15 banner=seen`).
+- R19-ARGS-1: sdk `total table=5 value-equal=4 json-equal=5` (v1 `value-equal=no json-equal=yes`); mcp `total table=5
+  value-equal=5 json-equal=5`; control-1 `ok`, control-2 `ok`, `CHECK R19-ARGS-1 control-2 kind=undefined`;
+  `LEG R19-ARGS-1 table FAIL`; `CHECK R19-ARGS-1 clauses=3 failed=1`. **Row FAIL (recorded, not fixed).**
+- `failed=0` by their CHECK lines (console clauses `pending R19-LOGS`, so no row verdict was printed): R19-ARGS-2
+  (`ARGSREF total refusals=11 exact=11 data-none=11 sent=2 effects=0 control=1`), R19-ARGS-GLOBAL, R19-ARGS-CSP,
+  R19-ARGS-STOP (`answer=TIMEOUT ms=1511 bound-ms=1500`), R19-CON-1 (3 clauses), R19-CON-2, -REJ, -BIG, -NAV, R19-CON-MCP
+  (4 clauses; `existing tools=5 ok=5`, `empty-text=exact`, `banner=PASS`), R19-CON-CAP (`sdk-entries=200 more=191`).
+- Not reached: R19-CON-BANNER's verdict and every later row, R19-RESTORE, R19-LOGS, `CHECK rows`.
+
+## A2.3 STOP and return (R7.6)
+`window 44303224 is alive but not taken as the driver's (title not one of the wave's own)` → `STOP: window 44303224 is
+not one this wave opened (banner sampler)` → `WAVE stopping: an exception in block r19-con-banner` → `STOP
+throw-after-state` → `RETURN 1 after-stop=throw-after-state restored=n/a readback=n/a`. Matched; the runner returned.
+
+## A2.4 Diagnosis (step agent)
+44303224 is W, the wave's own driver window (evidence line 24, `WINDOW W is 44303224`). R19-CON-BANNER's driver opens
+`s12-console.html` as W's **active** tab (`recipes/s12-r19-a.ts:569`), so W's title became `S12 console fixture`;
+`Format-S9Title` (`recipes/s11-win.ps1:16`) knows no S12 title and returns `<other window>`, and `Test-S9Live`
+(`s9-win.ps1:1052`) refuses W. A helper defect, first reached now (attempt 1 stopped before it). Fix round 2 adds Run
+19's own fixture titles, exactly, in `recipes/s12-win.ps1` (the runner's patch file); no guard is otherwise changed.
+
+## A2.5 Restore, logs, after
+- Restore: not run (`restored=n/a`); the state was only read (armed, JavaScript on, RULES 0). ARGS-3, the slice's first
+  state change, comes after CON-BANNER.
+- R19-LOGS: not run; no console evidence copy. Scans of the record and evidence files (`recipes/s11b.ts scan18 --what
+  other --file`): both `SCAN other: ://=0 (fixture 0, other 0) token=0 sentinel=0 profile=0`.
+- After: `-Block teardown` (a2) exit 0, `CHECK clean PASS`; daemon PID 35924 stopped by `s9.ts daemon-shutdown`; the
+  con-banner driver (PID 38644, which the runner saw still connected) had exited by itself; nothing on 9234 or
+  8080–8089.
+- Budgets: attempts 2 of 3; fix rounds 1 of 3 before fix round 2.
+
+## A2.6 Findings and proposals
+- **R19-ARGS-1 FAIL, SDK leg v1:** `value-equal=no json-equal=yes` in both attempts; the MCP leg is 5 of 5. The value the
+  SDK returns for TABLE[0] differs from the sent value under `JSON.stringify` comparison, while the page's own
+  `JSON.stringify(a)` matches. A product finding for S7-record (cause not established here: candidates are key order or
+  `-0`/`1e21` handling on the SDK's by-value path).
+- **Runner misreading (no effect):** the runner wrote that control-2's kind "was not recorded"; `kind=undefined` *is*
+  the recorded kind (the declaration's completion value, as attempt 1's probe measured).
+- **Gotcha candidate for `recipes/CLAUDE.md`:** a row that opens a fixture as the driver window's active tab changes the
+  window's title, and the title guard (`Format-S9Title`) must know that fixture's `<title>`, or the next guarded action
+  STOPs (Run 19 liveA19 att2, 2026-10-29).
