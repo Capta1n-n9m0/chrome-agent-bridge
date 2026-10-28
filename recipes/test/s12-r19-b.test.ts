@@ -583,3 +583,15 @@ describe.skipIf(!hasPs)("fix round 1: the real row driver and the drivers' step 
     it(`mutant: ${what} turns R1 or R2 red`, () => { const o = runPs(XR, PSB, SCEN_R, mutate(PSA, from, to)); expect(has(o, R1) && has(o, R2)).toBe(false); });
   }
 });
+
+describe("keep1's trusted click target", () => {
+  it("is a css selector the console fixture holds exactly once, and never body/html/head (the locator walk starts at body's children)", () => {
+    const m = TS.match(/t\.click\(\{ css: "([^"]+)" \}, \{ trusted: true \}\)/);
+    expect(m).not.toBeNull();
+    const sel = m![1]!;
+    expect(["body", "html", "head"]).not.toContain(sel);
+    expect(sel).toMatch(/^[a-z][a-z0-9]*$/);
+    const fixture = rd("test-fixtures/s12-console.html");
+    expect(fixture.match(new RegExp(`<${sel}[\\s>]`, "g"))?.length).toBe(1);
+  });
+});

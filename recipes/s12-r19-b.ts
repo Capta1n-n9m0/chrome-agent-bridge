@@ -222,7 +222,7 @@ async function keep1(x: Ctx): Promise<number> {
     first = Date.now();
     await step(() => t.evaluate("1 + 1"), (v) => v === 2);
     await step(() => entriesOf(t), (v) => (v as unknown[]).length === 11);
-    await step(() => t.click({ css: "body" }, { trusted: true }), () => true);
+    await step(() => t.click({ css: "h1" }, { trusted: true }), () => true);
     await step(() => t.screenshot({ mode: "cdp" }), (v) => Buffer.isBuffer(v) && v.length > 0);
     await step(() => t.evaluate("(a) => a", { args: 7 }), (v) => v === 7);
   });
