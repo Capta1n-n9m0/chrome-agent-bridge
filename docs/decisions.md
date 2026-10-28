@@ -195,6 +195,21 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-28 · S7-helpers-c as built; its one unexplained test failure is hunted in S7-helpers-d (#359)
+**Decided:** S7-helpers-c (`6a5a158`, PASS-with-notes after one fix round, three MAJORs fixed) as its proposals: the
+swap leaves the old build in `extension/dist/` and the runner restores HEAD, so **S7-helpers-d calls `swapOldBuild`
+inside a `try` whose `finally` always calls `restoreHead` and then the reload** (M1: three throw paths otherwise leave
+the old build; their error wording is fixed in -d); the human-style click acts only on window X and sends nothing
+unless the window under the point is X. **M5** (one test of `recipes/test/s12-ps-c.test.ts` failed in one full run,
+unnamed; not in twelve later runs) is an unexplained firing (`agent-rules.md` §3 item 8): taken by the session agent,
+not waved through: S7-helpers-d's verifier runs that file 20 times alone and 3 times inside the full suite and names
+any failure; a recurrence is fixed in -d (a flaky guard on the live path is not acceptable), none is recorded with the
+counts.
+**Why:** the closer and the swap guard the user's screen and extension; an intermittent test there must be explained.
+**Instead of:** accepting "did not recur" as the explanation.
+**Revisit if:** it recurs in S7-helpers-d.
+**By:** Claude (session agent's ruling)
+
 ### 2026-10-28 · §4.27's line-form gaps settled before Run 19 (#358)
 **Decided:** S7-helpers-b (`e5b8341`, PASS-with-notes after two fix rounds; DevTools by Chrome's menu through UIA,
 `uia-menu`, judged only by the control) found that forms (15) and (16) have no spelling for a banner that never went

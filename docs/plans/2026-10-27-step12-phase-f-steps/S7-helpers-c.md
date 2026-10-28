@@ -15,7 +15,7 @@ Layer followed: brief → #357 / #356 (2) → §4.27 (forms by key).
 DONE. One fix round was used (of three).
 
 ## 2. Outputs
-- **Commit:** the committer reports the hash. It is written here after the commit and left uncommitted for the session agent.
+- **Commit:** `6a5a158` (12 files). This hash line is written after the commit and left uncommitted for the session agent.
 - **Code:**
   - `recipes/s12-forms-c.ts` holds forms (21)–(24), (26) with `G2TYPE`, (27), (30), (33) and `closerprobeVerdict`.
   - `recipes/s12-win-c.ps1` holds the closer `Close-S12Dialog`: owner X, then `WindowPattern.Close`, then Cancel, then Escape to the dialog of X only, under a 5 000 ms watchdog. It also holds `Invoke-S12CloserProbe` and `Invoke-S12HumanClick`. The click searches X only and sends nothing unless FromPoint gives X.
