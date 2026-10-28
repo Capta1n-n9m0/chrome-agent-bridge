@@ -57,6 +57,10 @@ export function judgeBannerRefused(banner: "seen" | "none", idleMs: number, ctl:
 }
 /** An in-call window (CON-MCP): `seen` expected; never a STOP. */
 export const judgeBannerCall = (banner: "seen" | "none", idleMs: number, ctl: string): V => (idleMs < IDLE_MIN_MS_19 || ctl !== "pass" ? "NOT MEASURED" : banner === "seen" ? "PASS" : "FAIL");
+/** A leg that sent no call (calls-sent=0): a banner there cannot come from the leg, so `seen` is recorded with its counts, never a STOP or a FAIL (R19-UP-6); IDLE and the control still apply. */
+export const judgeBannerNoCall = (banner: "seen" | "none", idleMs: number, ctl: string): V => (idleMs < IDLE_MIN_MS_19 || ctl !== "pass" ? "NOT MEASURED" : banner === "seen" ? "RECORD" : "PASS");
+/** A carried Run 18 row (R19-UP-6, R19-F-RAW*): 4.27's STOP map does not list them, so a positive with IDLE >= 20 000 and a passing control is a FAIL with both counts recorded (phase doc: continues anyway), never a STOP. */
+export const judgeBannerCarried = (banner: "seen" | "none", idleMs: number, ctl: string): V => (idleMs < IDLE_MIN_MS_19 || ctl !== "pass" ? "NOT MEASURED" : banner === "seen" ? "FAIL" : "PASS");
 export const bannerCallLine = (row: string, leg: string, idleMs: number, polls: number, banner: string, ctl: string): string => `BANNERCALL ${row} leg=${leg} idle-ms=${idleMs} polls=${polls} banner=${banner} control=${ctl}`;
 export const bannerCtl19 = (slice: string, neg: { idleMs: number; polls: number; banner: string }, pos: { answer: string; polls: number; banner: string }): { lines: string[]; pass: boolean } => ({
   lines: [`BANNERCTL ${slice} leg=neg idle-ms=${neg.idleMs} polls=${neg.polls} banner=${neg.banner}`, `BANNERCTL ${slice} leg=pos answer=${pos.answer} polls=${pos.polls} banner=${pos.banner}`],
@@ -70,14 +74,14 @@ export const STOP_FOR: Record<string, Why> = { "con-4": "attach-after-disarm", "
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = (): string => process.env.S11_OUT ?? "";
 const STAMP = (): string => join(OUT(), "last-attach.stamp");
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
-const say = (l: string): void => console.log(l);
+export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+export const say = (l: string): void => console.log(l);
 export class StopWhy extends Error { constructor(readonly why: string, m: string) { super(m); } }
 type Tab = import("../sdk/src/index.js").Tab;
 type Client = import("../sdk/src/index.js").BridgeClient;
-const stamp = (): void => { mkdirSync(OUT(), { recursive: true }); writeFileSync(STAMP(), String(Date.now())); };
+export const stamp = (): void => { mkdirSync(OUT(), { recursive: true }); writeFileSync(STAMP(), String(Date.now())); };
 const readStamp = (): number | null => (existsSync(STAMP()) && /^\d+$/.test(readFileSync(STAMP(), "utf8").trim()) ? Number(readFileSync(STAMP(), "utf8").trim()) : null);
-async function idle(row: string): Promise<number> {
+export async function idle(row: string): Promise<number> {
   const s = readStamp();
   if (s === null) stamp();
   await sleep(idleSleepMs(Date.now(), s));
@@ -86,10 +90,10 @@ async function idle(row: string): Promise<number> {
   return n;
 }
 /** One attempt: the call's error as {code,message,data} or its value; the stamp is set after every call but the three exempt reads (`exempt`). */
-async function att<T>(fn: () => Promise<T>, exempt = false): Promise<{ v?: T; e?: Err }> {
+export async function att<T>(fn: () => Promise<T>, exempt = false): Promise<{ v?: T; e?: Err }> {
   try { return { v: await fn() }; } catch (x) { const m = x as { code?: unknown; message?: unknown; data?: unknown }; return { e: { code: String(m.code ?? "ERROR"), message: String(m.message ?? ""), data: m.data } }; } finally { if (!exempt) stamp(); }
 }
-interface Mcp { call(tool: string, a: Record<string, unknown>, fixture?: string): Promise<{ text: string; isError: boolean }>; close(): Promise<void> }
+export interface Mcp { call(tool: string, a: Record<string, unknown>, fixture?: string): Promise<{ text: string; isError: boolean }>; close(): Promise<void> }
 /** The three reads the IDLE definition leaves out (the sheet: any call other than snapshot, listTabs, daemon.status counts). */
 export const IDLE_EXEMPT_TOOLS: readonly string[] = ["browser_snapshot", "browser_list_tabs", "browser_status"];
 /** The one line R19-LOGS scans per tool result. `browser_list_tabs` answers every open tab of the human and `browser_status` names the human's active tab, so only counts and fixed words are kept (what the rows judge is judged on the raw text before this). */
@@ -119,11 +123,11 @@ async function mcpOpen(slice: string): Promise<Mcp> {
     close: () => c.close(),
   };
 }
-interface Ctx { c: Client; slice: string; sent: () => number; mcp: () => Promise<Mcp>; open(url: string, active?: boolean, keep?: boolean): Promise<Tab>; ctl: string; opts: Record<string, string> }
-const URL = (q: string, page = "s12-console.html"): string => `http://localhost:8081/${page}?s12=${q}`;
+export interface Ctx { c: Client; slice: string; sent: () => number; mcp: () => Promise<Mcp>; open(url: string, active?: boolean, keep?: boolean): Promise<Tab>; ctl: string; opts: Record<string, string> }
+export const URL = (q: string, page = "s12-console.html"): string => `http://localhost:8081/${page}?s12=${q}`;
 /** `stateless`: the row id of an actor that changes no state ("opts" = the --row option); a throw there is that row's FAIL leg, never a wave STOP (m2). */
 export const crashLine = (row: string): string => legLine(row, "actor-error", "FAIL");
-async function run(name: string, argv: string[], fn: (x: Ctx) => Promise<number>, stateless?: string): Promise<number> {
+export async function run(name: string, argv: string[], fn: (x: Ctx) => Promise<number>, stateless?: string): Promise<number> {
   const opts: Record<string, string> = {};
   for (let i = 0; i < argv.length; i += 2) opts[argv[i]!.replace(/^--/, "")] = argv[i + 1] ?? "";
   const { connect } = await import("../sdk/src/index.js");
@@ -149,9 +153,9 @@ async function run(name: string, argv: string[], fn: (x: Ctx) => Promise<number>
     c.close();
   }
 }
-const finish = (row: string, legs: V[]): number => { const bad = legs.filter((v) => v === "FAIL").length; say(`CHECK ${row} clauses=${legs.length} failed=${bad}`); return bad > 0 ? 1 : legs.includes("NOT MEASURED") ? 3 : 0; };
-const handleOf = (t: string): string => /T\d+/.exec(t)?.[0] ?? "";
-const entriesOf = async (t: Tab, o: Record<string, unknown> = {}): Promise<ConEntry[]> => (await t.consoleMessages(o)) as unknown as ConEntry[];
+export const finish = (row: string, legs: V[]): number => { const bad = legs.filter((v) => v === "FAIL").length; say(`CHECK ${row} clauses=${legs.length} failed=${bad}`); return bad > 0 ? 1 : legs.includes("NOT MEASURED") ? 3 : 0; };
+export const handleOf = (t: string): string => /T\d+/.exec(t)?.[0] ?? "";
+export const entriesOf = async (t: Tab, o: Record<string, unknown> = {}): Promise<ConEntry[]> => (await t.consoleMessages(o)) as unknown as ConEntry[];
 
 // ---- ARGS rows (no state change) --------------------------------------------------------------------------------------------------------------
 const TABLE: unknown[] = [{ rows: [1, 2, { z: null, a: [true, false] }], name: "é€😀", n: -0.5, big: 1e21 }, null, [[], {}, "", 0], "plain string", { "sentinel-args-K7W3-key": "sentinel-args-K7W3-value" }];
@@ -334,7 +338,7 @@ async function conCap(x: Ctx): Promise<number> {
 }
 
 // ---- the refusal rows (the driver changes the safety state between the actor's signals) ------------------------------------------------------
-const sig = async (name: string): Promise<string> => { realIo.signal(name); return realIo.pressed(name, 180_000); };
+export const sig = async (name: string): Promise<string> => { realIo.signal(name); return realIo.pressed(name, 180_000); };
 type Txt = { text: string; isError: boolean };
 /** The MCP clauses of a refusal row: CON-3 the console tool's text equals browser_snapshot's (one error line); CON-JSOFF it equals browser_evaluate's and the snapshot answers; CON-4 an error carrying the disarmed message. */
 export function judgeMcpRefusal(row: string, r: Txt, ctl?: Txt, snap?: Txt): V {
@@ -544,13 +548,13 @@ async function conBanner(x: Ctx): Promise<number> {
   await windowed(realIo, `${R}-after`, [], async () => undefined);
   return 0;
 }
-/** `banner --row R --kind refused|call --ctl pass|fail|absent --stop <reason> --leg label=polls,banner,idle`: the BANNERCALL line and the clause's LEG line. */
+/** `banner --row R --kind refused|call|carried|record --ctl pass|fail|absent --stop <reason> --leg label=polls,banner,idle`: the BANNERCALL line and the clause's LEG line. */
 function bannerCmd(o: Record<string, string>): number {
   const [label = "", rest = ""] = (o.leg ?? "").split("=");
   const [polls, banner, idle] = rest.split(",");
   const b = (banner === "seen" ? "seen" : "none") as "seen" | "none", ms = Number(idle ?? 0);
   say(bannerCallLine(o.row ?? "", label, ms, Number(polls ?? 0), b, o.ctl ?? "absent"));
-  const v = o.kind === "call" ? judgeBannerCall(b, ms, o.ctl ?? "") : judgeBannerRefused(b, ms, o.ctl ?? "");
+  const v = o.kind === "record" ? judgeBannerNoCall(b, ms, o.ctl ?? "") : o.kind === "carried" ? judgeBannerCarried(b, ms, o.ctl ?? "") : o.kind === "call" ? judgeBannerCall(b, ms, o.ctl ?? "") : judgeBannerRefused(b, ms, o.ctl ?? "");
   say(`LEG ${o.row} banner ${v === "STOP" ? "NOT MEASURED" : v}`);
   say(`CHECK ${o.row} banner=${v}`);
   if (v === "STOP") { say(`STOPWHY ${o.stop}`); return 2; }

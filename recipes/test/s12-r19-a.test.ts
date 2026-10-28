@@ -60,7 +60,7 @@ describe("every liveA19 row has a driver", () => {
     for (const r of ["attach-after-disarm", "attach-on-refused-page", "existing-tool-changed", "args-ran-js-off"]) expect(TS).toContain(`"${r}"`);
   });
   it("every actor command a driver runs exists, and the JS-off, block-list and toolbar rows pair a do with an undo", () => {
-    const ran = new Set([...ENTRY.matchAll(/Invoke-R19Row '[A-Z0-9-]+' @\('([a-z0-9-]+)'/g)].map((m) => m[1]!));
+    const ran = new Set([...ENTRY.matchAll(/Invoke-R19Row '[A-Z0-9-]+' @\('([a-z0-9-]+)'(?![^\n]*-Actor 's12-r19-b')/g)].map((m) => m[1]!));
     for (const c of [...ran, "banner-ctl", "con-banner", "banner", "banner-ctl-judge", "banner-con"]) expect(Object.keys(A.cmds), c).toContain(c);
     for (const sig of ["R19-ARGS-3-js", "R19-CON-JSOFF-js", "R19-CON-3-block", "R19-CON-4-off", "R19-CON-FRAME-block", "R19-CON-NOTEA-block", "R19-CON-FLOOR-off", "R19-CON-OWN-open", "R19-CON-FILE-open"]) {
       expect(ENTRY, sig).toContain(`'${sig}'`);
@@ -306,8 +306,8 @@ function Write-S11Pressed([string]$id, [string]$v) { [void]$global:Calls.Add("PR
 function Invoke-S12Sampler { [pscustomobject]@{ Polls = 9; Banner = 'seen' } }
 function Use-S16Options { 1 }
 function Set-S11Flag { $false }
-$S9TitleArmed = 'Chrome Agent Bridge - armed (click to turn off)'
-function Get-S9ActionTitle { if ($global:Armed) { $S9TitleArmed } else { 'Chrome Agent Bridge - OFF: agents are refused (click to turn on)' } }
+$S9TitleArmed = 'Chrome Agent Bridge - armed (click to turn off)'; $S9TitleOff = 'Chrome Agent Bridge - OFF: agents are refused (click to turn on)'
+function Get-S9ActionTitle { if ($global:Armed) { $S9TitleArmed } else { $S9TitleOff } }
 function Invoke-S9ActionButton { $global:Armed = -not $global:Armed; [void]$global:Calls.Add('PRESS') }
 function Invoke-R19Node {
   $a = @($args); $cmd = @($a[1])

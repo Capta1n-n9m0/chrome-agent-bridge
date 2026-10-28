@@ -146,6 +146,7 @@ function Invoke-R19Zero([scriptblock]$Zero) {
   try { $rc = [int](Invoke-R19Node 's12-r19' @('proof')) } finally { Set-Item function:global:Show-S16 $global:R19Real }
   $global:R19Loaded = @($global:R19Held | Where-Object { $_ -match '^LOADED ' })[-1]
   $r19Other = @($global:R19Held | Where-Object { $_ -notmatch '^LOADED ' }); if ($r19Other.Count) { Show-S16 $r19Other }
+  if ($rc -ne 2 -and -not $global:R19Loaded) { Stop-R19 'throw-after-state' 'R19-0: the proof printed no LOADED line (it crashed); nothing was changed' }   # N-2: a crashed proof is not "stale"
   if ($rc -eq 2 -or -not $global:R19Loaded) {
     if ($global:R19Loaded) { Show-S16 @($global:R19Loaded); $global:R19Loaded = $null }
     Stop-R19 'old-build-left-loaded' 'R19-0: the loaded extension is stale, not this build (a reload did not take); nothing was changed'
@@ -153,8 +154,7 @@ function Invoke-R19Zero([scriptblock]$Zero) {
   Set-R19Raw 'r19-0'
   # the sheet's second line: LOADED follows MANIFEST, so it is released by the first Show-S16 that prints a MANIFEST line
   function global:Show-S16([string[]]$l) { & $global:R19Real $l; if ($global:R19Loaded -and (@($l | Where-Object { $_ -match '^MANIFEST ' }).Count)) { & $global:R19Real @($global:R19Loaded); $global:R19Loaded = $null } }
-  try { Invoke-R19Stamped $Zero } finally { Set-Item function:global:Show-S16 $global:R19Real }
-  if ($global:R19Loaded) { Show-S16 @($global:R19Loaded); $global:R19Loaded = $null }
+  try { Invoke-R19Stamped $Zero } finally { Set-Item function:global:Show-S16 $global:R19Real; if ($global:R19Loaded) { Show-S16 @($global:R19Loaded); $global:R19Loaded = $null } }   # N-5: a STOP inside r17b-0 still prints the held LOADED
   Show-S16 @("HEAD $($h.Head) tree=clean")
   Write-R19RowLine 'R19-0' $(if ($rc -eq 0) { 'PASS' } else { 'FAIL' })
 }
@@ -216,7 +216,7 @@ function Invoke-R19Restore {
   Invoke-R19RowBlock 'R19-RESTORE' {
     if (Test-S11Own $global:O) { Close-S11Window $global:O; $global:O = 0 }
     Invoke-R19Stamped $R17Blocks['rd-restore']
-    if ($global:R19Slice -eq 'liveA19' -and (Get-Command Close-R19Bc -ErrorAction Ignore)) { try { Close-R19Bc } catch { Say9 'CHECK R19-BANNER-CTL bc-tab=close-failed' } }   # after the safety restore: a tidy-up never skips it (S7-drivers-A)
+    if ($global:R19Slice -in 'liveA19', 'liveB19' -and (Get-Command Close-R19Bc -ErrorAction Ignore)) { try { Close-R19Bc } catch { Say9 'CHECK R19-BANNER-CTL bc-tab=close-failed' } }   # after the safety restore: a tidy-up never skips it (S7-drivers-A)
   }
 }
 function Invoke-R19Logs {

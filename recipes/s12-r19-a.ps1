@@ -5,8 +5,9 @@
 # Every STOP is reached through Stop-R19 (s12-r19-lib.ps1); every state change has a restore that runs in a finally when the actor ended before its undo.
 $R19DeferRe = '^R19-(ARGS|CON)-'
 function Get-R19CtlWord { if ($global:R19Ctl) { $global:R19Ctl } else { 'absent' } }
-function Get-R19IdleOf([string[]]$Out, [string]$Id) {
+function Get-R19IdleOf([string[]]$Out, [string]$Id, [int]$Nth = -1) {
   $r19m = [regex]::Matches(($Out -join "`n"), "IDLE $([regex]::Escape($Id)) since-attach-ms=(\d+)")
+  if ($Nth -ge 0) { if ($r19m.Count -gt $Nth) { return [long]$r19m[$Nth].Groups[1].Value } else { return 0 } }   # one IDLE line per leg under the row's own id (R19-UP-6)
   if ($r19m.Count) { [long]$r19m[$r19m.Count - 1].Groups[1].Value } else { 0 }
 }
 # A step list the actor's signals drive, in the actor's order: do (state change, then pressed), s (one banner sampler pass), undo (the restore, then pressed).
@@ -18,6 +19,7 @@ function Invoke-R19Steps([object[]]$StepList) {
       'do' { [void](Wait-S11Ready $r19s.id); $global:R19Changed = $true; $global:R19Press = $null; $null = & $r19s.f; Write-S11Pressed $r19s.id "$(Get-R19PressMs 'post')" }
       's' { $global:R19Bw[$r19s.id] = Invoke-S12Sampler $r19s.id @($global:W) }
       'undo' { [void](Wait-S11Ready "$($r19s.id)-done"); $global:R19Press = $null; $null = & $r19s.f; $global:R19Changed = $false; Write-S11Pressed "$($r19s.id)-done" "$(Get-R19PressMs 'pre'),$(Get-R19PressMs 'post')" }
+      default { Invoke-R19StepB $r19s }   # the timeline and value steps of liveB19 (recipes/s12-r19-b.ps1)
     }
   }
 }
@@ -32,21 +34,26 @@ function Stop-R19Actor([string]$Id, [string[]]$Out, [string]$Default = 'throw-af
   Stop-R19 $(if ($r19w.Success) { $r19w.Groups[1].Value } else { $Default }) "$Id stopped"
 }
 # One row: the actor beside its steps, the restore in a finally, the banner clause judged from the sampler's own result, the verdict from the LEG lines.
-function Invoke-R19Row([string]$Id, [string[]]$Cmd, [object[]]$StepList = @(), [scriptblock]$Restore = $null, [string]$Banner = '', [string]$Why = 'attach-on-refused-page') {
+function Invoke-R19Row([string]$Id, [string[]]$Cmd, [object[]]$StepList = @(), [scriptblock]$Restore = $null, [string]$Banner = '', [string]$Why = 'attach-on-refused-page', [string]$Actor = 's12-r19-a', [int]$BudgetS = 300) {
   $global:R19Bw = @{}; $global:R19Changed = $false; $r19drv = $null
   if ($StepList.Count) { $r19sp = $StepList; $r19drv = { Invoke-R19Steps $r19sp }.GetNewClosure() }
   if (@($StepList | Where-Object { $_.k -eq 'do' }).Count) { $global:S16Changed = $true; Save-S16 }
-  if (@($StepList | Where-Object { $_.k -eq 's' }).Count) { [void](Set-S11Front $global:W $Id) }
+  if (@($StepList | Where-Object { $_.k -in 's', 't' }).Count) { [void](Set-S11Front $global:W $Id) }
   $r19rc = 0
-  try { $r19rc = [int](@(Invoke-R19Node 's12-r19-a' (@($Cmd) + @('--slice', $global:R19Slice, '--ctl', (Get-R19CtlWord))) $r19drv)[-1]) }
+  try { $r19rc = [int](@(Invoke-R19Node $Actor (@($Cmd) + @('--slice', $global:R19Slice, '--ctl', (Get-R19CtlWord))) $r19drv $BudgetS)[-1]) }
   finally { if ($Restore -and $global:R19Changed) { & $Restore; $global:R19Changed = $false } }
   $r19out = @($global:R17Out)
   if ($r19rc -eq 2) { Stop-R19Actor $Id $r19out }
   $r19b = @()
   if ($Banner) {
+    $r19i = 0
     foreach ($r19s in @($StepList | Where-Object { $_.k -eq 's' })) {
       $r19r = $global:R19Bw[$r19s.id]
-      $r19c = [int](@(Invoke-R19Node 's12-r19-a' @('banner', '--row', $Id, '--kind', $Banner, '--ctl', (Get-R19CtlWord), '--stop', $Why, '--leg', "$Banner=$($r19r.Polls),$($r19r.Banner),$(Get-R19IdleOf $r19out $r19s.id)"))[-1])
+      $r19k = if (@($r19out | Where-Object { $_ -eq "CALLS $($r19s.id) calls-sent=0" }).Count) { 'record' } else { $Banner }   # a leg that sent no call (S7-drivers-B): a positive is a recorded finding, never a STOP (4.27, R19-UP-6)
+      $r19lab = if ($r19s.id -eq $Id) { $Banner } else { $r19s.id.Substring($Id.Length + 1) }
+      $r19idle = if (@($r19out | Where-Object { $_ -like "IDLE $($r19s.id) since-attach-ms=*" }).Count) { Get-R19IdleOf $r19out $r19s.id } else { Get-R19IdleOf $r19out $Id $r19i }   # a leg's own id, else the n-th IDLE line of the row (4.27: R19-UP-6 prints one per leg)
+      $r19i++
+      $r19c = [int](@(Invoke-R19Node 's12-r19-a' @('banner', '--row', $Id, '--kind', $r19k, '--ctl', (Get-R19CtlWord), '--stop', $Why, '--leg', "$r19lab=$($r19r.Polls),$($r19r.Banner),$r19idle"))[-1])
       $r19b += @($global:R17Out)
       if ($r19c -eq 2) { Stop-R19Actor $Id $global:R17Out $Why }
     }
@@ -55,6 +62,7 @@ function Invoke-R19Row([string]$Id, [string[]]$Cmd, [object[]]$StepList = @(), [
 }
 function Complete-R19Row([string]$Id, [string[]]$Lines) {
   $r19v = Get-R19Verdict @($Lines | ForEach-Object { $_ -replace '^LEG ', 'ROW ' })
+  if ($r19v -eq 'PASS' -and $global:R19PassNote -and $global:R19PassNote[$Id]) { $r19v = "PASS $($global:R19PassNote[$Id])" }   # R19-KEEP-1: the banner clause is NOT DISCRIMINATING and the row says so
   if ($Id -match $R19DeferRe) { $global:R19Pending[$Id] = $r19v; Show-S16 @("CHECK $Id console-clause pending R19-LOGS") } else { Write-R19RowLine $Id $r19v }
 }
 
@@ -66,11 +74,16 @@ function Set-R19BlockAdd([string]$Pattern) {
   [void](Set-S11Box $r19o 'blocklist' $(if ($r19t) { "$r19t`n$Pattern" } else { $Pattern }))
 }
 function Set-R19JsOff { $r19o = Use-S16Options; if (-not @(Set-S11Flag $r19o 'evaluate' $false)[-1]) { Stop-R19 'throw-after-state' 'JavaScript did not read back off' } }
-function Test-R19Armed { "$(@(Get-S9ActionTitle $global:W)[-1])" -eq $S9TitleArmed }   # the toolbar title (s9-win.ps1), exactly: not '*armed*' ('disarmed' contains it), not the worker's log line
+function Get-R19Title { "$(@(Get-S9ActionTitle $global:W)[-1])" }   # the toolbar title (s9-win.ps1), read exactly: not '*armed*' ('disarmed' contains it), not the worker's log line
+function Test-R19Armed { (Get-R19Title) -eq $S9TitleArmed }
+# MINOR-A (S7-drivers-A): both directions accept only the exact titles; a title that is neither (a failed read) is a helper failure (a STOP), never "already disarmed" or a product result.
 function Switch-R19Toolbar([bool]$WantArmed) {
-  if ((Test-R19Armed) -eq $WantArmed) { return }
+  $r19why = if ($WantArmed) { 'not-restored' } else { 'throw-after-state' }
+  $r19t = Get-R19Title
+  if ($r19t -ne $S9TitleArmed -and $r19t -ne $S9TitleOff) { Stop-R19 $r19why 'the toolbar title could not be read (a helper failure, not a product result)' }
+  if (($r19t -eq $S9TitleArmed) -eq $WantArmed) { return }
   [void](Set-S11Front $global:W 'R19 toolbar'); $r19pre = Get-S12NowMs; [void](Invoke-S9ActionButton $global:W); Start-Sleep -Milliseconds 700
-  if ((Test-R19Armed) -ne $WantArmed) { Stop-R19 $(if ($WantArmed) { 'not-restored' } else { 'throw-after-state' }) 'the toolbar button did not change the armed state' }
+  if ((Get-R19Title) -ne $(if ($WantArmed) { $S9TitleArmed } else { $S9TitleOff })) { Stop-R19 $r19why 'the toolbar button did not change the armed state' }
   $global:R19Press = @{ pre = $r19pre; post = (Get-S12NowMs) }
 }
 function Open-R19OwnWindow { if (Test-S11Own $global:O) { Close-S11Window $global:O; $global:O = 0 }; [void](Use-S16Options) }

@@ -151,7 +151,7 @@ function unresolved(): { all: string[]; missing: string[] } {
   const d = mkdtempSync(join(tmpdir(), "s12r19s-"));
   try {
     const f = join(d, "t.ps1");
-    const names = ["s9-win.ps1", "s11-win.ps1", "s11b-win.ps1", "s12-win.ps1", "s12-win-b.ps1", "s12-win-c.ps1", "s11b-r17.ps1", "s11b-r17b.ps1", "s12-r18.ps1", "s12-r18-lib.ps1", "s12-r19.ps1", "s12-r19-lib.ps1", "s12-r19-a.ps1"];
+    const names = ["s9-win.ps1", "s11-win.ps1", "s11b-win.ps1", "s12-win.ps1", "s12-win-b.ps1", "s12-win-c.ps1", "s11b-r17.ps1", "s11b-r17b.ps1", "s12-r18.ps1", "s12-r18-lib.ps1", "s12-r19.ps1", "s12-r19-lib.ps1", "s12-r19-a.ps1", "s12-r19-b.ps1"];
     const files = names.map((x) => `'${join(REPO, "recipes", x).replace(/'/g, "''")}'`).join(",");
     writeFileSync(f, `
 $called = @{}; $defined = @{}
@@ -171,8 +171,8 @@ $missing = @(); foreach ($k in $called.Keys) { if (-not $defined.ContainsKey($k)
 }
 
 describe("the runner's source", () => {
-  for (const name of ["s12-r19.ps1", "s12-r19-lib.ps1"]) {
-    const src = name === "s12-r19.ps1" ? ENTRY : LIB;
+  for (const name of ["s12-r19.ps1", "s12-r19-lib.ps1", "s12-r19-a.ps1", "s12-r19-b.ps1"]) {
+    const src = rd(`recipes/${name}`);
     it(`${name} is ASCII and never writes SilentlyContinue`, () => {
       expect(/^[\x00-\x7f]*$/.test(readFileSync(join(REPO, "recipes", name), "utf8"))).toBe(true);
       expect(src.includes("SilentlyContinue")).toBe(false);
@@ -185,7 +185,8 @@ describe("the runner's source", () => {
   it.skipIf(!hasPs)("every command the runner calls exists in a helper file, the runner, or PowerShell", () => {
     const u = unresolved();
     for (const n of ["Invoke-S12CloserProbe", "Save-S11bConsole", "Close-S11Window", "Get-R18Defs", "Invoke-R17Node", "Restore-S11Safety", "Set-S12AttachStamp", "Get-S11bStopCause", "Test-S11Own"]) expect(u.all, n).toContain(n);
-    expect(u.missing).toEqual([]);
+    expect(u.missing.filter((n) => n !== "Invoke-S12Opt")).toEqual([]); // Invoke-S12Opt is made at load by s12-win.ps1 (a patched copy of Invoke-S11Opt), not defined in any file
+    expect(rd("recipes/s12-win.ps1")).toContain("'Invoke-S12Opt'");
   });
   it("every node subcommand the runner runs exists (s12-r19 in s12-r19.ts, s11b in s11b.ts)", () => {
     const run = [...(ENTRY + LIB).matchAll(/Invoke-R19Node '(s11b|s12-r19)' @\('([a-z0-9-]+)'/g)];
@@ -210,6 +211,24 @@ describe("the runner's source", () => {
     expect(LIB).toContain("$R19Commit = @{ liveD19 = '3ab9207'; liveE19 = '63c771c' }");
     expect(SEC).toContain("`3ab9207`");
     expect(SEC).toContain("`63c771c`");
+  });
+});
+
+describe("every liveB19 block has a driver (S7-drivers-B)", () => {
+  const order = /liveB19 = \$R19Prologue \+ @\(([^)]*)\)/.exec(LIB)![1]!;
+  const blocks = [...order.matchAll(/'([^']+)'/g)].map((m) => m[1]!);
+  const registered = new Set([...ENTRY.matchAll(/\$global:R19Blocks\['([^']+)'\] = \{/g)].map((m) => m[1]!));
+  for (const r of (/Set-R19Reused @\(([^)]*)\)/.exec(ENTRY)![1]!).matchAll(/'([^']+)'/g)) registered.add(r[1]!);
+  it("each block of liveB19's order is registered, the probes included, and each row id of the sheet's line is in the order", () => {
+    for (const b of blocks) expect(registered.has(b), b).toBe(true);
+    const line = /^- \*\*liveB19 \(the kept session[^\n]*$/m.exec(SEC)![0];
+    const ids = [...line.matchAll(/R19-[A-Z0-9-]+/g)].map((m) => m[0].toLowerCase()).filter((i) => i !== "r19-closer" && i !== "r19-keep-overlap");
+    for (const i of ids) expect(blocks.includes(i), i).toBe(true);
+    expect(blocks).toContain("r19-keep-overlap-a");
+  });
+  it("no liveB19 driver prints `NOT RUN - no driver built`, and none of its own rows ends in a NOT RUN word", () => {
+    for (const f of ["s12-r19-a.ps1", "s12-r19-b.ps1"]) expect(rd(`recipes/${f}`), f).not.toContain("no driver built");
+    for (const b of blocks.filter((x) => /^r19-(up|f-|keep|con-kept|devt|sweep)/.test(x))) expect(ENTRY, b).not.toMatch(new RegExp(`ROW ${b.toUpperCase()} NOT RUN`));
   });
 });
 

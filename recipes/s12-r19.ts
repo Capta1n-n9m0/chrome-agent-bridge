@@ -115,9 +115,10 @@ export const answerWord = (e: unknown): string => {
   return /^unknown method/.test(String(m?.message ?? "")) ? "UNKNOWN_METHOD" : typeof m?.code === "string" ? m.code : "ERROR";
 };
 /** The sheet: only consoleMessages=UNKNOWN_METHOD or args=VERSION is a STOP (2); any other reading that is not the expected one (args=other, an ERROR read, wrong counts) is R19-0's FAIL (1). */
-export function proofExit(cm: string, args: string, c: { entries: number; console: number; exception: number }): 0 | 1 | 2 {
+export function proofExit(cm: string, args: string, c: { entries: number; console: number; exception: number }, rerun = false): 0 | 1 | 2 {
   const stale = (w: string): boolean => w === "UNKNOWN_METHOD" || w === "VERSION";
   if (stale(cm) || stale(args)) return 2;
+  if (rerun) return args === "answered" ? 0 : 1; // N-3: a re-run (SWEEP-HELD, the old-build slices) asks only for `args=answered` (4.27)
   return cm === "answered" && args === "answered" && c.entries === 11 && c.console === 10 && c.exception === 1 ? 0 : 1;
 }
 async function proof(rerun: number | undefined): Promise<number> {
@@ -133,7 +134,7 @@ async function proof(rerun: number | undefined): Promise<number> {
       let args = "other";
       try { args = proofCounts([], await tab.evaluate("(a) => a", { args: 7 })).args; } catch (e) { args = answerWord(e); }
       console.log(loadedLine({ rerun, consoleMessages: cm, entries: counts.entries, console: counts.console, exception: counts.exception, args }));
-      return proofExit(cm, args, counts);
+      return proofExit(cm, args, counts, rerun !== undefined);
     } finally { await tab.close().catch(() => undefined); }
   } finally { c.close(); }
 }

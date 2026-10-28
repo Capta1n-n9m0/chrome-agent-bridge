@@ -24,6 +24,7 @@ $env:Path = "$env:LOCALAPPDATA\Author Software\nvm\.nodejs;$env:Path"
 . "$PSScriptRoot\s12-r18-lib.ps1"                   # only for Get-R18Defs (Run 17's function and block texts, read by PowerShell's own parser)
 . "$PSScriptRoot\s12-r19-lib.ps1"
 . "$PSScriptRoot\s12-r19-a.ps1"                  # the liveA19 row drivers (S7-drivers-A)
+. "$PSScriptRoot\s12-r19-b.ps1"                  # the liveB19 row drivers (S7-drivers-B)
 if ($Block -eq 'plan') { foreach ($r19P in 'liveA19', 'liveB19', 'liveC19', 'liveD19', 'liveE19') { Write-Host "PLAN ${r19P}: $((Get-R19Order $r19P) -join ' ')" }; exit 0 }
 if (-not $env:S11_OUT) { $env:S11_OUT = Join-Path $env:TEMP 'bridge-e2e\s12' }
 New-Item -ItemType Directory -Force $env:S11_OUT | Out-Null
@@ -115,11 +116,27 @@ $global:R19Blocks['r19-con-4'] = { Invoke-R19Row 'R19-CON-4' @('refuse', '--row'
 $global:R19Blocks['r19-con-floor'] = { Invoke-R19Row 'R19-CON-FLOOR' @('con-floor') -StepList (New-R19Steps 'R19-CON-FLOOR-off' '' { Switch-R19Toolbar $false } { Switch-R19Toolbar $true }) -Restore { Switch-R19Toolbar $true } }
 $global:R19Blocks['r19-con-own'] = { Invoke-R19Row 'R19-CON-OWN' @('own-file', '--row', 'R19-CON-OWN') -StepList (New-R19Steps 'R19-CON-OWN-open' 'R19-CON-OWN' { Open-R19OwnWindow } { }) -Banner refused -Why attach-on-refused-page }
 $global:R19Blocks['r19-con-file'] = { Invoke-R19Row 'R19-CON-FILE' @('own-file', '--row', 'R19-CON-FILE') -StepList (New-R19Steps 'R19-CON-FILE-open' 'R19-CON-FILE' { Open-R19FileWindow } { Close-R19FileWindow }) -Restore { Close-R19FileWindow } -Banner refused -Why attach-on-refused-page }
+# ---- liveB19's row drivers (S7-drivers-B): DevTools only behind the DEVPROBE's answer; the carried banner rows and the kept-session rows ------------------
+$global:R19Blocks['devprobe'] = { Invoke-R19DevProbe }
+$global:R19Blocks['r19-up-opt'] = { Invoke-R19UpOpt }
+$global:R19Blocks['r19-up-6'] = { Invoke-R19Up6 }
+$global:R19Blocks['r19-f-raw'] = { Invoke-R19FRaw 'R19-F-RAW' }
+$global:R19Blocks['r19-f-raw-2'] = { Invoke-R19FRaw 'R19-F-RAW-2' }
+$global:R19Blocks['r19-f-raw-dir'] = { Invoke-R19FRaw 'R19-F-RAW-DIR' }
+$global:R19Blocks['r19-keep-1'] = { Invoke-R19Keep1 }
+$global:R19Blocks['r19-keep-2'] = { Invoke-R19Keep2 }
+$global:R19Blocks['r19-keep-3'] = { Invoke-R19Keep3 }
+$global:R19Blocks['r19-con-kept'] = { Invoke-R19Row 'R19-CON-KEPT' @('con-kept') -Actor 's12-r19-b' }
+$global:R19Blocks['r19-keep-overlap-a'] = { Invoke-R19Row 'R19-KEEP-OVERLAP' @('overlap-a') -Actor 's12-r19-b' }
+$global:R19Blocks['r19-up-devt'] = { Invoke-R19DevRow 'R19-UP-DEVT' "${R19Fix}s11-upload.html?s11=xwin&s12x=devt" 'up-devt' (New-R19DevSteps 'R19-UP-DEVT') }
+$global:R19Blocks['r19-keep-4'] = { Invoke-R19Keep4 }
+$global:R19Blocks['r19-devt-noflag'] = { Invoke-R19DevtNoflag }
+$global:R19Blocks['r19-sweep-held'] = { Invoke-R19SweepHeld }
 $global:R19Blocks['r19-restore'] = { Invoke-R19Restore }
 $global:R19Blocks['r19-logs'] = { Invoke-R19Logs }
 # The old-build slices: the swap, the old build's own proof line, the rows (no driver yet), and the finally that restores HEAD, reloads and re-proves.
 $global:R19Blocks['r19-old-args'] = { Invoke-R19Swapped $R19Commit['liveD19'] { [void](Invoke-R19Node 's12-r19' @('proof')); Say9 "ROW R19-ARGS-OLD NOT RUN $Dash no driver built (S7-helpers-d DONE-PARTIAL)" } }
 $global:R19Blocks['r19-old-version'] = { Invoke-R19Swapped $R19Commit['liveE19'] { Say9 "ROW R19-VERSION NOT RUN $Dash no driver built (S7-helpers-d DONE-PARTIAL)" } }
-# No driver is registered for the other rows (the SDK and MCP actors of ARGS, CON, KEEP, CHOOSE, G2, UP-OPT, UP-6, F-RAW, BANNER-CTL, DEVPROBE): the sequencer prints `ROW <id> NOT RUN`.
+# No driver is registered yet for the CHOOSE, G2 and old-build rows (S7-drivers-C, -DE): the sequencer prints `ROW <id> NOT RUN`.
 
 exit ([int](@(Invoke-R19Main $Block)[-1]))
