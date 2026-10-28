@@ -1866,6 +1866,15 @@ accept `end-ms=never` (the banner did not go off within the sampler's window), w
 page key `late`, R19-CON-BANNER's NOT MEASURED, `DAEMONLOG` defined as (13) and (28)) are read as those reports state,
 fixed here before the run; no pass rule changes.
 
+*Note 2026-10-28, before any Run 19 observation (session agent; decisions.md #361):* R19-CON-FLOOR's waits are
+raised from 3 s (disarmed) and 2.5 s (after) to **5 s** and **3.5 s**: the page ticks once a second and the row's
+±500 ms margins leave only two judged ticks in 3 s against its `≥ 3` (S7-drivers-A N1, from the fixture's
+`setInterval(…, 1000)`, not from a run); the thresholds and every clause are unchanged. R19-CON-4's step text calls the
+worker's `safety: disarmed by the user` log line a title: it is the log line (NIT-A). The headless MCP actor of
+ARGS-1, ARGS-3, CON-MCP and CON-CAP is a scripted stdio MCP client of `mcp/dist/index.js` (the same server and tool
+text, no model); its `browser_list_tabs`/`browser_status` results are kept in `actors-<slice>.jsonl` as counts and fixed
+words only (never a title or URL of the user's tabs).
+
 ## 5. Results template
 
 Copy this and fill it in during the run:

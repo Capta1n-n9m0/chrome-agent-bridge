@@ -195,6 +195,21 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-28 · S7-drivers-A accepted; CON-FLOOR's waits; the scripted MCP actor; driver caps raised (#361)
+**Decided:** S7-drivers-A (`17b2f7d`, PASS-with-notes after two fix rounds; all 26 liveA19 rows driven) is accepted at
+732 code lines against 400 (1.8×, past #344 (4)'s bound) as one coherent piece: the cap was my estimate, every row needs
+its driver, and two verifiers passed it. For **-B, -C, -DE the code cap is set to 750 before they start** (tests up to
+600), as drivers proved larger than #360 assumed. Before any Run 19 observation, a dated §4.27 note: R19-CON-FLOOR's
+waits become 5 s and 3.5 s (the fixture ticks each 1 000 ms, so 3 s with ±500 ms margins judges two ticks against
+`≥ 3`; thresholds unchanged); CON-4's "title" is the log line; the headless MCP actor is a scripted stdio client of
+`mcp/dist/index.js`; tab lists in actor records are kept as counts and fixed words only (privacy, approved). MINOR-A
+(the disarm check accepts any non-armed title, a failed read included) is fixed in -B, which reuses the helper.
+**Why:** a wait that cannot meet its own threshold is a sheet defect found before the run, not a result; the actor
+change keeps the tool text under test.
+**Instead of:** leaving a likely false FAIL in; a model-driven actor (slower, nondeterministic, same tool text).
+**Revisit if:** a driver slice still overruns 750.
+**By:** Claude (session agent's rulings)
+
 ### 2026-10-28 · Run 19's row drivers are four more slices; S7-helpers-d's overrun accepted (#360)
 **Decided:** S7-helpers-d (`c9ee1af`, PASS-with-notes after one fix round; DONE-PARTIAL) built the runner's frame (order,
 STOP → RETURN, restore on throw, the swap's `finally`, the UP-OPT gate, forms (28), (29), (31), (32), the aggregator) but
