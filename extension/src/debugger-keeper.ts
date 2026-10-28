@@ -28,11 +28,14 @@
  *   which session it ends, `getTargets` is then read, bounded, and a tab still attached (or unread) is detached (a late
  *   event must not orphan a newer session, F3; V3-2). A use after
  *   any of these attaches again.
- * - A use waits for a pending detach on its tab, at most `KEEPER_DETACH_WAIT_MS`, then goes on (F5).
+ * - A use waits for a pending detach on its tab, at most `KEEPER_DETACH_WAIT_MS`, then goes on (F5); the re-check
+ *   runs after that wait (S4b V3).
  * - `sweep()` at worker start detaches every `attached: true` tab target (a session survives a worker stop, m2 D4c;
  *   no `extensionId` filter is possible, #335), ignoring failures; uses wait for it.
  */
-import { refusalError, type SafetyRefusal } from "./safety.js";
+import { isRefusal, refusalError, safetyDecision, type SafetyRefusal } from "./safety.js";
+import { resolveTabTarget } from "./safety-call.js";
+import type { SafetyView } from "./safety-state.js";
 import type { DebuggerSession, DebuggerSessions, EffectGuard } from "./safety-debugger.js";
 import { ErrorCodes } from "./errors.js";
 
@@ -129,13 +132,21 @@ export class DebuggerKeeper {
     const { sessions } = this.deps;
     if (sessions.refused) throw refusalError(sessions.refused);
     await this.ready;
-    try {
-      await opts.guard?.effect();
-    } catch (err) {
-      await this.guardFailed(tabId, err);
-      throw err;
+    // S4b fixer (V3): the re-check comes after the wait on a pending detach, so a refusal that lands during the wait
+    // refuses the use; a newer detach that began during the re-check is waited for and the re-check runs again (one
+    // whose bound already expired is not waited for twice, F5)
+    for (;;) {
+      await this.settled(tabId);
+      const waited = this.detaching.get(tabId);
+      try {
+        await opts.guard?.effect();
+      } catch (err) {
+        await this.guardFailed(tabId, err);
+        throw err;
+      }
+      const now = this.detaching.get(tabId);
+      if (!now || now === waited) break;
     }
-    await this.settled(tabId);
     let k = this.live(tabId);
     if (k?.busy) throw opts.mapError(new Error(`Another debugger is already attached to the tab with id: ${tabId}.`));
     const fresh = !k;
@@ -295,9 +306,10 @@ export class DebuggerKeeper {
       if (!p) return;
       let h: unknown;
       const bound = new Promise<boolean>((r) => (h = this.deps.timers.set(() => r(false), KEEPER_DETACH_WAIT_MS)));
-      const done = await Promise.race([p.then(() => true), bound]);
+      await Promise.race([p.then(() => true), bound]);
       this.deps.timers.clear(h);
-      if (!done || this.detaching.get(tabId) === p) return;
+      // S4b (V4-1): on a bound expiry too, a newer pending detach that replaced `p` is waited for (its own bound)
+      if (this.detaching.get(tabId) === p) return;
     }
   }
 
@@ -355,4 +367,70 @@ export class DebuggerKeeper {
       if (record) this.deps.sessions.end(record);
     }
   }
+}
+
+// --- S4b: the pure parts of the wiring (`debugger.ts`, `sw.ts`) ------------------------------------------------------
+
+/** How long the keeper's tab check may take before it counts as a refusal (#347 item 8, verifier-2 N3). */
+export const KEEPER_TAB_CHECK_MS = 1000;
+
+/** `p`, or a rejection after `ms`: bounds a dependency at its source (`tabCheck`, the sweep's `getTargets`). */
+export function within<T>(p: Promise<T>, ms: number, timers: KeeperTimers): Promise<T> {
+  let h: unknown;
+  const late = new Promise<never>((_, reject) => (h = timers.set(() => reject(new Error("timed out")), ms)));
+  late.catch(() => {});
+  return Promise.race([p, late]).finally(() => timers.clear(h));
+}
+
+/**
+ * One use's CDP commands (S4a F4: every clean-up that relied on "the detach that follows"). A command that fails, or
+ * is still pending when the use ends (a lost race, a bounded quiet disable), leaves the session's state unknown, so
+ * the use drops its session: `Debugger.disable`, `Runtime.disable`, focus emulation off, a release of an object.
+ */
+export class UseCommands {
+  private pending = 0;
+  private ended = false;
+  constructor(private readonly use: KeptUse) {}
+
+  track<T>(p: Promise<T>): Promise<T> {
+    this.pending++;
+    p.then(
+      () => void this.pending--,
+      () => {
+        this.pending--;
+        if (!this.ended) this.use.drop();
+      },
+    );
+    return p;
+  }
+
+  end(): void {
+    this.ended = true;
+    if (this.pending > 0) this.use.drop();
+  }
+}
+
+/** `tabs.onUpdated`: a change after which a kept tab is re-checked (its page may now be refused). */
+export function pageChanged(change: { url?: string; status?: string }): boolean {
+  return change.url !== undefined || change.status === "loading";
+}
+
+/** The reads `keptTabRefusal` needs (`sw.ts`'s `callDeps`). */
+export interface TabCheckDeps {
+  readState(): Promise<SafetyView>;
+  getTab(tabId: number): Promise<{ url?: string; pendingUrl?: string }>;
+  replacedBy(tabId: number): number | undefined;
+  lastUrl(tabId: number): string | undefined;
+}
+
+/**
+ * The keeper's `tabCheck`: the gate of a class-`tab` call on the tab now (phase `effect`): disarmed, an own page, a
+ * `file:` page or a blocked one refuses; JavaScript off does not (the evaluate is refused by its own guard). A state
+ * that cannot be read throws, which the keeper counts as a refusal.
+ */
+export async function keptTabRefusal(deps: TabCheckDeps, tabId: number): Promise<SafetyRefusal | null> {
+  const view = await deps.readState();
+  const target = await resolveTabTarget(deps, tabId);
+  const d = safetyDecision("snapshot", { tabId }, target, view.switches, view.ctx, "effect");
+  return isRefusal(d) ? d : null;
 }

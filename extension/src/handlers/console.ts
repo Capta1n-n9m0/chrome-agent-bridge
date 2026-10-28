@@ -1,6 +1,6 @@
 import { checkConsoleMessagesParams, type ConsoleMessagesResult } from "@bridge/shared";
 import { pageTab } from "../tabs.js";
-import { raceTimeout, withDebugger } from "../debugger.js";
+import { raceTimeout, send, withDebugger } from "../debugger.js";
 import { collectConsole, consoleArmFloor, consoleCollectors, reduceConsole } from "../console-messages.js";
 import { isFileUrl, isOwnExtensionPage } from "../safety-match.js";
 import { BridgeError, ErrorCodes } from "../errors.js";
@@ -28,7 +28,7 @@ export async function consoleMessages(p: Record<string, unknown>, call?: Handler
       raceTimeout(
         collectConsole(tabId, {
           collectors: consoleCollectors,
-          send: (method) => chrome.debugger.sendCommand({ tabId }, method, {}),
+          send: (method) => send(tabId, method),
           wait: (ms) => new Promise((r) => setTimeout(r, ms)),
         }),
         CONSOLE_READ_TIMEOUT_MS,

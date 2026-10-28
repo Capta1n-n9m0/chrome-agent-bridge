@@ -25,7 +25,8 @@ import { DnrKeeper, type DnrUpdate } from "./safety-dnr-keeper.js";
 import { NetworkIngestGate } from "./safety-network.js";
 import { BlockedHopWatcher } from "./safety-hop.js";
 import { redactTabCreated, redactTabRemoved } from "./safety.js";
-import { debuggerSessions } from "./debugger.js";
+import { debuggerSessions, keepSessions } from "./debugger.js";
+import { keptTabRefusal, pageChanged } from "./debugger-keeper.js";
 import { BadgeController } from "./badge.js";
 
 const DEFAULT_PORT = 9234;
@@ -77,6 +78,12 @@ const callDeps: CallSafetyDeps = {
   watchHops: (list) => hopWatcher.open(list),
   dnrForTab: (tabId) => dnrKeeper.call("navigate", { tabId }), // Step 11b S6 (#312): newTab's blank tab
 };
+
+// Step 12 S4b (#324, #335, #347): one kept debugger session per tab, in `debuggerSessions` (the disarm above detaches
+// it), dropped by the existing tab and storage listeners below and by `onDetach`. The start-up sweep detaches every
+// attached tab target a stopped worker left (m2 D4c); calls wait for it. Not awaited: no top-level `await`.
+const keeper = keepSessions((tabId) => keptTabRefusal(callDeps, tabId));
+void keeper.sweep();
 
 const router = new GatedRouter((method, params) => new CallSafety(method, params, callDeps, dnrKeeper.call(method, params)));
 router.on("navigate", navigate);
@@ -176,6 +183,7 @@ chrome.webRequest.onErrorOccurred.addListener(
 chrome.tabs.onRemoved.addListener((tabId) => {
   networkLog.forgetTab(tabId);
   dropEvaluateSavesForTab(tabId); // Step 10 S4 (#205): a closed tab's held saveTo values go
+  void keeper.tabGone(tabId); // Step 12 S4b: its kept debugger session goes
   scheduleFlush();
 });
 
@@ -219,6 +227,7 @@ chrome.tabs.onCreated.addListener((created) => {
 });
 chrome.tabs.onUpdated.addListener((tabId, change, updated) => {
   tabInfo.update(tabId, change, updated);
+  if (pageChanged(change)) void keeper.recheckTab(tabId); // Step 12 S4b: blocked, own or file: now → detach
 });
 chrome.tabs.onRemoved.addListener((tabId) => {
   // `retire`, not `take`: the last URL stays known for the length of a call (Stage 0 R2-1).
@@ -227,6 +236,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 chrome.tabs.onReplaced.addListener((addedTabId, removedTabId) => {
   dropEvaluateSavesForTab(removedTabId); // Step 10 S4 (#205): the old id is gone; its held values go
+  void keeper.tabGone(removedTabId); // Step 12 S4b
   tabInfo.noteReplaced(removedTabId, addedTabId);
   tabInfo.move(removedTabId, addedTabId);
   const frame = eventFrame("tabReplaced", tabReplacedParams(addedTabId, removedTabId));
@@ -354,6 +364,8 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
 // clicks the debugging banner's Cancel (reason "canceled_by_user") or DevTools takes the tab over.
 chrome.debugger.onDetach.addListener((source, reason) => {
   console.warn("[bridge] debugger detached, tabId", source.tabId, "reason:", reason);
+  // Step 12 S4b: any reason (the human's Cancel, DevTools, a closed target) ends the kept session; never logged wider
+  if (typeof source.tabId === "number") keeper.onDetach(source.tabId, reason);
 });
 
 // Step 12 S3a (#333): the one top-level CDP event listener; it feeds `consoleMessages`' per-call collectors only.
@@ -393,6 +405,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
     // Step 11b S3a (#292), narrowed by S3b (#302): a block-list edit, or a state now unreadable, rebuilds every live
     // call's rules from a fresh read; unreadable → null. The key names stay in safety-state.ts (sw-static's scan).
     if (rebuildsRules(changes, safety.memory)) void safety.read().then((v) => dnrKeeper.rebuild(v.ctx.blockList), () => dnrKeeper.rebuild(null));
+    // Step 12 S4b (F4): a change that blocks a kept tab (the block list, the switches, an unreadable state) detaches it
+    void keeper.recheckAll();
     ingestGate.flush();
     reportSafety();
   }

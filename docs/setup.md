@@ -544,8 +544,12 @@ already connected then fail with a `VERSION` error when they reconnect.
 
 When trusted input is used (`browser_click`, `browser_type` or `browser_press_key` with
 `trusted:true`, or full-page screenshots), Chrome shows an "an extension is debugging this
-browser" banner on that tab. This is expected and clears when the action finishes. Default
-clicks/typing use synthetic events and do **not** show the banner.
+browser" banner on that tab. This is expected. Since Step 12 the bridge keeps one debugger session per tab while an
+agent works, so the banner stays up, steady, across a run of calls; the session is detached about 5 s after the
+last call, and Chrome then takes its own few seconds to remove the banner (5.0–5.2 s measured in Step 12 Stage 0). A
+disarm detaches it at once (the banner then goes within seconds; 3–14 s measured), and Cancel on the banner still
+ends the session.
+Default clicks/typing use synthetic events and do **not** show the banner.
 
 Reach for `trusted:true` when a site ignores synthetic input — some editors, canvas apps and
 anti-automation checks test `event.isTrusted`. Trusted typing focuses the field and selects
@@ -636,8 +640,9 @@ longer (the SDK client 1 s more), so a long evaluate is not cut short by the bri
 detaches and you get `Timed out after Ns …` — but **work the page already started keeps running**
 (a `fetch` in flight is not cancelled).
 
-**The banner.** Every call attaches `chrome.debugger`, so Chrome shows the "an extension is debugging
-this browser" banner for the duration, exactly like `trusted:true` input.
+**The banner.** Every call uses `chrome.debugger`, so Chrome shows the "an extension is debugging
+this browser" banner, exactly like `trusted:true` input: it stays while calls follow each other and goes
+some seconds after the last one ([The debugging banner](#the-debugging-banner)).
 
 **The JavaScript switch.** Untick **Allow JavaScript (browser_evaluate)** in the options page and
 every `browser_evaluate` (with `asRef` or `saveTo` too) is refused `JS_DISABLED`, while every other

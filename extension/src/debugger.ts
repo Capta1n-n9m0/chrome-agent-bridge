@@ -8,15 +8,44 @@ import { shapeEvaluateResult, pendingPromiseId, type CdpEvaluateResponse } from 
 import { collectSaveFromRaw, collectSaveText, type SaveText } from "./evaluate/save.js";
 import { callWithArgs, type ArgsCallDeps, type PausedEvent } from "./evaluate/call.js";
 import { UPLOAD_CDP_TIMEOUT_MS, setFilesByMark, uploadTimeoutMessage } from "./upload-files.js";
+import { DebuggerKeeper, KEEPER_DETACH_WAIT_MS, KEEPER_TAB_CHECK_MS, UseCommands, within, type KeptUse } from "./debugger-keeper.js";
+import type { SafetyRefusal } from "./safety.js";
 
 const PROTOCOL = "1.3";
 
-async function send(tabId: number, method: string, params: { [key: string]: unknown } = {}): Promise<unknown> {
-  return chrome.debugger.sendCommand({ tabId }, method, params);
+/** One CDP command; inside a kept use it is tracked (`UseCommands`: a failed or unfinished one drops the session). */
+export async function send(tabId: number, method: string, params: { [key: string]: unknown } = {}): Promise<unknown> {
+  const p = chrome.debugger.sendCommand({ tabId }, method, params);
+  const use = inUse.get(tabId);
+  return use ? use.track(p) : p;
+}
+
+/** Step 12 S4b: the worker's keeper (`sw.ts` installs it); none in a test that imports this module alone. */
+let keeper: DebuggerKeeper | null = null;
+/** The kept use running on each tab (overlapping uses are refused, so at most one). */
+const inUse = new Map<number, UseCommands>();
+const timers = { set: (fn: () => void, ms: number) => setTimeout(fn, ms), clear: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) };
+
+/**
+ * Step 12 S4b (#324, #335, #347): from here on every `withDebugger` call goes through one `DebuggerKeeper` on
+ * `debuggerSessions` (so the disarm's `detachAll` detaches kept sessions too), with `tabCheck` and the sweep's
+ * `getTargets` bounded at their source. Called once, at the top level of `sw.ts`.
+ */
+export function keepSessions(tabCheck: (tabId: number) => Promise<SafetyRefusal | null>): DebuggerKeeper {
+  keeper = new DebuggerKeeper({
+    attach: (id) => chrome.debugger.attach({ tabId: id }, PROTOCOL),
+    detach: (id) => chrome.debugger.detach({ tabId: id }),
+    getTargets: () => within(chrome.debugger.getTargets(), KEEPER_DETACH_WAIT_MS, timers),
+    timers,
+    sessions: debuggerSessions,
+    tabCheck: (id) => within(tabCheck(id), KEEPER_TAB_CHECK_MS, timers),
+  });
+  return keeper;
 }
 
 /**
- * Attach, run, always detach. `what` names the caller in the messages `describeDebuggerError`
+ * Attach, run, detach — since Step 12 S4b through the worker's keeper (`keepSessions`): the session is kept 5 s after
+ * the last use and reused by a call that does not overlap one in flight. `what` names the caller in the messages `describeDebuggerError`
  * produces ("Trusted input", "Full-page screenshot", "browser_evaluate") — it is the only part of
  * those strings that varies, so new Chrome wordings still belong in `debugger-errors.ts`.
  *
@@ -25,6 +54,21 @@ async function send(tabId: number, method: string, params: { [key: string]: unkn
  * starts while the registry refuses (decisions.md · 2026-10-24 · #137 item 2; `safety-debugger.ts`).
  */
 export async function withDebugger<T>(tabId: number, fn: () => Promise<T>, what = "Trusted input", guard?: EffectGuard): Promise<T> {
+  const k = keeper;
+  if (k) {
+    // S4b: the keeper re-checks `guard` before every use, a reused session's too (D4.3)
+    const run = async (u: KeptUse): Promise<T> => {
+      const cmds = new UseCommands(u);
+      inUse.set(tabId, cmds);
+      try {
+        return await fn();
+      } finally {
+        if (inUse.get(tabId) === cmds) inUse.delete(tabId);
+        cmds.end();
+      }
+    };
+    return k.use(tabId, run, { guard, mapError: (err) => debuggerError(err, what) });
+  }
   return runWithDebugger(
     {
       attach: (id) => chrome.debugger.attach({ tabId: id }, PROTOCOL),
