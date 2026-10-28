@@ -71,7 +71,7 @@ function Invoke-R19UpOpt {
   $global:S16Changed = $true; Save-S16
   $r19o = Use-S16Options; $r19f = Join-Path $env:S11_OUT 'upopt-obs.json'
   $r19sum = [string](Get-S11Summary (Get-S9Options $r19o))
-  Step-S16 'opt' { Invoke-S12Opt $r19o $Root $r19f }
+  Step-S16 'opt' { Invoke-S19Opt $r19o $Root $r19f }
   $r19obs = @(Get-S11bOptObs $r19o $r19f $r19sum)[-1]
   if (Test-Path -LiteralPath $r19f) { Remove-Item -LiteralPath $r19f -Force }
   $r19rc = [int](@(Invoke-R19Node 's12-r19-b' @('upopt-judge', '--obs', $r19obs))[-1])

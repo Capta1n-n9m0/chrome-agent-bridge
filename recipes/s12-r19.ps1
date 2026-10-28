@@ -66,7 +66,7 @@ foreach ($r19F in 'Set-S17Raw', 'Start-R17bWatch', 'Read-R17bWatch') { . ([scrip
 $R17Blocks = @{}; foreach ($r19K in $r19D17.Blocks.Keys) { $R17Blocks[$r19K] = & ([scriptblock]::Create($r19D17.Blocks[$r19K])) }
 $R17bZero = & ([scriptblock]::Create($r19D17b.Blocks['r17b-0']))
 foreach ($r19N in 'files', 'window', 'reload', 'console', 'teardown', 'root-add', 'rd-restore') { if (-not $R17Blocks[$r19N]) { Write-Host "STOP: Run 17's block $r19N was not read from s11b-r17.ps1"; exit 2 } }
-if (-not $R17bZero -or -not (Get-Command Invoke-S12Opt -ErrorAction Ignore)) { Write-Host 'STOP: Run 17b''s r17b-0 block or the S12 helpers were not read'; exit 2 }
+if (-not $R17bZero -or -not (Get-Command Invoke-S12Opt -ErrorAction Ignore) -or -not (Get-Command Invoke-S19Opt -ErrorAction Ignore)) { Write-Host 'STOP: Run 17b''s r17b-0 block or the S12 helpers were not read'; exit 2 }
 $Dash = [char]0x2014
 
 # ---- the blocks ------------------------------------------------------------------------------------------------------------------

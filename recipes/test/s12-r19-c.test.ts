@@ -205,6 +205,20 @@ describe("each row's wants are the sheet's clauses, and each row uses its want",
     expect(body("chooseDisarm")).toContain("MSG.disarmed");
     expect(body("chooseDisarm")).not.toContain("MSG.jsOff");
   });
+  // MINOR-1 of S7-drivers-C's verifier 2: a want overridden at a call site (a spread followed by another key, a replaced argument) must turn this red.
+  it("every judgeChoose and wantOf call site passes exactly its allowed arguments (M1a2, M1b2, M1c2)", () => {
+    const args = (name: string): string[] => { const out: string[] = []; for (const m of TS.matchAll(new RegExp(`\\b${name}\\(`, "g"))) { let d = 1, j = m.index! + m[0].length; while (d && j < TS.length) { const ch = TS[j++]; if (ch === "(") d++; else if (ch === ")") d--; } out.push(TS.slice(m.index! + m[0].length, j - 1)); } return out; };
+    expect(args("judgeChoose")).toEqual(["o.obs, WANT.choose1", "o.obs, WANT.label[label]", "o.obs, WANT.refuse", "lines[i]!.obs, { ...WANT.choose2, answer: c[3].code }", "o.obs, WANT.choose3", "o.obs, WANT.disarm", "o.obs, WANT.jsoff"]);
+    expect(args("wantOf")).toEqual(['"DISARMED", MSG.disarmed, "keys:scope"', '"BAD_PARAMS", message', 'K["K-gate"].code, K["K-gate"].message', '"BAD_PARAMS", CH_MSG.missing', 'K["K-noacc"].code, K["K-noacc"].message', '"TIMEOUT", CH_MSG.timeout', '"DISARMED", MSG.disarmed, "keys:scope"', '"JS_DISABLED", MSG.jsOff']);
+    expect(body("chooseRefuse")).toContain("for (const [i, [q, message]] of REFUSE_LEGS.entries())"); // REFUSE's `message` is the leg's own text from REFUSE_LEGS
+  });
+  // MINOR-1 of S7-helpers-e's verifier (M1d, M1f): the expression around a wantOf call is pinned too, and the WANT table is never mutated in place.
+  it("each observe call's want is exactly a wantOf(...) (or the leg's own c[3]) and nothing wraps it; WANT is never assigned into (M1d, M1f)", () => {
+    const wants = [...TS.matchAll(/\{ want: /g)].map((m) => { const r = TS.slice(m.index! + m[0].length); if (!r.startsWith("wantOf(")) return r.slice(0, 8); let d = 1, k = 7; while (d && k < r.length) { const ch = r[k++]; if (ch === "(") d++; else if (ch === ")") d--; } return r.slice(k, k + 7); });
+    expect(wants).toEqual([", dlg: ", "c[3], su", ", dlg: ", ", dlg: ", ", dlg: "]);
+    expect(TS).not.toMatch(/Object\.(assign|defineProperty|defineProperties|setPrototypeOf)\(/);
+    expect(TS).not.toMatch(/(?<!const )\bWANT\b[\w.\[\]"]*\s*([-+*/|&?]{0,2}=)(?![=>])/);
+  });
   it("a STOP is thrown in one place and every STOP decision calls it: no `new StopWhy` elsewhere, no printed STOP line, the call sites are all there", () => {
     expect([...TS.matchAll(/new StopWhy\(/g)]).toHaveLength(1);
     expect(TS).not.toMatch(/say\([`"]STOP(?!:)/);
@@ -452,7 +466,7 @@ describe("every liveC19 block has a driver (S7-drivers-C)", () => {
   });
   it("the human-style rows are gated on the proved click, the toolbar goes through Switch-R19Toolbar, and the dialogs are the closer's", () => {
     expect(PSC).toContain("$global:R19HumanClick -eq $true");
-    expect(LIB).toContain("$global:R19Slice -eq 'liveC19' -and (Get-Command Write-R19Dialogs -ErrorAction Ignore)) { Write-R19Dialogs }"); // form (30) at R19-RESTORE, liveC19 only
+    expect(LIB).toContain("$global:R19Slice -in 'liveA19', 'liveB19', 'liveC19' -and (Get-Command Write-R19Dialogs -ErrorAction Ignore)) { Write-R19Dialogs }"); // form (30) at R19-RESTORE, liveA19, liveB19 and liveC19 (#363)
     expect(rd("recipes/s12-r19-a.ps1")).toContain("$global:R19RecordRows -contains $Id");
     expect(PSC).not.toMatch(/Invoke-S9ActionButton|Send-S12|Set-S11Flag/);
     expect(TS).toContain('await sig(`${R}-off`)');

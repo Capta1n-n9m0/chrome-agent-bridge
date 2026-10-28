@@ -185,8 +185,9 @@ describe("the runner's source", () => {
   it.skipIf(!hasPs)("every command the runner calls exists in a helper file, the runner, or PowerShell", () => {
     const u = unresolved();
     for (const n of ["Invoke-S12CloserProbe", "Save-S11bConsole", "Close-S11Window", "Get-R18Defs", "Invoke-R17Node", "Restore-S11Safety", "Set-S12AttachStamp", "Get-S11bStopCause", "Test-S11Own"]) expect(u.all, n).toContain(n);
-    expect(u.missing.filter((n) => n !== "Invoke-S12Opt")).toEqual([]); // Invoke-S12Opt is made at load by s12-win.ps1 (a patched copy of Invoke-S11Opt), not defined in any file
+    expect(u.missing.filter((n) => n !== "Invoke-S12Opt" && n !== "Invoke-S19Opt")).toEqual([]); // Invoke-S12Opt and Invoke-S19Opt are made at load by s12-win.ps1 (patched copies of Invoke-S11Opt and Invoke-S12Opt), not defined in any file
     expect(rd("recipes/s12-win.ps1")).toContain("'Invoke-S12Opt'");
+    expect(rd("recipes/s12-win.ps1")).toContain("'Invoke-S19Opt'");
   });
   it("every node subcommand the runner runs exists (s12-r19 in s12-r19.ts, s11b in s11b.ts)", () => {
     const run = [...(ENTRY + LIB).matchAll(/Invoke-R19Node '(s11b|s12-r19)' @\('([a-z0-9-]+)'/g)];

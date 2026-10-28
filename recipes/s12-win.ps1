@@ -153,8 +153,8 @@ function Get-S12PatchedFunction([string]$Name, [string]$NewName, [object[]]$Pair
   $t -replace ('^function ' + [regex]::Escape($Name)), "function $NewName"
 }
 # O2 is polled until its box holds the saved text or 15 000 ms have passed (Run 17b stopped at 6 s and recorded no match).
-function Wait-S12O2($O2, [string]$SetSha) {
-  $t0 = Get-S12NowMs; $at = $null
+function Wait-S12O2($O2, [string]$SetSha, [long]$FromMs = 0) {
+  $t0 = $(if ($FromMs) { $FromMs } else { Get-S12NowMs }); $at = $null
   while ($true) {
     $same = ((Get-S11Sha (Get-S11Box $O2 'uploadfolders')) -eq $SetSha)
     $el = [int]((Get-S12NowMs) - $t0)
@@ -184,6 +184,16 @@ $S12OmniPairs = @(@('now shows \$Url"', 'now shows $(Get-S12UrlClass $Url)"'), @
 # Dot-source this file AFTER s9-win.ps1 and s11-win.ps1: Invoke-S12Opt is Invoke-S11Opt with the 15 s poll and the sheet's OPT lines;
 # Set-S9Omnibox is re-defined with class-only URL text. The runner calls Assert-S12Patched before the first row.
 if (Get-Command Invoke-S11Opt -CommandType Function -ErrorAction SilentlyContinue) { . ([scriptblock]::Create((Get-S12PatchedFunction 'Invoke-S11Opt' 'Invoke-S12Opt' $S12OptPairs))) }
+# #363 (S7-helpers-e), Run 19 only: Invoke-S19Opt is Invoke-S12Opt with O2 brought to the front after the save (the poll's clock starts at the save, before that
+# call) and again before the conflict read, a recorded `OPT O2 front` line and a `FIX` line. Runs 16/17 (Invoke-S11Opt) and Run 18 (Invoke-S12Opt) are unchanged.
+function Format-S19OptFront($After, $Conflict) { "OPT O2 front after-save=$(if ($After) { 'yes' } else { 'no' }) before-conflict-read=$(if ($Conflict) { 'yes' } else { 'no' })" }
+function Format-S19OptFix { 'FIX R19-UP-OPT: O2 is brought to the front after the save and before the conflict read; the poll is timed from the save (#363)' }
+$S19OptPairs = @(
+  @('\$o2Res = Wait-S12O2 \$O2 \$setSha;', '$o2T0 = Get-S12NowMs; $o2Fg = [bool](@(Set-S9Foreground $O2)[-1]); $o2Res = Wait-S12O2 $O2 $setSha $o2T0;'),
+  @('\$o2Conflict = \(@\(Find-S11Texts', '$o2Fg2 = [bool](@(Set-S9Foreground $O2)[-1]); $o2Conflict = (@(Find-S11Texts'),
+  @('Say9 \(Format-S12OptO2 \$o2Res\);', 'Say9 (Format-S12OptO2 $o2Res); Say9 (Format-S19OptFront $o2Fg $o2Fg2); Say9 (Format-S19OptFix);')
+)
+if (Get-Command Invoke-S12Opt -CommandType Function -ErrorAction SilentlyContinue) { . ([scriptblock]::Create((Get-S12PatchedFunction 'Invoke-S12Opt' 'Invoke-S19Opt' $S19OptPairs))) }
 if (Get-Command Set-S9Omnibox -CommandType Function -ErrorAction SilentlyContinue) { . ([scriptblock]::Create((Get-S12PatchedFunction 'Set-S9Omnibox' 'Set-S9Omnibox' $S12OmniPairs))) }
 function Assert-S12Patched {
   if (-not (Get-Command Invoke-S12Opt -CommandType Function -ErrorAction SilentlyContinue) -or (Get-Command Set-S9Omnibox).ScriptBlock.Ast.Extent.Text -notmatch 'Get-S12UrlClass') { Stop9 's12-win.ps1 was dot-sourced before s9-win.ps1 / s11-win.ps1: Invoke-S12Opt or the class-only omnibox line is missing'; throw 'unpatched' }
