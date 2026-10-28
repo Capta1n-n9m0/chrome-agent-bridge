@@ -21,7 +21,7 @@ import {
 } from "@bridge/shared";
 import { downloadToFile, type DownloadOutcome } from "./download.js";
 import { evaluateArgsParams, saveEvaluateToFile, type EvaluateToFileOptions, type EvaluateToFileResult } from "./evaluate-save.js";
-import { prepareUpload, type UploadOptions, type UploadResult } from "./upload.js";
+import { chooserParam, prepareUpload, type UploadOptions, type UploadResult } from "./upload.js";
 import { attachContext, type FailureReportConfig } from "./error.js";
 import { normalizeTarget, requireLocator, type Target } from "./locator.js";
 import { TRUSTED_INPUT_POLICY, type TrustedInputPolicy } from "./policy.js";
@@ -428,12 +428,18 @@ export class Tab {
    * must allow the extension file access; otherwise `UPLOAD_REFUSED` (no failure report) — ask the user, never
    * retry with another path. Not trusted input: no `focusTab`. Shows Chrome's debugging banner for the call.
    * Never `click` a file input: that opens a native file dialog the bridge cannot see or close.
+   *
+   * Step 12 S5b (#325, #336, #353): with `{chooser: true}` the target may instead be the element whose click opens
+   * the page's native file chooser; the extension clicks it and fills that chooser's input without showing it. The
+   * same Upload folders rule applies; refused `JS_DISABLED` while JavaScript is off; `TIMEOUT` if no chooser opens
+   * within 5 s of the click. `chooser` is checked before the files are read (`BAD_PARAMS` unless a boolean or `null`).
    */
   async upload(target: Target, paths: string | string[], options: UploadOptions = {}): Promise<UploadResult> {
     this.#guard();
     const where = normalizeTarget(target);
+    const chooser = chooserParam(options.chooser);
     const files = await prepareUpload(paths);
-    const reply = await this.#send("uploadFiles", { ...where, paths: files.map((f) => f.path) }, options.timeoutMs);
+    const reply = await this.#send("uploadFiles", { ...where, paths: files.map((f) => f.path), ...chooser }, options.timeoutMs);
     if (typeof reply === "object" && reply !== null && (reply as { pastSnapshotCap?: unknown }).pastSnapshotCap === true) {
       this.#host.notifyWarning?.({ tab: this.handle, method: "uploadFiles", kind: "pastSnapshotCap" });
     }

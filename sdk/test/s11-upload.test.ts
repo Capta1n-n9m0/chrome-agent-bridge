@@ -322,7 +322,8 @@ describe("S4.2 the surface: eight values; Tab.upload and client.upload pinned (t
   });
 
   it("the signatures and shapes, written out literally (phase doc 0.8, #240)", () => {
-    expectTypeOf<UploadOptions>().toEqualTypeOf<{ timeoutMs?: number }>();
+    // Re-pinned 2026-10-28 (Step 12 S5b; #325, #336, #353): gains exactly `chooser?: boolean` (was `{ timeoutMs?: number }`).
+    expectTypeOf<UploadOptions>().toEqualTypeOf<{ timeoutMs?: number; chooser?: boolean }>();
     expectTypeOf<UploadResult>().toEqualTypeOf<{ files: { name: string; bytes: number; sha256: string }[] }>();
     expectTypeOf<Tab["upload"]>().toEqualTypeOf<
       (target: Target, paths: string | string[], options?: UploadOptions) => Promise<UploadResult>

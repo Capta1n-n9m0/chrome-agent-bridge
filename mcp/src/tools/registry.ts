@@ -610,7 +610,7 @@ export function registerTools(
   // never a directory. `UPLOAD_REFUSED` is the one safety line (`withSafetyRefusals`).
   reg.tool(
     "browser_upload_file",
-    "Put one or more local files into a file input — an <input type=\"file\">, a label for one, or an element holding exactly one (the hidden input behind an \"Attach\" button or drop zone) — found by ref or `locator` in this session's tab (the active tab is claimed on first use) or `tab`, as if the user had picked them in the file dialog. `paths` are absolute file paths on this computer; Chrome reads the files itself. The upload works on a background tab: the tab is not brought to the front. Every file must lie in a folder the user allowed in Chrome (extension options → Upload folders), and the user must have turned on \"Allow access to file URLs\" for the extension (chrome://extensions → the extension's Details); otherwise the answer is UPLOAD_REFUSED — then stop and ask the user, and never retry with another path. Shows Chrome's 'is debugging this browser' banner briefly. Never click a file input (browser_click): that opens a native file dialog the bridge cannot see or close. The answer lists each file's name, size and sha256 as read on this computer: it says what Chrome accepted, which is not proof that the page received them — check the page (e.g. browser_snapshot) to confirm.",
+    "Put one or more local files into a file input — an <input type=\"file\">, a label for one, or an element holding exactly one (the hidden input behind an \"Attach\" button or drop zone) — found by ref or `locator` in this session's tab (the active tab is claimed on first use) or `tab`, as if the user had picked them in the file dialog. `paths` are absolute file paths on this computer; Chrome reads the files itself. The upload works on a background tab: the tab is not brought to the front. Every file must lie in a folder the user allowed in Chrome (extension options → Upload folders), and the user must have turned on \"Allow access to file URLs\" for the extension (chrome://extensions → the extension's Details); otherwise the answer is UPLOAD_REFUSED — then stop and ask the user, and never retry with another path. Shows Chrome's 'is debugging this browser' banner briefly. Never click a file input (browser_click): that opens a native file dialog the bridge cannot see or close. The answer lists each file's name, size and sha256 as read on this computer: it says what Chrome accepted, which is not proof that the page received them — check the page (e.g. browser_snapshot) to confirm. With chooser=true, ref or locator may instead be the button or link whose click opens the page's own file dialog: the bridge clicks it and puts the files into that dialog's input without showing the dialog — still only files in the Upload folders, and refused (JS_DISABLED) while JavaScript is off for the bridge.",
     {
       ref: z.string().optional().describe(REF_DESCRIPTION),
       locator: LOCATOR_SCHEMA,
@@ -622,14 +622,22 @@ export function registerTools(
           "Absolute paths of the files to put into the input (1–20; more than one only if the input takes several). Each must lie in a folder the user allowed in Chrome (extension options → Upload folders).",
         ),
       tab: z.string().optional().describe(TAB_DESCRIPTION),
+      // Step 12 S5b (#325, #336, #353): the schema re-baseline is s2-focus-first.test.ts's delta.
+      chooser: z
+        .boolean()
+        .optional()
+        .describe(
+          "true: ref or locator is the element whose click opens the page's file dialog (a button or link; a file input works too); the bridge clicks it and fills the dialog's input without showing the dialog. Refused while JavaScript is off for the bridge. Default false.",
+        ),
     },
-    async ({ ref, locator, paths, tab }) => {
+    async ({ ref, locator, paths, tab, chooser }) => {
       const checked = targetOf("browser_upload_file", ref, locator);
       if ("error" in checked) return checked.error;
       const target = checked.target!;
       const files = await prepareUpload(paths);
       return onTab(tab, async (t) => {
-        const reply = await bridge.call("uploadFiles", { ...target, paths: files.map((f) => f.path), tab: t });
+        // `chooser` only when given, so today's params stay identical.
+        const reply = await bridge.call("uploadFiles", { ...target, paths: files.map((f) => f.path), ...(chooser !== undefined ? { chooser } : {}), tab: t });
         const lines = [
           `Uploaded ${files.length} file(s) to ${describeTarget(target)}:`,
           ...files.map((f) => `${f.name} · ${f.bytes} bytes · sha256 ${f.sha256}`),

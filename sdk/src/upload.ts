@@ -20,6 +20,19 @@ import { BridgeError, ErrorCodes, UPLOAD_FILES_MAX_PATHS } from "@bridge/shared"
 export interface UploadOptions {
   /** The call's timeout (the default is the client's, 30 s). */
   timeoutMs?: number;
+  /**
+   * Step 12 S5b (#325, #336): `true` — the target is the element whose click opens the page's native file chooser (a
+   * button, a link), not necessarily a file input; the extension clicks it and fills the chooser's input. Refused
+   * `JS_DISABLED` while JavaScript is off for the bridge. Absent, `undefined` or `null`: today's call, no key sent.
+   */
+  chooser?: boolean;
+}
+
+/** The `chooser` part of the `uploadFiles` params: `{}` when absent or `null` (never sent as `null`), else the boolean. */
+export function chooserParam(value: unknown): { chooser?: boolean } {
+  if (value === undefined || value === null) return {};
+  if (typeof value !== "boolean") throw refuse("chooser must be true or false");
+  return { chooser: value };
 }
 
 /** What `Tab.upload` resolves with: per file, its name, size and the sha256 of the bytes the client read. */

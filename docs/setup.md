@@ -161,7 +161,7 @@ acts on **this session's tab**.
 | `browser_network_requests(tab?, filter?, types?, failedOnly?, limit?, includeHeaders?, id?)` | List the network requests the tab has made — method, status, type, duration, size, URL — captured continuously with no banner; `id` shows one request's headers and body summary |
 | `browser_network_clear(tab?)` | Forget the recorded network requests, so the next `browser_network_requests` shows only what your next action caused |
 | `browser_console_messages(level?, limit?)` *tab* | List the console messages and uncaught errors Chrome kept for the tab's page, those logged before the call included: one line per entry, oldest first (time in UTC, level, `uncaught`, text); `level` keeps that level and every more severe one (`error` > `warning` > `info` > `debug`), `limit` 1–200 (default 200) the newest. Limits: no source URL or stack, a text cut at 2000 characters; the page's frames are not read; entries from a blocked site, the extension or a `file:` page, and those logged before the bridge was last switched on or before the extension's worker last restarted, are left out; refused `JS_DISABLED` while JavaScript is off, and wherever `browser_snapshot` is refused; shows the debugging banner while it reads (Step 12, #323, #334) |
-| `browser_upload_file(ref \| locator, paths)` *tab* | Put 1–20 local files (absolute paths) into a file input, or a label or element holding exactly one, as if you had picked them in the file dialog. Refused `UPLOAD_REFUSED` unless each file is in an **Upload folders** folder you allowed and Chrome's **Allow access to file URLs** is on for the extension; the tab is not brought to the front; answers each file's name, size and sha256 — see [Uploading files](#uploading-files) |
+| `browser_upload_file(ref \| locator, paths, chooser?)` *tab* | Put 1–20 local files (absolute paths) into a file input, or a label or element holding exactly one, as if you had picked them in the file dialog; with `chooser=true` the target may instead be the button or link that opens the page's own file dialog (refused `JS_DISABLED` while JavaScript is off). Refused `UPLOAD_REFUSED` unless each file is in an **Upload folders** folder you allowed and Chrome's **Allow access to file URLs** is on for the extension; the tab is not brought to the front; answers each file's name, size and sha256 — see [Uploading files](#uploading-files) |
 | `browser_download(url, path, overwrite?, timeoutMs?)` | Save a URL to disk with the profile's cookies (fetched by the extension's service worker: no CORS, cross-origin redirects followed). `path` is absolute — a file, or a directory to use the response's filename. Reports size, type and sha256 |
 
 *Superseded 2026-10-22: was 21 tools that all acted on "the active tab", with `browser_select_tab(id)`
@@ -759,19 +759,19 @@ or token holder can do either:
    decisions.md · 2026-10-25 · Stage 0: uploads need Chrome's file access, and the bridge never opens
    or reads `file:` pages (#245)). Changing the toggle reloads the extension. Run 16 found it already on; with it off the bridge refuses with the second text in the table below.
 
-**From Claude.** `browser_upload_file(ref | locator, paths, tab?)`, with `paths` 1 to 20 absolute file
+**From Claude.** `browser_upload_file(ref | locator, paths, tab?, chooser?)`, with `paths` 1 to 20 absolute file
 paths (more than one only if the input is `multiple`). Its description, as the model reads it
 (`mcp/src/tools/registry.ts:613`):
 
 ```text
-Put one or more local files into a file input — an <input type="file">, a label for one, or an element holding exactly one (the hidden input behind an "Attach" button or drop zone) — found by ref or `locator` in this session's tab (the active tab is claimed on first use) or `tab`, as if the user had picked them in the file dialog. `paths` are absolute file paths on this computer; Chrome reads the files itself. The upload works on a background tab: the tab is not brought to the front. Every file must lie in a folder the user allowed in Chrome (extension options → Upload folders), and the user must have turned on "Allow access to file URLs" for the extension (chrome://extensions → the extension's Details); otherwise the answer is UPLOAD_REFUSED — then stop and ask the user, and never retry with another path. Shows Chrome's 'is debugging this browser' banner briefly. Never click a file input (browser_click): that opens a native file dialog the bridge cannot see or close. The answer lists each file's name, size and sha256 as read on this computer: it says what Chrome accepted, which is not proof that the page received them — check the page (e.g. browser_snapshot) to confirm.
+Put one or more local files into a file input — an <input type="file">, a label for one, or an element holding exactly one (the hidden input behind an "Attach" button or drop zone) — found by ref or `locator` in this session's tab (the active tab is claimed on first use) or `tab`, as if the user had picked them in the file dialog. `paths` are absolute file paths on this computer; Chrome reads the files itself. The upload works on a background tab: the tab is not brought to the front. Every file must lie in a folder the user allowed in Chrome (extension options → Upload folders), and the user must have turned on "Allow access to file URLs" for the extension (chrome://extensions → the extension's Details); otherwise the answer is UPLOAD_REFUSED — then stop and ask the user, and never retry with another path. Shows Chrome's 'is debugging this browser' banner briefly. Never click a file input (browser_click): that opens a native file dialog the bridge cannot see or close. The answer lists each file's name, size and sha256 as read on this computer: it says what Chrome accepted, which is not proof that the page received them — check the page (e.g. browser_snapshot) to confirm. With chooser=true, ref or locator may instead be the button or link whose click opens the page's own file dialog: the bridge clicks it and puts the files into that dialog's input without showing the dialog — still only files in the Upload folders, and refused (JS_DISABLED) while JavaScript is off for the bridge.
 ```
 
 The answer is `Uploaded <n> file(s) to <target>:` and one line per file, `<name> · <bytes> bytes · sha256
 <hex>`, the name being the real file's basename; it shows no directory. `browser_click`'s description
 now tells the model to use this tool instead of clicking a file input.
 
-**From a script.** `await tab.upload(target, paths, {timeoutMs?})` (`target` is a ref or a
+**From a script.** `await tab.upload(target, paths, {timeoutMs?, chooser?})` (`target` is a ref or a
 [locator](#locators); `paths` a string or an array) resolves with `{files: [{name, bytes, sha256}]}`; the
 client's cursor has `client.upload(…)` (`sdk/src/tab.ts`, `sdk/src/client.ts`). Before any call the SDK
 checks each path (absolute, an existing regular file, readable; otherwise `BAD_PARAMS` naming the entry's
@@ -779,6 +779,20 @@ index, never its path, and no call is made) and sends each file's **real path** 
 so a link or junction inside an allowed folder that points out of it is refused by the folder rule. The
 sha256 is of the bytes the client read. The SDK check is a convenience and the real-path step, not the
 boundary; the folder rule is the extension's.
+
+**A button that opens the file dialog: `chooser`.** *Added 2026-10-28 (Step 12 S5; decisions.md #325, #336, #353).*
+Some pages have no file input an agent can target, only an "Upload" button whose click opens Chrome's file
+dialog. Pass `chooser: true` (MCP `chooser=true`, SDK `tab.upload(target, paths, {chooser: true})`) and target that
+button or link. In one call the bridge tells Chrome to hand the dialog to it instead of showing it, clicks the
+button, puts the files into the input the dialog belongs to, and gives the dialog back to Chrome, so your own clicks
+open the dialog as usual again (built, not yet run live; Run 19 checks it). What you see: the debugging banner for the call, and no file dialog. It works on a
+tab in the background. The rules are the ones above: only files in your Upload folders, Allow access to file URLs on,
+the same answer. It is refused `JS_DISABLED` while JavaScript is off for the bridge, because the click runs in the
+page. If no dialog opens within 5 s of the click, the answer is `TIMEOUT` and nothing is uploaded; a page that opens
+its own file picker (not a file input) is refused `BAD_PARAMS`. A second `chooser` call on the same tab while one
+runs is refused `DEBUGGER_DEVTOOLS`, whose text says to close DevTools even when none is open. Without `chooser` an
+upload is exactly as before. `chooser` needs the extension reloaded after the update: an older extension ignores it
+and answers as for a file input.
 
 **The answer is not proof.** It says what Chrome accepted. A page that clears its input on `change`, or
 rejects the file in its own script, still gets an ok. Judge success by the page (Run 16 judged every upload
@@ -812,7 +826,7 @@ where it is read:
 The refusal is a safety refusal like `DOMAIN_BLOCKED`: no failure report, no screenshot; a script should stop
 and ask, not retry ([Safety → For scripts](#for-scripts)). Other refusals an upload can meet: a blocked site,
 a tab showing a `file:` page and the bridge's own pages answer `DOMAIN_BLOCKED`, the kill switch `DISARMED`.
-Turning JavaScript off does not stop an upload.
+Turning JavaScript off does not stop an upload, except one with `chooser` (above).
 
 **Known limits** (recorded, not fixed; phase doc Open items; decisions.md · 2026-10-25 · Stage 0: who the
 folder rule protects against, and the broad-folder warning (#250)):
@@ -829,6 +843,17 @@ folder rule protects against, and the broad-folder warning (#250)):
 - Never click a file input: that opens a native dialog the bridge cannot see. Drag-and-drop zones with no
   file input behind them, and a per-upload confirmation mode, are not built.
 - An upload to a tab in the background works: Run 16 row UP-1 received the file with no focus.
+- With `chooser` (by construction, not yet measured live; Run 19 checks them, decisions.md #353):
+  - If you click an upload button **on the same tab** during the 5 s the call waits, your click may be the one the
+    call answers: your dialog does not show and the agent's files go into the input you clicked (still only files
+    from your Upload folders). A dialog you open on that tab just before the call's click does not show either, and
+    is released when the call ends, so your click seems to do nothing.
+  - A page that opens its dialog later than the call (after it ended) on a tab in the background shows no dialog,
+    as without `chooser`.
+  - Turning the bridge off during the 5 s wait ends the call with `DISARMED` only when the 5 s are up; nothing is
+    uploaded.
+  - Turning the bridge or JavaScript off just after the files were put in answers `DISARMED` or `JS_DISABLED`, though
+    the page has the files (as the bullet on refusals after the CDP call above).
 
 ## Safety
 

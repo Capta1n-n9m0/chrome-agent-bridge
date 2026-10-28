@@ -246,6 +246,15 @@ describe("S2.3 the tool list's names and input schemas equal f45e3bf's; the desc
       "Absolute paths of the files to put into the input (1–20; more than one only if the input takes several). Each must lie in a folder the user allowed in Chrome (extension options → Upload folders).",
   };
 
+  // Re-baselined 2026-10-28 (Step 12 S5b; decisions.md #325, #336, #353, #342's form): `browser_upload_file` gains
+  // exactly one property, `chooser` (an optional boolean), written out below; its `required` and every other property
+  // are as Step 11 S4's expectation, and the fixture file is left untouched.
+  const S5B_CHOOSER_PROPERTY = {
+    type: "boolean",
+    description:
+      "true: ref or locator is the element whose click opens the page's file dialog (a button or link; a file input works too); the bridge clicks it and fills the dialog's input without showing the dialog. Refused while JavaScript is off for the bridge. Default false.",
+  };
+
   // Re-baselined 2026-10-27 (Step 12 S3b; decisions.md #323, #334, #342's form, #344): the list gains exactly one
   // entry, `browser_console_messages`, whose input schema is written out below (`tab` is
   // browser_snapshot's own field). Every other tool is as above; the fixture file is left untouched.
@@ -259,7 +268,7 @@ describe("S2.3 the tool list's names and input schemas equal f45e3bf's; the desc
     limit: { type: "integer", minimum: 1, maximum: 200, description: "How many of the newest entries to print (1–200). Default 200." },
   };
 
-  it("names and input schemas deep-equal the fixture captured at f45e3bf (browser_evaluate re-baselined by Step 10 S4, Step 11 S1 and Step 12 S2b; browser_upload_file added by Step 11 S4, browser_console_messages by Step 12 S3b)", async () => {
+  it("names and input schemas deep-equal the fixture captured at f45e3bf (browser_evaluate re-baselined by Step 10 S4, Step 11 S1 and Step 12 S2b; browser_upload_file added by Step 11 S4 and re-baselined by Step 12 S5b, browser_console_messages by Step 12 S3b)", async () => {
     const fixture = JSON.parse(
       readFileSync(fileURLToPath(new URL("./fixtures/tool-schemas-f45e3bf.json", import.meta.url)), "utf8"),
     ) as Array<{ name: string; inputSchema: { properties: Record<string, unknown> } }>;
@@ -279,6 +288,7 @@ describe("S2.3 the tool list's names and input schemas equal f45e3bf's; the desc
         locator: click.properties.locator,
         paths: UPLOAD_PATHS_PROPERTY,
         tab: click.properties.tab,
+        chooser: S5B_CHOOSER_PROPERTY,
       },
       required: ["paths"],
     });

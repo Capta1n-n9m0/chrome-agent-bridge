@@ -14,7 +14,7 @@ alone, before the code.
 
 ## 2. Outputs
 
-- Commits: spec note `<NOTE>`, then code `<CODE>` (see §7 for the file list).
+- Commits: spec note `8eab22c`, then code `2099c08` (see §7 for the file list).
 - Code: `extension/src/upload-files.ts`, `extension/src/handlers/upload.ts`, `extension/src/safety.ts` (the `chooser`
   params rule: `JS_DISABLED` while JavaScript is off), `shared/src/protocol.ts` (the `chooser` param in the guard).
   `extension/src/content/upload-target.ts` is unchanged (see §4).
