@@ -91,3 +91,4 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
 - 2026-10-28T21:24Z · S7-drivers-DE · step agent · Opus · medium · started (tree clean).
 - 2026-10-28T22:04Z · S7-drivers-DE · step agent · ended · `babf405` · PASS-with-notes (no fix round) · npm test 5558 / 232 files; 153 code / 236 tests · #365 recorded with a dated §4.27 note. Every Run 19 slice is driven; the UP-OPT investigator is committed (`9a56093`).
 - 2026-10-28T22:05Z · S7-live (liveA19) · step agent · Opus · medium · started ALONE at HEAD after this commit (tree clean).
+- 2026-10-28T22:15Z · S7-live (liveA19) · step agent · ended ESCALATE · att 1 `e1c05c4`: R19-0 PASS, BANNER-CTL PASS, STOP at R19-ARGS-1 existing-tool-changed (a wrong sheet constant; MCP actor raced its link); no state changed; daemon stopped, no listener. Ruled #366 (correction after observation, listed under Open decisions). Next: fresh liveA19 step agent, fix round 1 then attempt 2.

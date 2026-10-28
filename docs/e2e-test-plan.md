@@ -1910,6 +1910,23 @@ record then shows the guard's `STOP:` line, the `NOT RUN` row and no `RETURN`, b
 "nothing forwarded" cannot be told apart live from a daemon that forwards the call and rewrites the answer to `VERSION`.
 That clause is proved by `mcp/test/s12-args-cross.test.ts`, and live it is not discriminating. The pass rule is unchanged.
 
+*Note 2026-10-29, **after** liveA19 attempt 1's observation (session agent; decisions.md #366; stated as a correction,
+not as a pre-run note):* R19-ARGS-1's control-2 expected value `kind: "function"` for the raw no-`args` call
+`evaluate "function f() {}"` was copied from `mcp/test/s12-args-cross.test.ts`, which runs against a fake extension. In
+a real page that source is a function declaration, not an expression. Attempt 1 answered `ok` with
+`kind: "undefined"`, and its STOP `existing-tool-changed` fired on the wrong constant (`…-steps/S7-live-liveA19.md`).
+The control's purpose is unchanged: "a call without `args` answers as before". So **"as before" is now the old build's own
+answer, measured**:
+- **In liveA19, control-2 must answer `ok`.** A non-`ok` answer is still the STOP. Its `kind` is recorded as a
+  `CHECK R19-ARGS-1 control-2 kind=<k>` line.
+- **In liveD19, R19-ARGS-OLD's raw no-`args` twin sends the same `function f() {}` call to the pre-S2a build.** It
+  records `kind=<k>` and is the reference.
+- **S7-record judges control-2:** the same `kind` on both builds is PASS; a different one is FAIL
+  `existing-tool-changed` (a STOP can no longer fire there). If ARGS-OLD is NOT RUN, control-2 is NOT MEASURED.
+
+R19-ARGS-OLD's clause "its raw twin `ok` with `kind: "function"`" is read the same way: `ok`, kind recorded. Its raw
+`args` leg's `(a) => a` is an arrow expression, so its `kind: "function"` reasoning stands.
+
 ## 5. Results template
 
 Copy this and fill it in during the run:

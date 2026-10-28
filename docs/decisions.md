@@ -23,6 +23,7 @@ were ruled on 2026-10-27, #311, #320). #322, #323, #325 and #326 are amended by 
 - 2026-10-27 · S1-live: R18-LOGS slice A's `profile=2` stands as a FAIL … (#349, item (a): the MCP failure report's absolute screenshot path)
 - 2026-10-28 · Run 18's findings … (#351, items 1 and 2: product findings)
 - 2026-10-28 · S7-sheet: what Run 19 cannot discriminate live … (#356, item 1)
+- 2026-10-29 · liveA19's STOP was a wrong constant in the sheet; control-2 judged against the old build's measured answer (#366, a correction after an observation)
 - **G12-2 for the user:** add the `webNavigation` permission so G1 can be built? (#337)
 
 ## Standing decisions
@@ -194,6 +195,31 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
+
+### 2026-10-29 · liveA19's STOP was a wrong constant in the sheet; control-2 is judged against the old build's measured answer; the MCP actor waits for its link (#366)
+**Decided:** liveA19 attempt 1 (`e1c05c4`) stopped at R19-ARGS-1 on `existing-tool-changed`, but no tool had changed.
+The control-2 constant `kind: "function"` for `evaluate "function f() {}"` came from a fake-extension test. A real page
+treats that source as a declaration and answers `kind: "undefined"`; `(function f() {})` answers `function`
+(the step agent's one probe). The STOP would have fired on any build.
+
+Control-2 keeps its purpose, "a call without `args` answers as before", now measured instead of assumed:
+- **liveA19:** control-2 must answer `ok` (else STOP), and its kind is recorded.
+- **liveD19:** R19-ARGS-OLD's raw no-`args` twin sends the same call to the pre-S2a build, as the reference.
+- **S7-record:** equal kinds PASS, different kinds FAIL; NOT MEASURED if ARGS-OLD is NOT RUN.
+
+**Fix round 1 (recipes only, Sonnet fixer, Opus verifier)** covers that judge change in `-a.ts` and `-de.ts`, plus the
+step agent's helper fix. The scripted MCP client waits up to 15 s while it gets the "connecting to the bridge daemon"
+reply. An empty tab handle stops the helper instead of being sent. Every MCP-actor driver gets the fix (ARGS-1, ARGS-3,
+CON-MCP, CON-CAP and the -C/-DE MCP legs). Attempt 2 runs from a fresh out folder.
+
+**This is a correction after an observation.** The dated §4.27 note says so. It is a contract-level reading of the
+sheet, so it is listed under Open decisions for the user.
+**Why:** a constant copied from a fake cannot define "as before". The old build's measured answer can, and liveD19
+already loads that build. The alternative of editing the expression to `(function f() {})` keeps the constant but
+changes what the control sends, after seeing its answer.
+**Instead of:** editing the expression; dropping control-2; judging it from the code alone.
+**Revisit if:** the old build answers a different kind (then control-2 FAILs, and that is a finding); ARGS-OLD cannot run.
+**By:** Claude (session agent's ruling; open for the user's review)
 
 ### 2026-10-29 · S7-drivers-DE accepted; liveE19 adds ROOT; ARGS-OLD's raw leg proved by its unit test (#365)
 **Decided:** S7-drivers-DE (`babf405`, PASS-with-notes in the first verifier round, 21 mutants killed; 153 code /
