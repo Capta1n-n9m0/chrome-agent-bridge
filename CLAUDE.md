@@ -11,7 +11,7 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-27, Step 11b closed; Step 12 next)
+## Current state (2026-10-28, Step 12 mid-phase: S1–S6 built, S7 Run 19 prep in progress)
 
 - **Shipped:** Steps 1–11b (Step 11b, the block list stops redirected requests, closed 2026-10-27, #320;
   `docs/decisions-archive/step11b.md`). Public on GitHub (MIT), pushed. **24 tools, 27 codes (26 on the wire),
@@ -23,11 +23,16 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
 - **How agents run (#289, #320):** Opus builds contract and safety code and runs every verifier; Sonnet does recipes,
   fixtures, docs and live runners; every agent at medium effort, passed explicitly; three fix rounds per stage; a step
   agent never ends its turn on a running child (#286). Rules: `docs/agent-rules.md` §6–§8, §10.
-- **Reloads need no human:** `recipes/reload-extension.ps1` (#65; one re-run on exit 2, #99). The loaded extension is
-  the S6 build (Run 17b's R17B-0); interactive sessions using the bridge need `/mcp` or a fresh session.
-- **Resume: Step 12 — Phase F** from `docs/plans/next-session-prompt.md`; its scope is ruled (G12-0, #321): Stage 0, then
-  a first live wave that fixes Run 17b's helper gaps and re-runs Run 16's carried upload rows (#318 (a)); then B, C, D, E,
-  G1 (#226, measured first) and G2 (a blocking trusted action); F parked. Live waves run autonomously (#33).
+- **Step 12 so far (Phase F, `docs/plans/2026-10-27-step12-phase-f.md` § As built):** Run 18 (S1), `args` for evaluate
+  (S2), console messages (S3), the kept debugger session (S4), the native file chooser (S5) and G2, the blocking trusted
+  action (S6-G2), all committed and verified; G1 waits for G12-2 (#337). S7 (Run 19): sheet, helpers a–d, drivers A and
+  B committed (`9b14658`); S7-drivers-C has a fix round uncommitted in the tree, its second verifier not yet run.
+  Tool, code and method counts change in Step 12 and are recomputed at S8. 54 commits not pushed (G12-1).
+- **Reloads need no human:** `recipes/reload-extension.ps1` (#65; one re-run on exit 2, #99). Which build is loaded is
+  proven by each Run 19 slice's R19-0; interactive sessions using the bridge need `/mcp` or a fresh session.
+- **Resume: Step 12 at S7-drivers-C** from `docs/plans/next-session-prompt.md` and `…-steps/journal.md`: drivers-C's
+  verifier round 2, then drivers-DE, the UP-OPT investigator, Run 19 (liveA19–E19), S7-record, S8 docs, phase close.
+  Live waves run autonomously (#33).
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
 
