@@ -1,4 +1,4 @@
-import { FEATURE_EVALUATE_ARGS } from "@bridge/shared";
+import { FEATURE_EVALUATE_ARGS, FEATURE_UPLOAD_CHOOSER } from "@bridge/shared";
 
 type MessageHandler = (data: string) => void;
 
@@ -16,8 +16,11 @@ export function helloFrame(token: string, session?: string): string {
   return JSON.stringify(hello);
 }
 
-/** Step 12 S2a (#332): what this build can do, sent in every hello; the daemon refuses `args` to a build without it. */
-export const EXTENSION_FEATURES: readonly string[] = [FEATURE_EVALUATE_ARGS];
+/**
+ * Step 12 S2a (#332), S5c (#355): what this build can do, sent in every hello; the daemon refuses `args`, and an
+ * `uploadFiles` `chooser`, to a build without the feature.
+ */
+export const EXTENSION_FEATURES: readonly string[] = [FEATURE_EVALUATE_ARGS, FEATURE_UPLOAD_CHOOSER];
 
 export interface ClientOptions {
   url: string;

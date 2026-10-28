@@ -12,7 +12,7 @@ mcp/; docs/setup.md (Tools row, § Uploads). Verifiers also: `git show 2099c08` 
 
 ## 2. Outputs
 
-- Commit: `<CODE>` (one commit: code, tests, setup.md, this slice's reports, and S5a.md's hash line).
+- Commit: `5a5cd46` (one commit: code, tests, setup.md, this slice's reports, and S5a.md's hash line).
 - Code: `sdk/src/upload.ts` (`UploadOptions.chooser`, `chooserParam`: `undefined`/`null` send nothing, a boolean is
   sent, anything else `BAD_PARAMS "upload: chooser must be true or false"`), `sdk/src/tab.ts` (`Tab.upload` spreads it),
   `sdk/src/format/console-messages.ts` (`formatConsole` capped at 20 000 characters in `formatNetwork`'s form, oldest

@@ -13,6 +13,7 @@ import {
   BridgeError,
   ErrorCodes,
   FEATURE_EVALUATE_ARGS,
+  FEATURE_UPLOAD_CHOOSER,
   isEvent,
   isSafetyStateEvent,
   isTabCreatedEvent,
@@ -39,6 +40,9 @@ export const RELOAD_HINT =
 /** Step 12 S2b (#332): `args` sent to an extension whose hello did not list `"evaluateArgs"`. */
 export const ARGS_RELOAD_HINT =
   "the Chrome extension is an older build without evaluate args — reload it at chrome://extensions (↻ on Chrome Agent Bridge)";
+/** Step 12 S5c (#355): `uploadFiles` `chooser` sent to an extension whose hello did not list `"uploadChooser"`. */
+export const CHOOSER_RELOAD_HINT =
+  "the Chrome extension is an older build without the file chooser upload — reload it at chrome://extensions (↻ on Chrome Agent Bridge)";
 export const NO_HUMAN_TAB =
   "No normal Chrome window is focused (a DevTools or popup window may have focus) — click a normal Chrome window and retry";
 
@@ -136,6 +140,8 @@ export class TabLayer {
   private readonly protoConnections = new WeakSet<ExtensionConnection>();
   /** Step 12 S2b (#332): extension connections whose hello listed `"evaluateArgs"`. */
   private readonly argsConnections = new WeakSet<ExtensionConnection>();
+  /** Step 12 S5c (#355): extension connections whose hello listed `"uploadChooser"`. */
+  private readonly chooserConnections = new WeakSet<ExtensionConnection>();
   /**
    * The session marker of the last extension hello (S2b.5, #74 as amended by #80): a string, `null` for
    * a hello without one ("none" is a value), `undefined` before the first hello of this daemon's life.
@@ -194,6 +200,7 @@ export class TabLayer {
    */
   extensionConnected(conn: ExtensionConnection, proto: boolean, session?: string, features: readonly string[] = []): void {
     if (features.includes(FEATURE_EVALUATE_ARGS)) this.argsConnections.add(conn);
+    if (features.includes(FEATURE_UPLOAD_CHOOSER)) this.chooserConnections.add(conn);
     const current = session ?? null;
     const previous = this.lastSession;
     this.lastSession = current;
@@ -490,6 +497,11 @@ export class TabLayer {
     if ((method === "evaluate" || method === "evaluateSaveStart") && "args" in p) {
       const conn = this.deps.bridge.currentConnection();
       if (conn === null || !this.argsConnections.has(conn)) throw new BridgeError(ErrorCodes.VERSION, ARGS_RELOAD_HINT);
+    }
+    // #355: an older extension would ignore `chooser` and treat the target as a file input; never forward.
+    if (method === "uploadFiles" && "chooser" in p) {
+      const conn = this.deps.bridge.currentConnection();
+      if (conn === null || !this.chooserConnections.has(conn)) throw new BridgeError(ErrorCodes.VERSION, CHOOSER_RELOAD_HINT);
     }
     if (method === "networkClear" && p.tab === "all") return this.networkClearAll(caller, p, deadline);
     if ((method === "closeTab" || method === "focusTab") && p.id !== undefined) {

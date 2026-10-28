@@ -791,8 +791,9 @@ the same answer. It is refused `JS_DISABLED` while JavaScript is off for the bri
 page. If no dialog opens within 5 s of the click, the answer is `TIMEOUT` and nothing is uploaded; a page that opens
 its own file picker (not a file input) is refused `BAD_PARAMS`. A second `chooser` call on the same tab while one
 runs is refused `DEBUGGER_DEVTOOLS`, whose text says to close DevTools even when none is open. Without `chooser` an
-upload is exactly as before. `chooser` needs the extension reloaded after the update: an older extension ignores it
-and answers as for a file input.
+upload is exactly as before. `chooser` needs the extension reloaded after the update: to an older extension the
+bridge sends nothing and answers `VERSION` "the Chrome extension is an older build without the file chooser upload —
+reload it at chrome://extensions" (decisions.md #355).
 
 **The answer is not proof.** It says what Chrome accepted. A page that clears its input on `change`, or
 rejects the file in its own script, still gets an ok. Judge success by the page (Run 16 judged every upload
@@ -1278,7 +1279,8 @@ S2 added `UPLOAD_REFUSED` (#237).*
   retry. (A focused DevTools window alone does not cause it: the bridge reads the last-focused
   *normal* window.)
 - **`VERSION` with "the Chrome extension is an older build — reload it at chrome://extensions"** (or, on an
-  evaluate call with `args`, "…an older build without evaluate args — reload it at chrome://extensions"): the
+  evaluate call with `args`, "…an older build without evaluate args — reload it at chrome://extensions", or on an
+  upload with `chooser`, "…an older build without the file chooser upload — reload it at chrome://extensions"): the
   daemon was rebuilt but Chrome still runs the old extension. Reload it (§4).
 - **`trusted:true` "succeeds" but nothing happens on the page**: the tab was not in front when the
   input ran (see [What you see](#what-you-see-while-actors-work)) — the trusted tools focus first, but

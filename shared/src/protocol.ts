@@ -59,6 +59,8 @@ export interface HelloMessage {
 
 /** The hello feature of an extension that runs `evaluate`/`evaluateSaveStart` with `args` (Step 12, #332). */
 export const FEATURE_EVALUATE_ARGS = "evaluateArgs";
+/** The hello feature of an extension that runs `uploadFiles` with `chooser` (Step 12 S5c, #355). */
+export const FEATURE_UPLOAD_CHOOSER = "uploadChooser";
 
 /** The daemon's answer to a client's hello (spec §10). */
 export interface WelcomeMessage {

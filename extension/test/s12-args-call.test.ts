@@ -200,13 +200,13 @@ describe("Debugger.disable on every other path", () => {
   });
 });
 
-describe("the extension's hello lists evaluateArgs (#332)", () => {
-  it("helloFrame sends features: [\"evaluateArgs\"], with or without a session, and stays a valid hello", async () => {
+describe("the extension's hello lists evaluateArgs (#332) and uploadChooser (#355)", () => {
+  it("helloFrame sends features: [\"evaluateArgs\", \"uploadChooser\"], with or without a session, and stays a valid hello", async () => {
     const { helloFrame, EXTENSION_FEATURES } = await import("../src/client.js");
     const { isHello } = await import("@bridge/shared");
-    expect(EXTENSION_FEATURES).toEqual(["evaluateArgs"]);
+    expect(EXTENSION_FEATURES).toEqual(["evaluateArgs", "uploadChooser"]);
     for (const h of [JSON.parse(helloFrame("tok")), JSON.parse(helloFrame("tok", "m-1"))]) {
-      expect(h.features).toEqual(["evaluateArgs"]);
+      expect(h.features).toEqual(["evaluateArgs", "uploadChooser"]);
       expect(h.proto).toBe(2);
       expect(isHello(h)).toBe(true);
     }
