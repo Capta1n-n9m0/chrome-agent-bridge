@@ -975,6 +975,17 @@ The block itself is left as written.*
     of class `upload` in the gate (`safety.ts`), in every phase, before the tab and folder tests, so no page call and
     no CDP command runs. Without `chooser`, JavaScript off still does not apply to `uploadFiles`. No path, file name or
     mark reaches a message or a log; the module adds no log call.*
+- *Amended 2026-10-28 (Step 12 S5c; decisions.md · 2026-10-28 · S5b as built; an old extension's `chooser` is refused
+  `VERSION` by a hello feature, as #332 (#355); the mechanism of the S2a/S2b notes above (#332, #342). Proposed, for
+  the user at Step 12's gate. No method, code or event is added; proto stays 2):*
+  - *A Step 12 extension's hello lists a second feature, `features: ["evaluateArgs", "uploadChooser"]`
+    (`FEATURE_UPLOAD_CHOOSER = "uploadChooser"`, `shared/src/protocol.ts`).*
+  - *The daemon's rule (`daemon/src/intercept.ts`): an `uploadFiles` carrying the `chooser` key (its presence counts,
+    `null` and `false` included, as `args` under #342) is answered `VERSION` with its own reload text,
+    `CHOOSER_RELOAD_HINT`: "the Chrome extension is an older build without the file chooser upload — reload it at
+    chrome://extensions (↻ on Chrome Agent Bridge)", without forwarding, when the connected extension's hello did not
+    list `"uploadChooser"`. The text names no path. Every other call is unchanged; an `uploadFiles` without `chooser`
+    is forwarded to a featureless extension as before.*
 - *Amended 2026-10-28 (Step 12 S6-G2; decisions.md #321 Q6, #326, #338; proposed, for the user at Step 12's gate). No
   method, code, event or field is added: a trusted `click`/`type`/`pressKey` (no `focusEmulation: true`) holds the
   visibility lock from a daemon-forwarded `focusTab` through the input and a 500 ms pause after its reply (§6.4).
