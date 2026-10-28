@@ -12,7 +12,7 @@ paragraph). Not read: run records, docs/e2e-test-plan.md.
 
 ## 2. Outputs
 
-- Commits: spec note `d38b590`, then code `<CODE>` (code, tests, setup.md, this slice's reports, and S5b.md's hash line).
+- Commits: spec note `d38b590`, then code `11a1210` (code, tests, setup.md, this slice's reports, and S5b.md's hash line).
 - Spec: `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md` §10, one insert-only `Amended 2026-10-28 (Step 12 S5c)`
   item: the feature `"uploadChooser"`, the rule (key presence counts), the text.
 - Code: `shared/src/protocol.ts` (`FEATURE_UPLOAD_CHOOSER = "uploadChooser"`), `extension/src/client.ts`

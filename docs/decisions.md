@@ -209,6 +209,10 @@ exists.
 **Instead of:** documenting the stale-build case only (S5b's interim).
 **Revisit if:** the user prefers fewer feature names (then one `"step12"` feature).
 **By:** Claude (conservative option applied; the texts and the cap's direction for user review)
+*Built 2026-10-28 as S5c (spec note `d38b590`, code `11a1210`, verifier PASS-with-notes after one fix round): the rule
+fires whenever the `chooser` key is present, `false` and `null` included, so an explicit `chooser: false` to an old
+extension is refused too (stricter than needed; for user review: refusing only a value other than `false` would also
+be safe). Tests 5103 → 5111.*
 
 ### 2026-10-28 · S6-G2: the daemon focuses under its own hold; an earlier client `focusTab` stays harmless (#354)
 **Decided (contract-level, for user review):** S6-G2 (spec note `e467f48`, code `ae123de`, verifier PASS-with-notes
