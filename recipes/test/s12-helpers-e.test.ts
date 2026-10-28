@@ -112,12 +112,12 @@ describe.skipIf(!hasPs)("liveA19's and liveB19's DIALOGS line: native and DevToo
     });
     it(`${s}: open wave windows are printed and never judged`, () => { expect(line("D3")).toBe(`D3 ${a(0, 0, 2)}`); });
   }
-  it("R19-RESTORE calls Write-R19Dialogs in liveA19, liveB19 and liveC19", () => {
+  it("R19-RESTORE calls Write-R19Dialogs in all five slices (liveD19 and liveE19 too, #364)", () => {
     const run = (s: string): boolean => runPs(`$global:R19Slice = '${s}'; $global:O = 0
 function Invoke-R19RowBlock($id, $sb) { & $sb }; function Test-S11Own($o) { $false }; function Invoke-R19Stamped($b) { }; $R17Blocks = @{ 'rd-restore' = 1 }; function Close-R19Bc { }; function Say9($m) { }
 function Write-R19Dialogs { Write-Host 'DIALOGS-CALLED' }
 ${LOAD("s12-r19-lib.ps1", ["Invoke-R19Restore"])}
 Invoke-R19Restore`).includes("DIALOGS-CALLED");
-    expect(["liveA19", "liveB19", "liveC19"].map(run)).toEqual([true, true, true]);
+    expect(["liveA19", "liveB19", "liveC19", "liveD19", "liveE19"].map(run)).toEqual([true, true, true, true, true]);
   });
 });

@@ -192,6 +192,9 @@ ${ENTRY_BLOCKS}
 }
 $R17bZero = { Show-S16 @('MANIFEST m BUILD b'); Show-S16 @('RULES 0', 'STATE x') }
 $Dash = [char]0x2014
+function Invoke-R19OldArgs { [void](Invoke-R19Node 's12-r19' @('proof')); Say9 "ROW R19-ARGS-OLD NOT RUN $Dash stub driver" }
+function Invoke-R19OldVersion { Say9 "ROW R19-VERSION NOT RUN $Dash stub driver" }
+function Add-R19RootOnce { }
 function Entry([string]$slice) { Stubs $slice; . $EntryBlocks; Set-Content -LiteralPath $DaemonLog 'x' }
 $G = '${GOOD}'; $OLD = '${OLDB}'; $EM = '${EMPTY}'
 T rZeroGood { $global:NodeOut['s12-r19 proof'] = $G; Entry 'liveA19'; Invoke-R19Slice 'liveA19' }
@@ -291,7 +294,7 @@ describe.skipIf(!hasPs)("Run 19's runner logic with stubbed helpers", () => {
   });
   it("swap prints its own failure message and exits 2, so M1's wording reaches the record (F1 f)", () => {
     const ts = readFileSync(join(REPO, "recipes", "s12-r19.ts"), "utf8");
-    expect(ts).toMatch(/try \{ swapOldBuild\([^\n]*\} catch \(e\) \{ console\.log\(`SWAP failed: \$\{e instanceof Error \? e\.message : "error"\}`\); return 2; \}/);
+    expect(ts).toMatch(/try \{ swapOldBuild\([^\n]*\} catch \(e\) \{ console\.log\(`SWAP failed: \$\{swapFailText\(e\)\}`\); return 2; \}/); // N-4: the text goes through swapFailText (no raw fs path)
   });
   it("a capture name matches the TS capturePath for every slice and segment", () => {
     expect(capturePath("liveA19", 1)).toBe("console-liveA19.txt");

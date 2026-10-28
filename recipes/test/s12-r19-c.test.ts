@@ -466,7 +466,7 @@ describe("every liveC19 block has a driver (S7-drivers-C)", () => {
   });
   it("the human-style rows are gated on the proved click, the toolbar goes through Switch-R19Toolbar, and the dialogs are the closer's", () => {
     expect(PSC).toContain("$global:R19HumanClick -eq $true");
-    expect(LIB).toContain("$global:R19Slice -in 'liveA19', 'liveB19', 'liveC19' -and (Get-Command Write-R19Dialogs -ErrorAction Ignore)) { Write-R19Dialogs }"); // form (30) at R19-RESTORE, liveA19, liveB19 and liveC19 (#363)
+    expect(LIB).toContain("$global:R19Slice -in 'liveA19', 'liveB19', 'liveC19', 'liveD19', 'liveE19' -and (Get-Command Write-R19Dialogs -ErrorAction Ignore)) { Write-R19Dialogs }"); // form (30) at R19-RESTORE, liveA19, liveB19 and liveC19 (#363)
     expect(rd("recipes/s12-r19-a.ps1")).toContain("$global:R19RecordRows -contains $Id");
     expect(PSC).not.toMatch(/Invoke-S9ActionButton|Send-S12|Set-S11Flag/);
     expect(TS).toContain('await sig(`${R}-off`)');

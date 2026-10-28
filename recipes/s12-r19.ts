@@ -147,6 +147,8 @@ function scanCtx19(repo: string): ScanCtx {
   const token = process.env.BRIDGE_TOKEN || (existsSync(tf) ? readFileSync(tf, "utf8").trim() : "");
   return { token, sentinel: PROBES_19.sentinel[0], profile: [homedir()], ownId: extensionIdFromPath(join(repo, "extension")) };
 }
+/** N-4: only the swap's own wording ("swap: ...", s12-oldbuild.ts, none names a path) reaches the record; an fs error (it carries a path) is the fixed word. */
+export const swapFailText = (e: unknown): string => (e instanceof Error && e.message.startsWith("swap: ") ? e.message : "error");
 export async function main(argv: string[]): Promise<number> {
   const [sub, ...rest] = argv;
   const opt = (k: string): string => rest[rest.indexOf(`--${k}`) + 1] ?? "";
@@ -154,7 +156,7 @@ export async function main(argv: string[]): Promise<number> {
   if (sub === "proof") return proof(opt("rerun") === "" ? undefined : Number(opt("rerun")));
   if (sub === "swap") {
     // M1's wording reaches the record: the message names no path (s12-oldbuild.ts WORDING); an unhandled rejection would leave only "exited 1 with no ROW".
-    try { swapOldBuild(realSwapIO(), { repo, commit: opt("commit"), tmp: opt("tmp") }); } catch (e) { console.log(`SWAP failed: ${e instanceof Error ? e.message : "error"}`); return 2; }
+    try { swapOldBuild(realSwapIO(), { repo, commit: opt("commit"), tmp: opt("tmp") }); } catch (e) { console.log(`SWAP failed: ${swapFailText(e)}`); return 2; }
     console.log("SWAP old build is in extension/dist");
     return 0;
   }

@@ -110,13 +110,18 @@ function Save-R19Seg([string]$Before) {
 function Open-R19Seg { $global:R19SegNext++; Invoke-R19Stamped $R17Blocks['console'] }
 
 # ---- the old-build slices (#356 (2), #359 M1): the swap runs inside a try whose finally ALWAYS restores HEAD, reloads and proves the build ----------
-function Invoke-R19Swapped([string]$Commit, [scriptblock]$Rows) {
+# S7-drivers-DE: with a $RowId, a reload that gave up (exit 2 twice, the reload block's own record line) is the row's NOT RUN, never a pass and never a STOP; any other reload failure still throws.
+function Test-R19ReloadGaveUp([int]$Skip) { @(Get-R19RecordLines | Select-Object -Skip $Skip | Where-Object { "$_" -match 'reload-extension\.ps1 exit 2 \(attempt 2\)' }).Count -gt 0 }
+function Invoke-R19Swapped([string]$Commit, [scriptblock]$Rows, [string]$RowId = '') {
   $tmp = Join-Path $env:S11_OUT 'old-wt'
   try {
     Save-R19Seg 'reload'
     if ([int](Invoke-R19Node 's12-r19' @('swap', '--commit', $Commit, '--tmp', $tmp)) -ne 0) { throw 'the old-build swap failed' }
-    Invoke-R19Stamped $R17Blocks['reload']; Open-R19Seg
-    & $Rows
+    $r19n0 = @(Get-R19RecordLines).Count; $r19s0 = $global:S16Stops; $r19loaded = $true
+    try { Invoke-R19Stamped $R17Blocks['reload'] }
+    catch { if (-not ($RowId -and (Test-R19ReloadGaveUp $r19n0))) { throw }; $r19loaded = $false; $global:S16Stops = $r19s0 }
+    Open-R19Seg
+    if ($r19loaded) { & $Rows } else { Say9 "ROW $RowId NOT RUN $([char]0x2014) old build not loadable (reload exit 2 twice)" }
   } finally {
     $left = @()   # each step runs whatever an earlier one did; any failure is the STOP old-build-left-loaded (F2)
     try { $okHead = ([int](Invoke-R19Node 's12-r19' @('restore-head')) -eq 0) } catch { $okHead = $false }
@@ -217,7 +222,7 @@ function Invoke-R19Restore {
     if (Test-S11Own $global:O) { Close-S11Window $global:O; $global:O = 0 }
     Invoke-R19Stamped $R17Blocks['rd-restore']
     if ($global:R19Slice -in 'liveA19', 'liveB19' -and (Get-Command Close-R19Bc -ErrorAction Ignore)) { try { Close-R19Bc } catch { Say9 'CHECK R19-BANNER-CTL bc-tab=close-failed' } }   # after the safety restore: a tidy-up never skips it (S7-drivers-A)
-    if ($global:R19Slice -in 'liveA19', 'liveB19', 'liveC19' -and (Get-Command Write-R19Dialogs -ErrorAction Ignore)) { Write-R19Dialogs }   # form (30): the slice's native-dialog, DevTools and wave-window counts (S7-drivers-C; liveA19 and liveB19 too, #363)
+    if ($global:R19Slice -in 'liveA19', 'liveB19', 'liveC19', 'liveD19', 'liveE19' -and (Get-Command Write-R19Dialogs -ErrorAction Ignore)) { Write-R19Dialogs }   # form (30): the slice's native-dialog, DevTools and wave-window counts (S7-drivers-C; liveA19 and liveB19 too, #363; liveD19 and liveE19 too, #364)
   }
 }
 function Invoke-R19Logs {
