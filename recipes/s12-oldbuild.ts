@@ -1,7 +1,8 @@
 // Step 12 S7-helpers-c: the OLD-BUILD SWAP of decisions.md #356 (2) and its RESTORE. Given a commit: a scratch worktree outside the repo with its own
 // `npm ci` (never a node_modules junction, #220), its extension build copied over the main tree's gitignored extension/dist/. On success the OLD build
 // STAYS in dist (the runner reloads and runs the old-build rows); the runner calls restoreHead() in its own finally at the end of the slice (#356 (2)).
-// When a step fails after dist was touched, swapOldBuild itself rebuilds HEAD into dist before it throws. The worktree is removed with `git worktree remove` only after every
+// When a step fails after dist was touched, swapOldBuild itself rebuilds HEAD into dist before it throws, EXCEPT the three worktree-removal throws (WORDING),
+// which leave the old build in dist: the runner's finally calls restoreHead for all of them. The worktree is removed with `git worktree remove` only after every
 // link in it was removed by `cmd /c rmdir` (a link is never followed by a delete). The reload itself is recipes/reload-extension.ps1, called by the
 // runner (S7-helpers-d). Never "Load unpacked", never Chrome pointed at another folder. All I/O is injected (SwapIO); tests never touch the repo.
 import { spawnSync } from "node:child_process";
@@ -32,6 +33,12 @@ export function removeWorktree(io: SwapIO, repo: string, wt: string): boolean {
   if (io.reparsePoints(wt).length > 0) return false;
   return io.run("git", ["worktree", "remove", "--force", wt], repo).code === 0;
 }
+/** M1 (S7-helpers-c.md): the three throws that leave the OLD build in dist with no rebuild. The runner calls restoreHead after each (its finally). */
+export const WORDING = {
+  link: "swap: the scratch worktree could not be removed: a link is left in it, so nothing was deleted; dist holds the old build, no HEAD rebuild ran: call restoreHead (STOP throw-after-state)",
+  gitExit: "swap: the scratch worktree could not be removed: git worktree remove exited non-zero (no link is left); dist holds the old build, no HEAD rebuild ran: call restoreHead (STOP throw-after-state)",
+  removeThrew: "swap: removing the scratch worktree threw before any HEAD rebuild ran (no restore was attempted); dist holds the old build: call restoreHead (STOP throw-after-state)",
+} as const;
 
 const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
 /** The swap-in. Success: the old build is in dist and `restored` is false (restoreHead is the runner's). A failure after dist was touched rebuilds HEAD first; throws after the cleanup. */
@@ -69,9 +76,9 @@ export function swapOldBuild(io: SwapIO, o: SwapOpts): SwapResult {
       steps.push("worktree-remove");
     }
   }
-  if (touched && failure !== null && !restored) throw new Error("swap: the restore (HEAD rebuild) failed: STOP old-build-left-loaded");
+  if (touched && failure !== null && !restored) throw new Error(steps.includes("restore") ? "swap: the restore (HEAD rebuild) failed: STOP old-build-left-loaded" : WORDING.removeThrew);
   if (failure !== null) throw failure;
-  if (added && !worktreeRemoved) throw new Error("swap: the scratch worktree could not be removed (a link is left): STOP throw-after-state; dist holds the old build, call restoreHead");
+  if (added && !worktreeRemoved) throw new Error(io.reparsePoints(wt).length > 0 ? WORDING.link : WORDING.gitExit);
   return { restored, worktreeRemoved, steps };
 }
 /** The restore (HEAD rebuilt into dist). The runner calls it in its own finally at the end of each old-build slice, after a STOP too. */
