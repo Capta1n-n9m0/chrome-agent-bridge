@@ -3277,6 +3277,72 @@ R17B-NEWTAB-REFUSED: `S7-live.md` PASS, this record RECORD (the sheet labels the
 difference: both say NOT MEASURED, for different reasons (the helper printed 0 verdict lines; this record rests on the
 console clause). A row run in both slices (R17B-0, R17B-RESTORE, R17B-LOGS) is counted once.
 
+### Run 18 (S1) — 2026-10-27 (Step 12: Run 17b's FAIL and NOT MEASURED upload rows again, with a console capture per slice and a banner-sampler control, §4.26)
+
+*Rows, expected text and pass rules committed before the first observation: §4.26 at `3008f55` (2026-10-27 15:37Z),
+unchanged since. Run by the S1-live runners (Sonnet, medium), the user not present (#33), in **three runner attempts**:
+liveA18 attempt 1 (20:32Z, HEAD `e1e68e0`) ended on a helper throw in R18-UP-OPT (a result variable overwrote the options
+window handle; fix `b8b493d`); liveA18 attempt 2 (20:47-20:49Z, HEAD `b8b493d`) ran every row and stopped in R18-LOGS on
+the actors scan's `profile=2` (ruled in #349: FAIL as written); liveB18 attempt 1 (20:56-21:00Z, HEAD `4a46a22`, the
+file-URL toggle read `on`) ran to its end with no STOP line. The builds contain Step 12's S2a to S4a. No product code
+changed during the run. Judged by the sheet's own pass rules against the committed records, in
+[`S1-run-record.md`](plans/2026-10-27-step12-phase-f-steps/S1-run-record.md); the per-row evidence lines stay in that
+record. Runs 1-17b above are unchanged.*
+
+Sources: **A2R / A2E / A2C** = liveA18 attempt 2's record, evidence and console files, **BR / BE / BC** = liveB18's, **LED**
+= `S1-live.ledger.md` (all in `plans/2026-10-27-step12-phase-f-steps/`).
+
+```
+Date: 2026-10-27 (UTC liveA18 att2 20:47-20:49, liveB18 20:56-21:00)  HEAD: b8b493d (A), 4a46a22 (B)
+Rows: 13 (17 slice-rows). Row level: PASS 6 / FAIL 6 / NOT MEASURED 1 / NOT RUN 0 / NOT DISCRIMINATING 0.
+PASS    R18-0 (A, B)  R18-UP-L1  R18-BANNER-CTL (A, B)  R18-SAVE-REFUSE  R18-UP-RACE-A  R18-RESTORE (A, B)
+FAIL    R18-UP-OPT (O2 did not show the saved text in 15 s)  R18-UP-6 (banner seen, 5 of 5 legs)
+        R18-F-RAW, -F-RAW-2, -F-RAW-DIR (banner seen)  R18-LOGS (slice A: actors profile=2; slice B PASS)
+NOT MEASURED  R18-UP-DEVT (DevTools was not attached)
+Exit checks: R1.1 met, R1.2 met, R1.3 met, R1.4 met, R1.5 met, R1.6 met, R1.7 met.
+```
+
+**What the banner rows show.** R18-BANNER-CTL passed in both slices (negative `none` after 15 064 and 15 050 ms of
+idle; positive `seen`, answer `ok`), so no banner clause of the run is NOT MEASURED and the four banner rows are FAIL on
+their own clause: UP-6 read `banner=seen` on all five legs, including the two the SDK refuses before any call, and the
+three raw `uploadFiles` rows read `seen` with their answers (`BAD_PARAMS`) and leak counts as written. Run 17b's reading
+is repeated with a passing control; **the cause is not established.** R18-UP-RACE-A, re-written, passes: the ON press came
+1 602 ms after the last reply, 12 calls answered `ok`, 108 were refused, and none that started at or after P + 1 000 ms
+answered `ok` (Run 17b: 98). R18-UP-OPT, re-written, records the datum Run 17b lacked: O2 did not show the saved text
+within the 15 s poll (`shown=no polled-ms=15136`); the row's ROW text says "showed ... after 15136 ms", a helper wording
+defect, and the verdict follows the OPT line.
+
+**Judgment calls and notes.** R18-UP-L1 and R18-SAVE-REFUSE printed no ROW line of their own (the runner prints them
+after R18-LOGS); both are judged PASS from their printed clause lines, because their console clause is met by R18-LOGS's
+console scan (all zeros over liveA18's own capture) and R18-LOGS (liveA) read FAIL, not "does not run" or NOT
+MEASURED; the stricter reading is in the record's section 7. R18-LOGS slice A is FAIL as written (#349): the two matches
+are the MCP failure report's screenshot path under the user's home and Claude Code's own image line, both in an actor's
+tool result. R18-UP-DEVT is NOT MEASURED for the second run (F12 into window X found the pane, control 1 answered `ok`).
+§4.26's prologue order (console before reload) and its stated cause for the old scanner's false FAILs are wrong (#348,
+#346); §4.26 is not edited.
+
+Found state = read-back: armed=true evaluate=true, block list and Upload folders 0 lines at the start of both slices; the
+file-URL toggle found ON, never pressed. R18-RESTORE read back equal by count and hash in both slices (A2R:145, BR:257);
+only the empty text's hash is printed.
+
+STOP lines in the committed evidence: attempt 1's one (`A1E:63`, the helper throw) and attempt 2's (`A2E:92-94`, the scan)
+match `LED` returns 1 and 2; liveB18 printed none. The record stream and `A2E:1` hold copies of the same two events
+(A1R:85; A2R:164, 165, 171; A2E:1).
+
+| Check | Verdict | Evidence |
+|---|---|---|
+| **R1.1** §4.26 before the first observation | **met** | `3008f55` 15:37Z; first timestamped line 20:32:23Z; §4.26 identical at HEAD |
+| **R1.2** each slice's capture holds its control line | **met** | `safety: disarmed by the user` at `A2C:688, 692` and `BC:625, 629, 682, 686` |
+| **R1.3** control judged, banner clauses as it decides | **met** | both controls PASS; banner clauses stand |
+| **R1.4** every carried row judged by its rule | **met** | 11 carried rows: PASS 4, FAIL 6, NOT MEASURED 1 |
+| **R1.5** found state read back equal | **met** | A2R:145, BR:257 |
+| **R1.6** R18-LOGS by count per slice | **met** | A: actors `profile=2` (FAIL row); B: all 0 (PASS row) |
+| **R1.7** every STOP matched to a return | **met** | `A1E:63` = `LED` return 1; `A2E:92-94` = return 2; none in liveB18 |
+
+Proposed decisions (for the session agent) are in the record's section 6: measure UP-OPT before touching the options page;
+keep the banner FAILs open with an attach-count instrument in Run 19; prove a DevTools attach method with its control
+first; a recipes-only fix for the UP-OPT wording, the pending console lines and the repeated preflight rows.
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.
