@@ -28,3 +28,7 @@
   and the product is out of lane. A re-run measures the same. -> ESCALATE to the session agent; liveB18 not started.
 - Daemon PID 9816 (repo daemon/dist/index.js, wave-spawned) stopped by `recipes/s9.ts daemon-shutdown`; nothing listens
   on 9234 or 8080-8089 (20:52Z). Fix rounds used: 1 of 3. Attempts: liveA18 2, liveB18 0.
+- 2026-10-27 20:56Z liveB18 (new step agent, Claude Opus 5.5, medium; ruling #349): `git status --short` empty; HEAD
+  `4a46a22bcc1d20ad0b893647091c8fa16b232936` (docs only since b8b493d). `npm run build` -> `built extension → dist/`, tree
+  clean after. 9234 and 8080-8089 not listening. Out `$TEMP/bridge-e2e/s12-live/b1` (fresh, empty), `-Att 1`. Runner Sonnet next.
+- 2026-10-28 liveB18 att1 (runner Sonnet; out `$TEMP/bridge-e2e/s12-live/b1`): exit 0, no STOP; `CHECK rows n=19 verdict=FAIL`. The liveB18 step agent stalled (ended its turn on the running runner; #350). No listener on 9234 or 8080-8089 at 03:05Z (session agent). Attempts used: liveA18 2, liveB18 1; fix rounds 1 of 3. S1-live closed; S1-record next.

@@ -104,3 +104,36 @@ None by the step agent. The escalation needs a session-agent ruling (§6).
   ruling needs.
 - Budget left: fix rounds 1 of 3 used; liveA18 has 1 attempt left, liveB18 has 3. A next liveA18 attempt needs `-Att 3`
   and a fresh `S11_OUT`. The extension loaded now is the `b8b493d` build.
+
+## 8. liveB18 (added 2026-10-28 by the S1-record step agent)
+This section was written afterwards. Sections 1-7 above are unchanged and describe the state when liveA18 escalated.
+
+**liveB18, attempt 1** (runner Claude Sonnet 5.5, out `$TEMP/bridge-e2e/s12-live/b1`, HEAD `4a46a22`, build clean) ran to
+the end: exit 0, no STOP line. Its last line is `SLICE liveB18 done: calls with a failed check 3, not measured 1 (the rows
+are in the record)` and the rows check printed `CHECK rows n=19 verdict=FAIL`. Quoted from
+`S1-live-evidence-liveB18-att1.txt` (line numbers in brackets):
+- [72] `ROW R18-BANNER-CTL PASS slice=B`
+- [79-80] `ROW F-RAW FAIL: F-RAW: banner seen` / `ROW R18-F-RAW FAIL slice=B`
+- [87-88] `ROW F-RAW-2 FAIL: F-RAW-2: banner seen` / `ROW R18-F-RAW-2 FAIL slice=B`
+- [95-96] `ROW F-RAW-DIR FAIL: F-RAW-DIR: banner seen` / `ROW R18-F-RAW-DIR FAIL slice=B`
+- [223-224] `ROW UP-RACE-A PASS: every clause holds` / `ROW R18-UP-RACE-A PASS`
+- [237] `ROW R18-UP-DEVT NOT MEASURED: DevTools was not attached`
+- [245, 248] `ROW UP-RESTORE PASS: ...` / `ROW R18-RESTORE PASS slice=B`
+- [257] `ROW R18-LOGS PASS slice=B`
+
+Restore read back equal [242]: `RESTORE armed=equal evaluate=equal blocklist lines=0 hash=equal uploadfolders lines=0
+hash=equal`. R18-LOGS slice B passed with [253] `SCAN console: ://=0 (fixture 0, other 0) token=0 sentinel=0 profile=0` and
+[255] `SCAN daemon: ://=0 (fixture 0, other 0) token=0 sentinel=0 profile=0`; the console line is [252] `CONSOLE liveB18
+capture=console-liveB18.txt texts=677 control-disarmed=6`. No actor ran in liveB18. Helper note [258]: `WARN row printed
+twice: RULES`.
+
+Files committed now: `S1-live-runner-liveB18-att1.md`, `S1-live-evidence-liveB18-att1.txt`, `S1-live-record-liveB18.txt`,
+`S1-live-console-liveB18.txt`.
+
+**The stall.** The liveB18 step agent ended its turn while the runner was still running and never wrote this attempt up
+(decisions.md #350). The session agent checked at 03:05Z on 2026-10-28 that nothing listened on 9234 or 8080-8089, so no
+process was left. The runner had seen the daemon on 9234 at its end, which is by design (the daemon outlives sessions);
+that daemon was gone by 03:05Z.
+
+**Verdict for the whole of S1-live:** liveA18 escalated and was ruled (#349); liveB18 ran. The rows are judged in
+`S1-run-record.md`.
