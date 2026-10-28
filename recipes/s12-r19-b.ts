@@ -16,7 +16,7 @@ type Client = import("../sdk/src/index.js").BridgeClient;
 export const DEVT_NOT_ATTACHED = "DevTools was not attached";
 export const verdictOf = (j: { pass: boolean; notMeasured?: boolean }): V => (j.pass ? "PASS" : j.notMeasured ? "NOT MEASURED" : "FAIL");
 export const median = (n: number[]): number => { const s = [...n].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2; };
-const code = (e: Err | undefined): string => e?.code ?? "ok";
+export const code = (e: Err | undefined): string => e?.code ?? "ok";
 
 // ---- pure decisions ---------------------------------------------------------------------------------------------------------------------------
 /** R19-KEEP-1: an answer that differs from today's is the STOP existing-tool-changed; a banner gap between calls 3 s apart fails (a kept session cannot drop there); a banner control that did not pass makes the banner clause NOT MEASURED. */
@@ -68,11 +68,11 @@ const j17v = (j: J17): V => (j.pass ? "PASS" : j.notMeasured ? "NOT MEASURED" : 
 
 // ---- the actor's world: state, tabs, page reads (replicas of s11b.ts's non-exported helpers) -----------------------------------------------------
 const OUT = (): string => process.env.S11_OUT ?? "";
-const ROOT = (): string => join(OUT(), "wave", "root");
-interface State { sentinel: string; tabs: Record<string, string>; files: Record<string, { where: string }> }
-const state = (): State => JSON.parse(readFileSync(join(OUT(), "state.json"), "utf8")) as State;
-const fileOf = (s: State, n: string): string => { const f = s.files[n]; if (!f) throw new StopWhy("throw-after-state", "a wave file is missing"); return win32.normalize(join(f.where === "root" ? ROOT() : f.where === "outside" ? join(OUT(), "wave", "outside") : join(ROOT(), s.sentinel), n)); };
-const ev = async (c: Client, h: string, e: string): Promise<unknown> => ((await c.call("evaluate", { tab: h, expression: `return (${e});`, timeoutMs: 15_000 }, { timeoutMs: 20_000 })) as { kind?: string; value?: unknown }).value;
+export const ROOT = (): string => join(OUT(), "wave", "root");
+export interface State { sentinel: string; tabs: Record<string, string>; files: Record<string, { where: string }> }
+export const state = (): State => JSON.parse(readFileSync(join(OUT(), "state.json"), "utf8")) as State;
+export const fileOf = (s: State, n: string): string => { const f = s.files[n]; if (!f) throw new StopWhy("throw-after-state", "a wave file is missing"); return win32.normalize(join(f.where === "root" ? ROOT() : f.where === "outside" ? join(OUT(), "wave", "outside") : join(ROOT(), s.sentinel), n)); };
+export const ev = async (c: Client, h: string, e: string): Promise<unknown> => ((await c.call("evaluate", { tab: h, expression: `return (${e});`, timeoutMs: 15_000 }, { timeoutMs: 20_000 })) as { kind?: string; value?: unknown }).value;
 const reset = async (c: Client, h: string): Promise<void> => { await ev(c, h, "(window.__s11.reset(), true)"); stamp(); };
 async function readPage(c: Client, h: string): Promise<PageObs> {
   const { toPage } = await import("./s11.js");
@@ -91,14 +91,14 @@ export async function findTab(c: Client, marker: string, ms = 60_000): Promise<T
   }
 }
 /** One timeline window: the driver samples the banner from its `-timeline.ready` until its duration ends and answers `<ms>:<1|0>,...`; `op` runs inside it. */
-async function timeline(id: string, op: () => Promise<void>): Promise<BannerRead[]> {
+export async function timeline(id: string, op: () => Promise<void>): Promise<BannerRead[]> {
   realIo.signal(`${id}-timeline`);
   await sleep(700);
   await op();
   return parseTimeline(await realIo.pressed(`${id}-timeline`, 180_000));
 }
 const clock = { now: (): number => Date.now(), sleep };
-const withTab = async <T>(t: Tab, f: () => Promise<T>): Promise<T> => { try { return await f(); } finally { await t.release().catch(() => undefined); stamp(); } };
+export const withTab = async <T>(t: Tab, f: () => Promise<T>): Promise<T> => { try { return await f(); } finally { await t.release().catch(() => undefined); stamp(); } };
 
 // ---- DEVPROBE and the DevTools rows -----------------------------------------------------------------------------------------------------------
 async function devprobeCmd(x: Ctx): Promise<number> {

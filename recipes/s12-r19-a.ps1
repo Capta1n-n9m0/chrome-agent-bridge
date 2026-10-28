@@ -62,6 +62,7 @@ function Invoke-R19Row([string]$Id, [string[]]$Cmd, [object[]]$StepList = @(), [
 }
 function Complete-R19Row([string]$Id, [string[]]$Lines) {
   $r19v = Get-R19Verdict @($Lines | ForEach-Object { $_ -replace '^LEG ', 'ROW ' })
+  if ($r19v -eq 'PASS' -and $global:R19RecordRows -contains $Id) { $r19v = 'RECORD' }   # a RECORD row (S7-drivers-C): no clause failed, the row records
   if ($r19v -eq 'PASS' -and $global:R19PassNote -and $global:R19PassNote[$Id]) { $r19v = "PASS $($global:R19PassNote[$Id])" }   # R19-KEEP-1: the banner clause is NOT DISCRIMINATING and the row says so
   if ($Id -match $R19DeferRe) { $global:R19Pending[$Id] = $r19v; Show-S16 @("CHECK $Id console-clause pending R19-LOGS") } else { Write-R19RowLine $Id $r19v }
 }

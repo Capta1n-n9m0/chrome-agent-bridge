@@ -25,6 +25,7 @@ $env:Path = "$env:LOCALAPPDATA\Author Software\nvm\.nodejs;$env:Path"
 . "$PSScriptRoot\s12-r19-lib.ps1"
 . "$PSScriptRoot\s12-r19-a.ps1"                  # the liveA19 row drivers (S7-drivers-A)
 . "$PSScriptRoot\s12-r19-b.ps1"                  # the liveB19 row drivers (S7-drivers-B)
+. "$PSScriptRoot\s12-r19-c.ps1"                  # the liveC19 row drivers (S7-drivers-C)
 if ($Block -eq 'plan') { foreach ($r19P in 'liveA19', 'liveB19', 'liveC19', 'liveD19', 'liveE19') { Write-Host "PLAN ${r19P}: $((Get-R19Order $r19P) -join ' ')" }; exit 0 }
 if (-not $env:S11_OUT) { $env:S11_OUT = Join-Path $env:TEMP 'bridge-e2e\s12' }
 New-Item -ItemType Directory -Force $env:S11_OUT | Out-Null
@@ -137,6 +138,24 @@ $global:R19Blocks['r19-logs'] = { Invoke-R19Logs }
 # The old-build slices: the swap, the old build's own proof line, the rows (no driver yet), and the finally that restores HEAD, reloads and re-proves.
 $global:R19Blocks['r19-old-args'] = { Invoke-R19Swapped $R19Commit['liveD19'] { [void](Invoke-R19Node 's12-r19' @('proof')); Say9 "ROW R19-ARGS-OLD NOT RUN $Dash no driver built (S7-helpers-d DONE-PARTIAL)" } }
 $global:R19Blocks['r19-old-version'] = { Invoke-R19Swapped $R19Commit['liveE19'] { Say9 "ROW R19-VERSION NOT RUN $Dash no driver built (S7-helpers-d DONE-PARTIAL)" } }
-# No driver is registered yet for the CHOOSE, G2 and old-build rows (S7-drivers-C, -DE): the sequencer prints `ROW <id> NOT RUN`.
+# ---- liveC19's row drivers (S7-drivers-C): the file chooser (window X for the human-style rows; every one ends in the closer) and G2 ----------------------
+$global:R19Blocks['r19-choose-1'] = { Invoke-R19Choose1 }
+$global:R19Blocks['r19-choose-label'] = { Invoke-R19ChooseLabel }
+$global:R19Blocks['r19-choose-refuse'] = { Invoke-R19ChooseRefuse }
+$global:R19Blocks['r19-choose-2'] = { Invoke-R19Choose2 }
+$global:R19Blocks['r19-choose-3'] = { Invoke-R19Choose3 }
+$global:R19Blocks['r19-choose-mcp'] = { Invoke-R19McpLegs }
+$global:R19Blocks['r19-choose-kept'] = { Invoke-R19ChooseKept }
+$global:R19Blocks['r19-choose-frame'] = { Invoke-R19ChooseFrame }
+$global:R19Blocks['r19-choose-human'] = { Invoke-R19ChooseHuman }
+$global:R19Blocks['r19-choose-late'] = { Invoke-R19ChooseLate }
+$global:R19Blocks['r19-keep-overlap-b'] = { Invoke-R19KeepOverlapB }
+$global:R19Blocks['r19-choose-4'] = { Invoke-R19Choose4 }
+$global:R19Blocks['r19-choose-disarm'] = { Invoke-R19ChooseDisarm }
+$global:R19Blocks['r19-choose-jsoff'] = { Invoke-R19ChooseJsoff }
+$global:R19Blocks['r19-choose-mcp-d'] = { Invoke-R19McpD }
+$global:R19Blocks['r19-g2-1'] = { Invoke-R19G2 'R19-G2-1' 'g2-1' }
+$global:R19Blocks['r19-g2-2'] = { Invoke-R19G2 'R19-G2-2' 'g2-2' }
+# liveD19's and liveE19's old-build rows are S7-drivers-DE's.
 
 exit ([int](@(Invoke-R19Main $Block)[-1]))

@@ -151,7 +151,7 @@ function unresolved(): { all: string[]; missing: string[] } {
   const d = mkdtempSync(join(tmpdir(), "s12r19s-"));
   try {
     const f = join(d, "t.ps1");
-    const names = ["s9-win.ps1", "s11-win.ps1", "s11b-win.ps1", "s12-win.ps1", "s12-win-b.ps1", "s12-win-c.ps1", "s11b-r17.ps1", "s11b-r17b.ps1", "s12-r18.ps1", "s12-r18-lib.ps1", "s12-r19.ps1", "s12-r19-lib.ps1", "s12-r19-a.ps1", "s12-r19-b.ps1"];
+    const names = ["s9-win.ps1", "s11-win.ps1", "s11b-win.ps1", "s12-win.ps1", "s12-win-b.ps1", "s12-win-c.ps1", "s11b-r17.ps1", "s11b-r17b.ps1", "s12-r18.ps1", "s12-r18-lib.ps1", "s12-r19.ps1", "s12-r19-lib.ps1", "s12-r19-a.ps1", "s12-r19-b.ps1", "s12-r19-c.ps1"];
     const files = names.map((x) => `'${join(REPO, "recipes", x).replace(/'/g, "''")}'`).join(",");
     writeFileSync(f, `
 $called = @{}; $defined = @{}
@@ -171,7 +171,7 @@ $missing = @(); foreach ($k in $called.Keys) { if (-not $defined.ContainsKey($k)
 }
 
 describe("the runner's source", () => {
-  for (const name of ["s12-r19.ps1", "s12-r19-lib.ps1", "s12-r19-a.ps1", "s12-r19-b.ps1"]) {
+  for (const name of ["s12-r19.ps1", "s12-r19-lib.ps1", "s12-r19-a.ps1", "s12-r19-b.ps1", "s12-r19-c.ps1"]) {
     const src = rd(`recipes/${name}`);
     it(`${name} is ASCII and never writes SilentlyContinue`, () => {
       expect(/^[\x00-\x7f]*$/.test(readFileSync(join(REPO, "recipes", name), "utf8"))).toBe(true);

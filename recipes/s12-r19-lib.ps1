@@ -217,6 +217,7 @@ function Invoke-R19Restore {
     if (Test-S11Own $global:O) { Close-S11Window $global:O; $global:O = 0 }
     Invoke-R19Stamped $R17Blocks['rd-restore']
     if ($global:R19Slice -in 'liveA19', 'liveB19' -and (Get-Command Close-R19Bc -ErrorAction Ignore)) { try { Close-R19Bc } catch { Say9 'CHECK R19-BANNER-CTL bc-tab=close-failed' } }   # after the safety restore: a tidy-up never skips it (S7-drivers-A)
+    if ($global:R19Slice -eq 'liveC19' -and (Get-Command Write-R19Dialogs -ErrorAction Ignore)) { Write-R19Dialogs }   # form (30): the slice's native-dialog, DevTools and wave-window counts (S7-drivers-C)
   }
 }
 function Invoke-R19Logs {
