@@ -55,3 +55,4 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
 - 2026-10-28T05:15Z · S5a · step agent · ended · spec note `8eab22c`, code `2099c08` · PASS-with-notes (one fix round) · tests 5028 → 5075; #353 recorded.
 - 2026-10-28T05:15Z · S5b · step agent · Opus · medium · started (sdk/mcp/setup + the formatter cap, #345 (2)).
 - 2026-10-28T05:15Z · S6-G2 · step agent · Opus · medium · started beside S5b (daemon only).
+- 2026-10-28T05:53Z · S6-G2 · step agent · ended · spec note `e467f48`, code `ae123de` · PASS-with-notes (one fix round) · 52 code / 382 tests; #354 recorded. S6-G1 not run (waits for G12-2, #337).

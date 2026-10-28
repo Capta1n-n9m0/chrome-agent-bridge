@@ -194,6 +194,24 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-28 · S6-G2: the daemon focuses under its own hold; an earlier client `focusTab` stays harmless (#354)
+**Decided (contract-level, for user review):** S6-G2 (spec note `e467f48`, code `ae123de`, verifier PASS-with-notes
+after one fix round) as built: a trusted `click`/`type`/`pressKey` without `focusEmulation` takes the lock, the daemon
+forwards `focusTab`, re-checks caller and lease, forwards the input, replies, holds 500 ms, releases. The SDK and MCP
+still send their own `focusTab` first (#89, #106); that call takes and frees the lock as before, then the daemon
+focuses again under its hold: no deadlock, the answer on success is the input's, the cost one round trip and up to
+500 ms before the caller's next lock-taking call. They are not changed in Step 12 (their lanes are closed; dropping the
+client focus is a later simplification, noted for S8 at `sdk/src/policy.ts:36` and `mcp/CLAUDE.md`). A failed, late or
+disconnected focus, or a lost lease, answers the `focusTab` error, sends no input and releases without the pause; a raw
+client's trusted input now brings its tab to the front and may see `focusTab`'s refusal text (same code). The step
+agent's own note: a rejecting injected `sleep` would hold the lock until disconnect (the default never rejects):
+`.then(release, release)` is a one-line hardening, listed for the gate's fix list (it cannot happen in production,
+and S8's lane is docs only).
+**Why:** #321 Q6 (b) as ruled; #338's mechanism; nothing existing answers differently on success.
+**Instead of:** changing the SDK and MCP focus path now.
+**Revisit if:** Run 19's R19-G2 rows show a capture between focus and input.
+**By:** Claude (build decision; the contract points for user review)
+
 ### 2026-10-28 · S5a: the chooser's refusal texts; two by-construction claims and the disarm wait go to Run 19 (#353)
 **Decided (texts for user review):** S5a (spec note `8eab22c`, code `2099c08`, verifier PASS-with-notes after one fix
 round) as its proposals (`…-steps/S5a.md` §5): a second chooser call on the same tab answers today's
