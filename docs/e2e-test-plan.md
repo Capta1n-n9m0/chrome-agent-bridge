@@ -1902,6 +1902,14 @@ counts, CHOOSE-1's page per call, one CLOSERPROBE) are read as that report state
 never judged, and they come before the row's `OPT O2 shown=…` line. The judged line, the 15 s poll and the 5 000 ms
 bound are unchanged.
 
+*Note 2026-10-29, before any Run 19 observation (session agent; decisions.md #365):* **liveE19: ROOT added** inside
+the R19-VERSION block, because its control upload needs it and liveE19's order has no root-add. R19-RESTORE restores the
+Upload folders and reads them back by hash, as in every slice. An old build that cannot be loaded makes its row
+`NOT RUN — old build not loadable`. That is detected from the reload block's `exit 2 (attempt 2)` record line, and the
+record then shows the guard's `STOP:` line, the `NOT RUN` row and no `RETURN`, by design. In R19-ARGS-OLD's raw leg,
+"nothing forwarded" cannot be told apart live from a daemon that forwards the call and rewrites the answer to `VERSION`.
+That clause is proved by `mcp/test/s12-args-cross.test.ts`, and live it is not discriminating. The pass rule is unchanged.
+
 ## 5. Results template
 
 Copy this and fill it in during the run:

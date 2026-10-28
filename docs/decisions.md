@@ -195,6 +195,26 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · S7-drivers-DE accepted; liveE19 adds ROOT; ARGS-OLD's raw leg proved by its unit test (#365)
+**Decided:** S7-drivers-DE (`babf405`, PASS-with-notes in the first verifier round, 21 mutants killed; 153 code /
+236 test lines) and its three proposals (`…-steps/S7-drivers-DE.md` §5), each in a dated §4.27 note before any Run 19
+observation:
+1. **liveE19 adds `<ROOT>` inside R19-VERSION**, and R19-RESTORE restores it by hash.
+2. **An old build that will not load is detected from the reload block's record line.** Its row is then `NOT RUN`, and
+   the guard's own STOP count is cleared.
+3. **In R19-ARGS-OLD's raw leg, "nothing forwarded" is proved by the unit test** and is named as not discriminating
+   live.
+
+The verifier's five small notes are carried as that report lists them. Its finding that Git Bash's `cmd //c rmdir`
+leaves junctions in place, where PowerShell's `cmd /c rmdir` removes them, is a gotcha candidate for the close-out
+(with #364's).
+**Why:** the control upload needs ROOT, and the restore already reads it back. A check that cannot discriminate live is
+named, not left looking like a proof (agent-rules §3 item 9 is satisfied by the unit test, which discriminates).
+**Instead of:** a separate root-add block in liveE19's order (it changes the sheet's order); a live instrument in the
+daemon.
+**Revisit if:** the old builds do not load (both rows NOT RUN).
+**By:** Claude (session agent's rulings)
+
 ### 2026-10-29 · S7-helpers-e accepted; the UP-OPT fix lives in Run 19's own helper copy (#364)
 **Decided:** S7-helpers-e (`afccec8`, PASS-with-notes after one fix round; 15 code / 140 test lines) as proposed in
 `…-steps/S7-helpers-e.md` §5:
