@@ -48,3 +48,6 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
 - 2026-10-28T03:07Z · S1-record · step agent · Opus · medium · started (closes S1-live first; the in-turn wait rule in its brief, #350).
 - 2026-10-28T03:07Z · S4b · step agent · Opus · medium · started beside S1-record (extension wiring; disjoint).
 - 2026-10-28T03:30Z · S1-record · step agent · ended · S1-live close-out `af56b3a`, record `63f2f89` · PASS-with-notes (one fix round) · 17 verdicts (10 PASS, 6 FAIL, 1 NOT MEASURED); #351 recorded; S1 as-built written.
+- 2026-10-28T04:18Z · S4b · step agent · ended · `63c771c` · PASS (two fix rounds) · tests 5010 → 5028; #352 recorded.
+- 2026-10-28T04:18Z · S4b · measurer · Opus · medium · started (CON-KEPT, SWEEP-HELD in a scratch Chrome, #352).
+- 2026-10-28T04:18Z · S5a · step agent · Opus · medium · started beside the measurer.

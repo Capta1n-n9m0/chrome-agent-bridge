@@ -194,6 +194,25 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-28 · S4b: the keeper installed by the worker; two live facts measured before Run 19 (#352)
+**Decided:** S4b (`63c771c`, verifiers PASS-with-notes ×2 → PASS, two fix rounds) as its five proposals
+(`…-steps/S4b.md` §5): the keeper is installed by the worker only, so tests importing `debugger.ts` alone keep the
+per-call path (no existing test exercises the production kept path; the live rows do); a CDP command failed or
+unfinished at a use's end drops the session; V3-4 waits on KEEP-2's timings; the keeper's tab check is a class-`tab`
+gate at phase `effect`, bounded at 1 s; the re-check runs after a pending detach and again if a newer one began. The
+lane deviation (two lines in `handlers/console.ts`, a call site S4a's handoff named) is accepted. **Two facts that
+decide whether existing answers change are measured now in a scratch Chrome on a temporary profile (#294, #297), not
+left to Run 19:** CON-KEPT (does a second `Runtime.enable` in the same kept session replay the earlier console
+messages? if not, `consoleMessages` on a kept tab answers differently, a STOP-class change, and S3a's handler must
+reset the store's read another way) and SWEEP-HELD (#335: the start-up sweep's `detach` of a tab another client holds:
+its error and that it has no side effect).
+**Why:** "answers do not change" is a promise of D; a kept session is new, and the console replay was measured only
+across sessions (Stage 0 m1 C7).
+**Instead of:** shipping S4b on the hope that Run 19 shows it.
+**Revisit if:** either measurement fails: then a proposed fix slice before S5, or C's handler detaches its own session
+(a keeper bypass for `consoleMessages`).
+**By:** Claude (build decisions; the measurement is the conservative option)
+
 ### 2026-10-28 · Run 18's findings: UP-OPT measured first, the banner FAILs carried to Run 19, DevTools proven by a probe, three helper fixes in S7 (#351)
 **Decided:** Run 18 (`…-steps/S1-run-record.md`, `63f2f89`; 17 verdicts: 10 PASS, 6 FAIL, 1 NOT MEASURED; both banner
 controls passed) as its four proposals (§6), with one narrowing: (1) R18-UP-OPT's FAIL (O2 showed no saved text in
