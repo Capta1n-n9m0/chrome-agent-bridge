@@ -878,6 +878,67 @@ The block itself is left as written.*
     blocked, own or `file:` page (`DOMAIN_BLOCKED`, the existing messages), at receipt, before the attach and at the
     post-check, as `evaluate` is. A tab method in `daemon/src/methods.ts`: lease-checked, no visibility lock. No log
     line carries an entry. The banner shows during the call.*
+- *Amended 2026-10-28 (Step 12 S5a; phase doc `docs/plans/2026-10-27-step12-phase-f.md` 0.7 and 0.10 with its Stage 0
+  note; decisions.md · 2026-10-27 · Step 12: `uploadFiles {chooser: true}` intercepts the chooser only inside the call
+  (#325), amended by · Stage 0: the chooser on the call's own session, with `Page.enable`; JavaScript off refuses it
+  (#336); · Step 12: how every item passes the safety gate (#327); · Stage 0: the kept session's lifecycle; an
+  overlapping call keeps today's answer (#335). All proposed, for the user at Step 12's gate. No method, code or event
+  is added; `uploadFiles` keeps its class `upload`):*
+  - *`uploadFiles {tab, ref | locator, paths, chooser?}`: `chooser` is optional; absent, `null` or `false`, every call
+    is byte for byte as before. `chooser: true` means the target is an element whose click opens the page's native
+    file chooser (a button, a link, a label, or the file input itself), not necessarily a file input. Any other value
+    is `BAD_PARAMS "uploadFiles: chooser must be true or false"`. The reply is the same `{files}` (+
+    `pastSnapshotCap`). `isUploadFilesParams` (`shared/src/protocol.ts`) accepts an optional boolean `chooser`.*
+  - *One shared prologue runs first on both paths, in today's order: the params (`checkUploadParams`: a target, 1–20
+    non-empty paths, the `chooser` value), the tab, the file-URL toggle check (`UPLOAD_REFUSED`,
+    `NO_FILE_ACCESS_MESSAGE`, #245 (b)), the missing-file check (`BAD_PARAMS` naming `paths[<i>]`, #288 3c). The gate's
+    Upload folders rule (#236, #237) and its tab rules run at receipt, before every first side effect and at the
+    post-check for both paths, as today. The chooser path skips only the file-input target rule (`uploadInputOf`):
+    its input is known from the chooser event, and its own input rules replace it (below).*
+  - *Then, on the call's own debugger session (through the keeper, `withDebugger` "File upload", the call's gate
+    re-check before the use), the whole leg bounded by today's 15 s (`uploadTimeoutMessage`): the content script marks
+    the target element with this call's one-off upload mark (no file-input rule); `Page.enable`;
+    `Page.setInterceptFileChooserDialog {enabled: true}`; `Page.getFrameTree`, `Page.createIsolatedWorld` (as
+    today's finder); `Runtime.evaluate {userGesture: true}` in that isolated world, a closure-free clicker that finds
+    the mark, removes it from every carrier and calls the element's `click()` (a non-HTML element gets a dispatched
+    `click` event); a wait for `Page.fileChooserOpened` on the tab's own session (child sessions ignored; an event
+    before the click is ignored), bounded at 5 s from the click's reply; the call's gate re-check again, after the
+    event and before anything reads its input (a refusal here, a disarm or a block that landed during the wait, ends
+    the chooser as below, with no `DOM.setFileInputFiles`); `DOM.describeNode {backendNodeId}`;
+    `DOM.setFileInputFiles {files, backendNodeId}`. Then, on **every** path (success, refusal, error, timeout,
+    disarm), `Page.setInterceptFileChooserDialog {enabled: false}` and `Page.disable` are sent (a failure of either is
+    not reported, and it drops the kept session, S4b, #352). Any refusal or error after the interception was asked for
+    also ends the use with an error, so the keeper detaches the session (#347): the chooser is ended by interception
+    off and the detach, never by `files: []` (Stage 0 m2 E8). The page's transient activation starts with the click and
+    ends no later than the 5 s wait, so a chooser cannot open after the interception is off (F16) — **by construction,
+    unmeasured**: no Stage 0 row has a late opener and no source is cited. It needs a live late-opener row before S5
+    ships: a front fixture tab whose clicked element opens its chooser by `setTimeout` at about 4.9 s and, in a second
+    run, about 5.1 s after the click; pass rule: Chrome's own file dialog never shows on the screen.*
+  - *A limit (by construction, unmeasured): the interception is the tab's, not the click's, and the call keeps the
+    first top-level chooser event after its click. On a front tab, a chooser the human opens while the call's
+    interception is on is taken: opened before the call's click, it is intercepted and ignored, so no dialog shows and
+    it is freed only by the off step (the human's click seems to do nothing); opened after the click, within the 5 s
+    wait and before the call's own chooser (or when the call's click opens none), it may receive the call's paths
+    (always paths inside the Upload folders, into the input the human clicked). Behaviour is unchanged for this
+    limit.*
+  - *The refusals after the click, fixed, naming no path, raised inside the session as own refusals (unprefixed):
+    no chooser within 5 s → `TIMEOUT "No file chooser opened within 5s of the click — target an element whose click
+    opens the page's file chooser; nothing was uploaded"`; an event with no `backendNodeId` (a page picker such as
+    `showOpenFilePicker`) → `BAD_PARAMS "the file chooser that opened belongs to no file input (a page file picker
+    such as showOpenFilePicker); the bridge cannot fill it; nothing was uploaded"`; more than one path and an event
+    `mode` other than `selectMultiple` → `SINGLE_FILE_INPUT_MESSAGE`; the node described with `webkitdirectory` →
+    `DIRECTORY_INPUT_MESSAGE`, with `disabled` → `DISABLED_INPUT_MESSAGE`; the mark not found → `REF_STALE
+    UPLOAD_MARK_GONE_MESSAGE`, several → `INTERNAL UPLOAD_MARK_NOT_UNIQUE_MESSAGE` (today's texts). A breakdown (no
+    frame, no world, the clicker failed, no node description) is today's unmarked `INTERNAL "file upload: …; nothing
+    was uploaded"`. The mark is swept on every failure path, as today.*
+  - *One chooser call per tab at a time: a second `chooser: true` call on a tab whose chooser call has not ended
+    answers `DEBUGGER_DEVTOOLS` with the text an overlapping debugger use answers today (#335), after the prologue and
+    before any page call or attach.*
+  - *The JavaScript switch (#336, the conservative reading): while JavaScript is off, an `uploadFiles` whose `chooser`
+    is present and not `null` or `false` is refused `JS_DISABLED` (`JS_DISABLED_MESSAGE`, no `data`) by a params rule
+    of class `upload` in the gate (`safety.ts`), in every phase, before the tab and folder tests, so no page call and
+    no CDP command runs. Without `chooser`, JavaScript off still does not apply to `uploadFiles`. No path, file name or
+    mark reaches a message or a log; the module adds no log call.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
