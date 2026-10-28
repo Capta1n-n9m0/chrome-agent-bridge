@@ -10,7 +10,7 @@ doc § S7 and § Exit checks; `S7-sheet.md` §7; `S1-run-record.md` §6; `S1-hel
 DONE. One fix round (of three).
 
 ## 2. Outputs
-- Commit: `<hash — filled by the committer's report; see the journal>`.
+- Commit: `4673783` (21 files; this hash line itself is written after the commit and is left uncommitted for the session agent's bookkeeping commit).
 - New: `recipes/s12-forms.ts` (forms (1)–(13), the console-clause settler, the identical-ROW dedupe),
   `recipes/test/s12-forms.test.ts`; `test-fixtures/s12-console.html` + `.js`, `s12-notea.js`, `s12-noteaok.js`,
   `s12-chooser.html` + `.js`, `s12-chooser-frame.html`.
