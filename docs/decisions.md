@@ -195,6 +195,20 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-28 · S7-drivers-B accepted with its four rulings; KEEP-4's step timing (#362)
+**Decided:** S7-drivers-B (`83521aa`, PASS-with-notes after one fix round; every liveB19 block driven) as its four
+proposals (`…-steps/S7-drivers-B.md` §5): the carried banner rows FAIL with counts and never STOP; KEEP-3's navigation
+legs use window X's omnibox; SWEEP-HELD runs as two actor runs around the reload; SWEEP-HELD's "DevTools still open"
+reads the DevTools window as alive (it misses a DevTools left open but detached; the after-reload code still carries
+that case). A dated §4.27 note, before any Run 19 observation, makes KEEP-4's "within 1 s" step "before the keeper's
+5 s idle bound, the time printed" (the menu method takes ~3.6 s) and records the other three. The first verifier's
+half-deleted scratch worktree (`wtv`, in the session scratchpad, with npm workspace links) is left in place: deleting
+across links is the #220 hazard, and it is outside the repo.
+**Why:** each keeps the row testing what it was written to test; none moves a pass rule.
+**Instead of:** a STOP on a carried banner reading (would end liveB19 before its own rows).
+**Revisit if:** DEVPROBE fails (KEEP-4 is NOT MEASURED anyway).
+**By:** Claude (session agent's rulings)
+
 ### 2026-10-28 · S7-drivers-A accepted; CON-FLOOR's waits; the scripted MCP actor; driver caps raised (#361)
 **Decided:** S7-drivers-A (`17b2f7d`, PASS-with-notes after two fix rounds; all 26 liveA19 rows driven) is accepted at
 732 code lines against 400 (1.8×, past #344 (4)'s bound) as one coherent piece: the cap was my estimate, every row needs

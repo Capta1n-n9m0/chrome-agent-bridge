@@ -1875,6 +1875,14 @@ ARGS-1, ARGS-3, CON-MCP and CON-CAP is a scripted stdio MCP client of `mcp/dist/
 text, no model); its `browser_list_tabs`/`browser_status` results are kept in `actors-<slice>.jsonl` as counts and fixed
 words only (never a title or URL of the user's tabs).
 
+*Note 2026-10-28, before any Run 19 observation (session agent; decisions.md #362):* R19-KEEP-4's step "within 1 s
+DevTools opened" reads "DevTools opened before the keeper's 5 s idle bound, the time printed" (the menu method takes
+~3.6 s, S7-drivers-B; the kept session must still be live when DevTools takes the tab, which is what the row tests);
+its pass rule is unchanged. The carried banner rows (R19-UP-6, R19-F-RAW, -2, -DIR) record a FAIL with counts and do not
+STOP (they are not in the STOP map; a carried row failing with a passing control continues, phase doc § STOP rules).
+KEEP-3's navigation legs navigate window X by its omnibox. The other wording findings of `…-steps/S7-drivers-B.md` §6
+are read as that report states.
+
 ## 5. Results template
 
 Copy this and fill it in during the run:

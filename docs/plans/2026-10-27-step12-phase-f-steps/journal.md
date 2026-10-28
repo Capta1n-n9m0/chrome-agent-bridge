@@ -73,3 +73,6 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
 - 2026-10-28T10:25Z · S7-drivers-A · step agent · Opus · medium · started.
 - 2026-10-28T11:52Z · S7-drivers-A · step agent · ended · `17b2f7d` · PASS-with-notes (two fix rounds) · 26 rows driven; 732 code (accepted) · recipes tests 1433 → 1484; #361 recorded with a dated §4.27 note (before any Run 19 observation).
 - 2026-10-28T11:52Z · S7-drivers-B · step agent · Opus · medium · started.
+- 2026-10-28T13:26Z · S7-drivers-B · step agent ended its turn waiting on its verifier2 (against #350's brief line). Watching: when verifier2's notice or report arrives, the session agent checks the step agent resumed; if not, a fresh step agent finishes from the reports.
+- 2026-10-28T13:37Z · S7-drivers-B · step agent · ended · `83521aa` · FAIL → PASS-with-notes (one fix round) · recipes tests 1484 → 1553; #362 with a dated §4.27 note.
+- 2026-10-28T13:37Z · S7-drivers-C · step agent · Opus · medium · started.
