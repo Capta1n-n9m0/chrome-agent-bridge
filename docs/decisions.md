@@ -193,6 +193,19 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-28 · A step agent that ends its turn on a running runner stalls the stage; live step agents wait in-turn (#350)
+**Decided:** the liveB18 step agent ended its turn while its live runner ran ("waiting on my watch", against #286 and
+`agent-rules.md` §8); the runner's completion notice then reached the session agent, not the step agent, which never
+resumed: the finished run (21:00Z) sat unreported for ~6 h until the user asked. The session agent did not act on the
+runner's notice either (it read it as interim). From now on every step-agent brief that holds a wait says it in so many
+words: **wait inside the turn with Monitor (an until-loop on the child's report file, polling ≤ 120 s) and never end
+the turn while a child runs**; and when the session agent receives a grandchild's completion notice, it checks within
+that turn whether the step agent is still alive and, if not, sends a fresh one from the ledger (#225).
+**Why:** the stall cost hours and was found by the user; #286's rule was known and not kept.
+**Instead of:** trusting the standing rule alone.
+**Revisit if:** the Agent tool routes a grandchild's notice to its parent.
+**By:** Claude (process decision)
+
 ### 2026-10-27 · S1-live: R18-LOGS slice A's `profile=2` stands as a FAIL; liveB18 runs; the two paths are named (#349)
 **Decided:** Run 18 liveA18 attempt 2 (built from `b8b493d`, a helper fix only; `…-steps/S1-live.md`) printed the
 actors scan's `profile=2`, a STOP line of the helper by §4.26's committed rule ("0 for … the profile path"). The rule
