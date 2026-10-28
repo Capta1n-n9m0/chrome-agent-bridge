@@ -194,6 +194,22 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-28 · S5b as built; an old extension's `chooser` is refused `VERSION` by a hello feature, as #332 (#355)
+**Decided:** S5b (`5a5cd46`, verifier PASS-with-notes after one fix round): `Tab.upload(…, {chooser})` sends the key only
+when given, a non-boolean refused `BAD_PARAMS` before files are read; `browser_upload_file {chooser}` as a written-out
+#214 delta (three tools now differ from the fixture, each by its delta); `formatConsole` capped at 20 000 characters in
+`formatNetwork`'s form, keeping the oldest lines (for user review, S5b F5: a console reader may want the newest;
+`limit` narrows the read meanwhile); the `chooser` texts and the null/non-boolean rule for user review. **An extension
+older than S5a ignores `chooser`** and treats the target as a file input (misleading, loosens nothing): the conservative
+option, with #332's precedent, is built as **S5c**: the extension's hello adds `"uploadChooser"` to `features`, and the
+daemon answers `VERSION` with a reload text to an `uploadFiles` carrying `chooser` when the hello lacked it, never
+forwarding it. Tests 5075 → 5087 (S5b alone), none removed.
+**Why:** an agent must not get a file-input answer to a chooser request from a stale build; the same mechanism already
+exists.
+**Instead of:** documenting the stale-build case only (S5b's interim).
+**Revisit if:** the user prefers fewer feature names (then one `"step12"` feature).
+**By:** Claude (conservative option applied; the texts and the cap's direction for user review)
+
 ### 2026-10-28 · S6-G2: the daemon focuses under its own hold; an earlier client `focusTab` stays harmless (#354)
 **Decided (contract-level, for user review):** S6-G2 (spec note `e467f48`, code `ae123de`, verifier PASS-with-notes
 after one fix round) as built: a trusted `click`/`type`/`pressKey` without `focusEmulation` takes the lock, the daemon

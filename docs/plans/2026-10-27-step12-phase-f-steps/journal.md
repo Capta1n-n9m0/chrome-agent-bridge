@@ -56,3 +56,6 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
 - 2026-10-28T05:15Z · S5b · step agent · Opus · medium · started (sdk/mcp/setup + the formatter cap, #345 (2)).
 - 2026-10-28T05:15Z · S6-G2 · step agent · Opus · medium · started beside S5b (daemon only).
 - 2026-10-28T05:53Z · S6-G2 · step agent · ended · spec note `e467f48`, code `ae123de` · PASS-with-notes (one fix round) · 52 code / 382 tests; #354 recorded. S6-G1 not run (waits for G12-2, #337).
+- 2026-10-28T05:59Z · S5b · step agent · ended · `5a5cd46` · PASS-with-notes (one fix round) · tests 5075 → 5087 (alone); #355 recorded (S5c added); stale worktree entry pruned (`git worktree prune`, its folder already gone).
+- 2026-10-28T05:59Z · S5c · step agent · Opus · medium · started (hello feature "uploadChooser" + the daemon's VERSION rule).
+- 2026-10-28T05:59Z · S7-sheet · step agent · Opus · medium · started beside S5c (e2e plan §4.27 only).
