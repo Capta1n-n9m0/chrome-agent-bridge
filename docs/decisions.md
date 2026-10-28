@@ -21,6 +21,7 @@ were ruled on 2026-10-27, #311, #320). #322, #323, #325 and #326 are amended by 
 - 2026-10-27 · S3a: the reply `{entries}` and the `level` threshold … (#344, item 1)
 - 2026-10-27 · S3b: the console formatter's line form … the JavaScript-off line left for the gate (#345, items 1 and 3)
 - 2026-10-27 · S1-live: R18-LOGS slice A's `profile=2` stands as a FAIL … (#349, item (a): the MCP failure report's absolute screenshot path)
+- 2026-10-28 · Run 18's findings … (#351, items 1 and 2: product findings)
 - **G12-2 for the user:** add the `webNavigation` permission so G1 can be built? (#337)
 
 ## Standing decisions
@@ -192,6 +193,24 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
+
+### 2026-10-28 · Run 18's findings: UP-OPT measured first, the banner FAILs carried to Run 19, DevTools proven by a probe, three helper fixes in S7 (#351)
+**Decided:** Run 18 (`…-steps/S1-run-record.md`, `63f2f89`; 17 verdicts: 10 PASS, 6 FAIL, 1 NOT MEASURED; both banner
+controls passed) as its four proposals (§6), with one narrowing: (1) R18-UP-OPT's FAIL (O2 showed no saved text in
+15 s) is a product finding; before any product change a read-only investigator measures a second options window on its
+own, and any fix is a new Run 19 row; the 5 000 ms bound stands. (2) The banner FAILs (R18-UP-6, R18-F-RAW, -F-RAW-2,
+-F-RAW-DIR) stay open findings, cause not established (two UP-6 legs that send no call read `banner=seen` beside a
+passing control); they are carried to Run 19 as new rows after S4b. **No new product counter is built** to tell which
+call attached (it would touch the logging and gate rules: the user's, G12-2); S7-helpers may use only existing signals
+(the daemon's per-call log lines, the runner's own timing). (3) R18-UP-DEVT stays NOT MEASURED (F12 attached nothing,
+twice); a row-less probe proves a DevTools-attach method by its control before any row uses it. (4) Three recipes-only
+helper fixes (the UP-OPT row's wording; the console clauses judged before R18-LOGS; the preflight rows printed once)
+are built in S7-helpers. Run 18's verifier NIT (the §5 entry points to a section 7 that no longer holds the text) is a
+mechanical fix for the cleanup pass.
+**Why:** cause before cure; no pass rule moved; a product instrument is beyond the ruled scope.
+**Instead of:** product fixes on unmeasured causes; another F12 row.
+**Revisit if:** the investigator shows O2 updates within 5 s with a corrected poll; the user wants the instrument.
+**By:** Claude (build decisions; (1) and (2) are product findings for user review)
 
 ### 2026-10-28 · A step agent that ends its turn on a running runner stalls the stage; live step agents wait in-turn (#350)
 **Decided:** the liveB18 step agent ended its turn while its live runner ran ("waiting on my watch", against #286 and
