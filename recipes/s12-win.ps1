@@ -9,6 +9,15 @@
 $S11SampleTailMs = 0
 $S12IdleMinMs = 15000
 
+# Run 19's own fixture pages (test-fixtures/s12-*.html; a test ties each title): conBanner opens s12-console.html in the driver window W, so
+# Test-S9Live (s9-win.ps1) must still call W "the wave's own". Exact titles only. Everything else is the prior Format-S9Title (s11-win.ps1's),
+# captured once (a second dot-source must not capture this override and recurse).
+if (-not $global:S12PriorFormatTitle) { $global:S12PriorFormatTitle = ${function:Format-S9Title} }
+function Format-S9Title([string]$t) {
+  if ($t -match '^(S12 console fixture|S12 chooser fixture|S12 chooser frame)( - Google Chrome)?$') { return $t }
+  & $global:S12PriorFormatTitle $t
+}
+
 function Assert-S12Tail { if ($S11SampleTailMs -ne 0) { Stop9 'the sampler tail is not 0 (dot-source s12-win.ps1 after s11-win.ps1)'; throw 'sampler tail' } }
 
 # ---- the sampler: Invoke-S11Sampler unchanged; its SAMPLER line is re-printed as it was and parsed for the poll count ---------------

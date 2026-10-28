@@ -44,3 +44,8 @@
   con-banner driver PID 38644 had exited by itself; nothing on 9234/8080-8089. Attempts 2 of 3; fix rounds 1 of 3.
 - Next: fix round 2 (Sonnet fixer -> `S7-live-fixer2.md`, Opus verifier -> `S7-live-verifier2.md`): Run 19's own titles
   (`S12 console fixture`, `S12 chooser fixture`, `S12 chooser frame`) taken as the wave's own in `s12-win.ps1`; then att3.
+- Att2 evidence committed `491a794`. Fix round 2 (2 of 3): fixer DONE (`S7-live-fixer2.md`; `recipes/s12-win.ps1` +9,
+  `recipes/test/s12-title.test.ts` new; npm test 5570 -> 5576, 233 files). Verifier Opus medium PASS-with-notes
+  (`S7-live-verifier2.md`): diagnosis confirmed; non-S12 titles 0 differences over 10 inputs; 9 mutants killed; later
+  slices' active titles now all known (KEEP-2, X windows, liveC19 would have hit the same). MINOR-1 (KEEP-3 nav-blocked
+  error-page title, unmeasured) carried to liveB19. Next: committer, then att3 from the fix commit.
