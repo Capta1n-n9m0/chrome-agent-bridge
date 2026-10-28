@@ -49,3 +49,9 @@
   (`S7-live-verifier2.md`): diagnosis confirmed; non-S12 titles 0 differences over 10 inputs; 9 mutants killed; later
   slices' active titles now all known (KEEP-2, X windows, liveC19 would have hit the same). MINOR-1 (KEEP-3 nav-blocked
   error-page title, unmeasured) carried to liveB19. Next: committer, then att3 from the fix commit.
+- Fix round 2 committed `922f757`. liveA19 att3 (runner Sonnet medium; out `$TEMP/bridge-e2e/s19-live/a3`; HEAD
+  922f757): ran to its end, no STOP (`CHECK rows19 rows=32 warns=0 stop-return=0`; `SLICE liveA19 done: calls with a
+  failed check 5, not measured 0`). FAIL: R19-ARGS-1, R19-ARGS-3 (mcp leg), R19-CON-NOTEA, R19-CON-4 (mcp leg),
+  R19-CON-FLOOR; the 17 other R19 rows PASS; R19-RESTORE PASS (equal by count and hash), R19-LOGS PASS. Step agent
+  stopped daemon PID 14348; nothing on 9234/8080-8089; 4 file scans all 0. Attempts 3 of 3; fix rounds 2 of 3.
+  liveA19 closed; next: liveB19 (a fresh step agent).

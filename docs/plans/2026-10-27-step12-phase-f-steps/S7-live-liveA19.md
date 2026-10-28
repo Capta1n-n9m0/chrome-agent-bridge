@@ -164,3 +164,111 @@ throw-after-state` → `RETURN 1 after-stop=throw-after-state restored=n/a readb
 - **Gotcha candidate for `recipes/CLAUDE.md`:** a row that opens a fixture as the driver window's active tab changes the
   window's title, and the title guard (`Format-S9Title`) must know that fixture's `<title>`, or the next guarded action
   STOPs (Run 19 liveA19 att2, 2026-10-29).
+
+---
+
+# Attempt 3 (2026-10-29; same step agent)
+
+Fix round 2 (`922f757`; fixer Sonnet `S7-live-fixer2.md`, verifier Opus `S7-live-verifier2.md` PASS-with-notes): the
+window guard's `Format-S9Title` (overridden in `recipes/s12-win.ps1`) accepts exactly Run 19's own fixture titles
+(`S12 console fixture`, `S12 chooser fixture`, `S12 chooser frame`); every other title is unchanged. Runner: Claude
+Sonnet 5.5, medium (`S7-live-runner-liveA19-att3.md`). Out `$TEMP/bridge-e2e/s19-live/a3`, `-Att 3`, HEAD `922f757`,
+build from a clean tree (`built extension → dist/`).
+
+## A3.1 Verdict
+**DONE: the slice ran to its end, with no STOP.** It printed 22 R19 rows plus R19-0, R19-BANNER-CTL, R19-RESTORE and
+R19-LOGS: 5 FAIL, the rest PASS. `CHECK rows19 rows=32 warns=0 stop-return=0`, then `SLICE liveA19 done: calls with a
+failed check 5, not measured 0`. The runner started the script with `&` in Git Bash, so its exit code was not captured;
+the slice's own lines above are the evidence for the end. The FAILs are recorded here and not fixed (brief; phase doc §
+STOP rules: "a Run 19 row that fails (its fix is a proposed decision)").
+
+## A3.2 Rows as printed
+- `ROW R19-0 PASS slice=A` (RD-0 (a)/(c)/(d), `RULES 0`, R17B-0 (e)(f) PASS) and `ROW R19-BANNER-CTL PASS slice=A`.
+- **PASS** (17): R19-ARGS-2, -ARGS-GLOBAL, -ARGS-CSP, -ARGS-STOP (`STOPCALL answer=TIMEOUT ms=1516 bound-ms=1500`),
+  R19-CON-1, -CON-2, -CON-REJ, -CON-BIG, -CON-NAV, -CON-MCP (`existing tools=5 ok=5`, `empty-text=exact`), -CON-CAP
+  (`sdk-entries=200 more=191`), -CON-BANNER, -CON-JSOFF (`mcp-refused=yes`), -CON-3 (`mcp-refused=yes`), -CON-FRAME
+  (2 clauses), -CON-OWN, -CON-FILE.
+- **FAIL** (5):
+  - **R19-ARGS-1** `clauses=3 failed=1`: sdk `total table=5 value-equal=4 json-equal=5`; mcp `value-equal=5 json-equal=5`;
+    `LEG table FAIL`. Control-1 `ok`, control-2 `ok`, `CHECK R19-ARGS-1 control-2 kind=undefined` (the kind recorded,
+    #366; judged at S7-record against R19-ARGS-OLD).
+  - **R19-ARGS-3** `clauses=5 failed=1`: `CONREF … sdk code=JS_DISABLED exact=yes`, raw `JS_DISABLED exact=yes`, noargs
+    `JS_DISABLED exact=yes`, **mcp `code=ok exact=no`** → `LEG mcp FAIL`; `EFF before=1 after=1`; state PASS; banner PASS.
+  - **R19-CON-NOTEA** `clauses=1 failed=1`: `CON … blocked entries=0 console=0 …`, `CON … allowed entries=2 console=2
+    sentinel=1 …`; `LEG notea FAIL`.
+  - **R19-CON-4** `clauses=2 failed=1`: `CONREF … disarmed code=DISARMED exact=yes data=keys:scope`; **`CHECK R19-CON-4
+    mcp-refused=no`** → `LEG mcp FAIL`; after PASS; banner PASS.
+  - **R19-CON-FLOOR** `clauses=1 failed=1`: `CONFLOOR disarmed-ticks=2 in-reply-disarmed=0 after-ticks=2 in-reply-after=2
+    exc-disarmed=1 exc-in-reply-disarmed=0 exc-after=2 exc-in-reply-after=2`; `LEG floor FAIL`.
+- `ROW R19-RESTORE PASS slice=A`; `ROW R19-LOGS PASS slice=A`.
+
+## A3.3 STOPs (R7.6)
+None printed: no `STOP`, `STOPWHY` or `RETURN` line; `stop-return=0`.
+
+## A3.4 Restore (R7.4)
+`RESTORE armed=equal evaluate=equal blocklist lines=0 hash=equal uploadfolders lines=0 hash=equal`; `CHECK UP-RESTORE
+stored PASS` (equal to UP-0 by count and hash) and `daemon PASS`; read-back `stored page equal true, daemon.status equal
+true, title armed true`; `RULES 0`; `DIALOGS liveA19 native=0 devtools=0 wave-windows-open=1`. Each state-changing row
+also printed its own `RESTORE blocklist lines=0 hash=equal` (×3). Restore equal to R19-0: **yes**, by count and hash.
+
+## A3.5 R19-LOGS (R7.5)
+`CONSOLE liveA19 segments=1 … texts=1277 control-disarmed=9`; `CONSOLE window-title lines dropped=3`; `SCAN console:
+://=0 … token=0 sentinel=0 profile=0`; `SCAN daemon: ://=0 … token=0 sentinel=0 profile=0`; `DAEMONLOG liveA19 sentinel=0
+console-text=0 args-text=0`; SCANTOOL for 7 tools, all `token=0 profile=0 shot-line=0 image-line=0`, and `sentinel=0`
+except `tool=browser_console_messages sentinel=25` (that tool's job is to return the fixture's console text, which holds
+the sentinel); `SCAN actors: ://=5 (fixture 5, other 0) token=0 sentinel=25 profile-other=0`. The row printed PASS by its
+rule. `actors-liveA19.jsonl` stays in the out folder and is not committed.
+
+## A3.6 Evidence files and their scans
+`S7-live-record-liveA19-att3.txt` (440 lines, written by the runner script), `S7-live-evidence-liveA19-att3.txt` (606
+lines, stdout with `<HOME>`/`<OUT>` placeholders), `S7-live-console-liveA19-att3.txt` (1274 lines; the runner dropped two
+window-title lines from the copy, one of which carried the profile's display name). Each file and the runner report,
+re-scanned by the step agent with `recipes/s11b.ts scan18 --what other --file`: `SCAN other: ://=0 (fixture 0, other 0)
+token=0 sentinel=0 profile=0` (4 of 4). The three `DevTools` strings left in the console copy are Chrome's own UI text
+(`Customize and control DevTools` ×2, `DevTools is undocked`), as in S1-live's liveA18 copy.
+
+## A3.7 After
+Teardown ran inside the slice (`CHECK clean PASS`). The daemon (PID 14348) was stopped by `s9.ts daemon-shutdown`.
+Afterwards nothing listened on 9234 or 8080–8089, and no node or python process of this repo was alive (the one other
+node.exe is not this repo's). Budgets: **attempts 3 of 3, fix rounds 2 of 3**.
+
+## A3.8 Findings for S7-record (recorded, not ruled; first reads by the step agent)
+1. **R19-ARGS-1, SDK leg v1** (`value-equal=no json-equal=yes`, the same in attempts 2 and 3; MCP leg 5 of 5). The MCP
+   actor's text for v1 reads back the same object. So the SDK's by-value result for TABLE[0]
+   (`{rows:[1,2,{z:null,…}], name, n:-0.5, big:1e21}`) differs from the sent value under `JSON.stringify`, while the page's
+   own `JSON.stringify(a)` matches. Cause not established; a product question for S7-record.
+2. **R19-ARGS-3 mcp `code=ok exact=no` and R19-CON-4 `mcp-refused=no`: possibly the helper's judge, not the product.**
+   The ARGS-3 judge (`recipes/s12-r19-a.ts` args3, `mr.isError && mr.text.includes(MSG.jsOff)`) requires `isError`. But
+   the MCP sends some failure reports without `isError`, with the code on line 1 (`mcp/src/tools/registry.ts:59-75`,
+   332), and `recipes/s12-r19-c.ts` `mcpCodeOf` reads both forms. `actors-liveA19.jsonl` holds `browser_evaluate`
+   answers whose text starts with `JS_DISABLED: …`, but the file does not record `isError`. So whether the product
+   refused there is **not established**. S7-record should read the MCP's answer form before calling either row a
+   product FAIL. No re-measurement is possible in this stage (attempts exhausted).
+3. **R19-CON-NOTEA** (blocked tab entries=0, allowed entries=2 with sentinel=1) and **R19-CON-FLOOR**
+   (`in-reply-disarmed=0`, `exc-in-reply-disarmed=0`) failed by their pass rules. Their cause was not examined here; for
+   S7-record.
+4. **The verifier's MINOR-1 is carried to liveB19:** KEEP-3's `nav-blocked` may give window X an error-page title
+   (`S7-live-verifier2.md` §6 (d)).
+
+## A3.9 Proposed decisions
+### 2026-10-29 · Run 19's driver window guard knows Run 19's own fixture titles
+**Decided (proposed):** keep fix round 2's exact-title override in `recipes/s12-win.ps1` for every later slice, and add
+a `recipes/CLAUDE.md` gotcha: a row that opens a fixture as the driver window's active tab changes that window's title,
+so the title guard must know the fixture's `<title>`. **Why:** liveA19 attempt 2 stopped on it, and the verifier found
+the same exposure in liveB19 (KEEP-2, X) and liveC19. **Instead of:** opening those tabs in the background, which would
+change the rows. **Revisit if:** a new fixture is added; the static test fails first. **By:** Claude (proposed).
+
+### 2026-10-29 · S7-record reads the MCP failure form before judging ARGS-3's and CON-4's MCP legs
+**Decided (proposed):** S7-record rules on whether `code=ok` and `mcp-refused=no` are the product or the judge. It reads
+`mcp/src/tools/registry.ts` and liveA19's actor file (the out folder `a3`, outside the repo, kept). If the judge was
+wrong, it records the row as a helper defect in the judge (NOT DISCRIMINATING), never as a PASS. **Why:** expected text
+is never edited after a run, and a FAIL caused by the judge is not a product finding. **By:** Claude (proposed; for the
+session agent).
+
+---
+
+## Final (all attempts)
+**Verdict: DONE.** Attempt 3 ran liveA19 to its end with no STOP, and the restore read back equal by count and hash.
+Attempt 3 printed 5 row FAILs: R19-ARGS-1, R19-ARGS-3, R19-CON-NOTEA, R19-CON-4 and R19-CON-FLOOR. Attempts used: 3 of
+3. Fix rounds used: 2 of 3 (`079a063`, `922f757`). Evidence commits: `e1c05c4` (attempt 1), `491a794` (attempt 2), and
+this attempt's commit.
