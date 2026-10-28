@@ -279,6 +279,42 @@ unchanged. See §10's Step 11b S6 note.*
   - *"Costs nothing" holds for the lock. The switch itself costs about 1.5 s of flash (see §7).*
 
   *See Step 7 as-built § Stage T2.*
+- *Amended 2026-10-28 (Step 12 S6-G2; phase doc `docs/plans/2026-10-27-step12-phase-f.md` 0.9 G2 and § S6;
+  decisions.md · 2026-10-27 · The user rules Step 12's scope (G12-0) (#321) Q6; · Step 12: G1 and G2 as ruled, their
+  contract left to Stage 0 (#326); · Stage 0: G2 by the daemon, one request, a 500 ms pause (#338). Proposed, for the
+  user at Step 12's gate. No method, code, event or field is added; nothing changes in the extension, the SDK or the
+  MCP):*
+  - *A **trusted input** — `click`, `type` or `pressKey` with `trusted: true` and `focusEmulation` not `true`
+    (`trustedFocus(method, params)` in `daemon/src/methods.ts`; `takesLock` is unchanged and still false for these
+    methods) — is one blocking action. Inside the one client request the daemon's tab layer resolves the handle and
+    checks the lease (fail fast, as today), takes the visibility lock, re-resolves and re-checks the lease, forwards
+    `focusTab {tabId}`, then checks again that the caller is still connected and still holds the lease, forwards the
+    input as sent (with `tabId`, never `tab`), sends the input's reply (result or error) to the caller, and only then
+    holds the lock for a **settle pause of 500 ms** before releasing it. No other actor's screenshot or `focusTab` can
+    come between the focus and the input, nor inside the pause.*
+  - *One deadline (#44) covers the lock wait, both forwards and the pause: the wait ends at the deadline with
+    `LOCK_TIMEOUT {holder}`; each forward waits `deadline − now + 5000`; the pause is `min(500, deadline − now)` from
+    the moment the input settles (0 when the deadline has passed). The reply is sent before the pause, so the pause
+    never spends the caller's time. A known edge: an input that settles at or past the deadline (a slow extension or a
+    short `timeoutMs`) gets a pause of 0, so no settle hold follows it. If the `focusTab` forward settles at or past the
+    deadline, the input is not forwarded: the caller gets `TIMEOUT "Timed out before calling <method>"` and the lock
+    is released at once, with no pause (no input was sent; S6-G2 fixer round 1).*
+  - *The pause follows the input forward on every outcome, an error or `TIMEOUT` included (keys may already have
+    been sent). If the `focusTab` forward fails, the input is not forwarded: the caller gets `focusTab`'s error and the
+    lock is released at once, with no pause. If the caller disconnects or loses the lease between the forwards, the
+    input is not forwarded (`NOT_CONNECTED "client disconnected"`, or `TAB_HELD`/`TAB_GONE` as for any call) and the
+    lock is released at once; a disconnect during the pause frees the lock at once (`releaseAllOf`).*
+  - *A new answer under contention (Stage 0 G-19): a trusted input now waits behind any lock holder and can answer
+    `LOCK_TIMEOUT {holder}`, as a lock-taking call does. A trusted input with `focusEmulation: true`, and every
+    untrusted input, take no lock and answer as before. A visible change besides that answer: a trusted input sent
+    without its own `focusTab` (a raw client, or the SDK's `"none"` policy) now brings its tab to the front and focuses
+    its window, as `focusFirst` does.*
+  - *A client that calls `focusTab` itself first (the SDK's and the MCP's `focusFirst`, #89, #106) keeps working: its
+    own `focusTab` takes and releases the lock as before; the input then focuses again under its own hold. The second
+    focus is idempotent (`noteFocus`, `windows.update {focused}`, `tabs.update {active}`), costs one extra round trip,
+    and cannot deadlock (the first acquisition ends before the second request waits). The screenshot's restore still
+    runs after its own reply, outside the lock; the held focus keeps calling `noteFocus` (G-20), so a late restore does
+    not undo it.*
 
 ### 6.5 The human
 
@@ -939,6 +975,10 @@ The block itself is left as written.*
     of class `upload` in the gate (`safety.ts`), in every phase, before the tab and folder tests, so no page call and
     no CDP command runs. Without `chooser`, JavaScript off still does not apply to `uploadFiles`. No path, file name or
     mark reaches a message or a log; the module adds no log call.*
+- *Amended 2026-10-28 (Step 12 S6-G2; decisions.md #321 Q6, #326, #338; proposed, for the user at Step 12's gate). No
+  method, code, event or field is added: a trusted `click`/`type`/`pressKey` (no `focusEmulation: true`) holds the
+  visibility lock from a daemon-forwarded `focusTab` through the input and a 500 ms pause after its reply (§6.4).
+  `LOCK_TIMEOUT {holder}` is a new answer for these three methods under contention.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
