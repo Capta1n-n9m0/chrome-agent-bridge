@@ -10,7 +10,7 @@
 - Counts are from verifier2's runs: `npx vitest run recipes/test` 1351 / 59 files before, 1433 / 61 after (three runs). `npm test` 5333 passed, 227 files. `npm run typecheck` exit 0. All seven `npx tsc --noEmit -p recipes/tsconfig*.json` exit 0. `npm run build` exit 0 (same HEAD; no wave runs).
 - Mutants red: skipped restore on throw, swap without the finally restore, STOP without RETURN, row out of order, R19-UP-OPT without the investigator's report, plus the fixer's 7 F1 mutants and the F5 one.
 - **M5 (#359):** 23 runs reported, no failures. Verifier1 ran `s12-ps-c.test.ts` 20 times alone (26/26 each) and the full recipes suite 3 times (1411/1411). Verifier2 repeated both on the post-fix tree: 20 times alone (26/26 each) and 3 full runs (1433/1433). The builder and fixer each ran it 3 more times (26/26). No recurrence, so no fix round for M5.
-- Commit: see the committer line under §7.
+- Commit: `c9ee1af`.
 
 ## 3. Verifier verdict
 - Round 1, `S7-helpers-d-verifier.md` (Opus, medium): **FAIL** on F1 (MAJOR). The tests stubbed `Invoke-R17Node` to return only an exit code. With the real one, a stale build, a failed restore-head and a failed re-proof printed `throw-after-state`, LOADED was printed twice and before MANIFEST, liveD19 could not reach R19-ARGS-OLD, R19-LOGS stopped before its ROW lines, and M1's wording never reached the record. Also F2, F3 (MINOR) and F4–F6 (NIT).
@@ -81,4 +81,4 @@ Verifier2 accepts this decision now that F1 sends the escalation reasons to thei
   - Other lines: `ROW R19-UP-OPT NOT RUN — the UP-OPT investigator's report is absent or not committed (Open item 14)`, `ROW R19-CON-FILE NOT RUN — waits for G11-3`, `ROW <id> NOT RUN — no driver built`, `CHECK devprobe NOT RUN — no driver built`, `CAPSEG <slice> seg=<k> saved=<yes|no> before=<reload|end>`, `CONSOLE <slice> segments=…`, `WAVE stopping: …`.
 - Fix rounds used: 1 of 3. Needs the user's keyboard: nothing.
 - Briefs' READ lists: as the step brief; the verifiers also read the builder and fixer reports as claims to audit.
-- Committer: (hash below)
+- Committer: `c9ee1af` (Sonnet, medium).

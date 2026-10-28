@@ -195,6 +195,22 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-28 · Run 19's row drivers are four more slices; S7-helpers-d's overrun accepted (#360)
+**Decided:** S7-helpers-d (`c9ee1af`, PASS-with-notes after one fix round; DONE-PARTIAL) built the runner's frame (order,
+STOP → RETURN, restore on throw, the swap's `finally`, the UP-OPT gate, forms (28), (29), (31), (32), the aggregator) but
+no row drivers: #357's split missed them (my split, not the slices'). They become **S7-drivers-A** (liveA19's rows),
+**-B** (liveB19, incl. `DEVPROBE`, `SWEEP-HELD`'s reload segments), **-C** (liveC19, incl. `CLOSERPROBE`'s use and the
+G2 rows) and **-DE** (liveD19 and liveE19), sequential, risk low, code cap 400 with tests up to 600 each, each
+registering its drivers as `$global:R19Blocks[...]` and carrying S7-helpers-d's notes N-1–N-5 where they bind. S7-helpers-d's
+519 code lines against 400 are accepted as one coherent frame (verified; splitting it after the fact gains nothing);
+#344 (4)'s rule otherwise stands. Its proposals: a throw before any state change prints `STOP throw-after-state`; the
+UP-OPT investigator's report is `…-steps/S7-up-opt-investigator.md`, counted by the gate only once committed. M5 did
+not recur in 23 runs (#359 closed).
+**Why:** the run cannot start without drivers; each slice is one Run 19 slice.
+**Instead of:** one large drivers slice.
+**Revisit if:** a drivers slice reports DONE-PARTIAL.
+**By:** Claude (build decision)
+
 ### 2026-10-28 · S7-helpers-c as built; its one unexplained test failure is hunted in S7-helpers-d (#359)
 **Decided:** S7-helpers-c (`6a5a158`, PASS-with-notes after one fix round, three MAJORs fixed) as its proposals: the
 swap leaves the old build in `extension/dist/` and the runner restores HEAD, so **S7-helpers-d calls `swapOldBuild`
