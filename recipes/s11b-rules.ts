@@ -813,7 +813,7 @@ export function judgeUpOpt(o: UpOptObs): J17 {
   if (o.setSha !== o.storedSha) return bad17("the stored text differs from the text set");
   if (o.storedWhileTypingSha !== o.storedSha) return bad17("typing stored something");
   if (o.o2Conflict) return bad17("O2 showed a conflict note");
-  if (o.o2Ms > 5000) return bad17(`O2 showed the saved text after ${Math.round(o.o2Ms)} ms, over 5 000 ms`);
+  if (o.o2Ms > 5000) return bad17(`O2 did not show the saved text within 5 000 ms (observed ${Math.round(o.o2Ms)} ms)`);
   return ok17(`summaries and items exact, O2 in ${Math.round(o.o2Ms)} ms`);
 }
 export interface CapsObs { bl: number; afterTwo: unknown; afterThree: unknown; storedEqual: boolean }

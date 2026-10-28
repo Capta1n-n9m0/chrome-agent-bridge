@@ -94,3 +94,5 @@ export function scan18(text: string, ctx: ScanCtx): Scan {
   }
   return { ...scanText(text, ctx), urls, fixture, other: urls - fixture };
 }
+/** #351 (4) (a): when O2 showed no saved text the helper also prints this line (the row's verdict unchanged); null when it showed. */
+export const optO2NoteLine = (shown: boolean, polledMs: number): string | null => (shown ? null : `O2 did not show the saved text in ${polledMs} ms`);

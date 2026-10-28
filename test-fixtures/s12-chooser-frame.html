@@ -1,0 +1,24 @@
+<!doctype html>
+<!--
+  Step 12 S7-helpers-a fixture: the iframe document of s12-chooser.html?s12=frame (R19-CHOOSE-FRAME): a button and a hidden file
+  input. The button counts its click and the input's change into the parent's window.__s12ch (same origin).
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>S12 chooser frame</title>
+  </head>
+  <body>
+    <button id="fbtn">Open frame chooser</button>
+    <input id="fin" type="file" hidden />
+    <script>
+      document.getElementById("fbtn").addEventListener("click", function () {
+        if (parent.__s12ch) parent.__s12ch.clicks++;
+        document.getElementById("fin").click();
+      });
+      document.getElementById("fin").addEventListener("change", function (e) {
+        if (parent.__s12chChange) parent.__s12chChange(e.target);
+      });
+    </script>
+  </body>
+</html>

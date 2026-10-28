@@ -89,6 +89,11 @@ describe("R17-UP-OPT", () => {
     expect(judgeUpOpt(up({ o2Ms: 6061 })).pass).toBe(false);
     expect(judgeUpOpt(up({ o2Ms: 5000 })).pass).toBe(true);
   });
+  it("the row text of an O2 over the bound does not say O2 showed the text (Run 18 helper note 2: a never-shown O2 feeds its polled time)", () => {
+    const j = judgeUpOpt(up({ o2Ms: 15136 }));
+    expect(j.pass).toBe(false);
+    expect(j.why).toBe("O2 did not show the saved text within 5 000 ms (observed 15136 ms)");
+  });
 });
 
 describe("RD-CAPS-WARN", () => {

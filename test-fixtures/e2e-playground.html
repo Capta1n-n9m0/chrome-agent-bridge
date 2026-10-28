@@ -252,6 +252,23 @@
         set("loading…");
         setTimeout(() => { document.getElementById("async-area").textContent = "Async content loaded!"; set("async content loaded"); }, 1500);
       });
+
+      // Step 12 S7-helpers-a (Run 19, docs/e2e-test-plan.md section 4.27): the query `s12=` sets the page's own reporter
+      // window.__s12; `as` adds `beat` (a 100 ms interval counter), `g2a` and `g2b` add the text input #tb and a button whose
+      // clicks are counted in __s12.clicks. Without the query nothing here runs.
+      const s12q = new URLSearchParams(location.search).get("s12");
+      if (s12q !== null) {
+        window.__s12 = { q: s12q };
+        if (s12q === "as") { window.__s12.beat = 0; setInterval(() => { window.__s12.beat += 1; }, 100); }
+        if (s12q === "g2a" || s12q === "g2b") {
+          window.__s12.clicks = 0;
+          const sec = document.createElement("section");
+          sec.setAttribute("aria-label", "S12 G2");
+          sec.innerHTML = '<input id="tb" type="text" aria-label="s12 text box" /> <button id="s12-btn">s12 click</button>';
+          document.body.appendChild(sec);
+          document.getElementById("s12-btn").addEventListener("click", () => { window.__s12.clicks += 1; });
+        }
+      }
     </script>
   </body>
 </html>

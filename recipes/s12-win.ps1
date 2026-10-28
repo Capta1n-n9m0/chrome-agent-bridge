@@ -166,6 +166,8 @@ function Wait-S12O2($O2, [string]$SetSha) {
 }
 function Format-S12OptObserved($Standing, $Invalid, $Warned) { "OPT observed standing x$Standing invalid items $Invalid warned items $Warned" }
 function Format-S12OptO2($R) { "OPT O2 shown=$(if ($R.Shown) { 'yes' } else { 'no' }) at=$(if ($R.Shown) { $R.At } else { 'none' }) polled-ms=$($R.PolledMs)" }
+# #351 (4) (a): printed after the O2 line when O2 showed no saved text (null otherwise); the row verdict is unchanged.
+function Format-S12OptO2Note($R) { if ($R.Shown) { $null } else { "O2 did not show the saved text in $($R.PolledMs) ms" } }
 # The URL class a `window ... now shows` line prints instead of the URL (an own-page URL would count as non-fixture, Run 17b).
 function Get-S12UrlClass([string]$Url) {
   if ($Url -eq 'about:blank') { return 'url-class=about-blank' }
@@ -176,7 +178,7 @@ function Get-S12UrlClass([string]$Url) {
 }
 $S12OptPairs = @(
   @('(?s)\$t0 = Get-Date; \$o2Ms = 0; \$o2Eq = \$false.*?if \(-not \$o2Eq\) \{[^}]*\}', '$o2Res = Wait-S12O2 $O2 $setSha; $o2Eq = $o2Res.Shown; $o2Ms = $(if ($o2Res.Shown) { $o2Res.At } else { $o2Res.PolledMs })'),
-  @('Say9 "OPT observed:[^\r\n]*"', 'Say9 (Format-S12OptObserved $standing $invalidCount $warnedCount); Say9 (Format-S12OptO2 $o2Res)')
+  @('Say9 "OPT observed:[^\r\n]*"', 'Say9 (Format-S12OptObserved $standing $invalidCount $warnedCount); Say9 (Format-S12OptO2 $o2Res); $o2Note = Format-S12OptO2Note $o2Res; if ($o2Note) { Say9 $o2Note }')
 )
 $S12OmniPairs = @(@('now shows \$Url"', 'now shows $(Get-S12UrlClass $Url)"'), @('did NOT reach \$Url within', 'did NOT reach $(Get-S12UrlClass $Url) within'))
 # Dot-source this file AFTER s9-win.ps1 and s11-win.ps1: Invoke-S12Opt is Invoke-S11Opt with the 15 s poll and the sheet's OPT lines;
