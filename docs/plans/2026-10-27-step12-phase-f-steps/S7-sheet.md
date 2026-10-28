@@ -15,7 +15,7 @@ DONE. `docs/e2e-test-plan.md` §4.27 "R19 rows" is written as one insertion betw
   - Builders: `S7-sheet-builder.md` (part A) and `S7-sheet-builder2.md` (part B).
   - Fixers: `S7-sheet-fixer.md` and `S7-sheet-fixer2.md`.
   - Verifiers: `S7-sheet-verifier.md` (+ `-evidence.txt`), `S7-sheet-verifier2.md` (+ `-evidence.txt`) and `S7-sheet-verifier3.md`.
-- Commit: see the committer line under §7.
+- Commit: `a1b8544` `docs(e2e): S7-sheet — Run 19's §4.27 rows (verifier: PASS-with-notes)` (11 files; the e2e plan +94 −0). This line is written after the commit and is uncommitted.
 
 ## 3. Verifier verdict
 

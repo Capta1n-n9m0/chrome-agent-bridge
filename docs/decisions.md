@@ -22,6 +22,7 @@ were ruled on 2026-10-27, #311, #320). #322, #323, #325 and #326 are amended by 
 - 2026-10-27 · S3b: the console formatter's line form … the JavaScript-off line left for the gate (#345, items 1 and 3)
 - 2026-10-27 · S1-live: R18-LOGS slice A's `profile=2` stands as a FAIL … (#349, item (a): the MCP failure report's absolute screenshot path)
 - 2026-10-28 · Run 18's findings … (#351, items 1 and 2: product findings)
+- 2026-10-28 · S7-sheet: what Run 19 cannot discriminate live … (#356, item 1)
 - **G12-2 for the user:** add the `webNavigation` permission so G1 can be built? (#337)
 
 ## Standing decisions
@@ -193,6 +194,24 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
+
+### 2026-10-28 · S7-sheet: what Run 19 cannot discriminate live; how an old build is loaded; the class note (#356)
+**Decided:** S7-sheet (`a1b8544`, §4.27, 56 rows, verifier PASS-with-notes after two fix rounds): (1) **"no attach after
+a disarm" cannot be made discriminating live** where the refused call follows a debugger call by seconds (KEEP-1's
+banner clause, KEEP-3, CHOOSE-DISARM): no attach counter exists and #351 forbids building one. Those clauses rest on the
+answers and the unit tests (S4a/S4b's disarm mutants), and §4.27 Open item 5 says so; it is listed for the gate, not
+hidden (`agent-rules.md` §3 item 9, taken by the session agent: record, continue). (2) **An old build is loaded only by
+replacing the main tree's gitignored `extension/dist/` with the old commit's build** (made in a scratch worktree with its
+own `npm ci`, #220) and pressing reload by `recipes/reload-extension.ps1`; never "Load unpacked" from another folder (a
+second extension in the user's profile, outside the grant). Each old-build slice ends by rebuilding HEAD into
+`extension/dist/`, reloading, and proving the loaded build by R19-0's re-run line; a failed proof is a STOP that
+escalates to the user (the extension may be stale). These slices (liveD19, liveE19) run last. (3) Phase doc 0.5 says
+class `tab`; #334 rules `evaluate`: a dated note in 0.5 records it (written now). (4) The sheet's five unsourced bounds
+are labelled as its own choices and are not tuned after the run.
+**Why:** the integrity floor (say what a check cannot see); the user's profile holds exactly one bridge extension.
+**Instead of:** a product attach counter (#351); loading the old build as a second unpacked extension.
+**Revisit if:** the user wants the counter.
+**By:** Claude (session agent's rulings)
 
 ### 2026-10-28 · S5b as built; an old extension's `chooser` is refused `VERSION` by a hello feature, as #332 (#355)
 **Decided:** S5b (`5a5cd46`, verifier PASS-with-notes after one fix round): `Tab.upload(…, {chooser})` sends the key only
