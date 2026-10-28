@@ -195,6 +195,24 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-28 · S7-drivers-C accepted; UP-OPT's cause is the helper's poll, fixed in S7-helpers-e (#363)
+**Decided:** S7-drivers-C (`836a79e`, PASS-with-notes after one fix round; every liveC19 block driven; 662 code / 462
+tests) with its proposals (`…-steps/S7-drivers-C.md` §5): the two RECORD rows print `RECORD`; JSOFF's MCP half is
+CHOOSE-MCP leg d; CHOOSE-KEPT runs both calls on one fresh page; the `DIALOGS` count leaves out the capture window; and
+`wave-windows-open` is a record. On the open choice, liveA19 and liveB19 print `DIALOGS` too: option (a), the conservative one, because it reads more.
+The UP-OPT investigator (`…-steps/S7-up-opt-investigator.md`, 25 runs on a scratch Chrome) found the helper's poll is
+the cause, not the page. The page held the saved text in O2 within 12–23 ms. The helper's write into O brings O to the front, and UIA does not
+read a fully covered O2. **No product finding.** A new recipes-only slice, **S7-helpers-e**, comes before -DE: (1) `Invoke-S11Opt`
+brings O2 to the front after the save, timed from the save, the conflict read too, with a `FIX` line; (2) liveA19's and liveB19's
+R19-RESTORE call `Write-R19Dialogs`; (3) verifier2's MINOR-1 (a test that a row's want is not overridden at its call
+site). Verifier2's MINOR-2 is closed by the record ruling. Dated §4.27 note written before any Run 19 observation.
+**Why:** each keeps the row testing what it was written for; the bound is not moved; the fix is on the instrument the
+investigator measured.
+**Instead of:** a product change on the options page; a §4.27 note narrowing DIALOGS to liveC19.
+**Revisit if:** R19-UP-OPT still reads `shown=no` with the fix (then the investigator's inference about Run 18's window
+order is wrong; it was not measured there).
+**By:** Claude (session agent's rulings)
+
 ### 2026-10-28 · S7-drivers-B accepted with its four rulings; KEEP-4's step timing (#362)
 **Decided:** S7-drivers-B (`83521aa`, PASS-with-notes after one fix round; every liveB19 block driven) as its four
 proposals (`…-steps/S7-drivers-B.md` §5): the carried banner rows FAIL with counts and never STOP; KEEP-3's navigation

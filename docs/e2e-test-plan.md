@@ -1883,6 +1883,19 @@ STOP (they are not in the STOP map; a carried row failing with a passing control
 KEEP-3's navigation legs navigate window X by its omnibox. The other wording findings of `…-steps/S7-drivers-B.md` §6
 are read as that report states.
 
+*Note 2026-10-28, before any Run 19 observation (session agent; decisions.md #363):* R19-CHOOSE-FRAME and
+R19-CHOOSE-HUMAN print `ROW <id> RECORD` (a FAIL clause inside them, CHOOSE-FRAME's dialog leg, still prints FAIL).
+R19-CHOOSE-JSOFF's "the same through the MCP" is R19-CHOOSE-MCP leg d (as the liveC19 order already places it).
+R19-CHOOSE-KEPT's "(fresh load each)" is one fresh load for the row, both calls on that page (`change` 1 → 2, as its
+"+1 each" and continuous-banner clauses require). In R19-RESTORE's `DIALOGS` line the worker-console capture window is not
+counted (it is closed after R19-RESTORE by design), and `wave-windows-open` is a record, not judged (X and O are open
+there by design); the native-dialog and other DevTools counts stay STOPs. liveA19 and liveB19 print the `DIALOGS` line
+too (S7-helpers-e). R19-UP-OPT's O2 poll brings O2 to the front after the save before polling, timed from the save (the
+UP-OPT investigator, `…-steps/S7-up-opt-investigator.md`: a fully covered O2 is not read by UIA; the page held the text in
+12–23 ms); the bound stays 5 000 ms and the row prints its `FIX` line. The other wording findings of
+`…-steps/S7-drivers-C.md` §6 (the 1 024-byte file, CHOOSE-2 (b) by a raw call, CHOOSE-4 leg a's and the JSOFF control's
+counts, CHOOSE-1's page per call, one CLOSERPROBE) are read as that report states.
+
 ## 5. Results template
 
 Copy this and fill it in during the run:
