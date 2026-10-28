@@ -195,6 +195,18 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-28 · S7-helpers is four slices, run in order (#357)
+**Decided:** Run 19's helpers (§4.27's 33 new line forms, the S12 fixture pages, #351 (4)'s three fixes, the runner)
+are split, each risk low, code cap 400 with tests up to 600 (#344 (4)), one step agent each, sequential (one lane):
+**S7-helpers-a** the fixture pages (§4.27's S12 pages, `#tb` and the click counter on `e2e-playground.html`), #351 (4),
+and forms (1)–(13) for liveA19; **-b** forms (14)–(20), (25) and `DEVPROBE` for liveB19; **-c** forms (21)–(24), (26),
+(27), (30), (33), `CLOSERPROBE`, and the old-build swap of #356 (2) for liveD19/liveE19; **-d** the Run 19 block runner
+for liveA19–liveE19 with (28), (29), (31), (32) and the aggregator.
+**Why:** one coherent deliverable each under the cap (`agent-rules.md` §7).
+**Instead of:** one slice (it would overrun several times).
+**Revisit if:** a slice finds its share far smaller than estimated (then -c and -d may merge).
+**By:** Claude (build decision)
+
 ### 2026-10-28 · S7-sheet: what Run 19 cannot discriminate live; how an old build is loaded; the class note (#356)
 **Decided:** S7-sheet (`a1b8544`, §4.27, 56 rows, verifier PASS-with-notes after two fix rounds): (1) **"no attach after
 a disarm" cannot be made discriminating live** where the refused call follows a debugger call by seconds (KEEP-1's
