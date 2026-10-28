@@ -194,6 +194,23 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-28 · S5a: the chooser's refusal texts; two by-construction claims and the disarm wait go to Run 19 (#353)
+**Decided (texts for user review):** S5a (spec note `8eab22c`, code `2099c08`, verifier PASS-with-notes after one fix
+round) as its proposals (`…-steps/S5a.md` §5): a second chooser call on the same tab answers today's
+`DEBUGGER_DEVTOOLS` text ("close DevTools") even with no DevTools attached (no new code is allowed; the misleading
+wording is for the user); the chooser's input checks reuse today's messages, some naming a "file input"; the value
+rule `uploadFiles: chooser must be true or false`. Carried as Run 19 rows, not fixed now: (a) a human's own click on
+an Upload button **of the same held tab** during the call's 5 s window would be answered by the call (files only from
+the Upload folders; by construction, unmeasured); (b) a page that opens its chooser after the call ends gets no Chrome
+dialog on a background tab (as today without interception, Stage 0 m2 E4); (c) a disarm during the 5 s wait answers
+`DISARMED` only at 5 s (fails closed; an early end needs the keeper); (d) the click in the upload's isolated world and
+`DOM.describeNode` without `DOM.enable` (unmeasured). (a) is named to the user at the gate as what they see.
+**Why:** no rule allows a new code or a changed existing message; the four are measurable live and none loosens the
+gate.
+**Instead of:** new refusal codes; a keeper change in S5a's lane.
+**Revisit if:** Run 19 shows (a) happens in practice, or (d) fails.
+**By:** Claude (build decisions; the texts and (a) for user review)
+
 ### 2026-10-28 · S4b: the keeper installed by the worker; two live facts measured before Run 19 (#352)
 **Decided:** S4b (`63c771c`, verifiers PASS-with-notes ×2 → PASS, two fix rounds) as its five proposals
 (`…-steps/S4b.md` §5): the keeper is installed by the worker only, so tests importing `debugger.ts` alone keep the
