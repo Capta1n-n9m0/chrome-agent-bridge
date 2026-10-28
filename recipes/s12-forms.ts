@@ -67,11 +67,13 @@ export const conrefLine = (row: string, label: string, e: { code: string; messag
 // (10) CONFLOOR: ticks and errors are told apart by their index in the entry text (`tick <n>`, `s12-exc-<n>`), never by their text.
 export interface FloorCounts { disarmedTicks: number; inReplyDisarmed: number; afterTicks: number; inReplyAfter: number; excDisarmed: number; excInReplyDisarmed: number; excAfter: number; excInReplyAfter: number }
 export const FLOOR_MARGIN_MS = 500;
-export function floorCounts(p: { ticks: number[]; excs: number[]; offMs: number; onMs: number }, es: ConEntry[]): FloorCounts {
-  const side = (times: number[], re: RegExp, kind: ConEntry["kind"]): [number, number, number, number] => {
+/** `onMs` is the ON press (the disarmed side ends there); `onTitleMs` (default `onMs`) is the ON title (the after side starts 500 ms later); `readAt` (default none) cuts off every tick logged after the reply was read: it cannot be in it. */
+export function floorCounts(p: { ticks: number[]; excs: number[]; offMs: number; onMs: number; onTitleMs?: number; readAt?: number }, es: ConEntry[]): FloorCounts {
+  const side = (all: number[], re: RegExp, kind: ConEntry["kind"]): [number, number, number, number] => {
     const seen = new Set(es.filter((e) => e.kind === kind).map((e) => Number(re.exec(e.text)?.[1] ?? 0)));
+    const times = all.map((t, i) => [t, i + 1] as const).filter(([t]) => p.readAt === undefined || t < p.readAt).map(([t]) => t); // a cut at the end keeps the i + 1 numbers
     const dis = times.map((t, i) => [t, i + 1] as const).filter(([t]) => t >= p.offMs + FLOOR_MARGIN_MS && t < p.onMs - FLOOR_MARGIN_MS).map(([, i]) => i);
-    const aft = times.map((t, i) => [t, i + 1] as const).filter(([t]) => t >= p.onMs + FLOOR_MARGIN_MS).map(([, i]) => i);
+    const aft = times.map((t, i) => [t, i + 1] as const).filter(([t]) => t >= (p.onTitleMs ?? p.onMs) + FLOOR_MARGIN_MS).map(([, i]) => i);
     return [dis.length, dis.filter((i) => seen.has(i)).length, aft.length, aft.filter((i) => seen.has(i)).length];
   };
   const [d, dr, a, ar] = side(p.ticks, /^tick (\d+) /, "console");

@@ -23,6 +23,7 @@ $env:Path = "$env:LOCALAPPDATA\Author Software\nvm\.nodejs;$env:Path"
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 . "$PSScriptRoot\s12-r18-lib.ps1"                   # only for Get-R18Defs (Run 17's function and block texts, read by PowerShell's own parser)
 . "$PSScriptRoot\s12-r19-lib.ps1"
+. "$PSScriptRoot\s12-r19-a.ps1"                  # the liveA19 row drivers (S7-drivers-A)
 if ($Block -eq 'plan') { foreach ($r19P in 'liveA19', 'liveB19', 'liveC19', 'liveD19', 'liveE19') { Write-Host "PLAN ${r19P}: $((Get-R19Order $r19P) -join ' ')" }; exit 0 }
 if (-not $env:S11_OUT) { $env:S11_OUT = Join-Path $env:TEMP 'bridge-e2e\s12' }
 New-Item -ItemType Directory -Force $env:S11_OUT | Out-Null
@@ -51,6 +52,7 @@ $Persist = @('W', 'O', 'E', 'D', 'X', 'S9WinIds', 'S11Own', 'S11Found', 'S11Root
 . "$PSScriptRoot\s12-win.ps1"                      # AFTER the three above (Invoke-S12Opt and the class-only omnibox line patch their functions)
 . "$PSScriptRoot\s12-win-b.ps1"
 . "$PSScriptRoot\s12-win-c.ps1"
+$S12IdleMinMs = 20000                              # the Banner rule's IDLE (4.27): s12-win.ps1's 15 000 ms is Run 18's
 $global:S9PinUiaOnly = $true                       # never pin, unpin or click the toolbar by mouse: an unpinned button is a STOP
 $global:S16Stops = 0; $global:S16Fail = 0; $global:S16NM = 0; $global:S16Gone = $false; $global:S16InRestore = $false
 
@@ -89,6 +91,30 @@ $global:R19Blocks['servers'] = {
 }
 $global:R19Blocks['r19-0'] = { Invoke-R19Zero $R17bZero }
 $global:R19Blocks['closerprobe'] = { Invoke-R19Closer }
+# ---- liveA19's row drivers (S7-drivers-A): each is one Invoke-R19Row over its actor command; a state change is a step list plus its restore ------------
+$global:R19Blocks['r19-banner-ctl'] = { Invoke-R19BannerCtl }
+$global:R19Blocks['r19-con-banner'] = { Invoke-R19ConBanner }
+$global:R19Blocks['r19-args-1'] = { Invoke-R19Row 'R19-ARGS-1' @('args-1') }
+$global:R19Blocks['r19-args-2'] = { Invoke-R19Row 'R19-ARGS-2' @('args-2') }
+$global:R19Blocks['r19-args-global'] = { Invoke-R19Row 'R19-ARGS-GLOBAL' @('args-global') }
+$global:R19Blocks['r19-args-csp'] = { Invoke-R19Row 'R19-ARGS-CSP' @('args-csp') }
+$global:R19Blocks['r19-args-stop'] = { Invoke-R19Row 'R19-ARGS-STOP' @('args-stop') }
+$global:R19Blocks['r19-con-1'] = { Invoke-R19Row 'R19-CON-1' @('con-read', '--row', 'R19-CON-1') }
+$global:R19Blocks['r19-con-2'] = { Invoke-R19Row 'R19-CON-2' @('con-read', '--row', 'R19-CON-2') }
+$global:R19Blocks['r19-con-rej'] = { Invoke-R19Row 'R19-CON-REJ' @('con-read', '--row', 'R19-CON-REJ') }
+$global:R19Blocks['r19-con-big'] = { Invoke-R19Row 'R19-CON-BIG' @('con-read', '--row', 'R19-CON-BIG') }
+$global:R19Blocks['r19-con-nav'] = { Invoke-R19Row 'R19-CON-NAV' @('con-read', '--row', 'R19-CON-NAV') }
+$global:R19Blocks['r19-con-mcp'] = { Invoke-R19Row 'R19-CON-MCP' @('con-mcp') -StepList @(@{ k = 's'; id = 'R19-CON-MCP' }) -Banner call }
+$global:R19Blocks['r19-con-cap'] = { Invoke-R19Row 'R19-CON-CAP' @('con-cap') }
+$global:R19Blocks['r19-args-3'] = { Invoke-R19Row 'R19-ARGS-3' @('args-3') -StepList (New-R19Steps 'R19-ARGS-3-js' 'R19-ARGS-3' { Set-R19JsOff } { Restore-R19Js }) -Restore { Restore-R19Js } -Banner refused -Why attach-on-refused-page }
+$global:R19Blocks['r19-con-jsoff'] = { Invoke-R19Row 'R19-CON-JSOFF' @('refuse', '--row', 'R19-CON-JSOFF') -StepList (New-R19Steps 'R19-CON-JSOFF-js' 'R19-CON-JSOFF' { Set-R19JsOff } { Restore-R19Js }) -Restore { Restore-R19Js } -Banner refused -Why attach-on-refused-page }
+$global:R19Blocks['r19-con-3'] = { Invoke-R19Row 'R19-CON-3' @('refuse', '--row', 'R19-CON-3') -StepList (New-R19Steps 'R19-CON-3-block' 'R19-CON-3' { Set-R19BlockAdd 's12blk.localhost' } { Restore-R19Block }) -Restore { Restore-R19Block } -Banner refused -Why attach-on-refused-page }
+$global:R19Blocks['r19-con-frame'] = { Invoke-R19Row 'R19-CON-FRAME' @('con-frame') -StepList (New-R19Steps 'R19-CON-FRAME-block' '' { Set-R19BlockAdd 'f.s12site.localhost' } { Restore-R19Block }) -Restore { Restore-R19Block } }
+$global:R19Blocks['r19-con-notea'] = { Invoke-R19Row 'R19-CON-NOTEA' @('con-notea') -StepList (New-R19Steps 'R19-CON-NOTEA-block' '' { Set-R19BlockAdd 's12blk.localhost' } { Restore-R19Block }) -Restore { Restore-R19Block } }
+$global:R19Blocks['r19-con-4'] = { Invoke-R19Row 'R19-CON-4' @('refuse', '--row', 'R19-CON-4') -StepList (New-R19Steps 'R19-CON-4-off' 'R19-CON-4' { Switch-R19Toolbar $false } { Switch-R19Toolbar $true }) -Restore { Switch-R19Toolbar $true } -Banner refused -Why attach-after-disarm }
+$global:R19Blocks['r19-con-floor'] = { Invoke-R19Row 'R19-CON-FLOOR' @('con-floor') -StepList (New-R19Steps 'R19-CON-FLOOR-off' '' { Switch-R19Toolbar $false } { Switch-R19Toolbar $true }) -Restore { Switch-R19Toolbar $true } }
+$global:R19Blocks['r19-con-own'] = { Invoke-R19Row 'R19-CON-OWN' @('own-file', '--row', 'R19-CON-OWN') -StepList (New-R19Steps 'R19-CON-OWN-open' 'R19-CON-OWN' { Open-R19OwnWindow } { }) -Banner refused -Why attach-on-refused-page }
+$global:R19Blocks['r19-con-file'] = { Invoke-R19Row 'R19-CON-FILE' @('own-file', '--row', 'R19-CON-FILE') -StepList (New-R19Steps 'R19-CON-FILE-open' 'R19-CON-FILE' { Open-R19FileWindow } { Close-R19FileWindow }) -Restore { Close-R19FileWindow } -Banner refused -Why attach-on-refused-page }
 $global:R19Blocks['r19-restore'] = { Invoke-R19Restore }
 $global:R19Blocks['r19-logs'] = { Invoke-R19Logs }
 # The old-build slices: the swap, the old build's own proof line, the rows (no driver yet), and the finally that restores HEAD, reloads and re-proves.

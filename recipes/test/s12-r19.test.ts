@@ -38,6 +38,15 @@ $r19Defs = Get-R18Defs '${RP}/recipes/s11b-r17.ps1'
 . ([scriptblock]::Create($r19Defs.Funcs['Invoke-R17Node']))
 `;
 const hasPs = spawnSync("powershell.exe", ["-NoProfile", "-Command", "1"], { encoding: "utf8" }).error === undefined;
+/** N-1: a mutant is built with a replacer function (`$'` in the replacement text is not a pattern) and must still parse, or it is red for the wrong reason. */
+function mutate(text: string, from: string, to: string): string {
+  const m = text.replace(from, () => to);
+  const f = join(mkdtempSync(join(tmpdir(), "s12r19m-")), "m.ps1");
+  writeFileSync(f, m, "utf8");
+  const r = spawnSync("powershell.exe", ["-NoProfile", "-Command", `$e = $null; $t = $null; [void][Management.Automation.Language.Parser]::ParseFile('${f.replace(/'/g, "''")}', [ref]$t, [ref]$e); $e.Count`], { encoding: "utf8" });
+  expect(r.stdout.trim(), "the mutant parses").toBe("0");
+  return m;
+}
 
 /** A lib that defines every name and does nothing: the "stub runner" the scenarios must fail on. */
 const STUB_LIB = [
@@ -238,7 +247,7 @@ describe.skipIf(!hasPs)("Run 19's entry blocks over the real Invoke-R17Node (a n
   for (const [what, from, to, check] of REAL_MUTANTS) {
     it(`mutant "${what}" turns "${check}" red`, () => {
       expect(LIB.includes(from), "the mutated text exists").toBe(true);
-      const o = run(LIB.replace(from, to), REAL_BODY, REAL_NODE);
+      const o = run(mutate(LIB, from, to), REAL_BODY, REAL_NODE);
       expect(CHECKS_REAL.filter(([n, p]) => n.startsWith(check) && !p(o)).length).toBeGreaterThan(0);
     });
   }
@@ -266,7 +275,7 @@ describe.skipIf(!hasPs)("Run 19's runner logic with stubbed helpers", () => {
   for (const [what, from, to, check] of MUTANTS) {
     it(`mutant "${what}" turns "${check}" red`, () => {
       expect(LIB.includes(from), "the mutated text exists").toBe(true);
-      const o = run(LIB.replace(from, to));
+      const o = run(mutate(LIB, from, to));
       const red = CHECKS.filter(([n, p]) => n.startsWith(check) && !p(o));
       expect(red.length).toBeGreaterThan(0);
     });

@@ -151,7 +151,7 @@ function unresolved(): { all: string[]; missing: string[] } {
   const d = mkdtempSync(join(tmpdir(), "s12r19s-"));
   try {
     const f = join(d, "t.ps1");
-    const names = ["s9-win.ps1", "s11-win.ps1", "s11b-win.ps1", "s12-win.ps1", "s12-win-b.ps1", "s12-win-c.ps1", "s11b-r17.ps1", "s11b-r17b.ps1", "s12-r18.ps1", "s12-r18-lib.ps1", "s12-r19.ps1", "s12-r19-lib.ps1"];
+    const names = ["s9-win.ps1", "s11-win.ps1", "s11b-win.ps1", "s12-win.ps1", "s12-win-b.ps1", "s12-win-c.ps1", "s11b-r17.ps1", "s11b-r17b.ps1", "s12-r18.ps1", "s12-r18-lib.ps1", "s12-r19.ps1", "s12-r19-lib.ps1", "s12-r19-a.ps1"];
     const files = names.map((x) => `'${join(REPO, "recipes", x).replace(/'/g, "''")}'`).join(",");
     writeFileSync(f, `
 $called = @{}; $defined = @{}

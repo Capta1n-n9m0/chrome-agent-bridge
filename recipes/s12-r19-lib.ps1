@@ -216,6 +216,7 @@ function Invoke-R19Restore {
   Invoke-R19RowBlock 'R19-RESTORE' {
     if (Test-S11Own $global:O) { Close-S11Window $global:O; $global:O = 0 }
     Invoke-R19Stamped $R17Blocks['rd-restore']
+    if ($global:R19Slice -eq 'liveA19' -and (Get-Command Close-R19Bc -ErrorAction Ignore)) { try { Close-R19Bc } catch { Say9 'CHECK R19-BANNER-CTL bc-tab=close-failed' } }   # after the safety restore: a tidy-up never skips it (S7-drivers-A)
   }
 }
 function Invoke-R19Logs {
