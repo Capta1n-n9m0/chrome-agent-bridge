@@ -9,7 +9,7 @@ Brief READ list: `docs/e2e-test-plan.md` §4.27 (lines 1768–1860); phase doc �
 DONE. Two fix rounds (of three).
 
 ## 2. Outputs
-- Commit: `<hash — from the committer's report; see the journal>`.
+- Commit: `e5b8341` (14 files; this hash line is written after the commit and left uncommitted for the session agent).
 - New code: `recipes/s12-forms-b.ts` (forms (14)–(20), (25), the attach judgment, the poll-until-K-devt loop, the
   banner timeline maths), `recipes/s12-win-b.ps1` (the DevTools opener by UIA menu, the DEVPROBE window procedure,
   the banner timeline sampler). Tests: `recipes/test/s12-forms-b.test.ts`, `recipes/test/s12-ps-b.test.ts`.

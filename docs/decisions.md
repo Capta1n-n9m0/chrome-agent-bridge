@@ -195,6 +195,18 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-28 · §4.27's line-form gaps settled before Run 19 (#358)
+**Decided:** S7-helpers-b (`e5b8341`, PASS-with-notes after two fix rounds; DevTools by Chrome's menu through UIA,
+`uia-menu`, judged only by the control) found that forms (15) and (16) have no spelling for a banner that never went
+off; a dated note in §4.27, written before any Run 19 observation, adds `end-ms=never`, judged as no end seen (a FAIL of
+the end-time clause). The helpers' other wording findings (S7-helpers-a.md §6, S7-helpers-b.md §6) are settled by the
+same note as their reports read; no pass rule moves. `uia-menu` is accepted as the DevTools method to try, the
+`DEVPROBE` deciding.
+**Why:** a grammar gap must be closed before the measurement, not after (`agent-rules.md` §2).
+**Instead of:** letting S7-record interpret a line outside the form.
+**Revisit if:** the DEVPROBE fails (every DevTools row NOT MEASURED, as §4.27 says).
+**By:** Claude (session agent's ruling)
+
 ### 2026-10-28 · S7-helpers is four slices, run in order (#357)
 **Decided:** Run 19's helpers (§4.27's 33 new line forms, the S12 fixture pages, #351 (4)'s three fixes, the runner)
 are split, each risk low, code cap 400 with tests up to 600 (#344 (4)), one step agent each, sequential (one lane):

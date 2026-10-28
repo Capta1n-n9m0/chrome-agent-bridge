@@ -63,3 +63,7 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
 - 2026-10-28T06:55Z · S7-sheet · step agent · ended · `a1b8544` · PASS-with-notes (two fix rounds) · §4.27, 56 rows; #356 recorded; phase doc 0.5 note.
 - 2026-10-28T06:55Z · split · S7-helpers-a/-b/-c/-d (#357), sequential.
 - 2026-10-28T06:55Z · S7-helpers-a · step agent · Opus · medium · started.
+- 2026-10-28T07:42Z · S7-helpers-a · step agent · ended · `4673783` · PASS-with-notes (one fix round) · recipes tests 1211 → 1242; all S12 fixture pages built (part B's too); §4.27 wording findings listed in its report.
+- 2026-10-28T07:42Z · S7-helpers-b · step agent · Opus · medium · started.
+- 2026-10-28T08:31Z · S7-helpers-b · step agent · ended · `e5b8341` · PASS-with-notes (two fix rounds) · recipes tests 1242 → 1302; #358 recorded with a dated §4.27 note (before any Run 19 observation).
+- 2026-10-28T08:31Z · S7-helpers-c · step agent · Opus · medium · started.
