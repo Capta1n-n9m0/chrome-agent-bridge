@@ -196,6 +196,29 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · liveA19 done in three attempts; its five FAILs go to S7-record for a cause reading; fix budget per slice (#367)
+**Decided:** liveA19 ran to the end in attempt 3 (`785da10`, `rows=32 warns=0 stop-return=0`). R19-RESTORE was equal to
+R19-0 by count and hash, and R19-LOGS passed.
+- **The five FAILs are recorded, not fixed:** R19-ARGS-1 (SDK `value-equal=4`), R19-ARGS-3 (MCP leg `exact=no`),
+  R19-CON-NOTEA, R19-CON-4 (`mcp-refused=no`) and R19-CON-FLOOR (`in-reply-disarmed=0`).
+- **S7-record reads the cause of each from the evidence** before writing a verdict. If a helper check is shown wrong
+  (the step agent suspects the MCP error-flag check in ARGS-3 and CON-4), the row is NOT DISCRIMINATING, never PASS. A
+  product cause stays FAIL and becomes a finding.
+- **Both fix rounds are accepted.** Round 1 (`079a063`) is #366's judge and the MCP actor's wait for its link. Round 2
+  (`922f757`) makes the window guard accept the three S12 fixture titles; its verifier found liveB19 and liveC19 would
+  have stopped on them too.
+- **The gotcha** (a fixture title in the driver window) goes to `recipes/CLAUDE.md` at the close-out.
+- **Budget:** three attempts and three fix rounds **per slice**. Each slice has its own step agent and starts from a
+  clean tree, so liveA19's two rounds do not count against liveB19–E19.
+- **Carried to liveB19:** verifier2's MINOR-1, a step in KEEP-3 that may give window X an error-page title.
+
+**Why:** cause before verdict, with no pass rule moved. A per-slice budget matches how the slices run.
+**Instead of:** a fourth liveA19 attempt to re-measure the FAILs, which is out of budget and would fix nothing in the
+product.
+**Revisit if:** S7-record finds a FAIL whose cause needs a re-run with a corrected helper; that is a new row in a later
+wave.
+**By:** Claude (session agent's rulings)
+
 ### 2026-10-29 · liveA19's STOP was a wrong constant in the sheet; control-2 is judged against the old build's measured answer; the MCP actor waits for its link (#366)
 **Decided:** liveA19 attempt 1 (`e1c05c4`) stopped at R19-ARGS-1 on `existing-tool-changed`, but no tool had changed.
 The control-2 constant `kind: "function"` for `evaluate "function f() {}"` came from a fake-extension test. A real page
