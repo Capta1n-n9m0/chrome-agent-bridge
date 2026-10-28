@@ -7,6 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import * as A from "../s12-r19-a.js";
+import { CONNECTING_REASON } from "../../mcp/src/link.js";
 import { STOP_REASONS, scanActors } from "../s12-r19.js";
 import { conFloorLine, conLine, conrefLine, floorCounts as F } from "../s12-forms.js";
 
@@ -446,4 +447,98 @@ describe.skipIf(!hasPs)("the drivers' PowerShell, with stubbed helpers", () => {
       expect(has(runPs(mutatePsa(from, to)), check)).toBe(false);
     });
   }
+});
+
+// ---- fix round 1 (#366): control-2 judged on ok only, the MCP actor waits for its link, an empty handle stops the helper ------------------------------------------------
+describe("#366 control-2: ok is the whole rule, the kind is only recorded", () => {
+  it("any ok answer passes the control, whatever its kind; an error is the STOP", () => {
+    for (const v of [{ kind: "undefined" }, { kind: "function" }, { kind: "Weird Kind!" }, undefined, null, 5]) expect(A.control2Stops({ v })).toBe(false);
+    expect(A.control2Stops({ e: { code: "VERSION", message: "m" } })).toBe(true);
+  });
+  it("the recorded kind is a plain lowercase word, else other, and none when absent", () => {
+    expect(A.control2Kind({ kind: "undefined" })).toBe("undefined");
+    expect(A.control2Kind({ kind: "function" })).toBe("function");
+    expect(A.control2Kind({ kind: "has space" })).toBe("other");
+    expect(A.control2Kind({ kind: "Upper" })).toBe("other");
+    expect(A.control2Kind({ kind: "" })).toBe("other");
+    expect(A.control2Kind({ kind: 5 })).toBe("other");
+    expect(A.control2Kind({})).toBe("none");
+    expect(A.control2Kind(undefined)).toBe("none");
+    expect(A.control2Kind(null)).toBe("none");
+    expect(A.control2Line("undefined")).toBe("CHECK R19-ARGS-1 control-2 kind=undefined");
+  });
+  it("the driver wires it: no kind === function test is left, the line is printed", () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "s12-r19-a.ts"), "utf8");
+    expect(src).not.toMatch(/kind\?: string[^\n]*!== "function"/);
+    expect(src).toContain("control2Stops(c2)");
+    expect(src).toContain("control2Line(control2Kind(c2.v))");
+  });
+});
+
+describe("#366 callUntilLinked: the scripted MCP actor waits for its link", () => {
+  const mk = (answers: string[]): { sends: () => number; clock: () => number; send: () => Promise<string>; sleep: (ms: number) => Promise<void>; seen: string[]; now: () => number } => {
+    let t = 0, n = 0; const seen: string[] = [];
+    return { sends: () => n, clock: () => t, now: () => t, seen, sleep: async (ms) => { t += ms; }, send: async () => { const a = answers[Math.min(n, answers.length - 1)]!; n++; return a; } };
+  };
+  const link = (s: string): boolean => s.includes(CONNECTING_REASON);
+  it("connecting twice then the answer: the answer, three sends", async () => {
+    const f = mk([`x ${CONNECTING_REASON}`, CONNECTING_REASON, "T7 opened"]);
+    const got: string[] = [];
+    expect(await A.callUntilLinked(f.send, link, f.now, f.sleep, (s) => got.push(s))).toBe("T7 opened");
+    expect(f.sends()).toBe(3);
+    expect(got.length).toBe(3);
+    expect(f.clock()).toBe(2 * A.LINK_POLL_MS);
+  });
+  it("a first answer that is not connecting: one send, no sleep", async () => {
+    const f = mk(["answer"]);
+    expect(await A.callUntilLinked(f.send, link, f.now, f.sleep)).toBe("answer");
+    expect(f.sends()).toBe(1); expect(f.clock()).toBe(0);
+  });
+  it("always connecting: throws a HelperDefect at the 15 s bound, not before", async () => {
+    const f = mk([CONNECTING_REASON]);
+    await expect(A.callUntilLinked(f.send, link, f.now, f.sleep)).rejects.toBeInstanceOf(A.HelperDefect);
+    expect(f.clock()).toBeGreaterThanOrEqual(A.LINK_WAIT_MS);
+    expect(f.clock()).toBeLessThanOrEqual(A.LINK_WAIT_MS + A.LINK_POLL_MS);
+    expect(A.LINK_WAIT_MS).toBe(15_000);
+    // the last send before the bound still counted: an answer arriving at 14.5 s is returned
+    const g = mk([...Array(29).fill(CONNECTING_REASON) as string[], "late"]);
+    expect(await A.callUntilLinked(g.send, link, g.now, g.sleep)).toBe("late");
+  });
+  it("the CONNECTING_REASON is the MCP's own constant and the only MCP client is mcpOpen", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const a = readFileSync(join(here, "..", "s12-r19-a.ts"), "utf8");
+    expect(a).toContain('import { CONNECTING_REASON } from "../mcp/src/link.js"');
+    expect(a).not.toContain("connecting to the bridge daemon");
+    for (const f of ["s12-r19-b.ts", "s12-r19-c.ts", "s12-r19-de.ts"]) expect(readFileSync(join(here, "..", f), "utf8")).not.toMatch(/StdioClientTransport|callTool\(/);
+  });
+});
+
+describe("#366 an empty tab handle stops the helper", () => {
+  it("handleOf returns the handle, and throws HelperDefect when there is none", () => {
+    expect(A.handleOf("Opened T12 at x")).toBe("T12");
+    expect(() => A.handleOf("no handle here")).toThrow(A.HelperDefect);
+    expect(() => A.handleOf("")).toThrow(A.HelperDefect);
+    expect(new A.HelperDefect("m").name).toBe("HelperDefect");
+  });
+  it("no driver parses a handle with its own regex", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    for (const f of ["s12-r19-b.ts", "s12-r19-c.ts", "s12-r19-de.ts"]) expect(readFileSync(join(here, "..", f), "utf8")).not.toContain("T\d+");
+  });
+  it("run()'s catch: a HelperDefect is rethrown even for a stateless row; a StopWhy is exit 2; a stateless throw is the row's FAIL leg", () => {
+    const d = new A.HelperDefect("x");
+    expect(A.catchDecision(d, "R19-X", {}, "n")).toEqual({ kind: "throw" });
+    expect(A.catchDecision(d, undefined, {}, "n")).toEqual({ kind: "throw" });
+    expect(A.catchDecision(new A.StopWhy("existing-tool-changed", "m"), "R19-X", {}, "n")).toEqual({ kind: "stop", line: "STOPWHY existing-tool-changed" });
+    expect(A.catchDecision(new Error("boom"), "R19-X", {}, "n")).toEqual({ kind: "crash", line: "LEG R19-X actor-error FAIL" });
+    expect(A.catchDecision(new Error("boom"), "opts", { row: "R19-Y" }, "n")).toEqual({ kind: "crash", line: "LEG R19-Y actor-error FAIL" });
+    expect(A.catchDecision(new Error("boom"), undefined, {}, "n")).toEqual({ kind: "throw" });
+  });
+  it("main() turns a HelperDefect into STOP: HelperDefect and exit 2", async () => {
+    const out: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...a: unknown[]) => void out.push(a.join(" ")));
+    const saved = A.cmds["__defect"];
+    A.cmds["__defect"] = async () => { throw new A.HelperDefect("no handle"); };
+    try { expect(await A.main(["__defect"])).toBe(2); } finally { spy.mockRestore(); if (saved) A.cmds["__defect"] = saved; else delete A.cmds["__defect"]; }
+    expect(out).toContain("STOP: HelperDefect");
+  });
 });

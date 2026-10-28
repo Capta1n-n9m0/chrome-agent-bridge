@@ -9,7 +9,7 @@ import { ARGS_RELOAD_HINT, CHOOSER_RELOAD_HINT } from "../daemon/src/intercept.j
 import { rawLeaks } from "./s11-rules.js";
 import { oldLine, type OldLeg } from "./s12-forms.js";
 import { versionchLine } from "./s12-forms-c.js";
-import { att, finish, handleOf, legLine, run, say, sleep, URL, type Ctx, type Err, type Mcp, type V } from "./s12-r19-a.js";
+import { att, control2Kind, finish, handleOf, legLine, run, say, sleep, URL, type Ctx, type Err, type Mcp, type V } from "./s12-r19-a.js";
 import { code, ev, fileOf, ROOT, state } from "./s12-r19-b.js";
 import { mcpCodeOf } from "./s12-r19-c.js";
 
@@ -32,8 +32,8 @@ export function judgeOldLeg(o: OldObs): V {
   if (o.leg === "control") return o.code === "ok" && !o.hint && o.forwarded === "n/a" ? "PASS" : "FAIL";
   return o.code === "VERSION" && o.hint && o.forwarded === (o.leg === "raw" ? "no" : "n/a") ? "PASS" : "FAIL";
 }
-/** The control's raw twin: the old worker answers a no-`args` `(a) => a` with `kind: "function"`, which is what makes the raw leg's `forwarded=no` mean something. */
-export const twinIsFunction = (ok: boolean, value: unknown): boolean => ok && typeof value === "object" && value !== null && (value as { kind?: unknown }).kind === "function";
+/** The control's raw twin (#366): the same no-`args` `function f() {}` call liveA19's control-2 sends; it must answer ok. Its kind is recorded (`control2Kind`), never judged here: S7-record compares it with liveA19's. */
+export const twinAnswered = (ok: boolean): boolean => ok;
 export const judgeOldControl = (o: OldObs, twin: boolean): V => (judgeOldLeg(o) === "PASS" && twin ? "PASS" : "FAIL");
 
 // ---- R19-VERSION: pure decisions ------------------------------------------------------------------------------------------------------------------
@@ -69,9 +69,9 @@ async function argsOld(x: Ctx): Promise<number> {
   const raw = await att(() => x.c.call("evaluate", { expression: "(a) => a", args: 1, tab: t.handle }));
   const ro: OldObs = { leg: "raw", code: code(raw.e), hint: hintSdk(raw.e), forwarded: rawForwarded(!raw.e) };
   say(oldLine(R, ro)); leg(R, "raw", judgeOldLeg(ro), legs);
-  const c1 = await att(() => t.evaluate("(a) => a")), c2 = await att(() => x.c.call("evaluate", { expression: "(a) => a", tab: t.handle }));
-  const twin = twinIsFunction(!c2.e, c2.v), co: OldObs = { leg: "control", code: code(c1.e), hint: hintSdk(c1.e), forwarded: "n/a" };
-  say(oldLine(R, co)); say(`CHECK ${R} control raw-twin kind=${twin ? "function" : "other"}`);
+  const c1 = await att(() => t.evaluate("(a) => a")), c2 = await att(() => x.c.call("evaluate", { expression: "function f() {}", tab: t.handle }));
+  const twin = twinAnswered(!c2.e), co: OldObs = { leg: "control", code: code(c1.e), hint: hintSdk(c1.e), forwarded: "n/a" };
+  say(oldLine(R, co)); say(`CHECK ${R} control raw-twin kind=${control2Kind(c2.v)}`);
   leg(R, "control", judgeOldControl(co, twin), legs);
   return finish(R, legs);
 }

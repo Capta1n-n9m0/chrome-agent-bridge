@@ -61,15 +61,23 @@ describe("R19-ARGS-OLD's decisions", () => {
   });
   it("the raw leg's forwarded word comes from the answer: any ok means it reached the old worker", () => {
     expect([D.rawForwarded(true), D.rawForwarded(false)]).toEqual(["yes", "no"]);
-    expect(D.twinIsFunction(true, { kind: "function" })).toBe(true);
-    for (const [okk, v] of [[true, undefined], [true, { kind: "value" }], [false, { kind: "function" }], [true, null]] as Array<[boolean, unknown]>) expect(D.twinIsFunction(okk, v)).toBe(false);
+    expect(D.twinAnswered(true)).toBe(true);
+    expect(D.twinAnswered(false)).toBe(false);
   });
-  it("the control: ok with no hint, and its raw twin kind function; either missing is a FAIL", () => {
+  it("the control: ok with no hint, and its raw twin answered ok (its kind is only recorded, #366); either missing is a FAIL", () => {
     const c: D.OldObs = { leg: "control", code: "ok", hint: false, forwarded: "n/a" };
     expect(D.judgeOldControl(c, true)).toBe("PASS");
     expect(D.judgeOldControl(c, false)).toBe("FAIL");
     expect(D.judgeOldControl({ ...c, code: "VERSION" }, true)).toBe("FAIL");
     expect(D.judgeOldControl({ ...c, hint: true }, true)).toBe("FAIL");
+  });
+  it("the twin sends function f() {}, not (a) => a, and records its kind with the shared helper", () => {
+    expect(TS).toContain('expression: "function f() {}"');
+    expect(TS).toContain("control2Kind(c2.v)");
+    expect(TS).toContain("CHECK ${R} control raw-twin kind=${");
+    expect(TS).not.toContain("twinIsFunction");
+    expect(TS).not.toMatch(/raw-twin kind=\$\{twin \?/);
+    expect(TS).toContain('expression: "(a) => a", args: 1'); // the raw args leg is unchanged
   });
   it("the printed line is form (20) with the sheet's keys", () => {
     expect(oldLine("R19-ARGS-OLD", { leg: "raw", code: "VERSION", hint: true, forwarded: "no" })).toBe("OLD R19-ARGS-OLD leg=raw code=VERSION hint=yes forwarded=no");

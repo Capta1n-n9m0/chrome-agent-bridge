@@ -9,6 +9,7 @@ import { K17 } from "./s11b-rules.js";
 import { EXPECT10 } from "./s10-rules.js";
 import { argsLine, argsTotalLine, argsrefLine, argsrefTotalLine, bannerConLine, bannerConVerdict, conFloorLine, conLine, conmcpLine, conmcpStats, dataField, effLine, floorCounts, globalsLine, IDLE_MIN_MS_19, newestEqual, stopcallLine, conrefLine, type ConEntry } from "./s12-forms.js";
 import { concapLine, concapStats } from "./s12-forms-b.js";
+import { CONNECTING_REASON } from "../mcp/src/link.js";
 
 export type V = "PASS" | "FAIL" | "NOT MEASURED" | "NOT DISCRIMINATING" | "RECORD";
 export type Why = "attach-after-disarm" | "attach-on-refused-page" | "existing-tool-changed" | "args-ran-js-off";
@@ -77,6 +78,18 @@ const STAMP = (): string => join(OUT(), "last-attach.stamp");
 export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 export const say = (l: string): void => console.log(l);
 export class StopWhy extends Error { constructor(readonly why: string, m: string) { super(m); } }
+/** A defect in the helper itself (no tab handle in an answer, an MCP that never linked): it ends the slice with `STOP: HelperDefect`, never a row's FAIL leg (#366). */
+export class HelperDefect extends Error { constructor(m: string) { super(m); this.name = "HelperDefect"; } }
+/** #366: control-2 (a raw no-`args` call) must answer ok; its kind is recorded, never judged. */
+export const control2Stops = (c: { e?: Err; v?: unknown }): boolean => c.e !== undefined;
+export const control2Kind = (v: unknown): string => { const k = typeof v === "object" && v !== null ? (v as { kind?: unknown }).kind : undefined; return k === undefined ? "none" : typeof k === "string" && /^[a-z]+$/.test(k) ? k : "other"; };
+export const control2Line = (k: string): string => `CHECK R19-ARGS-1 control-2 kind=${k}`;
+/** What run() does with a throw: a StopWhy is exit 2, a HelperDefect always propagates, a stateless row's throw is its FAIL leg, anything else propagates. */
+export function catchDecision(x: unknown, stateless: string | undefined, opts: Record<string, string>, name: string): { kind: "stop" | "crash"; line: string } | { kind: "throw" } {
+  if (x instanceof StopWhy) return { kind: "stop", line: `STOPWHY ${x.why}` };
+  if (x instanceof HelperDefect || stateless === undefined) return { kind: "throw" };
+  return { kind: "crash", line: crashLine(stateless === "opts" ? opts.row ?? name : stateless) };
+}
 type Tab = import("../sdk/src/index.js").Tab;
 type Client = import("../sdk/src/index.js").BridgeClient;
 export const stamp = (): void => { mkdirSync(OUT(), { recursive: true }); writeFileSync(STAMP(), String(Date.now())); };
@@ -107,6 +120,18 @@ export function actorRecord(tool: string, text: string, fixture?: string): strin
     : text;
   return JSON.stringify({ tool, text: kept });
 }
+export const LINK_WAIT_MS = 15_000, LINK_POLL_MS = 500;
+/** #366: re-send `send` while `connecting(answer)` holds, every LINK_POLL_MS, for at most LINK_WAIT_MS from the first send; past that a HelperDefect (the MCP never linked). Every answer goes to `record`. */
+export async function callUntilLinked<T>(send: () => Promise<T>, connecting: (r: T) => boolean, now: () => number, nap: (ms: number) => Promise<void>, record?: (r: T) => void): Promise<T> {
+  const first = now();
+  for (;;) {
+    const r = await send();
+    record?.(r);
+    if (!connecting(r)) return r;
+    if (now() - first >= LINK_WAIT_MS) throw new HelperDefect(`the MCP still answered "connecting" after ${LINK_WAIT_MS} ms`);
+    await nap(LINK_POLL_MS);
+  }
+}
 async function mcpOpen(slice: string): Promise<Mcp> {
   const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
   const { StdioClientTransport, getDefaultEnvironment } = await import("@modelcontextprotocol/sdk/client/stdio.js");
@@ -114,11 +139,13 @@ async function mcpOpen(slice: string): Promise<Mcp> {
   await c.connect(new StdioClientTransport({ command: process.execPath, args: [join(REPO, "mcp", "dist", "index.js")], cwd: REPO, stderr: "pipe", env: { ...getDefaultEnvironment(), ...(process.env.BRIDGE_TOKEN ? { BRIDGE_TOKEN: process.env.BRIDGE_TOKEN } : {}) } }));
   return {
     async call(tool, a, fixture) {
-      const r = (await c.callTool({ name: tool, arguments: a })) as { content?: Array<{ type: string; text?: string }>; isError?: boolean };
-      const text = (r.content ?? []).filter((x) => x.type === "text").map((x) => x.text ?? "").join("\n");
-      appendFileSync(join(OUT(), `actors-${slice}.jsonl`), actorRecord(tool, text, fixture) + "\n"); // one {tool,text} per tool result: R19-LOGS scans it
+      // #366: the MCP answers with its CONNECTING_REASON until its link is up; the same call is re-sent until it does (at most LINK_WAIT_MS), every answer logged.
+      const r = await callUntilLinked(async () => {
+        const x = (await c.callTool({ name: tool, arguments: a })) as { content?: Array<{ type: string; text?: string }>; isError?: boolean };
+        return { text: (x.content ?? []).filter((y) => y.type === "text").map((y) => y.text ?? "").join("\n"), isError: x.isError === true };
+      }, (x) => x.text.includes(CONNECTING_REASON), Date.now, sleep, (x) => appendFileSync(join(OUT(), `actors-${slice}.jsonl`), actorRecord(tool, x.text, fixture) + "\n")); // one {tool,text} per tool result: R19-LOGS scans it
       if (!IDLE_EXEMPT_TOOLS.includes(tool)) stamp();
-      return { text, isError: r.isError === true };
+      return r;
     },
     close: () => c.close(),
   };
@@ -144,9 +171,10 @@ export async function run(name: string, argv: string[], fn: (x: Ctx) => Promise<
       open: async (url, active = false, keep = false) => { const t = await c.newTab(url, { active }); stamp(); if (!keep) tabs.push(t); await sleep(1200); return t; },
     });
   } catch (x) {
-    if (x instanceof StopWhy) { say(`STOPWHY ${x.why}`); return 2; }
-    if (stateless !== undefined) { say(crashLine(stateless === "opts" ? opts.row ?? name : stateless)); return 1; }
-    throw x;
+    const d = catchDecision(x, stateless, opts, name);
+    if (d.kind === "throw") throw x;
+    say(d.line);
+    return d.kind === "stop" ? 2 : 1;
   } finally {
     for (const t of tabs) { await t.close().catch(() => undefined); stamp(); }
     await mcp?.close().catch(() => undefined);
@@ -154,7 +182,7 @@ export async function run(name: string, argv: string[], fn: (x: Ctx) => Promise<
   }
 }
 export const finish = (row: string, legs: V[]): number => { const bad = legs.filter((v) => v === "FAIL").length; say(`CHECK ${row} clauses=${legs.length} failed=${bad}`); return bad > 0 ? 1 : legs.includes("NOT MEASURED") ? 3 : 0; };
-export const handleOf = (t: string): string => /T\d+/.exec(t)?.[0] ?? "";
+export const handleOf = (t: string): string => { const h = /T\d+/.exec(t)?.[0]; if (h === undefined) throw new HelperDefect("no tab handle in the answer"); return h; };
 export const entriesOf = async (t: Tab, o: Record<string, unknown> = {}): Promise<ConEntry[]> => (await t.consoleMessages(o)) as unknown as ConEntry[];
 
 // ---- ARGS rows (no state change) --------------------------------------------------------------------------------------------------------------
@@ -182,7 +210,8 @@ async function args1(x: Ctx): Promise<number> {
   for (const via of ["sdk", "mcp"] as const) { say(argsTotalLine(R, { table: 5, valueEqual: tot[via].v, jsonEqual: tot[via].j, via })); legs.push(tot[via].v === 5 && tot[via].j === 5 ? "PASS" : "FAIL"); }
   const c1 = await att(() => t.evaluate<number>("1 + 1")), c2 = await att(() => x.c.call("evaluate", { expression: "function f() {}", tab: t.handle }));
   say(`ANSWER ${R} control-1 ${c1.e ? c1.e.code : "ok"}`); say(`ANSWER ${R} control-2 ${c2.e ? c2.e.code : "ok"}`);
-  if (c1.e || c1.v !== 2 || c2.e || (c2.v as { kind?: string } | undefined)?.kind !== "function") throw new StopWhy("existing-tool-changed", "a call without args answered differently");
+  say(control2Line(control2Kind(c2.v))); // #366: control-2's kind is recorded, not judged
+  if (c1.e || c1.v !== 2 || control2Stops(c2)) throw new StopWhy("existing-tool-changed", "a call without args answered differently");
   legs.push("PASS");
   say(legLine(R, "table", legs[0] === "PASS" && legs[1] === "PASS" ? "PASS" : "FAIL"));
   return finish(R, legs);

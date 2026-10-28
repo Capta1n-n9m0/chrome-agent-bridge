@@ -22,3 +22,11 @@
   (agent-rules §3 item 1). No fix round spent.
 - After: `-Block teardown` with a1 exit 0 (`CHECK clean PASS`); daemon PID 38440 stopped by `s9.ts daemon-shutdown`;
   nothing listening on 9234 or 8080-8089 (22:12Z). Attempts: liveA19 1 of 3; fix rounds 0 of 3.
+- 2026-10-29 resume (fresh step agent, Opus 5.5 medium): HEAD `dd6cbc1` (#366 ruled), tree clean. Fix round 1 of 3 starts
+  (fixer Sonnet medium -> `S7-live-fixer.md`; verifier Opus medium -> `S7-live-verifier.md`). Scope per #366: control-2
+  `ok`-only + `CHECK R19-ARGS-1 control-2 kind=<k>`; ARGS-OLD raw twin `function f() {}`, kind recorded; MCP actor waits
+  up to 15 s on the connecting reply (in `mcpOpen`, covers -a/-b/-c/-de MCP legs); empty handle throws a helper defect.
+- Fix round 1 (1 of 3): fixer DONE (`S7-live-fixer.md`; npm test 5558 -> 5570, 232 files). Verifier Opus medium
+  PASS-with-notes (`S7-live-verifier.md`): 5570 passed, typecheck and 7 recipes tsconfigs exit 0; new tests 12 red on
+  HEAD's code; 15 mutants, 11 killed, 4 survived = MINOR F1-F4 (test pins only, accepted as notes, not a blocker).
+  Next: committer, then attempt 2 from the fix commit.

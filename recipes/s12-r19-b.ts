@@ -9,7 +9,7 @@ import { K17, k17RawDir, k17RawMissing, judgeUpOpt, type J17 } from "./s11b-rule
 import { devtJudges, realIo, refusalStepJudge, windowed } from "./s11b.js";
 import { conkeptLine, bannerEndMs, bannerSpan, devprobe, keepdtLine, keependLine, keepseqLine, overlapExact, overlapLine, parseTimeline, pollMsOf, pollUntilDevtools, sweepheldLine, type BannerRead, type KeepLeg } from "./s12-forms-b.js";
 import { conmcpStats, type ConEntry } from "./s12-forms.js";
-import { att, entriesOf, finish, idle, judgeLine, judgeRefusal, legLine, MSG, run, say, sig, sleep, stamp, StopWhy, URL, type Ctx, type Err, type V } from "./s12-r19-a.js";
+import { att, entriesOf, finish, handleOf, idle, judgeLine, judgeRefusal, legLine, MSG, run, say, sig, sleep, stamp, StopWhy, URL, type Ctx, type Err, type V } from "./s12-r19-a.js";
 
 type Tab = import("../sdk/src/index.js").Tab;
 type Client = import("../sdk/src/index.js").BridgeClient;
@@ -288,7 +288,7 @@ async function conKept(x: Ctx): Promise<number> {
   say(conkeptLine(first, second));
   const d = judgeConKept(first, second);
   if (d === "STOP") throw new StopWhy("existing-tool-changed", "a second consoleMessages on a kept tab answered with fewer entries");
-  const mt = /T\d+/.exec((await m.call("browser_new_tab", { url: URL("con") })).text)?.[0] ?? "";
+  const mt = handleOf((await m.call("browser_new_tab", { url: URL("con") })).text);
   await sleep(2_000);
   const mv: V = conmcpStats((await m.call("browser_console_messages", { tab: mt })).text).lines === 11 ? "PASS" : "FAIL";
   await m.call("browser_close_tab", { tab: mt }); // the MCP's tab is not an `x.open` tab: closed here
