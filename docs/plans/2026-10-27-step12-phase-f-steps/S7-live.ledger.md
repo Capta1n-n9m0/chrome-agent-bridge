@@ -111,3 +111,26 @@
   -SWEEP-HELD (no reload ran, one capture segment). RECORD: -DEVT-NOFLAG. Runner stopped the daemon; nothing on
   9234/8080-8089; file scans all 0. Attempts 2 of 3; fix rounds 1 of 3. liveB19 closed (`S7-live-liveB19.md`); next:
   liveC19 (a fresh step agent).
+
+## liveB19 fix round 2 and attempt 3 (#368; fresh step agent, Claude Opus 5.5, medium)
+- 2026-10-29 start: HEAD `7b16949`, tree clean. Nothing listening on 9234 or 8080-8089; node PID 22152 (unrelated codex
+  runtime) only; no python. Chrome top-level windows: 2 (HWNDs 38602544 a New Tab window, 68708 another; neither a
+  fixture title; the user's, left alone). Budgets: attempts 2 of 3, fix rounds 1 of 3.
+- Measurer (Opus medium, row-less) started -> `S7-live-B-measurer.md`.
+- Measurer DONE (`S7-live-B-measurer.md`, evidence `-evidence.txt`): path measured by patterns only, in its own window:
+  Button `Chrome` (ClassName `BrowserAppMenuButton`) Expand -> MenuItem `More tools` Expand -> MenuItem `Developer tools
+  Ctrl+Shift+I` Invoke; docked DevTools in 439 ms. Attach check: `DEVPROBE method=uia-menu answer=ok ms=15516 attached=no`
+  (31/31 `ok`; `ok` before and after; one extra read 70 s later `ok`). Cleaned up; nothing listening. Step agent: #368 rules
+  this case (rows stay NOT MEASURED, cause to the user); its revisit-if (a window not the wave's) not met -> fix round 2
+  and attempt 3 go ahead as ruled; the measurer's premise question goes up as a proposal for user review.
+- Fix round 2 (2 of 3): fixer Sonnet medium -> `S7-live-B-fixer2.md`.
+- Fix round 2: fixer DONE (`S7-live-B-fixer2.md`; npm test 5577 -> 5580). Verifier Opus medium FAIL
+  (`S7-live-B-verifier2.md`): MAJOR F1 the fixer deleted mutant tests B18-B20 (Escape guards) unreported; MINOR F2 no
+  test pins `Open-S12UiaItem` in the opener; MINOR F3 700 ms unmeasured pause, one read, no re-find. Code path itself
+  confirmed. Fix round 3 (3 of 3, the last): Sonnet fixer -> `S7-live-B-fixer3.md`; fresh Opus verifier ->
+  `S7-live-B-verifier3.md` on the affected items only.
+- Fix round 3 (3 of 3): fixer Sonnet medium DONE (`S7-live-B-fixer3.md`: B18-B20 restored, B26 pins `Open-S12UiaItem`,
+  items re-found every 200 ms up to 3000 ms; npm test 5580 -> 5588, 233 files). Verifier Opus medium PASS-with-notes
+  (`S7-live-B-verifier3.md`): F1-F3 fixed; 14 mutants, 8 killed; MINOR F-M1 (no test pins the button step to
+  `Find-S12AppMenuButton`; the code does use it), NITs; typecheck and 7 recipes tsconfigs exit 0. Accepted as notes (no
+  fix rounds left). Next: committer, then attempt 3 from the fix commit.

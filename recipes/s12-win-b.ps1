@@ -4,7 +4,8 @@
 # Top-level names carry an S12 prefix so none shadows a global the runner reads (case-insensitive: $o vs $global:O, Run 17b).
 
 # The DEVPROBE's opening method (named in `method=` of the DEVPROBE line). F12 and Ctrl+Shift+I (s12-win.ps1 Open-S12DevTools) attached nothing
-# twice in Run 18 (#351 (3)); this one sends no opening key: it invokes Chrome's own menu (Customize and control -> More tools -> Developer tools) by UIA.
+# twice in Run 18 (#351 (3)); this one sends no opening key: it opens Chrome's own menu by UIA patterns only, as measured on Chrome 156
+# (S7-live-B-measurer.md): the app-menu Button (ClassName BrowserAppMenuButton, named 'Chrome') Expand -> MenuItem 'More tools' Expand -> MenuItem 'Developer tools' Invoke.
 # The only key it can send is a closing Escape to window X after a missed step (a menu may be open, or the page in X gets it).
 # Whether it opens DevTools is NOT claimed here: the DEVPROBE decides, from the control call's answer code alone.
 $S12DevMethod = 'uia-menu'
@@ -35,6 +36,25 @@ function Invoke-S12UiaElement($El) {
   } catch { return $false }
   $false
 }
+# The app-menu button of window X: the one Button of ClassName BrowserAppMenuButton (Chrome 156 names it 'Chrome', not 'Customize and control...').
+# $null when there are none or more than one. Window X only: the toolbar is never in a new window.
+function Find-S12AppMenuButton([long]$Hwnd) {
+  $root = $S9UIA::FromHandle([IntPtr]$Hwnd)
+  $c = New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::ClassNameProperty, 'BrowserAppMenuButton')
+  $b = @($root.FindAll([Windows.Automation.TreeScope]::Descendants, $c))
+  if ($b.Count -eq 1) { $b[0] } else { $null }
+}
+# Open one menu element: ExpandCollapse when it offers it (Expand only if not already Expanded: a second Expand threw 0x80131509 on Chrome 156),
+# else Invoke. $false when it offers neither or a pattern throws - never a throw, never a false $true.
+function Open-S12UiaItem($El) {
+  $p = $null
+  try {
+    if ($El.TryGetCurrentPattern([Windows.Automation.ExpandCollapsePattern]::Pattern, [ref]$p)) {
+      if ($p.Current.ExpandCollapseState -ne [Windows.Automation.ExpandCollapseState]::Expanded) { $p.Expand() }; return $true }
+    if ($El.TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern, [ref]$p)) { $p.Invoke(); return $true }
+  } catch { return $false }
+  $false
+}
 # Escape into window X only, foreground checked first (closes a menu a failed opener left open).
 function Send-S12Escape([long]$Hwnd) {
   Assert-S11Own $Hwnd 'menu escape'
@@ -42,17 +62,25 @@ function Send-S12Escape([long]$Hwnd) {
   [S9Win]::keybd_event(0x1B, 0, 0, [UIntPtr]::Zero); [S9Win]::keybd_event(0x1B, 0, 2, [UIntPtr]::Zero)
   Start-Sleep -Milliseconds 300
 }
-# Chrome's menu button -> "More tools" -> "Developer tools", in the wave's own window X on an 8081 fixture only. Returns $true when every step was
+# Chrome's app-menu button -> "More tools" -> "Developer tools", in the wave's own window X on an 8081 fixture only. Returns $true when every step was
 # invoked; $false (with a CHECK line naming the step, and Escape sent) when one is missing. The return value is a CHECK, never the probe's verdict.
 function Open-S12DevToolsMenu([long]$Hwnd) {
   Assert-S11Own $Hwnd 'DevTools menu'
   if (([string](Get-S9DocUrl $Hwnd)) -notmatch '^http://(127\.0\.0\.1|localhost):8081/') { Stop9 "window $Hwnd is not on a fixture (8081) - the menu is not opened"; throw 'not the fixture' }
   $global:S12Before = @(Get-S9ChromeWindows -AnyTitle | ForEach-Object { [long]$_ }); $global:S12Dev = $null
-  $steps = @(@('menu-button', 'Customize and control*', 'Button'), @('more-tools', 'More tools*', 'MenuItem'), @('developer-tools', 'Developer tools*', 'MenuItem'))
+  $steps = @(@('menu-button', 'BrowserAppMenuButton', 'Button'), @('more-tools', 'More tools*', 'MenuItem'), @('developer-tools', 'Developer tools*', 'MenuItem'))
+  $t0 = Get-S12NowMs
   foreach ($s in $steps) {
-    $el = $null; try { $el = Find-S12UiaByName $Hwnd $s[1] $s[2] } catch { $el = $null }
-    if (-not $el -or -not (Invoke-S12UiaElement $el)) { Say9 "CHECK devtools-menu step=$($s[0]) found=no"; Send-S12Escape $Hwnd; return $false }
+    # The menu-button is read once. A menu item is re-found every 200 ms until 3000 ms after the previous step's success (the menu draws late).
+    $el = $null
+    while ($true) {
+      try { $el = if ($s[0] -eq 'menu-button') { Find-S12AppMenuButton $Hwnd } else { Find-S12UiaByName $Hwnd $s[1] $s[2] } } catch { $el = $null }
+      if ($el -or $s[0] -eq 'menu-button' -or ((Get-S12NowMs) - $t0) -ge 3000) { break }
+      Start-Sleep -Milliseconds 200
+    }
+    if (-not $el -or -not (Open-S12UiaItem $el)) { Say9 "CHECK devtools-menu step=$($s[0]) found=no"; Send-S12Escape $Hwnd; return $false }
     Say9 "CHECK devtools-menu step=$($s[0]) found=yes"
+    $t0 = Get-S12NowMs
     Start-Sleep -Milliseconds 700
   }
   Start-Sleep -Milliseconds 1500
