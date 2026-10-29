@@ -202,3 +202,17 @@
   windows stayed (and two chrome://extensions E windows). Step agent closed the 4 wave windows by UIA; the user's 2 untouched.
   Daemon PID 9352 shut down; nothing on 9234/8080-8089; worktree list main only; scans 0. Escalating STOP by the sheet ->
   back to the session agent (`S7-live-liveD19.md`). Attempts 1 of 3; fix rounds 1 of 3.
+- 2026-10-29 (fresh step agent liveD19, Claude Opus 5.5, medium; #371): HEAD `2015b25`, tree clean. Budgets: attempts 1 of 3;
+  fix rounds 1 of 3. Fix round 2 (2 of 3): fixer Sonnet medium -> `S7-live-D-fixer2.md` (`Save-R19Seg`'s reload branch
+  closes D and E by `Test-S9Live` + `Close-S9Window`; a test that would have caught att 1); verifier Opus medium ->
+  `S7-live-D-verifier2.md`.
+- Fix round 2 (2 of 3): fixer Sonnet medium DONE (`S7-live-D-fixer2.md`; new `Close-R19CaptureWindows` closes D then E by
+  `Test-S9Live` + `Close-S9Window`, called from `Save-R19Seg`'s non-'end' branch even when the save failed; 2 new checks in
+  `recipes/test/s12-r19.test.ts`, failing before the fix (`2 failed | 54 passed`); npm test 5592 -> 5596, 235 files).
+  Verifier Opus medium -> `S7-live-D-verifier2.md` started.
+- Fix round 2 verifier Opus medium PASS-with-notes (`S7-live-D-verifier2.md`): at DIALOGS only the last D (excluded by
+  `Get-R19DevToolsCount`) and E (not DevTools) remain -> `devtools=0`; the new checks fail on HEAD's lib; mutants
+  Close-S11Window/D-only/E-only/no-reset killed, no-guard/skip-on-failed-save/close-before-save survived (code right, unpinned);
+  no test weakened (diff is additions only); npm test 5596/235 exit 0; typecheck and 7 recipes tsconfigs exit 0. MINOR: early
+  return when D is not live can orphan an E (reached only after a failed reopen, itself a STOP). Accepted as notes. Next:
+  committer, then attempt 2 from the fix commit.

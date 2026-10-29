@@ -2,7 +2,7 @@
 # Windows PowerShell 5.1, ASCII only. NOT run against Chrome by its author. recipes/s12-r19.ps1 dot-sources this file and fills $global:R19Blocks;
 # recipes/test/s12-r19.test.ts dot-sources it with stubbed helpers. Top-level names carry an R19 prefix (case-insensitive: no $o, $w, $d, $x).
 # Needs from the caller (stubbed in tests): Say9, Stop9, Show-S16, Save-S16, Load-S16, Fail-S16, Use-S16Options, Restore-S11Safety, Set-S9Foreground,
-# Close-S16Windows, End-S16Actor, Stop-S16All, Get-S11bStopCause, Test-S9Live, Save-S11bConsole, Close-S11Window, Set-S12AttachStamp, Invoke-R17Node,
+# Close-S16Windows, End-S16Actor, Stop-S16All, Get-S11bStopCause, Test-S9Live, Save-S11bConsole, Close-S11Window, Close-S9Window, Set-S12AttachStamp, Invoke-R17Node,
 # Invoke-S12CloserProbe, git, and the variables $Record, $Framing, $Steps, $GlobalsFile, $R17Blocks, $UpOptReport.
 $R19Prologue = @('preflight', 'servers', 'files', 'window', 'reload', 'console')
 $R19Order = @{
@@ -105,7 +105,16 @@ function Save-R19Seg([string]$Before) {
   $saved = $true; try { [void](Save-S11bConsole $global:D $f) } catch { $saved = $false }
   Say9 "CAPSEG $($global:R19Slice) seg=$k saved=$(if ($saved) { 'yes' } else { 'no' }) before=$Before"
   if (-not $saved) { $global:R19SegLost = $true } else { $global:R19Segs += $f }
-  if ($Before -eq 'end') { $global:S16ConsoleRead = $true } else { Close-S11Window $global:D; $global:D = 0 }
+  if ($Before -eq 'end') { $global:S16ConsoleRead = $true } else { Close-R19CaptureWindows }
+}
+# The capture window D and the chrome://extensions window E the console block opened with it are the wave's own but NOT in S11Own (Close-S11Window would leave them): close both
+# by handle, as Close-S16Windows does, whether or not the save worked. The reload opens its own chrome://extensions window, so E is not needed by it.
+function Close-R19CaptureWindows {
+  foreach ($r19w in 'D', 'E') {
+    $r19h = [long](Get-Variable -Name $r19w -Scope Global -ValueOnly -ErrorAction Ignore)
+    if ($r19h -and (Test-S9Live $r19h)) { Close-S9Window $r19h }
+    Set-Variable -Name $r19w -Scope Global -Value 0
+  }
 }
 function Open-R19Seg { $global:R19SegNext++; Invoke-R19Stamped $R17Blocks['console'] }
 

@@ -77,6 +77,7 @@ function Get-S11bStopCause($e) { 'cause' }
 function Test-S9Live($h) { $true }
 function Save-S11bConsole($h, $f) { Set-Content -LiteralPath $f 'safety: disarmed by the user'; $f }
 function Close-S11Window($h) { Write-Host 'CLOSE-CAPTURE' }
+function Close-S9Window($h) { Write-Host 'CLOSE-CAPTURE'; $global:Closed9 += @([long]$h) }
 function Set-S12AttachStamp { }
 function Test-S11Own($h) { $true }
 function Invoke-S12CloserProbe { $global:CloserRet }
@@ -121,6 +122,23 @@ T zeroStale { $global:NodeOut['s12-r19 proof'] = 'LOADED consoleMessages=UNKNOWN
 T closerStop { $global:CloserRet = $false; Stubs 'liveB19'; $global:R19Blocks['closerprobe'] = { function Invoke-S12CloserProbe { Stop9 'dialog-left-open (CLOSERPROBE)'; $false }; Invoke-R19Closer }; Invoke-R19Slice 'liveB19' }
 T closerOpenedNo { $global:CloserRet = $false; Stubs 'liveB19'; $global:R19Blocks['closerprobe'] = { Invoke-R19Closer; Write-Host "HUMAN $($global:R19HumanClick)" }; Invoke-R19Slice 'liveB19' }
 T segs { $global:R19Slice = 'liveB19'; $global:R19SegNext = 1; $global:R19Segs = @(); $global:R19SegLost = $false; Save-R19Seg 'reload'; Open-R19Seg; Save-R19Seg 'end'; Write-Host "SEGS $(@($global:R19Segs | ForEach-Object { Split-Path -Leaf $_ }) -join ',')" }
+T capClose {
+  $global:Closed9 = @(); $global:R19Slice = 'liveD19'; $global:OpenN = 0
+  function Test-S11Own($h) { $false }
+  function Close-S11Window([long]$h) { if (-not (Test-S11Own $h)) { Write-Host "S11-REFUSED $h" } }
+  $R17Blocks = @{ reload = { Write-Host 'RELOAD' }; console = { $global:E = 9 + 10 * $global:OpenN; $global:D = 8 + 10 * $global:OpenN; $global:OpenN++ } }
+  & $R17Blocks['console']
+  Invoke-R19Swapped 'abc1234' { Write-Host 'ROWS' }
+  Write-Host "CLOSED9 $($global:Closed9 -join ',')"; Write-Host "LEFT $($global:D),$($global:E)"
+}
+T capCloseOne {
+  $global:Closed9 = @(); $global:R19Slice = 'liveD19'; $global:OpenN = 0
+  function Test-S11Own($h) { $false }
+  function Close-S11Window([long]$h) { if (-not (Test-S11Own $h)) { Write-Host "S11-REFUSED $h" } }
+  $global:D = 8; $global:E = 9
+  Save-R19Seg 'reload'
+  Write-Host "CLOSED9 $($global:Closed9 -join ',')"; Write-Host "LEFT $($global:D),$($global:E)"
+}
 T logs { $global:R19Slice = 'liveA19'; $global:R19SegNext = 1; $global:R19Segs = @(); $global:R19SegLost = $false; $global:R19Pending['R19-ARGS-1'] = 'PASS'; $global:R19Pending['R19-CON-1'] = 'PASS'; Set-Content -LiteralPath $DaemonLog 'x'; Invoke-R19Logs }
 T logsLeak { $global:NodeRc['s12-r19 daemonlog'] = 2; Set-Content -LiteralPath $DaemonLog 'x'; Stubs 'liveA19'; $global:R19Blocks['r19-logs'] = { Invoke-R19Logs }; Invoke-R19Slice 'liveA19' }
 T restoreRow { $global:R19Slice = 'liveC19'; Invoke-R19Restore }
@@ -176,6 +194,8 @@ const CHECKS: Array<[string, (o: Obs) => boolean]> = [
   ["R19-0: a build that does not answer is a STOP before any state change and the preflight block never runs", (o) => (o.zeroStale ?? []).includes("STOP old-build-left-loaded") && !(o.zeroStale ?? []).includes("MUST-NOT-RUN") && (o.zeroStale ?? []).some((x) => /restored=n\/a/.test(x))],
   ["closer: a left-open dialog is the returning STOP dialog-left-open; opened=no only marks the human-style rows", (o) => (o.closerStop ?? []).includes("STOP dialog-left-open") && (o.closerOpenedNo ?? []).includes("HUMAN False") && !(o.closerOpenedNo ?? []).some((x) => x.startsWith("STOP "))],
   ["segments: one file per segment for B (-1, -2), saved before the reload and the console reopened after", (o) => { const l = o.segs ?? []; return l.includes("SEGS console-liveB19-1.txt,console-liveB19-2.txt") && l.indexOf("CLOSE-CAPTURE") < l.indexOf("CONSOLE-REOPEN") && l.filter((x) => x.startsWith("CAPSEG liveB19")).length === 2; }],
+  ["capture windows: the real Close-S11Window refuses a window outside S11Own, so a reload closes every capture D and E by handle and only the last pair stays open", (o) => (o.capClose ?? []).includes("CLOSED9 8,9,18,19") && (o.capClose ?? []).includes("LEFT 28,29") && !(o.capClose ?? []).some((x) => x.startsWith("THREW"))],
+  ["capture windows: Save-R19Seg 'reload' closes D and E by handle and clears both", (o) => (o.capCloseOne ?? []).includes("CLOSED9 8,9") && (o.capCloseOne ?? []).includes("LEFT 0,0")],
   ["logs: the rows with a console clause print their ROW before R19-LOGS; text-leak is a returning STOP", (o) => { const l = o.logs ?? []; const a = l.indexOf("ROW R19-ARGS-1 PASS"); return a >= 0 && a < l.indexOf("ROW R19-LOGS PASS slice=A") && (o.logsLeak ?? []).includes("STOP text-leak"); }],
   ["restore: R19-RESTORE prints its one ROW after the restore block", (o) => (o.restoreRow ?? []).includes("ROW R19-RESTORE PASS slice=C")],
 ];
@@ -234,6 +254,8 @@ const MUTANTS: Array<[string, string, string, string]> = [
   ["R19-0 after another block", "'r19-0', 'r19-old-args'", "'r19-old-args', 'r19-0'", "order: liveA19..E19"],
   ["LOADED not released after MANIFEST", "'^MANIFEST '", "'^NEVER '", "R19-0: LOADED is the second line"],
   ["re-proof skipped", "    try { if (-not (Invoke-R19Rerun)) {", "    try { if ($false) {", "swap: the finally restores HEAD, reloads and re-proves"],
+  ["capture window closed through Close-S11Window (attempt 1)", "else { Close-R19CaptureWindows }", "else { Close-S11Window $global:D; $global:D = 0 }", "capture windows: the real Close-S11Window refuses"],
+  ["the E window is left open", "foreach ($r19w in 'D', 'E') {", "foreach ($r19w in 'D') {", "capture windows: the real Close-S11Window refuses"],
   ["a staged file counts as committed", '([bool]"$(git log -1 --format=%H -- $UpOptReport)".Trim())', "(@(git ls-files -- $UpOptReport).Count -gt 0)", "gate: R19-UP-OPT does not run"],
 ];
 
