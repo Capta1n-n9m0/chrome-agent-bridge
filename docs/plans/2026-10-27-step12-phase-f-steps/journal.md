@@ -99,3 +99,5 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
 - 2026-10-29T00:05Z · S7-live (liveB19) · step agent (fresh) · Opus · medium · started (measurer, fix round 2, attempt 3).
 - 2026-10-29T01:10Z · S7-live (liveB19) · step agent · ended · measurer + fix 2–3 `3478261`, att 3 `a9393ed`: 24 rows, 0 STOP, 0 FAIL; 14 PASS, 3 NOT MEASURED (DevTools opened but evaluate never refused: DEVPROBE attached=no), 1 RECORD; RESTORE equal. #369 (open for the user).
 - 2026-10-29T01:10Z · S7-live (liveC19) · step agent · Opus · medium · started ALONE at the next commit.
+- 2026-10-29T01:44Z · S7-live (liveC19) · step agent · ended · fix 1 `0c42637` (MCP leg b hidden #in → #vis), att 1 `c5ca06a`: 26 rows, 0 STOP; 15 PASS, 2 RECORD, 3 FAIL (CHOOSE-REFUSE dis, CHOOSE-KEPT change, G2-1 b TIMEOUT); RESTORE equal. #370.
+- 2026-10-29T01:44Z · S7-live (liveD19) · step agent · Opus · medium · started ALONE at the next commit.

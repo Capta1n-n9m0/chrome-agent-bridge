@@ -197,6 +197,31 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · liveC19 done in one attempt; REFUSE `dis` cannot be reached on its page; KEPT and G2-1 read for cause (#370)
+**Decided:** liveC19 attempt 1 (`c5ca06a`, `rows=26 warns=0 stop-return=0`) gives 15 PASS, 2 RECORD and 3 FAIL. No STOP
+fired. R19-RESTORE was equal to R19-0 with `native=0 devtools=0`, and R19-LOGS passed.
+- **Fix round 1 (`0c42637`) is accepted.** CHOOSE-MCP leg b's `{css:"#in"}` pointed at a hidden input, which the locator
+  never matches; it now targets the visible `#vis`. The sheet names no element, so this is the driver's choice, as
+  in #368.
+- **R19-CHOOSE-REFUSE leg `dis` is NOT DISCRIMINATING at S7-record**, with its cause named, never PASS. The page's
+  button calls `click()` on a disabled input, which by the HTML spec does nothing. So no chooser opens, and the
+  product's disabled-input refusal (after a chooser opens) cannot be reached on that page on any build. The refusal stays
+  proved by its unit tests. A row that targets the disabled input itself goes to a later wave.
+- **R19-CHOOSE-KEPT stays FAIL**, as printed (`change` 1 where 2 is wanted). The cause, that no `change` fires for an
+  unchanged selection, is inferred and not measured. S7-record reads it, and if the evidence shows the cause, the row is
+  a finding for a later row with a second file. It is not re-judged.
+- **R19-G2-1 stays FAIL until S7-record reads its cause** (B's screenshot timed out at ~35 s in both variants). If the
+  covered-window capture hang is shown, its `b=ok` clause becomes NOT DISCRIMINATING; it is never a PASS.
+- **`profile-all=1` in the uncommitted actors file** (likely the MCP failure report's absolute screenshot path) is the
+  known #349 (a) item. It is noted in the record, and nothing private is committed.
+- **Before liveE19's attempt 1**, its step agent fixes the same hidden `#in` target at `recipes/s12-r19-de.ts:81`.
+
+**Why:** a clause the page cannot reach is a sheet defect, named as such. An inferred cause is not a measured one, so it
+does not change a verdict. No pass rule moves.
+**Instead of:** re-running REFUSE and KEPT with a changed page or file, which would be new rows after an observation.
+**Revisit if:** S7-record's cause reading for KEPT or G2-1 shows a product defect; that is a finding for the user.
+**By:** Claude (session agent's rulings)
+
 ### 2026-10-29 · liveB19 closed at attempt 3; docked DevTools on Chrome 156 does not refuse the bridge's debugger (#369)
 **Decided:** liveB19 attempt 3 (`a9393ed`, `rows=24 warns=0 stop-return=0`) gives the slice's verdicts:
 - **14 PASS, 3 NOT MEASURED, 1 RECORD.** The NOT MEASURED rows are UP-DEVT, KEEP-4 and SWEEP-HELD; the RECORD is
