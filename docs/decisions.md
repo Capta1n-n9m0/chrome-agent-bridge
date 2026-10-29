@@ -197,6 +197,31 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · liveD19's `devtools-left-open` STOP was the capture's own windows; fix round 2 and attempt 2 (#371)
+**Decided:** liveD19 attempt 1 (`3fdfbfd`) escalated at R19-RESTORE: `DIALOGS … devtools=2`. The current build was
+restored and proven (`LOADED rerun=1 … args=answered`), and the safety state was equal to R19-0.
+- **The STOP was not a product result.** The two DevTools windows were the slice's own earlier worker-console capture
+  windows. `Save-R19Seg` closes them with `Close-S11Window`, which only closes `S11Own` windows; each reopen also left a
+  chrome://extensions window. This path ran for the first time here.
+- **This is not an integrity-floor event.** The windows were the wave's own and were closed by the step agent, and
+  nothing private or stateful was left.
+- **The next step is fix round 2 and then attempt 2**, as proposed. Fix round 2 is recipes only: the segment save closes
+  the capture window as the other close paths do, and closes or reuses the Extensions window, with tests. Attempt 2 runs
+  into `d2`. liveE19 shares the frame and gets the fix before its run.
+- **Control-2's reference is measured.** The old build's raw twin read `kind=undefined`, the same as liveA19's
+  control-2, so S7-record judges control-2 PASS by #366. R19-ARGS-OLD's attempt 2 reading replaces this one only if it
+  differs, and both are recorded then.
+- **The MCP leg's `code=ERROR` stands FAIL as printed** (the tool text carries no code on line 1). S7-record reads it
+  with liveA19's MCP legs.
+- **`bd523bb`'s trailer slip is recorded, not amended.** It reads Opus for Sonnet-written code; the history is not
+  rewritten.
+
+**Why:** a STOP caused by the instrument's own windows, with the build and the state restored, is a helper defect inside
+the budget.
+**Instead of:** carrying liveD19 as STOPped, which would lose ARGS-OLD's verdict and control-2's reference.
+**Revisit if:** attempt 2 STOPs again.
+**By:** Claude (session agent's rulings)
+
 ### 2026-10-29 · liveC19 done in one attempt; REFUSE `dis` cannot be reached on its page; KEPT and G2-1 read for cause (#370)
 **Decided:** liveC19 attempt 1 (`c5ca06a`, `rows=26 warns=0 stop-return=0`) gives 15 PASS, 2 RECORD and 3 FAIL. No STOP
 fired. R19-RESTORE was equal to R19-0 with `native=0 devtools=0`, and R19-LOGS passed.
