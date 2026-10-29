@@ -134,3 +134,9 @@
   (`S7-live-B-verifier3.md`): F1-F3 fixed; 14 mutants, 8 killed; MINOR F-M1 (no test pins the button step to
   `Find-S12AppMenuButton`; the code does use it), NITs; typecheck and 7 recipes tsconfigs exit 0. Accepted as notes (no
   fix rounds left). Next: committer, then attempt 3 from the fix commit.
+- Fix rounds 2+3 committed `3478261`. liveB19 att3 (runner Sonnet medium; out `$TEMP/bridge-e2e/s19-live/b3`; HEAD
+  3478261, build clean): exit 0, no STOP (`CHECK rows19 rows=24 warns=0 stop-return=0`). Opener reached DevTools (3 steps
+  found=yes, `devtools-ui found=pane`); `DEVPROBE method=uia-menu answer=ok ms=15476 attached=no` -> UP-DEVT, KEEP-4,
+  SWEEP-HELD NOT MEASURED; DEVT-NOFLAG RECORD; every other row PASS as in att2; R19-RESTORE PASS (equal by count and hash),
+  R19-LOGS PASS. Daemon PID 10264 shut down; nothing on 9234/8080-8089; the user's two windows untouched; scans all 0.
+  Attempts 3 of 3; fix rounds 3 of 3. liveB19 closed (`S7-live-liveB19.md` Attempt 3); next: liveC19.

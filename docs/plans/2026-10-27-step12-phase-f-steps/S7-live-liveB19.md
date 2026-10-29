@@ -123,3 +123,113 @@ constant. **By:** Claude (proposed)
 Nothing running: no listener on 9234 or 8080–8089, the daemon shut down by the att 2 runner, no repo node or python
 process (node PID 22152 is an unrelated codex runtime). Safety state as found (att 2 read-back equal by count and hash).
 No DevTools or wave window open. Next: liveC19 (a fresh step agent).
+
+## Attempt 3 (#368: measurer, fix rounds 2 and 3, the last attempt)
+
+Fresh step agent, Claude Opus 5.5, medium. Measurer Opus 5.5 medium (`S7-live-B-measurer.md`); fixers Sonnet 5.5 medium
+(`S7-live-B-fixer2.md`, `-fixer3.md`); verifiers Opus 5.5 medium (`S7-live-B-verifier2.md` FAIL, `-verifier3.md`
+PASS-with-notes); runner Sonnet 5.5 medium (`S7-live-runner-liveB19-att3.md`). Budget at the end: attempts 3 of 3, fix
+rounds 3 of 3 (none left).
+
+### A3.1 Verdict
+**DONE.** Attempt 3 ran to its end with no STOP: exit 0, `CHECK rows19 rows=24 warns=0 stop-return=0`, `SLICE liveB19
+done: calls with a failed check 0, not measured 0`. No row FAIL. The DevTools opener now reaches DevTools
+(`step=menu-button`, `more-tools`, `developer-tools` each `found=yes`; `CHECK devtools-ui method=uia-menu found=pane`), but
+DEVPROBE still reads `answer=ok ms=15476 attached=no`, so R19-UP-DEVT, R19-KEEP-4 and R19-SWEEP-HELD stay `NOT MEASURED —
+DevTools was not attached` by the sheet's rule; per #368 the cause goes to the user (A3.7).
+
+### A3.2 Measurer (row-less, before any fix)
+In a window it opened itself on `127.0.0.1:8081/s12-console.html?s12=con&probe=m1`, by UIA patterns only (no click, no
+key): Button `Chrome` (ClassName `BrowserAppMenuButton`, AutomationId `view_1007`) `ExpandCollapse.Expand()` 26 ms ->
+MenuItem `More tools` (ExpandCollapse only) Expand 14 ms -> MenuItem `Developer tools Ctrl+Shift+I` `Invoke()` 10 ms;
+DevTools docked into the window 439 ms later. Each menu level is a new untitled `Chrome_WidgetWin_1` window, and its items
+are also under the browser window's tree. A second Expand on an expanded item threw `0x80131509`. Attach check:
+`evaluate "1"` `ok` before; `DEVPROBE method=uia-menu answer=ok ms=15516 attached=no` (31/31 `ok`); one read 70 s later,
+DevTools still open, `ok`; `ok` after close. No window the wave did not open was needed (#368's revisit-if not met).
+
+### A3.3 Fix rounds 2 and 3, commit `3478261`
+`Open-S12DevToolsMenu` (`recipes/s12-win-b.ps1`) finds the button by ClassName (`Find-S12AppMenuButton`, exactly one),
+opens each element with `Open-S12UiaItem` (Expand only when not Expanded, else Invoke; `$false` on a throw), and re-finds
+the two menu items every 200 ms up to 3 000 ms. Round 2's verifier: FAIL (MAJOR: mutant tests B18-B20 deleted
+unreported). Round 3 restored them and added the pins; verifier3 PASS-with-notes: MINOR F-M1 (no test pins the button
+step to `Find-S12AppMenuButton`; the code uses it, and attempt 3 printed `menu-button found=yes`), NITs. npm test 5577 ->
+5588 (233 files); typecheck and the seven recipes tsconfigs exit 0.
+
+### A3.4 Attempt 3 rows as printed
+HEAD `3478261`, out `$TEMP/bridge-e2e/s19-live/b3` (fresh), `-Att 3`, build `built extension → dist/`. Counts: 24 rows
+(`CHECK rows19`); of the R19 rows, PASS 14 (R19-0, -UP-OPT, -BANNER-CTL, -UP-6, -F-RAW, -F-RAW-2, -F-RAW-DIR, -KEEP-1
+`banner-clause=NOT DISCRIMINATING`, -KEEP-2, -KEEP-3, -CON-KEPT, -KEEP-OVERLAP, -RESTORE, -LOGS), NOT MEASURED 3
+(-UP-DEVT, -KEEP-4, -SWEEP-HELD), RECORD 1 (-DEVT-NOFLAG, `DEVNOFLAG probe=ok kept-then-devtools=not-run`); the rest are
+the RD-0/RULES/R17B-0/UP-RESTORE/RD-RESTORE lines, all PASS.
+- `DEVPROBE method=uia-menu answer=ok ms=15476 attached=no`; `CLOSERPROBE method=uia-owner opened=yes closed=yes ms=184
+  native-after=0`.
+- R19-UP-OPT `O2 in 353 ms`; R19-UP-6 clauses=5 failed=0; F-RAW, -2, -DIR clauses=2 failed=0 each, `banner=PASS`.
+- `KEEPSEQ R19-KEEP-1 calls=5 gap-ms=3000 answers=5/5 banner=continuous end-ms=10042 poll-ms=280`.
+- R19-KEEP-2 idle `end-ms` 10132/10134/10104 `next=ok`, ctl 4988/5057/5028 `next=BAD_PARAMS`; `medians idle=10132
+  ctl=5028 measured=yes`.
+- R19-KEEP-3 (clauses=12 failed=0): disarm 6344 DISARMED; block 6570, nav-blocked 6800, nav-own 6634, nav-file 6708
+  DOMAIN_BLOCKED; close 6156 TAB_GONE; `leg=replace NOT RUN`.
+- `OVERLAP R19-KEEP-OVERLAP leg=evaluate first=ok second=DEBUGGER_DEVTOOLS exact=yes`.
+- `CAPSEG liveB19 seg=1 saved=yes before=end` (no reload ran); `DIALOGS liveB19 native=0 devtools=0 wave-windows-open=1`.
+
+### A3.5 Rows whose attempt 2 and attempt 3 readings differ
+Verdicts: identical for all 24 rows. Readings that differ:
+
+| Row / line | Attempt 2 (`a40aa86`) | Attempt 3 (`3478261`) |
+|---|---|---|
+| DEVPROBE path | `CHECK devtools-menu step=menu-button found=no` (DevTools never opened) | all three steps `found=yes`, `devtools-ui found=pane` (DevTools opened, docked) |
+| DEVPROBE | `answer=ok ms=15365 attached=no` | `answer=ok ms=15476 attached=no` |
+| CLOSERPROBE ms | 123 | 184 |
+| R19-UP-OPT O2 | 362 ms | 353 ms |
+| R19-KEEP-1 `poll-ms` | 247 | 280 (above the sheet's line form `≤250`; no judge reads it; for S7-record) |
+| R19-KEEP-1 `end-ms` | 10122 | 10042 |
+| R19-KEEP-2 medians | idle 10021, ctl 5050 | idle 10132, ctl 5028 |
+| R19-KEEP-3 `end-ms` range | 6177–6649 | 6156–6800 |
+
+The DevTools rows read the same verdict in both attempts (NOT MEASURED) for a different reason: in attempt 2 DevTools
+never opened; in attempt 3 it opened and the bridge's `evaluate` was not refused.
+
+### A3.6 STOPs, restore, R19-LOGS, after-state
+- STOPs: none (`stop-return=0`).
+- R19-RESTORE PASS: `RESTORE armed=equal evaluate=equal blocklist lines=0 hash=equal uploadfolders lines=0 hash=equal`;
+  read-back `stored page equal true, daemon.status equal true, title armed true`; mid-slice block-list restores equal x2.
+- R19-LOGS PASS: console and daemon scans all 0; `DAEMONLOG liveB19 sentinel=0 console-text=0 args-text=0`; SCANTOOL
+  `browser_console_messages sentinel=11` (the tool returns the fixture's console text by design, as attempt 2), others 0;
+  `SCAN actors … sentinel=11 profile-other=0`, `profile-all=0`.
+- File scans (`scan18 --what other`) of record, evidence and console: all 0; a user-name/folder grep: 0 (two pattern
+  mentions in the runner report replaced by placeholders by the step agent). Console copy: 5 title lines dropped.
+- After: daemon PID 10264 shut down; nothing on 9234 or 8080-8089; only node PID 22152 (unrelated). Chrome windows: the
+  user's two (38602544, 68708), untouched; no DevTools or wave window left.
+- Evidence: `S7-live-record-liveB19-att3.txt` (392 lines), `S7-live-evidence-liveB19-att3.txt` (546),
+  `S7-live-console-liveB19-att3-1.txt` (931).
+
+### A3.7 Proposed decisions
+#### 2026-10-29 · The DevTools opener follows Chrome 156's measured menu path
+**Decided:** accept fix rounds 2 and 3 (`3478261`): button by ClassName `BrowserAppMenuButton`, Expand only when not
+expanded, menu items re-found up to 3 s; verifier3's MINOR F-M1 kept as a note (no rounds left; attempt 3 proves the
+button step live). **Why:** measured, and attempt 3 opened DevTools by it. **Instead of:** a mouse click or Alt+F.
+**Revisit if:** a later Chrome drops the ClassName. **By:** Claude (proposed)
+
+#### 2026-10-29 · On Chrome 156 an open docked DevTools did not refuse the bridge's debugger: the DevTools rows' premise, for user review
+**Decided:** R19-UP-DEVT, R19-KEEP-4 and R19-SWEEP-HELD stand `NOT MEASURED — DevTools was not attached` (attempt 3, as
+printed). The cause is no longer the opener: DevTools opened (measurer and attempt 3) and `evaluate` kept answering `ok`
+(the measurer: 31/31 within 15.5 s, and once 70 s later, past the keeper's 5 s idle bound, so a fresh attach was likely
+needed — inferred from the constant; the worker log was not read). Run 18's F12/Ctrl+Shift+I probes also read
+`attached=no`. These rows, as written, may be unmeasurable in the real profile: whether `DEBUGGER_DEVTOOLS` can occur there
+at all (undocked DevTools, DevTools opened before the first bridge call, other cases not measured) is the user's to rule,
+with the extension's "one debugger per tab" bullet (`extension/CLAUDE.md`; R19-DEVT-NOFLAG's question) beside it. Note:
+R19-KEEP-OVERLAP's `second=DEBUGGER_DEVTOOLS` is the extension's own overlap answer, not DevTools. **Why:** no pass rule
+moves; the measurement says the opener was not the only cause. **Instead of:** another opener method now (no budget, and
+the measurement points elsewhere). **Revisit if:** a scratch measurement shows a DevTools state that refuses
+`chrome.debugger.attach` on Chrome 156. **By:** Claude (proposed, for user review: it touches what `DEBUGGER_DEVTOOLS`
+claims)
+
+#### Gotcha candidates for `recipes/CLAUDE.md` (close-out)
+(1) Chrome 156's app menu by UIA: Button ClassName `BrowserAppMenuButton` (named `Chrome`), Expand works (unlike the
+Extensions button's E_FAIL); submenu parents offer only ExpandCollapse and a second Expand throws `0x80131509`; leaf items
+offer Invoke and their names carry the accelerator (`Developer tools Ctrl+Shift+I`). (2) A docked DevTools opened by the
+menu did not make `evaluate` answer `DEBUGGER_DEVTOOLS` (measurer, attempt 3).
+
+### A3.8 Handoff
+Nothing running; safety state as found (read back equal by count and hash); no DevTools or wave window open. liveB19 is
+closed (no attempts or fix rounds left). Next: liveC19 (a fresh step agent).
