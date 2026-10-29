@@ -192,6 +192,19 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · S5-drivers-A: split into A1 and A2; one #395 breach recorded (#402)
+**Decided:** S5-drivers-A runs as A1 (`2224637`: the shared runner, R20-0, POP, ARGS-ORDER, ARGS-3; 1,074 lines, accepted
+only as DONE-PARTIAL) and A2 (the CON rows, ARGS-OLD, RESTORE, LOGS, the entry script, and A1's carried MINORs), capped
+at 600 again. A1's round-2 fixer ran one mutant in the main tree against #395; the verifier found no residue. **Why:**
+Run 19's slice-A driver was ~2,000 lines; the breach is recorded so the next briefs repeat the rule. **Instead of:**
+accepting a 1.8× slice. **By:** Claude
+
+### 2026-10-29 · S5-drivers-A: R20-ARGS-ORDER's `ref` leg is RECORD, not judged (#401)
+**Decided:** the driver runs the step and records its answer; no `KEYORDER … leg=ref` line; the leg does not count
+toward the row (§4.28 dated note, before any observation). **Why:** `evaluateRef` refuses a non-element value, so a
+keyed object has no ref (A1's verifier, from `sdk/src`). **Instead of:** a fabricated ref line. **Revisit if:** the SDK
+gains a value ref. **By:** Claude
+
 ### 2026-10-29 · S5-helpers: a mismatched MCP line is FAIL; the disabled-input reachability rule (#400)
 **Decided:** `mcpLineVerdict` returns FAIL on any mismatch of the MCP's own line or `isError`; only a driver, by the
 sheet's pre-written rule, may call a leg NOT DISCRIMINATING. For R20-CHOOSE-REFUSE-DIS, `flip` answering `TIMEOUT` while

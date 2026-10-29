@@ -35,3 +35,6 @@
 - 2026-10-29T13:17:49Z · S5-helpers · step agent · ended · `b4ff74c` · verifier FAIL → FAIL → PASS-with-notes (2 of 3 rounds; the MAJORs were a local path / home-folder name in evidence, redacted) · tests 5654 → 5705, files 238 → 239; 655 lines (1.09×, extra is tests) · recipes tsconfigs now 8 · `S5-helpers.md`.
 - 2026-10-29T13:17:49Z · decisions · #400. e2e plan §4.28: a dated note on form (3) (`n/a` for R20-POP-NONE), before any observation.
 - 2026-10-29T13:17:49Z · S5-drivers-A · step agent · Opus · medium · started (output `S5-drivers-A.md`).
+- 2026-10-29T14:48:54Z · S5-drivers-A · step agent · ended DONE-PARTIAL · A1 `2224637` · verifier FAIL → FAIL → PASS-with-notes (2 of 3 rounds) · tests 5705 → 5772 · `S5-drivers-A.md`. A2 remains.
+- 2026-10-29T14:48:54Z · decisions · #401 (ARGS-ORDER `ref` leg RECORD; §4.28 dated note, before any observation), #402 (the A1/A2 split; one #395 breach, no residue).
+- 2026-10-29T14:48:54Z · S5-drivers-A2 · step agent · Opus · medium · started (output `S5-drivers-A2.md`).
