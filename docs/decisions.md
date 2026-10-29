@@ -192,6 +192,12 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · S5-helpers: a mismatched MCP line is FAIL; the disabled-input reachability rule (#400)
+**Decided:** `mcpLineVerdict` returns FAIL on any mismatch of the MCP's own line or `isError`; only a driver, by the
+sheet's pre-written rule, may call a leg NOT DISCRIMINATING. For R20-CHOOSE-REFUSE-DIS, `flip` answering `TIMEOUT` while
+`self` answers anything other than the refusal or `TIMEOUT` is FAIL. **Why:** a helper that softens a mismatch would
+re-tune a verdict after the fact (agent-rules §2). **Instead of:** NOT DISCRIMINATING by default. **By:** Claude
+
 ### 2026-10-29 · S5-sheet: a refused DevTools row is FAIL with the finding `devtools-refuses`, not a STOP (#399)
 **Decided:** in liveC20, a DevTools row whose bridge call is refused while the independent control shows DevTools
 attached prints FAIL against its pre-written `ok`, is recorded as the finding `devtools-refuses`, and the conditional

@@ -32,3 +32,6 @@
 - 2026-10-29T12:37:41Z · decisions · #399 (a refused DevTools row is FAIL + finding, no STOP).
 - 2026-10-29T12:37:41Z · split · S5-helpers (~590) → S5-drivers-A (~600) → -B (~560) → -C (~540), sequential, per S5-sheet.md's proposal.
 - 2026-10-29T12:37:41Z · S5-helpers · step agent · Opus · medium · started (output `S5-helpers.md`).
+- 2026-10-29T13:17:49Z · S5-helpers · step agent · ended · `b4ff74c` · verifier FAIL → FAIL → PASS-with-notes (2 of 3 rounds; the MAJORs were a local path / home-folder name in evidence, redacted) · tests 5654 → 5705, files 238 → 239; 655 lines (1.09×, extra is tests) · recipes tsconfigs now 8 · `S5-helpers.md`.
+- 2026-10-29T13:17:49Z · decisions · #400. e2e plan §4.28: a dated note on form (3) (`n/a` for R20-POP-NONE), before any observation.
+- 2026-10-29T13:17:49Z · S5-drivers-A · step agent · Opus · medium · started (output `S5-drivers-A.md`).
