@@ -20,7 +20,7 @@ All documentation lives in [`docs/`](docs/).
 
 ## Status
 
-**24 tools**, implemented and **E2E-validated** against the real default profile: Phases A–D
+**25 tools**, implemented and **E2E-validated** against the real default profile: Phases A–D
 (connection, navigation, perception, action fidelity, robustness) plus `browser_evaluate` and
 network inspection (`browser_network_requests`, `browser_network_clear`, and
 `browser_wait_for({networkIdle:true})`). Since Step 6, a shared localhost daemon sits between the
@@ -53,7 +53,17 @@ opens or acts on `file:` pages. See [`docs/setup.md` → Uploading files](docs/s
 `back`, `forward` or download runs, the block list also stops a redirect hop onto a blocked site (Runs 17 and 17b,
 2026-10-27).
 
-4665 unit tests green in 191 files (`npm test` 2026-10-27 on Step 11b's tree). The Step 6 daemon split was E2E-tested in
+**Step 12 (Phase F, ergonomics; built, Runs 18 and 19 run, not closed).** `browser_evaluate {args}` passes data to a
+function without escaping it into the string (SDK: `{args}` on `evaluate`, `evaluateRef`, `evaluateToFile`; R19-ARGS-2, R19-ARGS-GLOBAL: PASS);
+`browser_console_messages` (SDK `tab.consoleMessages()`) reads the page's console, earlier messages included (R19-CON-1: PASS); the bridge
+keeps one debugger session per tab while an agent works, to avoid the banner flicker (tested: `extension/test/debugger-keeper.test.ts`; the
+live banner reading did not discriminate, R19-KEEP-1); `browser_upload_file {chooser:true}` answers a site's own "Open file" window from your Upload folders (R19-CHOOSE-1, R19-CHOOSE-2: PASS); and a
+trusted click, type or key press (not one sent with `focusEmulation`) holds the screen lock from its focus to 500 ms after its input (tested: `daemon/test/s6-trusted-focus.test.ts`; the live timing row R19-G2-1 failed, cause not established). Run 19 (2026-10-28/29, fixture
+pages): of 58 row ids, 42 passed, 5 failed, 5 did not discriminate, 3 were not measured and 3 are records
+(`docs/plans/2026-10-27-step12-phase-f-steps/S7-run-record.md`). Known limits are in
+[`docs/setup.md`](docs/setup.md#reading-the-console) and under Running JavaScript, Uploading files and Troubleshooting.
+
+5596 unit tests green in 235 files (`npm test` 2026-10-29, Step 12 S8). The Step 6 daemon split was E2E-tested in
 wave W1 (2026-10-22), Step 7's multi-actor tabs in Runs 8–10 (2026-10-22/23), Step 8 in Runs 11–12
 (2026-10-23/24), Step 9's safety controls in Run 13 (2026-10-24; 24 rows passed, 7 failed — none
 shown to be a product defect; ratified by the user, #202), Step 10 in Runs 14–15 (2026-10-25; Run 15:

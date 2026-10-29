@@ -160,7 +160,7 @@ acts on **this session's tab**.
 | `browser_evaluate(expression, timeoutMs?, asRef?, saveTo?, overwrite?, args?)` *tab* | Run JavaScript in the tab's page context and return the result (shows the debugging banner); `asRef:true` also returns a `[ref=eN]` for an element result, to act on with the other tools; `saveTo` (an absolute file path) writes the value to that file instead and answers only path, size, kind and sha256; `args` (any JSON value, at most 1 MiB) makes `expression` a function source called with it, such as `"(a) => a.rows.length"` (one function expression, no trailing `;`; an extension older than Step 12 answers `VERSION` — reload it) — see [Running JavaScript](#running-javascript) |
 | `browser_network_requests(tab?, filter?, types?, failedOnly?, limit?, includeHeaders?, id?)` | List the network requests the tab has made — method, status, type, duration, size, URL — captured continuously with no banner; `id` shows one request's headers and body summary |
 | `browser_network_clear(tab?)` | Forget the recorded network requests, so the next `browser_network_requests` shows only what your next action caused |
-| `browser_console_messages(level?, limit?)` *tab* | List the console messages and uncaught errors Chrome kept for the tab's page, those logged before the call included: one line per entry, oldest first (time in UTC, level, `uncaught`, text); `level` keeps that level and every more severe one (`error` > `warning` > `info` > `debug`), `limit` 1–200 (default 200) the newest. Limits: no source URL or stack, a text cut at 2000 characters; the page's frames are not read; entries from a blocked site, the extension or a `file:` page, and those logged before the bridge was last switched on or before the extension's worker last restarted, are left out; refused `JS_DISABLED` while JavaScript is off, and wherever `browser_snapshot` is refused; shows the debugging banner while it reads (Step 12, #323, #334) |
+| `browser_console_messages(level?, limit?)` *tab* | List the console messages and uncaught errors Chrome kept for the tab's page, those logged before the call included: one line per entry, oldest first (time in UTC, level, `uncaught`, text); `level` keeps that level and every more severe one (`error` > `warning` > `info` > `debug`), `limit` 1–200 (default 200) the newest. Limits: no source URL or stack, a text cut at 2000 characters; the page's frames are not read (*amended 2026-10-29: a same-site frame is read, R19-CON-FRAME; a frame in another site's process is not*); entries from a blocked site, the extension or a `file:` page, and those logged before the bridge was last switched on or before the extension's worker last restarted, are left out; refused `JS_DISABLED` while JavaScript is off, and wherever `browser_snapshot` is refused; shows the debugging banner while it reads (Step 12, #323, #334) |
 | `browser_upload_file(ref \| locator, paths, chooser?)` *tab* | Put 1–20 local files (absolute paths) into a file input, or a label or element holding exactly one, as if you had picked them in the file dialog; with `chooser=true` the target may instead be the button or link that opens the page's own file dialog (refused `JS_DISABLED` while JavaScript is off). Refused `UPLOAD_REFUSED` unless each file is in an **Upload folders** folder you allowed and Chrome's **Allow access to file URLs** is on for the extension; the tab is not brought to the front; answers each file's name, size and sha256 — see [Uploading files](#uploading-files) |
 | `browser_download(url, path, overwrite?, timeoutMs?)` | Save a URL to disk with the profile's cookies (fetched by the extension's service worker: no CORS, cross-origin redirects followed). `path` is absolute — a file, or a directory to use the response's filename. Reports size, type and sha256 |
 
@@ -318,8 +318,13 @@ popup by handle (decisions.md · 2026-10-25 · S7: Run 15 stands as recorded; it
   leave it there; this session's tab does not change. Measured in Step 10's Run 15 (row MCPF-1R): on a
   background fixture tab, 9 of 9 trusted clicks, typings and key presses reached the page as trusted
   events, the tab in front. Default synthetic input never changes what you see. Focus and input are
-  two calls, so another actor's screenshot in the same window can switch tabs between them (phase doc
-  0.2, Stage 0 F19; not seen live). The same need holds for anything that requires window focus, such
+  two calls, so another actor's screenshot in the same window could switch tabs between them (phase doc
+  0.2, Stage 0 F19; not seen live). *Superseded 2026-10-29: was "can switch", because S6-G2 closed the gap in the code.* *Updated 2026-10-29 (Step 12 S6-G2): a trusted click, type or key press (not one sent with `focusEmulation`)
+  now holds the visibility lock from its focus through the input and 500 ms after the reply, so another
+  actor's screenshot waits (`daemon/test/s6-trusted-focus.test.ts`, G6.5 and G6.7). Live, a typed string
+  arrived complete in 5 of 5 rounds under a competing capture (R19-G2-2, PASS; evidence of no harm, not a
+  view of the gap itself). The timed check of the hold, R19-G2-1, FAILED: the second client's screenshot got
+  `TIMEOUT` after about 35 s; its cause is not established.* The same need holds for anything that requires window focus, such
   as a clipboard write in `browser_evaluate`: call `browser_focus_tab` first. *Superseded 2026-10-25:
   was "Call `browser_focus_tab` first, or use the default synthetic input … A script's trusted actions
   focus the tab first by themselves", because Step 10 S2 made the MCP's trusted tools focus first too
@@ -411,7 +416,7 @@ reports off (below).
   path?})`, `click`, `type(target, text, {submit?, trusted?})`, `pressKey(key, {trusted?})`, `hover`,
   `scroll({target?, direction?})`, `selectOption(target, values)`, `locate`, `waitFor`, `evaluate`,
   `evaluateRef`, `evaluateToFile(expression, {path, overwrite?, timeoutMs?})`, `network`,
-  `networkClear`, `download(url, path)`, `upload(target, paths, {timeoutMs?})`, `focus`, `close`, `release`. *Superseded 2026-10-25: the list
+  `networkClear`, `download(url, path)`, `upload(target, paths, {timeoutMs?, chooser?})`, `consoleMessages({level?, limit?})`, `focus`, `close`, `release`. *Updated 2026-10-29 (Step 12 S8): the list had no `consoleMessages`, and `upload` had no `chooser`; `evaluate`, `evaluateRef` and `evaluateToFile` take `{args}`. The `Tab` has `consoleMessages` (`mcp/test/s12-console-cross.test.ts` C3.4, R19-CON-MCP; `sdk/test/s12-upload-chooser.test.ts`, `mcp/test/s12-args-cross.test.ts` B2.1). The client's cursor has it too by the code (`sdk/src/client.ts`, which hands it to the cursor's `Tab`); no test calls it on the client.* *Superseded 2026-10-25: the list
   had no `evaluateToFile`, because Step 10 S4 added it (#127, #205).* *Superseded 2026-10-26: the list had no
   `upload(target, paths, {timeoutMs?})`, because Step 11 S4 added it (#240); the client's cursor has `upload` too
   ([Uploading files](#uploading-files)).*
@@ -449,7 +454,12 @@ act on it with `click`" — and `BAD_PARAMS` for anything else. `tab.evaluateToF
 overwrite?, timeoutMs?})` writes the value to the absolute file `path` instead of returning it — the
 SDK half of `browser_evaluate {saveTo}`, with the same rules ([Running JavaScript](#running-javascript))
 — and resolves with `{path, bytes, kind, sha256}`, never the value (`sdk/src/tab.ts`; the client's
-cursor has it too).
+cursor has it too). With `{args}` (any JSON value, at most 1 MiB), the three `evaluate` methods take `expression` as one
+function source and call it with `args`: `tab.evaluate("(a) => a.rows.length", {args: {rows: [1, 2]}})`; the SDK checks
+`args` before any call (`mcp/test/s12-args-cross.test.ts`, third test; `shared/test/protocol-step12.test.ts`; R19-ARGS-2). Details and limits:
+[Running JavaScript](#running-javascript). `tab.consoleMessages({level?, limit?})` resolves with the entries
+`{level, text, ts, kind}` ([Reading the console](#reading-the-console)); `formatConsole(entries)` from `@bridge/sdk/format`
+renders them as the MCP prints them (`sdk/test/s12-console-format.test.ts`).
 
 **Failure reports.** When a `Tab` call fails because the page was not as expected —
 `LOCATOR_NOT_FOUND`, `LOCATOR_AMBIGUOUS`, `REF_STALE`, `OFFSCREEN`, `PAGE_ERROR`, `NAV_FAILED` or
@@ -551,6 +561,19 @@ disarm detaches it at once (the banner then goes within seconds; 3–14 s measur
 ends the session.
 Default clicks/typing use synthetic events and do **not** show the banner.
 
+*What Run 19 (2026-10-28/29, fixture pages) measured of this.* Five calls 3 s apart all answered `ok` (R19-KEEP-1; its
+banner reading was not discriminating, so the steady banner itself is shown only by the keeper's tests,
+`extension/test/debugger-keeper.test.ts`, D4.1). With the session left to idle the banner ended a median 5.1 s later
+than when a refusal dropped the session at once (10 132 ms against 5 028 ms, R19-KEEP-2), and a call refused by the
+gate while a session was kept answered with the refusal itself (R19-KEEP-3). A refused `uploadFiles` showed no banner
+after 20 s of quiet (R19-UP-6, R19-F-RAW, -F-RAW-2, -F-RAW-DIR); Run 18 had read a banner on those rows,
+and why the two runs differ is not shown. `browser_console_messages` and the chooser upload show it during the call
+(R19-CON-BANNER, R19-CHOOSE-1); a call refused for JavaScript off, a blocked, own or `file:` page showed none
+(R19-CON-JSOFF, R19-CON-3, R19-CON-OWN, R19-CON-FILE, R19-CHOOSE-JSOFF). **Not measured:** Chrome's DevTools opened
+docked did not make the bridge's calls fail (a probe: 31 of 31 `ok`), so what the bridge does when DevTools is open,
+a kept session meeting DevTools and the start-up sweep of a held tab are not shown live (R19-UP-DEVT, R19-KEEP-4,
+R19-SWEEP-HELD: NOT MEASURED; decisions.md #369).
+
 Reach for `trusted:true` when a site ignores synthetic input — some editors, canvas apps and
 anti-automation checks test `event.isTrusted`. Trusted typing focuses the field and selects
 its contents first, then replaces the selection with real keystrokes, so it overwrites rather
@@ -580,6 +603,35 @@ serialised object, and 20 000 characters of output in total. When anything is cu
 with `(output truncated — …)`. Note that `maxString` (5 000) applies only to strings inside an
 object: a **top-level** string is a primitive that never reaches the in-page serialiser, so it is
 capped by the 20 000-character total instead.
+
+*Added 2026-10-29 (Step 12 S8): a limit measured in Run 19.* An object the page returns comes back through the SDK's
+`value` with its keys **sorted**, not in the page's order (R19-ARGS-1, FAIL: 4 of 5 values equal to what was sent,
+the one object with several keys reordered). The row's own reading is that Chrome's `returnByValue` does this, so it
+predates Step 12 and is not an `args` defect; that reading is from Stage 0 and the code, not from a live print. Through the MCP
+the printed text kept the page's order, 5 of 5 (R19-ARGS-1, `via=mcp`); the sorted keys are the SDK's `value` only.
+
+**Passing data in: `args`.** *Added 2026-10-29 (Step 12).* `browser_evaluate {expression, args}` (SDK `tab.evaluate`,
+`evaluateRef`, `evaluateToFile` with `{args}`) takes any JSON value of at most 1 MiB and calls `expression`, which must
+be one function expression with no trailing `;`, with `args` as its one argument: `"(a) => a.rows.length"`. Nothing of
+`args` is written into the expression string, so there is no quoting to get wrong; the value goes to Chrome as a JSON
+string argument (round trip of nested, Unicode and `null` values: `extension/test/s12-args-cdp.test.ts`, B2.1). What
+Run 19 measured on fixture pages:
+- **No page global is left behind**: after the call the page has no `args` global, no function global and no new own
+  key on `window` (R19-ARGS-GLOBAL, PASS; `extension/test/s12-args-cdp.test.ts`, "no page global").
+- **Refused before anything runs**, `BAD_PARAMS` with no part of the value in the message: a value `JSON.stringify` would
+  drop or turn into `null`, a value over 1 MiB, a source that is not a function; eleven refusals read exactly, and the
+  page's effect counter did not move (R19-ARGS-2, PASS; `shared/test/protocol-step12.test.ts`).
+- **A page whose CSP forbids `eval`** answers the call like any other (R19-ARGS-CSP, PASS).
+- **A loop is stopped at `timeoutMs`**: a call with `timeoutMs` 1 500 answered `TIMEOUT` after 1 516 ms and the page
+  answered the next call (R19-ARGS-STOP, PASS; the pause-and-terminate step is tested in
+  `extension/test/s12-args-call.test.ts`).
+- **JavaScript off** refuses it `JS_DISABLED` before any attach (`extension/test/s12-args-cdp.test.ts`, B2.2). The live
+  row R19-ARGS-3 FAILED on its MCP leg, because the sheet expected the extension's message where the MCP prints its own
+  one-line refusal (`mcp/test/safety.test.ts`); so the MCP's live refusal of `args` is not yet shown.
+- **An extension older than Step 12** is refused `VERSION` with a reload hint, nothing forwarded
+  (`mcp/test/s12-args-cross.test.ts`, B2.3; `daemon/test/s12-args-feature.test.ts`). Live, the MCP leg of
+  R19-ARGS-OLD is not discriminating (it looked for a `VERSION` code on line 1 of an error text that has none), so the
+  live MCP text is not yet shown. Reload the extension ([Troubleshooting](#troubleshooting)).
 
 **Bulk data goes to a file: `saveTo`.** Everything `browser_evaluate` returns enters the model's
 context (and the session's transcript on disk). `browser_evaluate {saveTo: <absolute path>,
@@ -660,6 +712,42 @@ Focus the window (`browser_focus_tab`) if you need those. *Superseded 2026-10-22
 **It reads the DOM, not the accessibility tree.** `document.querySelectorAll("button")` lists hidden
 and `aria-hidden` elements that `browser_snapshot` deliberately prunes. Useful, but don't treat the
 two as the same view of the page.
+
+## Reading the console
+
+*Added 2026-10-29 (Step 12 S3, run live in Run 19 on fixture pages).* `browser_console_messages({level?, limit?})` (SDK
+`tab.consoleMessages({level?, limit?})`) returns the console messages and uncaught errors Chrome kept for the tab's page,
+those logged before the call included, as entries `{level, text, ts, kind}`. The MCP prints one line each, oldest first:
+`<UTC time> <level> [uncaught] <text>` (`sdk/test/s12-console-format.test.ts`); a page with none gives `No console
+messages.` (R19-CON-MCP, PASS). It reads Chrome's own record: nothing is put into the page, and the banner shows while it
+reads and is gone after (R19-CON-BANNER, PASS; one debugger session that only enables and disables the console,
+`extension/test/s12-console-gate.test.ts`, "allowed").
+- **What comes back.** A page that logged 10 messages and threw once returned 11 entries in time order; `limit: 3` gave
+  the newest 3 and `level: "error"` the 2 errors (R19-CON-1, PASS). An uncaught error and an unhandled promise rejection
+  are `uncaught` entries (R19-CON-2, R19-CON-REJ, PASS). A text over 2000 characters is cut at 2000 (R19-CON-BIG, PASS).
+  After the page navigates, only the new page's messages come back (R19-CON-NAV, PASS). A second read in the same
+  session returns the same entries (R19-CON-KEPT, PASS).
+- **No source.** An entry holds no URL and no stack (R19-CON-1, `url=0 stack=0`; `extension/test/s12-console-reduce.test.ts`).
+  An entry whose source is a blocked site or a bridge page is dropped before anything is stripped (same test file);
+  live, a message from a same-site frame whose address was on the block list was dropped, and a frame in another site's
+  process was not read at all (R19-CON-FRAME, PASS). The tool's description says only that frames are not read; Run 19
+  read a same-site frame's messages when its address was not blocked.
+- **Refusals** are the ones `browser_snapshot` gives, plus JavaScript off: `JS_DISABLED` while JavaScript is off
+  (R19-CON-JSOFF, PASS), `DOMAIN_BLOCKED` on a blocked site, a bridge page or a `file:` page (R19-CON-3, R19-CON-OWN,
+  R19-CON-FILE, PASS), `DISARMED` while the bridge is off (tested, `extension/test/s12-console-gate.test.ts`, C3.2; the
+  live row R19-CON-4 is not discriminating).
+- **Messages from before the bridge was switched on** are not returned: the floor moves at each arm and at the worker's
+  start (`extension/test/s12-console-reduce.test.ts`, "the arm floor"). The live row R19-CON-FLOOR did not make its
+  precondition (the driver kept the old waits), so it is not discriminating and the floor is not yet shown live.
+- **The MCP text is capped at 20 000 characters**: 200 messages of 2000 characters came back as 9 lines, 18 278 characters
+  and one marker line, `… [truncated: 191 more lines, the newest — narrow with level/limit]` (R19-CON-CAP, PASS;
+  `sdk/test/s12-console-cap.test.ts`). It keeps the **oldest** lines; whether it should keep the newest is open for you
+  to rule (decisions.md #355).
+- **Limit: an object logged before the read shows as `Object`.** Chrome's replay of earlier messages carries no preview
+  of an object's contents, so `console.log({e: new Error("x")})` read later gives its class name, not the message of
+  the error inside (R19-CON-NOTEA, FAIL; a product finding with no leak: `url=0 stack=0`). The `Object` reading and its cause are from
+  Stage 0 (`stage0-m1-C.txt`) and the code; the live row shows the error's text absent from the reply (`marker=0`) and
+  no line prints the entry's text. Objects logged while a read is running were not measured through this tool.
 
 ## Inspecting network requests
 
@@ -785,7 +873,7 @@ Some pages have no file input an agent can target, only an "Upload" button whose
 dialog. Pass `chooser: true` (MCP `chooser=true`, SDK `tab.upload(target, paths, {chooser: true})`) and target that
 button or link. In one call the bridge tells Chrome to hand the dialog to it instead of showing it, clicks the
 button, puts the files into the input the dialog belongs to, and gives the dialog back to Chrome, so your own clicks
-open the dialog as usual again (built, not yet run live; Run 19 checks it). What you see: the debugging banner for the call, and no file dialog. It works on a
+open the dialog as usual again. *Superseded 2026-10-29: was "(built, not yet run live; Run 19 checks it)", because Run 19 ran it: R19-CHOOSE-1, R19-CHOOSE-4 PASS (below).* What you see: the debugging banner for the call, and no file dialog. It works on a
 tab in the background. The rules are the ones above: only files in your Upload folders, Allow access to file URLs on,
 the same answer. It is refused `JS_DISABLED` while JavaScript is off for the bridge, because the click runs in the
 page. If no dialog opens within 5 s of the click, the answer is `TIMEOUT` and nothing is uploaded; a page that opens
@@ -794,6 +882,29 @@ runs is refused `DEBUGGER_DEVTOOLS`, whose text says to close DevTools even when
 upload is exactly as before. `chooser` needs the extension reloaded after the update: to an older extension the
 bridge sends nothing and answers `VERSION` "the Chrome extension is an older build without the file chooser upload —
 reload it at chrome://extensions" (decisions.md #355).
+
+*Run 19 (2026-10-28/29, fixture pages) and the tests, sentence by sentence.*
+- **The file reaches the page and no dialog shows** (`dialog=0`), by locator and by ref on a button, and for a label,
+  the input itself and two files into a `multiple` input; the page's tab was in the background and the banner showed
+  (R19-CHOOSE-1, R19-CHOOSE-LABEL, PASS).
+- **Refused with nothing uploaded**: a file outside the Upload folders `UPLOAD_REFUSED`, a missing file `BAD_PARAMS`
+  (R19-CHOOSE-2, PASS); JavaScript off `JS_DISABLED` with no click made (R19-CHOOSE-JSOFF, PASS); the bridge turned off
+  during the wait `DISARMED` once the 5 s were up (R19-CHOOSE-DISARM, PASS); no dialog in 5 s `TIMEOUT` after 5 022 ms
+  (R19-CHOOSE-3, PASS). A button that opens a picker with no input, a single-file input given two files, a folder input
+  and a disabled input are refused `BAD_PARAMS`; that is tested (`extension/test/s5a-chooser.test.ts`, "the chooser's
+  own input rules"), and the live row R19-CHOOSE-REFUSE is not discriminating (its disabled-input leg cannot open a
+  chooser on that page, decisions.md #370).
+- **Chrome's own dialog is given back**: after each call (`ok`, `TIMEOUT`, `BAD_PARAMS`) a click made like yours opened
+  Chrome's normal dialog, which the wave then closed (R19-CHOOSE-4, PASS).
+- **The MCP form** put the file in, timed out and refused as the SDK does, in Run 16's answer form (R19-CHOOSE-MCP, PASS;
+  `mcp/test/s12-upload-chooser.test.ts`). **Without `chooser`** the call sent is exactly as before (the same test file,
+  first test; `sdk/test/s12-upload-chooser.test.ts`).
+- **Old extension.** The `VERSION` refusal is tested (`daemon/test/s12-chooser-feature.test.ts`); the live row
+  R19-VERSION is not discriminating on its MCP leg (it looked for a `VERSION` code on line 1 of an error text that has
+  none), so the live MCP text is not yet shown.
+- **Not shown: a second call with the same file.** Two `chooser` calls with the same file on one page left the page's `change`
+  count at 1, not 2 (R19-CHOOSE-KEPT, FAIL; cause not established, so whether the second set of files reached the
+  input is not known).
 
 **The answer is not proof.** It says what Chrome accepted. A page that clears its input on `change`, or
 rejects the file in its own script, still gets an ok. Judge success by the page (Run 16 judged every upload
@@ -844,15 +955,18 @@ folder rule protects against, and the broad-folder warning (#250)):
 - Never click a file input: that opens a native dialog the bridge cannot see. Drag-and-drop zones with no
   file input behind them, and a per-upload confirmation mode, are not built.
 - An upload to a tab in the background works: Run 16 row UP-1 received the file with no focus.
-- With `chooser` (by construction, not yet measured live; Run 19 checks them, decisions.md #353):
+- With `chooser` (decisions.md #353). *Superseded 2026-10-29: was "by construction, not yet measured live; Run 19 checks them", because Run 19 measured three of them (HUMAN, LATE, DISARM) and added a fourth (FRAME); only the dialog-just-before point and the after-the-files point are by construction.*
   - If you click an upload button **on the same tab** during the 5 s the call waits, your click may be the one the
     call answers: your dialog does not show and the agent's files go into the input you clicked (still only files
-    from your Upload folders). A dialog you open on that tab just before the call's click does not show either, and
-    is released when the call ends, so your click seems to do nothing.
-  - A page that opens its dialog later than the call (after it ended) on a tab in the background shows no dialog,
-    as without `chooser`.
-  - Turning the bridge off during the 5 s wait ends the call with `DISARMED` only when the 5 s are up; nothing is
-    uploaded.
+    from your Upload folders). Measured once: the call's file went to the input the human-style click opened and no
+    dialog showed (R19-CHOOSE-HUMAN, RECORD). A dialog you open on that tab just before the call's click does not
+    show either, and is released when the call ends, so your click seems to do nothing (by construction, not measured).
+  - A page that tries to open its dialog late shows no dialog, as without `chooser`: when the page's click came 4 900 ms
+    after the call's click, the call was answered `ok`; at 5 100 ms the page's click opened no chooser at all and the
+    call got `TIMEOUT`; no dialog showed in either (R19-CHOOSE-LATE, PASS, `dialog=0`).
+  - A same-origin frame's file input is reached by the click (R19-CHOOSE-FRAME, RECORD).
+  - Turning the bridge off during the 5 s wait ends the call with `DISARMED` only when the 5 s are up (`ms=5025`);
+    nothing is uploaded (R19-CHOOSE-DISARM, PASS).
   - Turning the bridge or JavaScript off just after the files were put in answers `DISARMED` or `JS_DISABLED`, though
     the page has the files (as the bullet on refusals after the CDP call above).
 
@@ -1281,11 +1395,14 @@ S2 added `UPLOAD_REFUSED` (#237).*
 - **`VERSION` with "the Chrome extension is an older build — reload it at chrome://extensions"** (or, on an
   evaluate call with `args`, "…an older build without evaluate args — reload it at chrome://extensions", or on an
   upload with `chooser`, "…an older build without the file chooser upload — reload it at chrome://extensions"): the
-  daemon was rebuilt but Chrome still runs the old extension. Reload it (§4).
+  daemon was rebuilt but Chrome still runs the old extension. Reload it (§4). The daemon refuses before forwarding
+  anything (`daemon/test/s12-args-feature.test.ts`, `daemon/test/s12-chooser-feature.test.ts`). Through the MCP the tool
+  fails with the same reload text (`mcp/test/s12-args-cross.test.ts`, B2.3); the live rows R19-ARGS-OLD and R19-VERSION
+  did not discriminate on that MCP leg, so its exact printed form is not shown live.
 - **`trusted:true` "succeeds" but nothing happens on the page**: the tab was not in front when the
-  input ran (see [What you see](#what-you-see-while-actors-work)) — the trusted tools focus first, but
-  another actor's screenshot in the same window can switch tabs between the focus and the input (phase
-  doc 0.2, Stage 0 F19); retry, or `browser_focus_tab` and retry. An untrusted action whose synthetic
+  input ran (see [What you see](#what-you-see-while-actors-work)) — the trusted tools focus first, and since Step 12
+  the daemon holds the lock across the focus and the input (not for a call sent with `focusEmulation`), so another actor's screenshot waits
+  (`daemon/test/s6-trusted-focus.test.ts`; the live timing row R19-G2-1 failed, cause not established); retry, or `browser_focus_tab` and retry. An untrusted action whose synthetic
   path failed is retried as trusted input by the extension without focusing: pass `trusted:true`.
   *Superseded 2026-10-25: was "the tab is in the background …; `browser_focus_tab` first", because
   Step 10 S2 made the trusted tools focus first (#106).*
@@ -1294,7 +1411,10 @@ S2 added `UPLOAD_REFUSED` (#237).*
 - **"The tab was discarded by Chrome's Memory Saver"**: Chrome unloaded the tab; `browser_focus_tab`
   or `browser_navigate` reloads it.
 - **"Chrome DevTools (or another extension) is already attached to this tab"**: Chrome allows
-  one debugger per tab, and DevTools wins. Close DevTools on that tab and retry the trusted action.
+  one debugger per tab, and DevTools wins. Close DevTools on that tab and retry the trusted action. *Limit, 2026-10-29:*
+  in Run 19 docked DevTools on Chrome 156 did not make the bridge's calls fail (31 of 31 `ok`), so this message was not
+  reproduced live (R19-UP-DEVT, R19-KEEP-4, R19-SWEEP-HELD: NOT MEASURED; decisions.md #369). The overlap case, two
+  bridge calls on one tab at once, answers it (R19-KEEP-OVERLAP, PASS).
 - **"The debugging session was cancelled mid-action"**: someone clicked **Cancel** on the
   "is debugging this browser" banner while a trusted action was running (the service-worker console
   logs `debugger detached … canceled_by_user`). Just retry.

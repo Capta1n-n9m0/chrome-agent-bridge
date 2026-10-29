@@ -870,6 +870,30 @@ follow-ups (see that plan's "Follow-ups"):
 - **Console capture** (`Runtime.enable` + `consoleAPICalled`) appended to the evaluate result — this
   is the console tool above, and the Run 5 promise bug would have been diagnosed much faster with it.
 
+*Updated 2026-10-29 (Step 12 S8; Step 12 is built and Runs 18 and 19 have run, the close is the session agent's).* What
+Step 12 built of the items above, with its evidence (rows: `docs/e2e-test-plan.md` §4.26 and §4.27; verdicts:
+`docs/plans/2026-10-27-step12-phase-f-steps/S1-run-record.md`, `S7-run-record.md`):
+- **`args` for `browser_evaluate`** (and the SDK's three evaluate methods): built; refusals, no page global, a CSP page and the
+  timeout stop passed live (R19-ARGS-2, -GLOBAL, -CSP, -STOP). Open: the SDK's returned `value` has sorted keys, from Chrome,
+  not from `args` (R19-ARGS-1 FAIL); the MCP's live JavaScript-off text for `args` (R19-ARGS-3 FAIL, a wrong expected text in the sheet).
+- **Console capture** as `browser_console_messages` / `Tab.consoleMessages` / `formatConsole`, a tool of its own, not appended
+  to `evaluate`: built; passed live (R19-CON-1, -2, -REJ, -BIG, -NAV, -MCP, -CAP, -JSOFF, -3, -FRAME, -OWN, -FILE). Open:
+  an object logged before the read shows as `Object` (R19-CON-NOTEA FAIL); the disarmed and arm-floor rows did not
+  discriminate (R19-CON-4, R19-CON-FLOOR); which end the 20 000-character cap keeps is for the user (#355).
+- **Keep-attached debugger session**: built (`extension/test/debugger-keeper.test.ts`); live, the five calls answered and
+  the idle detach took a median 5.1 s longer than an immediate drop (R19-KEEP-1, -2, -3 PASS). Open: the DevTools premise
+  (R19-UP-DEVT, R19-KEEP-4, R19-SWEEP-HELD NOT MEASURED, #369).
+- **The native file chooser**: built as `uploadFiles {chooser:true}`; passed live (R19-CHOOSE-1, -2, -3, -4, -DISARM, -JSOFF,
+  -MCP, -LATE). Open: two calls in a row with one file (R19-CHOOSE-KEPT FAIL, cause not established); the disabled-input
+  leg (R19-CHOOSE-REFUSE not discriminating, #370).
+- **G2, the focus/input gap**: built as a blocking trusted action (`daemon/test/s6-trusted-focus.test.ts`); R19-G2-2 passed,
+  the timed R19-G2-1 failed with its cause not established. **G1** (a popup of a background tab) is not built: it waits for
+  the user's ruling on the `webNavigation` permission (G12-2, #337). The back/forward item above stays a limit (#321, G12-0).
+- **Follow-ups left** (phase doc § Follow-ups): response bodies over CDP; console lines appended to an `evaluate` result;
+  banner-free evaluate, frame targeting, cookie and storage reads, multi-window awareness; a recipes-only wave re-measuring
+  Run 19's helper-limited rows (#373). Run 18: 6 PASS, 6 FAIL, 1 NOT MEASURED of 13 rows; Run 19: 42 PASS, 5 FAIL, 5 ND,
+  3 NOT MEASURED, 3 RECORD of 58 row ids.
+
 Plus the Step 5 follow-ups (see that plan's "Follow-ups"):
 
 - **Response bodies via CDP** (`browser_network_capture start/stop` + `Network.getResponseBody`) —
