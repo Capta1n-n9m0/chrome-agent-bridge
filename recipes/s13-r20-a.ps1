@@ -43,6 +43,10 @@ $Root = Join-Path $env:S11_OUT 'wave\root'
 $FoundJson = Join-Path $env:S11_OUT 'found.json'
 $NowJson = Join-Path $env:S11_OUT 'now.json'
 $DaemonLog = "$HOME\.chrome-agent-bridge\daemon.log"
+$FixtureHuman = 'http://127.0.0.1:8081/s11-upload.html?s11=human'
+$Fix81 = 'http://127.0.0.1:8081/e2e-playground.html'
+$Blk = 'localhost:8085'
+$EncName = 's11b enc #%' + [char]0x00FC + '.bin'
 $FramingBlocks = $R19FramingBlocks
 $Persist = @('W', 'O', 'E', 'D', 'X', 'S9WinIds', 'S11Own', 'S11Found', 'S11RootText', 'S11Stable', 'S16Changed', 'S16Pids', 'S16Born', 'S16Toggle', 'S16Mark', 'S16Actor', 'S16ConsoleRead', 'R17Fallback', 'R17ActorRan', 'R19Slice', 'R19RootAdded', 'R19HumanClick', 'R19SegNext', 'R19Segs', 'R19SegLost', 'R19Rerun', 'R20Port')
 $S12IdleMinMs = 20000
@@ -54,7 +58,7 @@ foreach ($r20F in $r20D17.Funcs.Keys) { . ([scriptblock]::Create($r20D17.Funcs[$
 foreach ($r20F in 'Set-S17Raw', 'Start-R17bWatch', 'Read-R17bWatch') { . ([scriptblock]::Create($r20D17b.Funcs[$r20F])) }
 $R17Blocks = @{}; foreach ($r20K in $r20D17.Blocks.Keys) { $R17Blocks[$r20K] = & ([scriptblock]::Create($r20D17.Blocks[$r20K])) }
 $R17bZero = & ([scriptblock]::Create($r20D17b.Blocks['r17b-0']))
-foreach ($r20N in 'files', 'window', 'reload', 'console', 'teardown', 'rd-restore') { if (-not $R17Blocks[$r20N]) { Write-Host "STOP: Run 17's block $r20N was not read from s11b-r17.ps1"; exit 2 } }
+foreach ($r20N in 'files', 'window', 'reload', 'console', 'teardown', 'root-add', 'rd-restore') { if (-not $R17Blocks[$r20N]) { Write-Host "STOP: Run 17's block $r20N was not read from s11b-r17.ps1"; exit 2 } }
 if (-not $R17bZero -or -not (Get-Command Invoke-S12Opt -ErrorAction Ignore)) { Write-Host 'STOP: Run 17b''s r17b-0 block or the S12 helpers were not read'; exit 2 }
 $global:R19Blocks = @{}
 Register-R20Blocks

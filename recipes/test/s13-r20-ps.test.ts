@@ -1,7 +1,7 @@
 // Step 13 S5-drivers-A: recipes/s13-r20.ps1 (the Run 20 wrapper over s12-r19-lib.ps1) runs in PowerShell with every helper stubbed (the s12-r19.test.ts pattern):
 // nothing touches Chrome, a daemon or a port.
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -147,6 +147,29 @@ function run(): Obs {
 }
 const ran = (l: string[]): string[] => l.filter((x) => x.startsWith("RAN ")).map((x) => x.slice(4));
 const returns = (l: string[]): string[] => l.filter((x) => /^(STOP [a-z-]+|RETURN )/.test(x));
+// Attempt 1 of liveA20 stopped in `servers`: R20's own preflight/servers dropped lines of Run 19's that later blocks rely on (fixer 1). Source checks, no PowerShell.
+describe("s13-r20.ps1 preflight and servers keep what Run 19's had (liveA20 attempt 1)", () => {
+	const src = readFileSync(process.env.S13_R20_PS1 ?? join(REPO, "recipes", "s13-r20.ps1"), "utf8");
+	const blk = (name: string): string => { const i = src.indexOf(`R19Blocks['${name}'] = {`); expect(i).toBeGreaterThan(-1); const j = src.indexOf("\n  $global:R19Blocks[", i + 10); return src.slice(i, j); };
+	it("preflight makes the log dir, sets the daemon.log mark, and checks the dist files, Chrome and python", () => {
+		const p = blk("preflight");
+		expect(p).toContain("New-Item -ItemType Directory -Force $LogDir | Out-Null");
+		expect(p).toMatch(/\$global:S16Mark = .*Get-Content -LiteralPath \$DaemonLog/);
+		for (const f of ["daemon\\dist\\index.js", "mcp\\dist\\index.js", "extension\\dist\\sw.js"]) expect(p).toContain(f);
+		expect(p).toContain("'Chrome is not running (it is never launched here)'");
+		expect(p).toContain("'python was not found'");
+		expect(p).toContain("Set-R20Port");
+		expect(p).toContain("Assert-R19CaptureFree");
+	});
+	it("servers makes the log dir before the start and checks the own server on R20's port, not 8081", () => {
+		const s = blk("servers");
+		const mk = s.indexOf("New-Item -ItemType Directory -Force $LogDir | Out-Null");
+		expect(mk).toBeGreaterThan(-1);
+		expect(mk).toBeLessThan(s.indexOf("Start-R17Srv"));
+		expect(s).toMatch(/Test-S16Port \$global:R20Port\)\) \{ Fail-S16/);
+		expect(s).not.toMatch(/\b8081\b/);
+	});
+});
 describe.skipIf(!hasPs)("s13-r20.ps1 under PowerShell with stubbed helpers", () => {
   const o = run();
   it("runs liveA20 in the sheet's order, the A2 slots filled, restore and logs last", () => {
@@ -290,4 +313,33 @@ describe.skipIf(!hasPs)("s13-r20.ps1 under PowerShell with stubbed helpers", () 
     expect(o.stopBeforeLogs).toContain("ROW R20-CON-4 RECORD");
   });
   it("the POP value steps follow the actor's signal order", () => expect(o.steps![0]).toBe("IDS R20-POP-OTHER-third-cn0,R20-POP-OTHER-third-cn1,R20-POP-OTHER-human-cn0,R20-POP-OTHER-human-click1,R20-POP-OTHER-human-click2,R20-POP-OTHER-human-click3,R20-POP-OTHER-human-cn1"));
+});
+
+// Fix round 2: R20's entry script must assign what Run 19's entry script assigned and the reused Run 17 / 17b code reads (attempt 2 would have STOPped in `files`).
+describe("s13-r20-a.ps1 assigns every top-level variable the reused Run 17 and 17b code reads", () => {
+	const rec = (f: string): string => readFileSync(join(REPO, "recipes", f), "utf8");
+	const entry = readFileSync(process.env.S13_R20_A_PS1 ?? join(REPO, "recipes", "s13-r20-a.ps1"), "utf8");
+	const assigned = (s: string): Set<string> => new Set([...s.matchAll(/^\$(?:global:)?(\w+)\s*=/gm)].map((m) => m[1]!.toLowerCase()));
+	const reads = (s: string): Set<string> => new Set([...s.matchAll(/\$(?:script:|global:)?(\w+)/g)].map((m) => m[1]!.toLowerCase()));
+	const r17 = rec("s11b-r17.ps1");
+	const r17b = rec("s11b-r17b.ps1");
+	// everything after Run 17's own prologue (functions and blocks), and Run 17b's r17b-0 block plus the three functions R20 dot-sources
+	const r17Body = r17.slice(r17.indexOf("\nfunction "));
+	const part = (from: string, re: RegExp): string => { const i = r17b.indexOf(from); expect(i).toBeGreaterThan(-1); const j = r17b.slice(i + from.length).search(re); return r17b.slice(i, j < 0 ? undefined : i + from.length + j); };
+	const r17bBody = [part("$Blocks['r17b-0'] = {", /\n\$Blocks\[/), part("function Set-S17Raw", /\nfunction /), part("function Start-R17bWatch", /\nfunction /), part("function Read-R17bWatch", /\nfunction /)].join("\n");
+	const needed = [...reads(r17Body + r17bBody)].filter((n) => assigned(rec("s12-r19.ps1")).has(n) && n !== "r17blocks" && n !== "r17bzero");
+	it("the derived list holds the four Run 19 dropped (fails on the round-1 script)", () => {
+		for (const n of ["fixturehuman", "fix81", "blk", "encname"]) expect(needed).toContain(n);
+	});
+	it("s13-r20-a.ps1 assigns each of them", () => {
+		const have = assigned(entry);
+		expect(needed.filter((n) => !have.has(n))).toEqual([]);
+	});
+	it("the reused-block guard names root-add", () => {
+		expect(entry).toMatch(/'teardown', 'root-add', 'rd-restore'\) \{ if/);
+	});
+	it("preflight refuses a port other than 8081 right after Set-R20Port", () => {
+		const src = readFileSync(process.env.S13_R20_PS1 ?? join(REPO, "recipes", "s13-r20.ps1"), "utf8");
+		expect(src).toMatch(/Set-R20Port; if \(\$global:R20Port -ne 8081\) \{ Fail-S16 "port 8081 is not free: /);
+	});
 });

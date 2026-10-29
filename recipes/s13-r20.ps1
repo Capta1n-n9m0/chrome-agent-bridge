@@ -101,11 +101,22 @@ function Register-R20Blocks {
     $r20n0 = @(Get-R19RecordLines).Count
     try { Invoke-R19Stamped $R17Blocks['reload'] } catch { if (Test-R19ReloadGaveUp $r20n0) { Stop-R19 'reload-failed' 'reload-extension.ps1 exited 2 twice' }; throw }
   }
-  $global:R19Blocks['preflight'] = { Assert-R17TreeClean; Set-R20Port; foreach ($r20k in 9234) { if (-not (Test-S16Port $r20k)) { Fail-S16 "port $r20k is held by a program the wave did not start (#251)" } }; [void](Assert-R19CaptureFree $global:R19Slice) }
+  $global:R19Blocks['preflight'] = {
+    Assert-R17TreeClean
+    foreach ($r20f in 'daemon\dist\index.js', 'mcp\dist\index.js', 'extension\dist\sw.js') { if (-not (Test-Path $r20f)) { Fail-S16 'a dist file is missing; run npm run build first' } }
+    if (-not @(Get-Process | Where-Object { $_.ProcessName -eq 'chrome' }).Count) { Fail-S16 'Chrome is not running (it is never launched here)' }
+    if (-not @(Get-Command -All -Name python -CommandType Application -ErrorAction Ignore).Count) { Fail-S16 'python was not found' }
+    Set-R20Port; if ($global:R20Port -ne 8081) { Fail-S16 "port 8081 is not free: the reused Run 17 window and R20-0 pages need it (the chosen port is $($global:R20Port))" }; foreach ($r20k in 9234) { if (-not (Test-S16Port $r20k)) { Fail-S16 "port $r20k is held by a program the wave did not start (#251)" } }
+    New-Item -ItemType Directory -Force $LogDir | Out-Null
+    $global:S16Mark = $(if (Test-Path -LiteralPath $DaemonLog) { @(Get-Content -LiteralPath $DaemonLog).Count } else { 0 })
+    [void](Assert-R19CaptureFree $global:R19Slice)
+  }
   $global:R19Blocks['servers'] = {
     if ((Select-R20Port @(@(Get-R20Held)[0])) -ne $global:R20Port) { Fail-S16 "port $($global:R20Port) was taken before the server started" }   # re-checked just before the start
+    New-Item -ItemType Directory -Force $LogDir | Out-Null
     Start-R17Srv $global:R20Port "-m http.server $($global:R20Port) --bind 127.0.0.1 --directory test-fixtures"
     if (-not (Test-R17Listens $global:R20Port)) { Fail-S16 'the fixture server did not answer' }
+    if (-not (Test-S16Port $global:R20Port)) { Fail-S16 "port $($global:R20Port) is not held by the wave's own server" }
     Say9 "SERVERS $($global:R20Port) up on 127.0.0.1 under the wave's own PID"
   }
   $global:R19Blocks['r20-0'] = { Invoke-R20Zero $R17bZero }
