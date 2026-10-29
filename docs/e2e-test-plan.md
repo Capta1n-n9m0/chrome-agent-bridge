@@ -3505,6 +3505,95 @@ Proposed decisions (for the session agent) are in the record's section 6: measur
 keep the banner FAILs open with an attach-count instrument in Run 19; prove a DevTools attach method with its control
 first; a recipes-only fix for the UP-OPT wording, the pending console lines and the repeated preflight rows.
 
+### Run 19 (S7) — 2026-10-28/29 (Step 12: the Step 12 feature rows, `args` for evaluate, console messages, the kept debugger session, the native file chooser and the blocking trusted action, §4.27)
+
+*Rows, expected text and pass rules committed before the first observation: §4.27 at `ed6abbc` (2026-10-28 22:04Z, rows
+first in `a1b8544`), whose only later change is the dated note #366 (after observation, additions only: control-2 judged
+against the old build's measured answer). Run by the S7-live runners (Sonnet, medium), the user not present (#33), in five
+slices and ten runner attempts: liveA19 attempt 3 (HEAD `922f757`; attempts 1 and 2 stopped on a wrong sheet constant and a
+window-title guard), liveB19 attempt 3 (HEAD `3478261`; attempt 1 stopped on a click target, attempt 2 ran to the end),
+liveC19 attempt 1 (`0c42637`), liveD19 attempt 2 (`c55cf9d`; attempt 1 stopped on its own capture windows), liveE19 attempt 1
+(`772a53e`). No product code changed during the run. Judged by the sheet's own pass rules against the committed records, in
+[`S7-run-record.md`](plans/2026-10-27-step12-phase-f-steps/S7-run-record.md); the per-row evidence lines stay in that record.
+Runs 1-18 above are unchanged.*
+
+Sources: **A3E / B3E / CE / D2E / EE** = the evidence files of liveA19 attempt 3, liveB19 attempt 3, liveC19, liveD19
+attempt 2 and liveE19 (`S7-live-evidence-…`), **LED** = `S7-live.ledger.md`, **INV** = `S7-record-investigator.md` (all in
+`plans/2026-10-27-step12-phase-f-steps/`).
+
+```
+Date: 2026-10-28 22:07Z - 2026-10-29 02:39Z  HEAD: 922f757 (A), 3478261 (B), 0c42637 (C), c55cf9d (D), 772a53e (E)
+Rows: 58 ids (74 slice-rows). Row level: PASS 42 / FAIL 5 / NOT DISCRIMINATING 5 / NOT MEASURED 3 / RECORD 3 / NOT RUN 0.
+Slice-rows: PASS 58 / FAIL 5 / NOT DISCRIMINATING 5 / NOT MEASURED 3 / RECORD 3.
+PASS    R19-0 (A-E)  R19-BANNER-CTL (A, B, C)  R19-ARGS-2, -GLOBAL, -CSP, -STOP  R19-CON-1, -2, -REJ, -BIG, -NAV, -MCP, -CAP,
+        -BANNER, -JSOFF, -3, -FRAME, -OWN, -FILE  R19-UP-OPT  R19-UP-6  R19-F-RAW, -2, -DIR  R19-KEEP-1 (answers; banner ND),
+        -KEEP-2, -KEEP-3  R19-CON-KEPT  R19-KEEP-OVERLAP (B, C)  R19-CLOSER (B, C)  R19-CHOOSE-1, -LABEL, -2, -3, -4, -DISARM,
+        -JSOFF, -MCP, -LATE  R19-G2-2  R19-RESTORE (A-E)  R19-LOGS (A-E)
+FAIL    R19-ARGS-1 (returned value has sorted keys)  R19-CON-NOTEA (replayed object logs as "Object")
+        R19-CHOOSE-KEPT (change stayed 1)  R19-G2-1 (B timed out at 35 s)  -- the last two: cause not established
+        R19-ARGS-3 (MCP leg: the sheet's expected text asks for the extension's message, which the MCP never prints; a wrong
+        row text, not a product finding; effect counter 1 to 1)
+NOT DISCRIMINATING  R19-CON-4 (MCP leg: reader checks the extension's text)  R19-ARGS-OLD, R19-VERSION (MCP leg:
+        reader expects a code on line 1)  R19-CON-FLOOR (the driver's waits, 3 s and 2.5 s, were shorter than #361's amended 5 s and 3.5 s; the instrument at fault)  R19-CHOOSE-REFUSE (leg dis)
+NOT MEASURED  R19-UP-DEVT, R19-KEEP-4, R19-SWEEP-HELD (DevTools was not attached)
+RECORD  R19-DEVT-NOFLAG, R19-CHOOSE-FRAME, R19-CHOOSE-HUMAN
+Exit checks: R7.1 met, R7.2 met, R7.3 met, R7.4 met, R7.5 met, R7.6 met.
+```
+
+**What the new features show.** `args` for evaluate: the page received all five table values exactly (`json-equal` 5 of 5 on the
+SDK and the MCP), the eleven refusals were exact with two calls sent and the effect counter unmoved, no page global was left, a
+CSP page worked, and a 60 s loop ended at 1 516 ms with the page usable. The returned `value` of the SDK came back with
+Chrome's sorted keys for the one multi-key value (`value-equal` 4 of 5; the MCP's text keeps page order): FAIL, a pre-existing
+fact, not an `args` defect (Stage 0 measured it); the opposite reading of the clause is in the record's section 7. Console
+messages: 11 entries (10 console, 1 exception), `limit`, `level`, the revoked rejection, the 2 000-character cut, a
+navigation, the same-site and out-of-process frames, the MCP line form and the cap (nine oldest lines of 200) all pass; the
+refusals (blocked host, disarmed, own page, `file:` page, JavaScript off) are exact and equal to the snapshot or evaluate
+control, with no banner positive after 20 s of idle and a passing control in each slice. R19-CON-NOTEA fails: an object
+logged before the read comes back as `Object` (Chrome's replay carries no preview), so the Error's message is lost; no URL or
+stack leaks.
+
+**The kept session and the file chooser.** A kept session answered the same five calls as before (KEEP-1; its banner clause is
+not discriminating by design), idle detach ended at a median 10 132 ms against 5 028 ms for the per-call control (KEEP-2),
+and a disarm, a blocked, own or `file:` navigation and a closed tab each ended the session within 1 800 ms of the control and
+the next call was refused exactly (KEEP-3). Chrome 156 did not refuse the debugger with docked DevTools open (`DEVPROBE
+attached=no`, 31 of 31 `ok`), so UP-DEVT, KEEP-4 and SWEEP-HELD are NOT MEASURED, a product-level finding open under #369.
+The chooser rows pass (CHOOSE-1 to -4, -DISARM, -JSOFF, -LATE, -MCP; after CHOOSE-4's calls and CHOOSE-DISARM's re-armed
+click Chrome's own dialog opened and the wave closed it; the other rows print `dialog=0`). CHOOSE-KEPT fails (the second call's `change` stayed 1; cause not established), CHOOSE-REFUSE leg `dis` cannot
+be reached on its page (HTML spec; #370), CHOOSE-HUMAN records that the call's file went to the input the human's click
+opened, CHOOSE-FRAME that a same-origin frame is reached. G2-1 fails (B's screenshot timed out at about 35 s; cause not
+established) while G2-2 passes five rounds intact. The Run 18 banner rows (UP-6, F-RAW, -2, -DIR) read `banner=none` at 20 s
+of idle with a passing control; UP-OPT passed at 353 ms after the helper's poll was fixed (#363).
+
+**Judgment calls and notes.** Four MCP legs failed on texts the MCP never prints. ARGS-3 is FAIL: the sheet's own expected
+text asks that the MCP's result contain the extension's JavaScript-off message, the driver follows the sheet, so the row text
+is wrong (decisions.md #195), not the reader and not the product; the effect counter stayed 1 to 1. CON-4 (a reader that
+chose the extension's text), ARGS-OLD and VERSION (a reader expecting a code on line 1) are ND, never a pass (INV items 2, 4,
+6, 7). CON-FLOOR's floor held (0 of 2 and 0 of 1 disarmed items in the reply) but the driver did not apply #361's pre-run note
+(5 s and 3.5 s waits; it kept 3 s), so the `>= 3` precondition was not reached. Printed `ROW … FAIL` words for the five ND
+rows yield to the counts and the rules. The sheet's own ND clauses (KEEP-1 banner,
+KEEP-3 and CHOOSE-DISARM attach-after-disarm, ARGS-OLD raw `forwarded`, G2-2 interleaving) are listed in the record.
+
+Found state = read-back: armed=true evaluate=true, block list and Upload folders 0 lines at the start of every slice; the
+file-URL toggle found ON, never pressed. R19-RESTORE read back equal by count and hash in all five slices (A3E:540, B3E:505,
+CE:507, D2E:232, EE:242); D and E end on the current build. R19-LOGS: all zero in the console and daemon streams, `profile-other=0`,
+the control line in each slice's last segment; the one `shot-line` is slice C's MCP failure report (#349 (a)).
+
+STOP lines in the committed evidence: four, each with one `RETURN` and one `LED` return (A1E:92-94, A2E:269-277, B1E:297-338,
+D1E:243-250); the six attempts that ran to the end print `stop-return=0`.
+
+| Check | Verdict | Evidence |
+|---|---|---|
+| **R7.1** §4.27 before the first observation | **met** | `ed6abbc` 22:04:50Z; first evidence line `A1E:1` 22:07:34Z; later change is #366's note (after observation) |
+| **R7.2** the first line proves the loaded build | **met** | `LOADED consoleMessages=answered entries=11 console=10 exception=1 args=answered` at line 107 of each slice |
+| **R7.3** each feature row's answer and counts; CHOOSE-4's dialog | **met** | one verdict per row; CHOOSE-4 `after-click=1` ×3 (CE:332, 336, 340) |
+| **R7.4** restore by hash | **met** | `hash=equal` in all five slices; `DIALOGS native=0 devtools=0` |
+| **R7.5** R19-LOGS by count per slice | **met** | five PASS; `profile-other=0`; control line in the last segment |
+| **R7.6** STOP lines matched to returns | **met** | four STOPs, four RETURNs, four `LED` returns |
+
+Proposed decisions (for the session agent) are in the record's section 6: the ARGS-1 key-order reading for user review; a
+live-log leg for CON-NOTEA; a recipes-only re-run of the ND and cause-unknown rows as new rows; the DevTools premise to the
+user; gotchas for the package `CLAUDE.md` files.
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.
