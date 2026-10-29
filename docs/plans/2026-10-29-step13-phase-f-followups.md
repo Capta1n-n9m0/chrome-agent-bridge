@@ -162,6 +162,24 @@ Response bodies over CDP and WebSocket frames; console lines in `evaluate` resul
 `focusTab` before a trusted input (#354). After Step 13 comes **a minimal Phase G**, packaging for the user's own use
 only (#374 item 11); wider distribution later.
 
+### Dated note (2026-10-29, after Stage 0)
+
+Stage 0 (`…-steps/Stage0.md`, `8f23ac9`) changed the proposals above; where they differ, these entries win:
+- **0.1:** stages run one at a time in the main tree; S3a is dropped (#384). S5's slices: sheet, helpers, drivers
+  A/B/C, live A (R20-0, POP, ARGS, CON), live B (CHOOSE, G2), live C (DevTools rows alone), record.
+- **0.2:** replaced by #385. The join lives in the extension: a new pure join module in `extension/src/` (250 ms
+  hold, ids only), `tabCreated.openerTabId` carries `sourceTabId` when joined and is absent when not; no fallback to
+  Chrome's `openerTabId` (it names the active tab for a background opener, 25 of 30). `shared/src/protocol.ts` and
+  `daemon/src/intercept.ts` are not in S1's lane. G1.1 adds a mutant that falls back to Chrome's `openerTabId` for an
+  unjoined tab: it must be red. For the user's review at the gate.
+- **0.3:** amended by #386 (a closure-free wrapper; the shape checked on receipt; the fake CDP sorts keys first;
+  `evaluateSaveStart` is not a serialiser path).
+- **0.4:** "no" (#387): S3a is not run; the tool's limit sentence goes to S3b, `docs/setup.md` to S6.
+- **0.5:** two outside pins join S3b's lane (#388).
+- **0.6:** (a) (#389), with a dated spec §10 note in S4's lane.
+- **0.7:** kept, its reason corrected (#390); S4 owns `daemon/src/intercept.ts`.
+- **0.8:** Run 20's seven row changes (#391). **0.9:** kept (#392). The permission is not a G13-2 matter (#393).
+
 ## Stages
 
 **Lane** is the explicit grant a step agent needs (`docs/agent-rules.md` §3 item 5). **Risk**, models, effort, fix
@@ -316,6 +334,19 @@ MCP leg; and every forbidden fix of Steps 9–12 still binding (`docs/plans/2026
 
 One block per stage, written by the session agent at the stage close (format: `docs/docs-writing-guide.md` § Phase
 doc header); at the phase close, the gate checklist (item → met? → evidence).
+
+### Stage 0 — Spec audit and the scratch-Chrome measurements · 2026-10-29 · verifier: PASS-with-notes · commit `8f23ac9` · models Opus auditors, measurers and verifier
+- **Contracts (binding forward):** the measured facts in `Stage0.md` § Measured facts (Chrome 156, scratch profile):
+  `tabs.onCreated` precedes `onCreatedNavigationTarget` 60/60 within 0.6 ms; `sourceTabId` names the opener 60/60;
+  Chrome's `openerTabId` names the active tab for a background opener 25/30; `returnByValue` sorts keys, a JSON string
+  keeps page order 6/6; `Runtime.getProperties` runs an Error subclass's `message` getter; undocked DevTools and
+  DevTools opened before the first attach did not refuse the bridge's attach (flagged scratch Chrome, controls
+  independent of the bridge). Counts at `ff121a4`: 25 tools, 28 router methods, 27 codes, 54 log sites, 5596 tests /
+  235 files; Step 12's contract tests green on port 0.
+- **Decisions:** #384–#393 (Stage 0's attack on #375–#383). **Deviations:** two audit bodies, not merged; a first
+  Stage 0 step agent ended on an API login expiry with no output, and a fresh one ran (#225).
+- **Numbers:** tests 5596 → 5596 (no product code); ~40 min for the second agent.
+- **Needs the user:** #385 (G1's shape) and #389 (chooser text) at the gate.
 
 ## Follow-ups
 

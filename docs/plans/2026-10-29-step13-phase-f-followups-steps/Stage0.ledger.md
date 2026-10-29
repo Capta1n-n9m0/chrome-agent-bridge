@@ -8,3 +8,4 @@
 - 09:49Z · measurer1 · done (onCreated first 60/60, gap ≤0.6 ms; sourceTabId 60/60; reload enabled, warnings unchanged, flagless measured) · Stage0-measurer1.md, stage0-m1-*.txt · its PIDs gone · next: write Stage0.md, then verifier
 - 09:52Z · Stage0.md · written (verdict pending) · next: verifier (Opus), scratch …/stage0/v, ports 8080–8085
 - 10:06Z · verifier · PASS-with-notes (5 MINOR, 3 NIT; notes applied as text) · Stage0-verifier.md, stage0-v-*.txt · its PIDs gone · next: committer (Sonnet)
+- 10:06Z · committer · done, commit 8f23ac9 (33 files) · Stage 0 closed · nothing running

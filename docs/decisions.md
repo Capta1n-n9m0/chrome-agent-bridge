@@ -12,9 +12,11 @@ as a dated entry and point back.
 None. The user ruled Step 12's gate on 2026-10-29 (#374, `decisions-archive/step12.md`); every item listed here
 before was settled by it. Step 13's scope is ruled by the same entry (`docs/plans/2026-10-29-step13-phase-f-followups.md`).
 
-For Step 13's gate (contract-level shapes the user has not ruled; the run goes on with the conservative option, recorded
-in the Log): #376 (G1's wire shape: a `tabCreated` field or a late event) and #380 (the second-chooser refusal: own
-message or a new code). Stage 0 adds its choice and reason to each.
+For Step 13's gate (contract-level; the run goes on with the conservative option, recorded in the Log):
+- **#385, G1's shape.** Stage 0 replaced #376: the extension joins Chrome's navigation-target event and sends the real
+  opener in `tabCreated.openerTabId`; with no join it sends none and nothing is granted. No wire shape changes, but the
+  field's meaning does. Options: keep #385 (recommended), or (A) a new `sourceTabId` field with a hello feature.
+- **#389, the chooser text.** Option (a), the same code with its own message (recommended); (b) a new code.
 
 ## Standing decisions
 
@@ -189,6 +191,77 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
+
+#384–#393 record Stage 0's attack on them (`docs/plans/2026-10-29-step13-phase-f-followups-steps/Stage0.md` §5,
+commit `8f23ac9`, verifier PASS-with-notes); the full reasoning is there.
+
+### 2026-10-29 · Stage 0: adding `webNavigation` is not a G13-2 matter (#393)
+**Decided:** S1's manifest change needs only the usual reload. **Why:** measured in a scratch Chrome: the warning list
+and the card's permissions are unchanged and the extension stays enabled, with and without the debugging flag.
+**Instead of:** asking the user first. **Revisit if:** after S1 the user's card shows a disabled state or a new
+permission line. **By:** Claude
+
+### 2026-10-29 · Stage 0: #383 kept; Run 19's unmeasured leftovers named in Follow-ups (#392)
+**Decided:** as Stage0.md §5 (#383 kept). **By:** Claude
+
+### 2026-10-29 · Stage 0: Run 20 at §4.28 with seven row changes before the sheet (#391)
+**Decided:** #382 amended as Stage0.md §5: the DevTools rows expect `ok` and read a control independent of the bridge's
+answer before the call; POP-OTHER gains a third-client leg; CON-NOTEA is the documented class-name line plus the
+blocked-frame leg; ARGS-ORDER's discriminating leg is the SDK's; R20-0 also proves the permission; G2-1 gains an
+uncovered-window control; CHOOSE-REFUSE-DIS tries an enabled-then-disabled input, else RECORD. Run 19's chooser judges
+are not reused. **Why:** Run 19's DevTools "control" was the refusal code itself; the MCP prints `description`, already
+in page order. **Instead of:** the seed rows as written. **Revisit if:** the DevTools control cannot be read on the
+user's Chrome; then those rows are RECORD. **By:** Claude
+
+### 2026-10-29 · Stage 0: the settle pause's `.then(release, release)` kept, its reason corrected (#390)
+**Decided:** #381 amended: a rejecting injected `sleep` today is an unhandled rejection the daemon treats as fatal, not a
+lock held to disconnect; production injects none. S4's test asserts the lock is free and no unhandled rejection.
+**By:** Claude
+
+### 2026-10-29 · Stage 0: the second-chooser refusal keeps `DEBUGGER_DEVTOOLS` with its own fixed text (#389)
+**Decided:** option (a) of #380. A dated spec §10 note first (the spec quotes today's text); every other path's text
+byte-identical; T4.1 adds the MCP check (bare message, `isError: true`). **Why:** the MCP shows only the message under
+either option, so a new code would reach no agent without more MCP work and would move every count; an old extension's
+answer differs only in text. **Instead of:** (b) a new code. **Revisit if:** the user wants the two cases told apart by
+code. **By:** Claude (Stage 0 decides, per the phase doc's 0.6)
+
+### 2026-10-29 · Stage 0: two pinned tests outside S3b's files join its lane (#388)
+**Decided:** #379 amended: `mcp/test/s12-upload-chooser.test.ts` and `recipes/test/s12-forms-b.test.ts` pin the old
+marker and change in S3b's commit (Run 19's helper itself is not edited); the marker is the first line and counts the
+rows cut. **Why:** `npm test` includes `recipes/test`; #379's Revisit-if met. **By:** Claude
+
+### 2026-10-29 · Stage 0: CON-NOTEA stays a documented limit; S3a is not run (#387)
+**Decided:** #378 resolved "no". The tool-description sentence (an object logged before the read shows its class name
+only) is product code and goes to S3b; `docs/setup.md` to S6. **Why:** measured: `Runtime.getProperties` runs an Error
+subclass's `message` getter on every read under every option, and a Proxy needs a second call, so two of the four
+"cheap" conditions fail. **Instead of:** S3a with a skip list. **Revisit if:** the user accepts page getters of the
+kind the replay already runs. **By:** Claude (mechanical under #374 item 5)
+
+### 2026-10-29 · Stage 0: the envelope crosses as one JSON string from a wrapper, its shape checked on receipt (#386)
+**Decided:** #377 amended: the serialiser source stays byte-identical; a closure-free wrapper returns `JSON.stringify`
+of the envelope, parsed inside `serializerCall`; a value without the envelope's own keys and types falls back as today
+(a page's `toJSON` hook controls the string). Paths: `evaluate`, `args`, `asRef`, the mark sweep; `evaluateSaveStart`
+is not one. The fake CDP sorts keys under `returnByValue` first, so S2's mutant can fail. **Why:** measured page order
+6 of 6; the fake did not sort, so today's "page order" test could not fail. **By:** Claude
+
+### 2026-10-29 · Stage 0: G1 by a join in the extension — `tabCreated.openerTabId` is the navigation source; no join, no grant (#385)
+**Decided:** #376 replaced. The worker holds a `tabCreated` whose tab has an `openerTabId` until that tab's
+`onCreatedNavigationTarget` arrives (either order) or 250 ms pass; joined, it sends `openerTabId` = `sourceTabId`; not
+joined, it sends no `openerTabId`, so the daemon grants nothing. No new field, no late event, no hello feature, no
+daemon change; a dated spec §10 note says what the field now means. Ids only, no URL, no log. **Why:** measured in a
+scratch Chrome: `tabs.onCreated` comes first 60 of 60, the join follows within 0.6 ms, `sourceTabId` is right 60 of 60,
+while Chrome's `openerTabId` names the window's active tab for a background opener 25 of 30, so the phase doc's
+fallback to it would lease the popup to the wrong client (a STOP line). **Instead of:** (A) a new `sourceTabId` field
+with a hello feature (a protocol, hello and daemon change); (B) the fallback; (C) a late event. **Revisit if:** Run 20
+sees an unjoined popup, or a tab with an opener and no navigation target turns up. **By:** Claude, **for the user's
+review at the gate**: the field's meaning changes (Ctrl+click and middle-click tabs, and a background opener's popup, go
+to the opener's holder instead of the active tab's; an unjoined tab no longer grants). Built as the conservative option:
+no grant without a join is stricter than today.
+
+### 2026-10-29 · Stage 0: the stages run one at a time in the main tree; S3a dropped (#384)
+**Decided:** #375 amended: S1 → S2 → S3b → S4 → S5 → S6, sequential; S5 as sheet, helpers, drivers A/B/C, three live
+slices (A: R20-0, POP, ARGS, CON; B: CHOOSE, G2; C: the DevTools rows alone), the record. **Why:** "disjoint" was false
+and two stages in one tree break the per-stage exit checks. **Instead of:** parallel lanes. **By:** Claude
 
 #375–#383 are the phase doc's proposals (`docs/plans/2026-10-29-step13-phase-f-followups.md` § Decisions 0.1–0.9),
 numbered at kickoff so Stage 0 can attack them. Each holds as written in that section until Stage 0 or a later entry
