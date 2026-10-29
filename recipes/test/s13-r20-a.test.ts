@@ -1,8 +1,10 @@
 // Step 13 S5-drivers-A (A1 rows): the pure decisions of recipes/s13-r20-a.ts: the POP verdicts, ARGS-ORDER's key order, ARGS-3's effect counter and MCP line.
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { MCP_LINES, mcpLineRead, popLine } from "../s13-forms.js";
 import { MSG } from "../s12-r19-a.js";
-import { clickGate, stampOf, judgeArgs3, judgeArgsOrder, judgeBlocked, judgeNewtab, judgePop, mcpEqual, mcpOrderLines, prepareRound, UNJOINED_LINE, type Round } from "../s13-r20-a.js";
+import { B_WINDOW_CHECK, clickGate, grantTiming, PRE_CLICK_TOL_MS, stampOf, judgeArgs3, judgeArgsOrder, judgeBlocked, judgeNewtab, judgePop, mcpEqual, mcpOrderLines, prepareRound, UNJOINED_LINE, type Round } from "../s13-r20-a.js";
 const R = (o: Partial<Round> = {}): Round => ({ grantedTo: "A", inMs: 40, others: 0, held: "TAB_HELD", controlSame: true, ownCallOk: true, guard: "bg", ...o });
 const three = (o: Partial<Round> = {}): Round[] => [R(o), R(o), R(o)];
 describe("POP rows", () => {
@@ -126,5 +128,25 @@ describe("fixer 1: the MCP leg of R20-ARGS-ORDER (MAJOR 3)", () => {
     expect(mcpEqual({ isError: false, text: '{"a":1}' }, { a: 1 })).toEqual({ value: true, json: true });
     expect(mcpEqual({ isError: false, text: "Object" }, { a: 1 })).toEqual({ value: false, json: false });
     expect(mcpEqual({ isError: true, text: "1" }, 1)).toEqual({ value: false, json: false });
+  });
+});
+describe("A2 fixes of A1's carried findings", () => {
+  it("a grant that pre-dates the click stamp is flagged, never read as a fast pass; clock slack is tolerated", () => {
+    expect(grantTiming([{ at: 1000 - PRE_CLICK_TOL_MS - 1 }], 1000)).toEqual({ inMs: null, preClick: true });
+    expect(grantTiming([{ at: 1000 - PRE_CLICK_TOL_MS }], 1000)).toEqual({ inMs: 0, preClick: false });
+    expect(grantTiming([{ at: 1150 }], 1000)).toEqual({ inMs: 150, preClick: false });
+    expect(grantTiming([], 1000)).toEqual({ inMs: null, preClick: false });
+  });
+  it("a pre-click round is not counted: the leg is NOT DISCRIMINATING, however fast it looked", () => {
+    const rs: Round[] = [R({ guard: "fg" }), R({ guard: "fg" }), R({ guard: "fg", preClick: true, inMs: null })];
+    const j = judgePop("R20-POP-OTHER", "human", rs, { expect: "fg", consoleNew: 0 });
+    expect(j.v).toBe("NOT DISCRIMINATING");
+    expect(j.line).toContain("n=2 ");
+  });
+  it("leg third records that B's tab is in W, before the leg runs", () => {
+    expect(B_WINDOW_CHECK).toBe("CHECK R20-POP-OTHER third b-window=W (sheet: W2)");
+    const src = readFileSync(fileURLToPath(new URL("../s13-r20-a.ts", import.meta.url)), "utf8");
+    expect(src.indexOf("say(B_WINDOW_CHECK)")).toBeGreaterThan(0);
+    expect(src.indexOf("say(B_WINDOW_CHECK)")).toBeLessThan(src.indexOf('popLeg(row, "third"'));
   });
 });

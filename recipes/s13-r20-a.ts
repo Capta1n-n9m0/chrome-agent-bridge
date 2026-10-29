@@ -14,14 +14,24 @@ type Tab = import("../sdk/src/index.js").Tab;
 type Client = import("../sdk/src/index.js").BridgeClient;
 export type Who = "A" | "B" | "C";
 // ---- the POP rows ---------------------------------------------------------------------------------------------------------------------------------
-export interface Round { grantedTo: Who | "none"; inMs: number | null; others: number; held: "TAB_HELD" | "ok"; controlSame: boolean; ownCallOk: boolean; guard: "bg" | "fg" | "n/a" }
+export interface Round { grantedTo: Who | "none"; inMs: number | null; others: number; held: "TAB_HELD" | "ok"; controlSame: boolean; ownCallOk: boolean; guard: "bg" | "fg" | "n/a"; preClick?: boolean }
+/** Slack for the clock difference between Node's Date.now() and the PowerShell click stamp (a few ms). A first grant earlier than the stamp by more than this was not caused by this round's click. */
+export const PRE_CLICK_TOL_MS = 20;
+/** A pre-click grant is never read as a fast pass (the old clamp at 0 did): the round is flagged and not counted, so the leg is NOT DISCRIMINATING (only a counted round is evidence). */
+export function grantTiming(grants: ReadonlyArray<{ at: number }>, t0: number): { inMs: number | null; preClick: boolean } {
+  const g = grants[0];
+  if (!g) return { inMs: null, preClick: false };
+  return g.at < t0 - PRE_CLICK_TOL_MS ? { inMs: null, preClick: true } : { inMs: Math.max(0, g.at - t0), preClick: false };
+}
+/** No SDK, MCP or daemon call opens a tab in a chosen window, so B's tab is in W; the record says so instead of hiding it. */
+export const B_WINDOW_CHECK = "CHECK R20-POP-OTHER third b-window=W (sheet: W2)";
 export interface PopJudge { v: Verdict20; why?: "popup-lease-wrong"; line: string }
 export const UNJOINED_LINE = "ROW R20-POP-OTHER unjoined NOT MEASURED — no unjoined tab can be made";
 const WRONG = "popup-lease-wrong" as const;
 /** Three rounds, each with the guard read just before the call. A round whose guard is not the leg's is not counted. A lease to a client that does not hold the source tab is the STOP
  * (any round); granted-to=none is a FAIL; fewer than 3 counted rounds is NOT DISCRIMINATING; the grant within 1 000 ms, B's call TAB_HELD equal to its control, A's call ok, console-new 0. */
 export function judgePop(row: string, leg: string, rounds: readonly Round[], o: { expect: "bg" | "fg"; consoleNew: number | null }): PopJudge {
-  const counted = rounds.filter((r) => r.guard === o.expect);
+  const counted = rounds.filter((r) => r.guard === o.expect && !r.preClick);
   const wrong = rounds.find((r) => (r.grantedTo !== "A" && r.grantedTo !== "none") || r.others > 0);
   const grantedTo: Who | "none" = wrong ? (wrong.grantedTo === "A" || wrong.grantedTo === "none" ? "B" : wrong.grantedTo) : counted.some((r) => r.grantedTo === "none") ? "none" : "A";
   const ms = counted.map((r) => r.inMs).filter((m): m is number => m !== null);
@@ -94,7 +104,7 @@ async function popRound(P: { A: Peer; B: Peer; C?: Peer }, o: { O: Tab; front: (
   if (trig === "unsent") { await sweep(); return "unsent"; }
   const t0 = stampOf(trig) ?? tPrep, w0 = Date.now();   // a click leg: t0 is the stamp after the click, the wait starts after the trigger returned
   for (; trig !== "skip" && Date.now() - w0 < 2500 && P.A.grants.length === 0; await sleep(25));
-  const inMs = P.A.grants.length ? Math.max(0, P.A.grants[0]!.at - t0) : null;
+  const { inMs, preClick } = grantTiming(P.A.grants, t0);
   await sleep(400);
   const handle = P.A.grants[0]?.tab;
   const others = peers.filter(([w]) => w !== "A").reduce((n, [, p]) => n + p.grants.length, 0);
@@ -109,7 +119,7 @@ async function popRound(P: { A: Peer; B: Peer; C?: Peer }, o: { O: Tab; front: (
     say(`ANSWER ${row} ${popB.e?.code ?? "ok"} control=${ctl.e?.code ?? "ok"} own=${own.e?.code ?? "ok"}`);
   }
   await sweep();
-  return { grantedTo: wrongWho ?? (handle ? "A" : "none"), inMs, others, held, controlSame, ownCallOk, guard };
+  return { grantedTo: wrongWho ?? (handle ? "A" : "none"), inMs, others, held, controlSame, ownCallOk, guard, preClick };
 }
 /** One leg. `cn0` / `cn1` are the PowerShell side's worker-console line counts before the first popup and after the last grant (console-new is their difference; unreadable = null).
  * A `click` leg asks the PowerShell side for the human-style click as the round's trigger (after the front, guard and reset); an unsent click makes the leg NOT MEASURED. */
@@ -124,6 +134,7 @@ async function popLeg(row: string, leg: string, P: { A: Peer; B: Peer; C?: Peer 
     if (r === "unsent") unsent = true; else rounds.push(r);
   }
   const cn1 = num(await sig(`${row}-${leg}-cn1`));
+  if (rounds.some((r) => r.preClick)) say(`CHECK ${row} ${leg} grant-before-click=yes`);
   if (unsent) { say(`CHECK ${row} ${leg} click-sent=no`); say(legLine(row, leg, "NOT MEASURED")); return { v: "NOT MEASURED", rounds }; }
   const j = judgePop(row, leg, rounds, { expect: o.expect, consoleNew: cn0 === null || cn1 === null ? null : Math.max(0, cn1 - cn0) });
   say(j.line); say(legLine(row, leg, j.v === "STOP" ? "FAIL" : j.v));
@@ -159,6 +170,7 @@ async function popOther(x: Ctx): Promise<number> {
     await sleep(1200);
     void (async () => { while (busy) { await att(() => B.c.call("evaluate", { tab: T.handle, expression: "1" })); await sleep(300); } })();
     const legs: Verdict20[] = [];
+    say(B_WINDOW_CHECK);
     legs.push((await popLeg(row, "third", { A, B, C }, { O, expect: "bg", front: () => H.focus(), trigger: () => att(() => O.evaluate(`window.open('${POPUP(port)}') !== null`)) })).v);
     if (x.opts.click === "yes") legs.push((await popLeg(row, "human", { A, B, C }, { O, expect: "fg", click: true, front: () => O.focus(), trigger: async () => undefined })).v);
     else { say(`CHECK ${row} human click=unavailable`); say(legLine(row, "human", "NOT MEASURED")); legs.push("NOT MEASURED"); }

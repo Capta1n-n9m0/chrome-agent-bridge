@@ -5,15 +5,16 @@
 # s12-r19-a.ps1 (Invoke-R19Row, Complete-R19Row, step lists, Set-R19JsOff / Restore-R19Js, Switch-R19Toolbar, block-list restores), then, AFTER them, adds R20 keys to the tables they read ($R19Order, $R19Multi, $R19DeferRe) and redefines the few functions that pin Run 19's text. Top-level names carry an R20 prefix.
 . "$PSScriptRoot\s12-r19-lib.ps1"
 . "$PSScriptRoot\s12-r19-a.ps1"
+. "$PSScriptRoot\s12-r19-c.ps1"   # read-only: Write-R19Dialogs (R20-RESTORE's DIALOGS line and its two STOPs)
 # ---- slice and order tables (liveB20 and liveC20 are listed for the plan; their drivers are S5-drivers-B and -C) ------------------------------------------------
 $R20Prologue = @('preflight', 'servers', 'files', 'window', 'reload', 'console')
-# A2 fills these slots (sheet order): CON-DESC, -NOTEA, -CAP / CON-4, -FLOOR, -NOTEA blocked / ARGS-OLD.
-$R20SlotCon = @(); $R20SlotAfterArgs3 = @(); $R20SlotOld = @()
+# A2's slots (sheet order): CON-DESC, -NOTEA (allowed, pre), -CAP / CON-4, -FLOOR, -NOTEA blocked / ARGS-OLD.
+$R20SlotCon = @('r20-con-desc', 'r20-con-notea', 'r20-con-cap'); $R20SlotAfterArgs3 = @('r20-con-4', 'r20-con-floor', 'r20-con-notea-b'); $R20SlotOld = @('r20-args-old')
 $R19Order['liveA20'] = $R20Prologue + @('r20-0', 'r20-pop-bg', 'r20-pop-fg', 'r20-pop-other', 'r20-pop-none', 'r20-args-order') + $R20SlotCon + @('r20-args-3') + $R20SlotAfterArgs3 + $R20SlotOld + @('r20-restore', 'r20-logs')
 $R19Order['liveB20'] = $R20Prologue + @('r20-0b', 'closerprobe', 'r20-choose-twice', 'r20-choose-kept', 'r20-choose-refuse-dis', 'r20-g2-1', 'r20-version', 'r20-restore', 'r20-logs')
 $R19Order['liveC20'] = $R20Prologue + @('r20-0c', 'flag', 'r20-devt-undock', 'r20-devt-early', 'r20-up-devt', 'r20-keep-4', 'r20-sweep-held', 'r20-restore', 'r20-logs')
 $R19Multi = @('R20-0', 'R20-0B', 'R20-0C', 'R20-RESTORE', 'R20-LOGS')   # the rows every slice holds end with slice=<letter>
-$R19DeferRe = '^R20-(ARGS|CON)-[A-Z0-9]'                                   # the rows with a console clause are settled at R20-LOGS (#351 (4) (b))
+$R19DeferRe = '(?!)'   # matches nothing: no slice-A ARGS or CON row has a worker-console clause (e2e plan 4.28 l.1968-1975; the sentinel= counts are page reads), so each prints its own ROW inline and R20-LOGS never changes it (A2 fixer 2, N1; Run 19 deferred because its rows had one, #351 (4) (b)). A slice that has such rows sets its own pattern.
 $R20S4Commit = 'b3cbe84'
 function Get-R19RecordName([string]$Block, [int]$Att = 1) { "S13-live-record-$Block$(if ($Att -gt 1) { "-att$Att" }).txt" }
 function Get-R19CapName([string]$Slice, [int]$K) { "console-$Slice-$K.txt" }   # one file per segment in every slice (s13-r20.ts capturePath20)
@@ -21,7 +22,12 @@ function Get-R19CapName([string]$Slice, [int]$K) { "console-$Slice-$K.txt" }   #
 $R20Verdict = ${function:Get-R19Verdict}
 function Get-R19Verdict([string[]]$Lines) { & $R20Verdict @($Lines | Where-Object { "$_" -notmatch '^(?:\S+Z )?(?:s9-win: )?ROW \S+ unjoined ' }) }
 function Restore-R19State { $r20o = Use-S16Options; [void](Set-S9Foreground $global:W); Restore-S11Safety $r20o $global:W 'R20-RESTORE' }
-function Invoke-R20Rerun { $global:R19Rerun++; [int](Invoke-R19Node 's13-r20' @('proof', '--rerun', "$($global:R19Rerun)")) -eq 0 }
+function Get-R20ProofArgs($W, [string[]]$Extra = @()) {
+  $r20a = @('proof', '--port', "$($global:R20Port)", '--perm', $W.Perm, '--listener', $W.Listener) + $Extra
+  if ($W.Enabled -ne 'unread') { $r20a += @('--enabled', $W.Enabled) }; if ($W.Disk -ne 'unread') { $r20a += @('--disk', $W.Disk) }
+  , $r20a
+}
+function Invoke-R20Rerun { $global:R19Rerun++; $r20w = Read-R20Worker; [int](Invoke-R19Node 's13-r20' (Get-R20ProofArgs $r20w @('--rerun', "$($global:R19Rerun)"))) -eq 0 }
 function Invoke-R19Rerun { Invoke-R20Rerun }
 # ---- the port (form (10)): the lowest from 8081 that neither netstat nor Get-NetTCPConnection lists; a Bound entry with no listener counts as held ------------------
 function Select-R20Port([int[]]$Held) { $r20p = 8081; while ($Held -contains $r20p) { $r20p++ }; $r20p }
@@ -54,6 +60,11 @@ function Read-R20Worker([int]$TimeoutMs = 8000) {
   if ($r20r.Perm -eq 'unread') { try { $r20r.Disk = $(if ((Get-Content -Raw -ErrorAction Stop -LiteralPath (Join-Path (Split-Path -Parent $PSScriptRoot) 'extension\manifest.json') | ConvertFrom-Json).permissions -contains 'webNavigation') { 'yes' } else { 'no' }) } catch { } }
   $r20r
 }
+function Out-R20Held {   # LOADED20 (when held), then the proof's CHECK lines (when held), each once, on the real Show-S16
+  $r20r = $global:R19Real
+  if ($global:R19Loaded) { & $r20r @($global:R19Loaded); $global:R19Loaded = $null }
+  if (@($global:R20Checks).Count) { & $r20r @($global:R20Checks); $global:R20Checks = @() }
+}
 function Invoke-R20Zero([scriptblock]$Zero) {
   if ($global:S16Changed) { Fail-S16 'R20-0 after a state change would overwrite the found texts; refused' }
   $h = Get-R19Head
@@ -61,19 +72,19 @@ function Invoke-R20Zero([scriptblock]$Zero) {
   $w = Read-R20Worker
   $global:R19Real = ${function:Show-S16}; $global:R19Held = @()
   function global:Show-S16([string[]]$l) { $global:R19Held += @($l) }
-  $r20pa = @('proof', '--port', "$($global:R20Port)", '--perm', $w.Perm, '--listener', $w.Listener); if ($w.Enabled -ne 'unread') { $r20pa += @('--enabled', $w.Enabled) }; if ($w.Disk -ne 'unread') { $r20pa += @('--disk', $w.Disk) }
+  $r20pa = Get-R20ProofArgs $w
   try { $rc = [int](Invoke-R19Node 's13-r20' $r20pa) } finally { Set-Item function:global:Show-S16 $global:R19Real }
   $global:R19Loaded = @($global:R19Held | Where-Object { $_ -match '^LOADED20 ' })[-1]
   $r20why = [regex]::Match(($global:R19Held -join "`n"), '(?m)^STOPWHY (\S+)')
-  $r20other = @($global:R19Held | Where-Object { $_ -notmatch '^(LOADED20 |STOPWHY )' }); if ($r20other.Count) { Show-S16 $r20other }
+  $global:R20Checks = @($global:R19Held | Where-Object { $_ -notmatch '^(LOADED20 |STOPWHY )' })   # held: MANIFEST first, LOADED20 second, then these
   if ($rc -ne 2 -and -not $global:R19Loaded) { Stop-R19 'throw-after-state' 'R20-0: the proof printed no LOADED20 line (it crashed); nothing was changed' }
   if ($rc -eq 2) {
-    if ($global:R19Loaded) { Show-S16 @($global:R19Loaded); $global:R19Loaded = $null }
+    Out-R20Held
     Stop-R19 $(if ($r20why.Success) { $r20why.Groups[1].Value } else { 'build-not-loaded' }) 'R20-0: the loaded extension is not this build or is disabled; nothing was changed'
   }
   Set-R19Raw 'r20-0'
-  function global:Show-S16([string[]]$l) { & $global:R19Real $l; if ($global:R19Loaded -and (@($l | Where-Object { $_ -match '^MANIFEST ' }).Count)) { & $global:R19Real @($global:R19Loaded); $global:R19Loaded = $null } }
-  try { Invoke-R19Stamped $Zero } finally { Set-Item function:global:Show-S16 $global:R19Real; if ($global:R19Loaded) { Show-S16 @($global:R19Loaded); $global:R19Loaded = $null } }
+  function global:Show-S16([string[]]$l) { & $global:R19Real $l; if ($global:R19Loaded -and (@($l | Where-Object { $_ -match '^MANIFEST ' }).Count)) { Out-R20Held } }
+  try { Invoke-R19Stamped $Zero } finally { Set-Item function:global:Show-S16 $global:R19Real; Out-R20Held }
   Show-S16 @("HEAD $($h.Head) tree=clean")
   $r20anc = Test-R20S4Ancestor
   [void](Invoke-R19Node 's13-r20' @('s4', '--ancestor', $(if ($r20anc) { 'yes' } else { 'no' })))
@@ -104,7 +115,15 @@ function Register-R20Blocks {
   $global:R19Blocks['r20-pop-none'] = { Invoke-R19Row 'R20-POP-NONE' @('pop-none', '--port', "$($global:R20Port)") -Actor 's13-r20-a' }
   $global:R19Blocks['r20-args-order'] = { Invoke-R19Row 'R20-ARGS-ORDER' @('args-order', '--port', "$($global:R20Port)") -Actor 's13-r20-a' }
   $global:R19Blocks['r20-args-3'] = { Invoke-R19Row 'R20-ARGS-3' @('args-3', '--port', "$($global:R20Port)") -StepList (New-R19Steps 'R20-ARGS-3-js' '' { Set-R19JsOff } { Restore-R19Js }) -Restore { Restore-R19Js } -Actor 's13-r20-a' }
-    # A2 appends below: r20-con-*, r20-args-old, r20-restore, r20-logs
+  $global:R19Blocks['r20-con-desc'] = { Invoke-R19Row 'R20-CON-DESC' @('con-desc') -Actor 's13-r20-a2' }
+  $global:R19Blocks['r20-con-notea'] = { Invoke-R20NoteaA }
+  $global:R19Blocks['r20-con-cap'] = { Invoke-R19Row 'R20-CON-CAP' @('con-cap', '--port', "$($global:R20Port)") -Actor 's13-r20-a2' }
+  $global:R19Blocks['r20-con-4'] = { Invoke-R19Row 'R20-CON-4' @('con-4', '--port', "$($global:R20Port)") -StepList (New-R19Steps 'R20-CON-4-off' '' { Switch-R19Toolbar $false } { Switch-R19Toolbar $true }) -Restore { Switch-R19Toolbar $true } -Actor 's13-r20-a2' }
+  $global:R19Blocks['r20-con-floor'] = { Invoke-R19Row 'R20-CON-FLOOR' @('con-floor', '--port', "$($global:R20Port)") -StepList (New-R19Steps 'R20-CON-FLOOR-off' '' { Switch-R19Toolbar $false } { Switch-R19Toolbar $true }) -Restore { Switch-R19Toolbar $true } -Actor 's13-r20-a2' }
+  $global:R19Blocks['r20-con-notea-b'] = { Invoke-R20NoteaB }
+  $global:R19Blocks['r20-args-old'] = { Invoke-R19Swapped $R19Commit['liveD19'] { Invoke-R20OldArgs } 'R20-ARGS-OLD' }
+  $global:R19Blocks['r20-restore'] = { Invoke-R20Restore }
+  $global:R19Blocks['r20-logs'] = { Invoke-R20Logs }
 }
 # The value steps of a POP row, in the actor's signal order: per leg `<row>-<leg>-cn0`, (leg human: three click steps), `<row>-<leg>-cn1`. The console count is read at cn0 and cn1.
 function New-R20PopSteps([string]$Row, [string[]]$Legs, [bool]$Click) {
@@ -127,8 +146,8 @@ function Get-R20ConsoleCount {   # POP's console-new: the capture window saved t
 }
 # The human-style click on the fixture's #open-popup link in the wave's own window W (UIA, plain, no modifier). 'unsent' when any guard fails: the leg is NOT MEASURED.
 function Test-R20Click { [bool](Get-Command Find-S12UiaByName -ErrorAction Ignore) }
-function Invoke-R20PopClick([string]$Guard = 'fg') {   # `skip` (the actor read a guard other than fg): no click, 'unsent'. A click answers `sent <epoch ms>` stamped right after the click
-  if ($Guard -eq 'skip') { return 'unsent' }
+function Invoke-R20PopClick([string]$Guard = 'go') {   # only the ready content `go` clicks (`skip`, empty or anything else: no click, 'unsent'). A click answers `sent <epoch ms>` stamped right after the click
+  if ($Guard -ne 'go') { return 'unsent' }
   $r20el = $null; try { $r20el = Find-S12UiaByName $global:W 'Open popup*' 'Hyperlink' } catch { $r20el = $null }
   if (-not $r20el) { return 'unsent' }
   $r20b = Get-S12ElementRect $r20el; $r20r = Get-S12WindowRect $global:W
@@ -137,4 +156,65 @@ function Invoke-R20PopClick([string]$Guard = 'fg') {   # `skip` (the actor read 
   if (-not (Set-S9Foreground $global:W) -or (Get-S12Foreground) -ne $global:W -or (Get-S12WindowAtPoint $r20x $r20y) -ne $global:W) { return 'unsent' }
   Send-S12MouseClick $r20x $r20y
   "sent $([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
+}
+# ---- A2: the carried legs of R20-CON-NOTEA, the old-build row, R20-RESTORE and R20-LOGS ----------------------------------------------------------------------
+# One ROW per id: the allowed and pre legs (run first) are carried into the row that the blocked leg completes.
+$global:R20Carry = @{}
+$R20Complete = ${function:Complete-R19Row}
+function Complete-R19Row([string]$Id, [string[]]$Lines) {
+  $r20all = @(@(@($global:R20Carry[$Id]) | Where-Object { $_ }) + @($Lines))
+  $r20was = @($global:R19RecordRows)   # a leg the sheet calls RECORD makes the row RECORD, not PASS (CON-NOTEA allowed, CON-CAP)
+  if (@($r20all | Where-Object { "$_" -match '^LEG \S+ \S+ RECORD' }).Count) { $global:R19RecordRows = @($r20was + $Id) }
+  try { & $R20Complete $Id $r20all } finally { $global:R19RecordRows = $r20was }
+}
+function Invoke-R20NoteaA {
+  $r20rc = [int](@(Invoke-R19Node 's13-r20-a2' @('con-notea-a', '--port', "$($global:R20Port)", '--slice', $global:R19Slice))[-1])
+  $r20o = @($global:R17Out)
+  if ($r20rc -eq 2) { Stop-R19Actor 'R20-CON-NOTEA' $r20o }
+  $global:R20Carry['R20-CON-NOTEA'] = @($r20o | Where-Object { "$_" -match '^LEG ' })
+}
+function Invoke-R20NoteaB {
+  if (-not (Test-Path -LiteralPath (Join-Path $env:S11_OUT 'r20-notea.handle'))) { Complete-R19Row 'R20-CON-NOTEA' @('LEG R20-CON-NOTEA blocked NOT MEASURED'); return }   # leg a said why
+  Invoke-R19Row 'R20-CON-NOTEA' @('con-notea-b') -StepList (New-R19Steps 'R20-CON-NOTEA-block' '' { Set-R19BlockAdd 's12blk.localhost' } { Restore-R19Block }) -Restore { Restore-R19Block } -Actor 's13-r20-a2'
+}
+# R20-ARGS-OLD, inside Invoke-R19Swapped: the old build's own proof line (LOADED20 is not expected to pass), then the row only when the proof read the old refusal.
+function Invoke-R20OldArgs {
+  $r20w = Read-R20Worker
+  $global:R19Real = ${function:Show-S16}; $global:R19Held = @()
+  function global:Show-S16([string[]]$l) { $global:R19Held += @($l) }
+  try { [void](Invoke-R19Node 's13-r20' (Get-R20ProofArgs $r20w)) } finally { Set-Item function:global:Show-S16 $global:R19Real }
+  $r20l = @($global:R19Held | Where-Object { $_ -match '^LOADED20 ' })
+  if ($r20l.Count) { Show-S16 @($r20l[-1]) }
+  if (-not ($r20l.Count -and "$($r20l[-1])" -match 'keys=sorted|perm=no')) { Say9 "ROW R20-ARGS-OLD NOT RUN $([char]0x2014) old build not loadable (the proof reads neither keys=sorted nor perm=no)"; return }
+  Invoke-R19Row 'R20-ARGS-OLD' @('args-old', '--port', "$($global:R20Port)") -Actor 's13-r20-a2'
+}
+function Invoke-R20Restore {
+  Invoke-R19RowBlock 'R20-RESTORE' {
+    if (Test-S11Own $global:O) { Close-S11Window $global:O; $global:O = 0 }
+    Invoke-R19Stamped $R17Blocks['rd-restore']
+    Invoke-R20RestoreCheck
+    Write-R19Dialogs   # DIALOGS <slice> native= devtools= wave-windows-open=; a dialog or DevTools window left open is the STOP dialog-left-open / devtools-left-open
+  }
+}
+# Counts only. Console, daemon (since the slice's mark), evidence (the record) and the actors' results; the console capture must hold the control line in its last segment.
+function Invoke-R20Logs {
+  $sl = $global:R19Slice; Save-R19Seg 'end'
+  $r20all = Join-Path $env:S11_OUT "console-$sl-all.txt"; $r20df = Join-Path $env:S11_OUT "daemon-slice-$sl.txt"; $r20ef = Join-Path $env:S11_OUT "evidence-$sl.txt"; $r20af = Join-Path $env:S11_OUT "actors-$sl.jsonl"
+  [IO.File]::WriteAllText($r20all, ((@($global:R19Segs | ForEach-Object { [IO.File]::ReadAllText($_) })) -join "`n"))
+  [void](Invoke-R19Node 's11b' @('clean-console', '--file', $r20all))   # drops the capture's window-title lines (the profile's display name, #283) before any scan, as Run 19 does
+  $r20last = if (@($global:R19Segs).Count) { [IO.File]::ReadAllText(@($global:R19Segs)[-1]) } else { '' }
+  $r20ctl = ([regex]::Matches($r20last, 'safety: disarmed by the user')).Count
+  Say9 "CONSOLE $sl segments=$(@($global:R19Segs).Count) control-disarmed-last=$r20ctl"
+  [IO.File]::WriteAllLines($r20df, [string[]]@(Get-Content -LiteralPath $DaemonLog -Encoding UTF8 | Select-Object -Skip $global:S16Mark))
+  [IO.File]::WriteAllLines($r20ef, [string[]]@(Get-R19RecordLines))
+  $r20codes = @()
+  foreach ($r20s in @(@('console', $r20all), @('daemon', $r20df), @('evidence', $r20ef))) { $r20codes += [int](Invoke-R19Node 's13-r20' @('scan', '--stream', $r20s[0], '--file', $r20s[1])) }
+  if (Test-Path -LiteralPath $r20af) { $r20codes += [int](Invoke-R19Node 's13-r20' @('scan-actors', '--file', $r20af)) } else { Say9 'CHECK R20-LOGS no actor results file in this slice' }
+  $r20v = if ($global:R19SegLost -or $r20ctl -lt 1) { 'NOT MEASURED' } elseif (@($r20codes | Where-Object { $_ -ne 0 }).Count) { 'FAIL' } else { 'PASS' }
+  foreach ($r20id in @($global:R19Pending.Keys)) { $r20pv = "$($global:R19Pending[$r20id])"; Write-R19RowLine $r20id $(if ($r20v -eq 'PASS' -or $r20pv -match '^FAIL') { $r20pv } elseif ($r20v -eq 'FAIL') { 'FAIL' } else { 'NOT MEASURED' }) }   # a row's own FAIL stays FAIL
+  $global:R19Pending = [ordered]@{}
+  Write-R19RowLine 'R20-LOGS' $r20v
+  $r20rf = Join-Path $env:S11_OUT "rows20-$sl.txt"; [IO.File]::WriteAllLines($r20rf, [string[]]@(Get-R19RecordLines))
+  [void](Invoke-R19Node 's13-r20' @('rows20', '--from', $r20rf))
+  if (@($r20codes | Where-Object { $_ -eq 2 }).Count) { Stop-R19 'text-leak' 'R20-LOGS: the user name, the sentinel or the token is above 0 in a stream' }
 }

@@ -1,7 +1,7 @@
 // Step 13 S5-drivers-A: the pure shared block runner of Run 20 (recipes/s13-r20.ts): STOP/RETURN pairing, the one-ROW aggregator, scan20, the restore comparison, the proof decision.
 import { describe, expect, it } from "vitest";
 import { actorsVerdict } from "../s13-forms.js";
-import { aggregateRows20, capturePath20, checkStopReturn20, diskNote20, orderOf, proofDecision20, restoreCompare20, returnLine, rowVerdict20, scan20, scan20Actors, scan20Stream, scanArgs20, STOP_REASONS_20, stopLine } from "../s13-r20.js";
+import { aggregateRows20, capturePath20, checkStopReturn20, diskNote20, orderOf, proofDecision20, restoreCompare20, returnLine, rowVerdict20, scan20, scan20Actors, scan20Stream, scanArgs20, scanExit20, STOP_REASONS_20, stopLine } from "../s13-r20.js";
 import { ENABLED_UNREAD_20 } from "../s13-r20.js";
 const NAME = "Zed Quux", SENT = "s12sent-5f3a9c71", TOKEN = "tok-9f8e7d6c5b4a";
 const A = { name: NAME, sentinels: [SENT, "sentinel-args-K7W3-"], token: TOKEN };
@@ -124,5 +124,11 @@ describe("R20-0 enabled with no console reading", () => {
   it("names its source and does not claim a read", () => {
     expect(ENABLED_UNREAD_20).toMatch(/^CHECK R20-0 enabled-source=reachability /);
     expect(ENABLED_UNREAD_20).not.toMatch(/enabled=(yes|no)/);
+  });
+});
+describe("R20-LOGS exit (A2)", () => {
+  it("any count above 0 in the console, daemon or evidence stream is the STOP text-leak, the sentinel included", () => {
+    expect(scanExit20({ name: 0, sentinel: 0, token: 0 })).toBe(0);
+    for (const c of [{ name: 1, sentinel: 0, token: 0 }, { name: 0, sentinel: 1, token: 0 }, { name: 0, sentinel: 0, token: 1 }]) expect(scanExit20(c)).toBe(2);
   });
 });

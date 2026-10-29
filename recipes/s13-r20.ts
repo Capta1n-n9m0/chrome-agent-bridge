@@ -67,6 +67,8 @@ export function scan20(text: string, a: ScanArgs): Scan3 {
   if (a.name === "" || a.token === "" || a.sentinels.length === 0 || a.sentinels.some((s) => s === "")) throw new Error("scan20: a pattern is empty");
   return { name: [a.name, ...(a.alsoNames ?? [])].reduce((n, s) => n + occ(text.toLowerCase(), s.toLowerCase()), 0), sentinel: a.sentinels.reduce((n, s) => n + occ(text, s), 0), token: occ(text, a.token) };
 }
+/** The console, daemon and evidence streams expect 0 for all three patterns (sheet R20-LOGS): any count is the STOP text-leak (exit 2). */
+export const scanExit20 = (c: Scan3): 0 | 2 => (c.name + c.sentinel + c.token === 0 ? 0 : 2);
 export const scan20Stream = (stream: string, text: string, a: ScanArgs): string => scan20Line(stream, scan20(text, a));
 /** One `SCAN20 actors <tool>` line per tool, judged through actorsVerdict (form (11)). */
 export function scan20Actors(results: ReadonlyArray<{ tool: string; text: string }>, a: ScanArgs): { lines: string[]; verdict: "PASS" | "STOP text-leak" } {
@@ -161,7 +163,7 @@ export async function main(argv: string[]): Promise<number> {
     console.log(`CHECK rows20 rows=${a.n} warns=${a.warns.length} stop-return=${sr.length}`);
     return sr.length === 0 ? 0 : 2;
   }
-  if (sub === "scan") { const t = readFileSync(o.file ?? "", "utf8"), a = scanArgs20(repo), c = scan20(t, a); console.log(scan20Line(o.stream ?? "", c)); return c.name + c.token === 0 ? 0 : 2; }
+  if (sub === "scan") { const t = readFileSync(o.file ?? "", "utf8"), a = scanArgs20(repo), c = scan20(t, a); console.log(scan20Line(o.stream ?? "", c)); return scanExit20(c); }
   if (sub === "scan-actors") {
     const rs = readFileSync(o.file ?? "", "utf8").split(/\r?\n/).filter(Boolean).map((l) => JSON.parse(l) as { tool: string; text: string });
     const r = scan20Actors(rs, scanArgs20(repo));
