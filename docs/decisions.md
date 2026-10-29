@@ -192,6 +192,31 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-30 · S5-drivers-B4b: liveB20's PowerShell side (#412)
+**Decided:** (1) `root-add` runs after R20-POP-OTHER-3 and before `CLOSERPROBE`. (2) Slice-B actor rows answer their
+value steps through one `serve` step: it answers whichever ids are asked, ends when the actor exits (by PID and recorded
+start time), and throws at 120 s idle or 600 s per row; that throw is the STOP `throw-after-state`. (3) WB is found by
+the URL marker `s12=g2b` among the wave's own windows only, before WA opens; not found (`wb-unknown`) is the STOP
+`throw-after-state`, never a guess, and a human window is never read. (4) R20-VERSION is NOT RUN when the old build is
+not loadable (reload exit 2 twice, or a proof reading neither `keys=sorted` nor `perm=no`). (5) The -3 evidence file is
+rotated at R20-0B, so first-hit holds per attempt. (6) `outside-file-reached-page` stays in the STOP list though no
+slice-B reader raises it (no §4.28 CHOOSE or VERSION row pre-registers it). **Why:** each is the strict reading of an
+unstated case; none changes a pass rule; all fixed before any liveB20 observation. **Instead of:** an id-by-id answer
+list (hangs on an unasked step); an unbounded serve (B4b verifier1 F1); guessing WB. **Revisit if:** liveB20 shows a
+legitimate gap over 120 s, or the document URL unreadable by UI Automation. **By:** Claude (proposed by S5-drivers-B4b;
+verifier2 PASS-with-notes)
+
+### 2026-10-30 · S5-drivers-B4a: the unstated cases of the -3 judges (#411)
+**Decided:** (1) `judgePop3` ranks STOP, then FAIL (a counted round failing a clause, or a join or URL count above 0),
+then too few counted rounds (NOT DISCRIMINATING, or NOT MEASURED in leg `human`), then NOT MEASURED for an unreadable
+capture or a failed control. (2) The actor reads `popup-opened` from `listTabs` (Chrome `id`, `openerTabId`) before the
+click and 1 000 ms or more after `sent`. (3) `console-new=unread` when a capture is unreadable; B's loop is stopped before
+leg `human`; with no counted round, `granted-to` reads A only if a round granted A; a skipped click prints no
+popup-opened line; the root window-title name is dropped by exact match, and an unreadable name makes the capture
+unreadable. **Why:** each is the strict reading of #407 and #410. **Instead of:** `judgePop`'s order (count first).
+**Revisit if:** liveB20 shows the liveness control flat. **By:** Claude (proposed by S5-drivers-B4a; verifier
+PASS-with-notes)
+
 ### 2026-10-30 · S5-addendum407: how the -3 rows read #407's held-call, console and human-leg clauses (#410)
 **Decided:** (1) **Held-call:** met when B's popup call answers `TAB_HELD` and its message contains `held by "<A's
 hello name>"` (the text `checkLease` builds), and B's control call on O answers `TAB_HELD` by code; the record prints
