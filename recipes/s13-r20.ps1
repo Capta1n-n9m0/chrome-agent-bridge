@@ -184,9 +184,18 @@ function Invoke-R20NoteaA {
   if ($r20rc -eq 2) { Stop-R19Actor 'R20-CON-NOTEA' $r20o }
   $global:R20Carry['R20-CON-NOTEA'] = @($r20o | Where-Object { "$_" -match '^LEG ' })
 }
+# Liveness of O's document is not kept across toolbar presses (liveA20 attempt 2: the block add found O off the options page after CON-4 / CON-FLOOR), so a step that reads or sets a box loads O fresh first (Read-S11Stored: about:blank and back; prints STATE lines only, changes no state).
+# On the options-page failure it prints the window's url-class (s12-win.ps1 Get-S12UrlClass; never a URL) and rethrows.
+function Invoke-R20OptionsStep([string]$Row, [scriptblock]$Op) {
+  try { [void](Read-S11Stored (Use-S16Options)); & $Op }
+  catch {
+    if ("$_" -match 'is not on this extension.s options page') { $r20u = ''; try { $r20u = Get-S9DocUrl $global:O } catch { }; Say9 "CHECK $Row options-window $(if (Get-Command Get-S12UrlClass -ErrorAction Ignore) { Get-S12UrlClass $r20u } else { 'url-class=unknown' })" }
+    throw
+  }
+}
 function Invoke-R20NoteaB {
   if (-not (Test-Path -LiteralPath (Join-Path $env:S11_OUT 'r20-notea.handle'))) { Complete-R19Row 'R20-CON-NOTEA' @('LEG R20-CON-NOTEA blocked NOT MEASURED'); return }   # leg a said why
-  Invoke-R19Row 'R20-CON-NOTEA' @('con-notea-b') -StepList (New-R19Steps 'R20-CON-NOTEA-block' '' { Set-R19BlockAdd 's12blk.localhost' } { Restore-R19Block }) -Restore { Restore-R19Block } -Actor 's13-r20-a2'
+  Invoke-R19Row 'R20-CON-NOTEA' @('con-notea-b') -StepList (New-R19Steps 'R20-CON-NOTEA-block' '' { Invoke-R20OptionsStep 'R20-CON-NOTEA' { Set-R19BlockAdd 's12blk.localhost' } } { Invoke-R20OptionsStep 'R20-CON-NOTEA' { Restore-R19Block } }) -Restore { Invoke-R20OptionsStep 'R20-CON-NOTEA' { Restore-R19Block } } -Actor 's13-r20-a2'
 }
 # R20-ARGS-OLD, inside Invoke-R19Swapped: the old build's own proof line (LOADED20 is not expected to pass), then the row only when the proof read the old refusal.
 function Invoke-R20OldArgs {

@@ -343,3 +343,27 @@ describe("s13-r20-a.ps1 assigns every top-level variable the reused Run 17 and 1
 		expect(src).toMatch(/Set-R20Port; if \(\$global:R20Port -ne 8081\) \{ Fail-S16 "port 8081 is not free: /);
 	});
 });
+
+// Fix round 3: liveA20 attempt 2 stopped in r20-con-notea-b ("window <O> is not on this extension's options page") because the block add read O's document as it was
+// after CON-4 / CON-FLOOR's toolbar presses. R20-CON-NOTEA's change step and both restores load O fresh first, and a failure prints the window's url-class (never a URL).
+describe("s13-r20.ps1 R20-CON-NOTEA loads the options window fresh before touching it (liveA20 attempt 2)", () => {
+	const src = readFileSync(process.env.S13_R20_PS1 ?? join(REPO, "recipes", "s13-r20.ps1"), "utf8");
+	const fn = (name: string): string => { const i = src.indexOf(`function ${name} {`); const k = i < 0 ? src.indexOf(`function ${name}(`) : i; expect(k).toBeGreaterThan(-1); const j = src.indexOf("\nfunction ", k + 10); const c = src.indexOf("\n# ", k + 10); return src.slice(k, Math.min(...[j, c].filter((x) => x > -1))); };
+	it("the helper reads the stored state of the own options window, then runs the op", () => {
+		const h = fn("Invoke-R20OptionsStep");
+		expect(h).toMatch(/Read-S11Stored \(Use-S16Options\)[\s\S]*& \$Op/);
+	});
+	it("the helper prints a CHECK line with the window's url-class (never a URL) and rethrows", () => {
+		const h = fn("Invoke-R20OptionsStep");
+		expect(h).toContain("options-window");
+		expect(h).toContain("Get-S12UrlClass $r20u");
+		expect(h).toContain("Get-S9DocUrl $global:O");
+		expect(h).toMatch(/\bthrow\b/);
+		expect(h).not.toMatch(/Say9[^\n]*\$u\b/);
+	});
+	it("the block add, its undo and the -Restore block all go through the helper", () => {
+		const b = fn("Invoke-R20NoteaB");
+		expect(b).toMatch(/\{ Invoke-R20OptionsStep 'R20-CON-NOTEA' \{ Set-R19BlockAdd 's12blk\.localhost' \} \}/);
+		expect(b).toMatch(/\{ Invoke-R20OptionsStep 'R20-CON-NOTEA' \{ Restore-R19Block \} \}\) -Restore \{ Invoke-R20OptionsStep 'R20-CON-NOTEA' \{ Restore-R19Block \} \}/);
+	});
+});

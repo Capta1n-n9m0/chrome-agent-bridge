@@ -33,3 +33,33 @@
   files; 8 tsconfigs 0; plan exit 0; static walk preflight→R20-0 found nothing with S11_OUT set. M1 MINOR latent
   (s11-win.ps1 fixes `$S11Out` before the S11_OUT default; runner always sets S11_OUT — accepted as a note). Two home
   paths redacted to <home> in fixer1-red and runner-att1. Next: committer, then attempt 2 (`-Att 2`, fresh S11_OUT).
+- Fix rounds 1-2 committed `3c6def3` (verifier PASS-with-notes). Fix rounds used 2 of 3.
+- liveA20 att2 started (runner Sonnet medium; out `$TEMP/bridge-e2e/s20-live/a2`; `-Att 2`; stdout
+  `$TEMP/bridge-e2e/s20-live-a2-stdout.txt`, exit file `s20-live-a2.exit`). Attempts 2 of 3.
+- liveA20 att2 (runner Sonnet medium; out `$TEMP/bridge-e2e/s20-live/a2`; HEAD 3c6def3; build clean): 16:58:39Z-17:01:39Z,
+  exit 2. `LOADED20 keys=page nested=page elem=page perm=yes listener=yes enabled=yes args=answered`; ROW R20-0 PASS,
+  POP-BG FAIL, POP-FG FAIL, POP-OTHER FAIL (unjoined NOT MEASURED), POP-NONE PASS, ARGS-ORDER RECORD, CON-DESC PASS,
+  CON-CAP PASS, ARGS-3 PASS, CON-4 PASS, CON-FLOOR PASS; CON-NOTEA a-legs PASS (no ROW: the row ends with leg b). STOP in
+  r20-con-notea-b before its state change: `window 30346380 is not on this extension's options page` (s9-win.ps1:605, from
+  Set-S11Box via Set-R19BlockAdd on O) -> `STOP throw-after-state` -> `RETURN 1 after-stop=throw-after-state
+  restored=yes readback=equal` (matched). Not reached: NOTEA ROW, ARGS-OLD, RESTORE's DIALOGS, R20-LOGS. Teardown exit 0
+  `CHECK clean PASS`; the wave left `node … s13-r20-a2.ts con-notea-b` running (runner killed it, the wave's own).
+  9234 daemon only; 8080-8089 free. Attempts 2 of 3.
+- Step-agent notes on the POP FAILs (not judged here, for S5-record): `granted-to=A others=0` in every bg/fg/third
+  round (no popup-lease-wrong), but `held-call=ok` printed while each ANSWER line reads `TAB_HELD control=TAB_HELD
+  own=ok`, and `console-new=95/90/129` from whole-capture line counts (`Get-R20ConsoleCount`, s13-r20.ps1:155). Both
+  look like reader questions on rows already run: not touched by a fix round (integrity floor; escalated in the report).
+- Diagnosis of the STOP: Set-S11Box/Set-S9Switch read O's document without reloading it; the last fresh options load
+  of O was ARGS-3's restore STATE read (17:01:08); after CON-4/CON-FLOOR's toolbar presses the UIA doc URL no longer
+  read as the options page. Cause not proven. Fix round 3 (last): before the block add and before its restore, load O
+  fresh via Read-S11Stored (as every other state step does); print O's url-class on a failure; stop the row's actor
+  on a STOP if it is in R20's lane.
+- Fix round 3 (3 of 3, last): fixer DONE (`S5-liveA20-fixer3.md`): `Invoke-R20OptionsStep` (fresh Read-S11Stored of O
+  before the NOTEA-b change, undo and -Restore; url-class CHECK on the failure, rethrow); orphan cause not proven, outside
+  lane (s11b-r17.ps1 Stop-S16Pid: no exit check, /F without /T); 3 source tests red on HEAD; npm test 5804 -> 5807,
+  243 files; 8 tsconfigs 0; plan exit 0. Verifier3 Opus medium started -> `S5-liveA20-verifier3.md`.
+- Fix round 3 verifier (Opus medium): PASS-with-notes (`S5-liveA20-verifier3.md`): npm test 5807, 243 files; 8
+  tsconfigs 0; plan exit 0; static walk NOTEA-b → ARGS-OLD → RESTORE → LOGS found no dropped setup or stale read. N1, N2
+  MINOR; N3 MAJOR out of lane: the orphan is the real node under the nvm shim (`taskkill /F` without `/T`,
+  s11b-r17.ps1:94), only after an actor-row STOP. Fix rounds 3 of 3 used. Next: committer, then attempt 3 (last).
+- Redacted the capture's window-title line (profile display name, as #283) to <user> in S5-liveA20-console-att2-1.txt; the runner's scan missed it.
