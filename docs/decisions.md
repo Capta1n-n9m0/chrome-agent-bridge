@@ -12,6 +12,10 @@ as a dated entry and point back.
 None. The user ruled Step 12's gate on 2026-10-29 (#374, `decisions-archive/step12.md`); every item listed here
 before was settled by it. Step 13's scope is ruled by the same entry (`docs/plans/2026-10-29-step13-phase-f-followups.md`).
 
+For Step 13's gate (contract-level shapes the user has not ruled; the run goes on with the conservative option, recorded
+in the Log): #376 (G1's wire shape: a `tabCreated` field or a late event) and #380 (the second-chooser refusal: own
+message or a new code). Stage 0 adds its choice and reason to each.
+
 ## Standing decisions
 
 A decision that still governs how we work or what the product promises: one line, its date and title, and where
@@ -183,5 +187,52 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 ## Log
 
-The current step's entries (Step 13, numbered after #374): none yet. Step 12's (#321–#374) are in
+The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
+
+#375–#383 are the phase doc's proposals (`docs/plans/2026-10-29-step13-phase-f-followups.md` § Decisions 0.1–0.9),
+numbered at kickoff so Stage 0 can attack them. Each holds as written in that section until Stage 0 or a later entry
+changes it; the full text is there, not here.
+
+### 2026-10-29 · Not in Step 13: the Phase F items left out; Phase G after it stays minimal (#383)
+**Decided:** as phase doc § 0.9. **Why:** #374 items 11 and 1–7 bound the step. **Instead of:** a larger step.
+**Revisit if:** the user widens the scope. **By:** Claude (proposed; Stage 0 attacks it)
+
+### 2026-10-29 · Run 20: §4.28, `R20-…` ids, old rows never edited, re-measured rows name their R19 row (#382)
+**Decided:** as phase doc § 0.8 (seed rows; Stage 0 checks the section number is free). **Why:** #373's re-measurement
+list and the new features need one live run; old evidence stays as it was. **Instead of:** editing R19 rows.
+**Revisit if:** Stage 0 finds §4.28 taken or a seed row unmeasurable. **By:** Claude (proposed; Stage 0 attacks it)
+
+### 2026-10-29 · The settle pause releases the lock on rejection too, if S4 has room (#381)
+**Decided:** as phase doc § 0.7, `.then(release, release)` with a failing test first. **Why:** a rejecting `sleep`
+would hold the visibility lock until disconnect (#354). **Instead of:** leaving it in Follow-ups. **Revisit if:** S4
+exceeds its cap. **By:** Claude (proposed; Stage 0 attacks it)
+
+### 2026-10-29 · The second-chooser refusal: own message under `DEBUGGER_DEVTOOLS` (a) unless Stage 0 says (b) (#380)
+**Decided:** as phase doc § 0.6, option (a) recommended; Stage 0 records the final choice with its reason. **Why:**
+#374 item 7; (a) changes one text and no count. **Instead of:** (b) a new code. **Revisit if:** Stage 0 shows the
+code would be untrue on that path. **By:** Claude (proposed; Stage 0 decides)
+
+### 2026-10-29 · The console texts: newest lines kept with a cut marker; "only other-site frames are not read" (#379)
+**Decided:** as phase doc § 0.5. **Why:** #374 items 6 and 7. **Instead of:** keeping the oldest lines. **Revisit
+if:** a pinned test outside the named files depends on the old marker. **By:** Claude (proposed; Stage 0 attacks it)
+
+### 2026-10-29 · CON-NOTEA: one `Runtime.getProperties` read if Stage 0 measures it cheap, else a documented limit (#378)
+**Decided:** as phase doc § 0.4, with its four "cheap" conditions. **Why:** #374 item 5. **Instead of:** reading
+through page code (forbidden). **Revisit if:** Stage 0's measurement. **By:** Claude (proposed; Stage 0 measures)
+
+### 2026-10-29 · `evaluate`'s value keeps the page's key order: the serialiser's envelope crosses as a JSON string (#377)
+**Decided:** as phase doc § 0.3; reply shape unchanged; every serialiser path covered. **Why:** #374 item 4; Chrome
+sorts keys of a `returnByValue` object. **Instead of:** re-sorting on receipt; documenting it. **Revisit if:** Stage 0
+finds an envelope value a JSON string changes. **By:** Claude (proposed; Stage 0 attacks it)
+
+### 2026-10-29 · G1: the popup lease from `webNavigation`'s `sourceTabId`, as one field or a late event (#376)
+**Decided:** as phase doc § 0.2 (the Stage0.md §6 draft; the daemon grants only to the source tab's holder; no new
+router method; the manifest gains exactly `webNavigation`). **Why:** #374 item 1 granted the permission; #337 measured
+`sourceTabId` names the opener. **Instead of:** leaving #226's limit. **Revisit if:** Stage 0 cannot join the event in
+a usable bound and the late event fails too. **By:** Claude (proposed; the permission by the user, #374)
+
+### 2026-10-29 · Step 13's order and slices: Stage 0 → S1 → S2/S3a/S3b/S4 → S5 Run 20 → S6 (#375)
+**Decided:** as phase doc § 0.1; S2, S3b and S4 may run beside S1 once S1's spec note is committed; live slices run
+alone. **Why:** G1 changes the manifest, which every later reload and live row needs. **Instead of:** a strict
+sequence. **Revisit if:** two lanes touch one file. **By:** Claude (proposed; Stage 0 attacks it)
