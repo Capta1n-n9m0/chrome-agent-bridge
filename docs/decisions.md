@@ -196,6 +196,36 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · liveB19's attempt 2 accepted; its last attempt is spent on the DevTools opener (#368)
+**Decided:** liveB19 attempt 2 (`6b56edd`, `rows=24 warns=0 stop-return=0`) ran with no FAIL. R19-UP-OPT passed at 362 ms
+with the #363/#364 fix. R19-RESTORE was equal to R19-0, and R19-LOGS passed.
+- **Attempt 1's fix round is accepted.** Attempt 1 stopped at KEEP-1 on a helper target: `{css:"body"}` can never match
+  in the locator's walk. Fix round 1 (`a40aa86`) clicks `h1` instead. That is the driver's choice, because the sheet
+  names no target, and the expected `ok` is unchanged.
+- **The DevTools rows get the last attempt.** R19-UP-DEVT, KEEP-4 and SWEEP-HELD are NOT MEASURED because DEVPROBE found
+  no `Customize and control*` menu button: Chrome 156 names it `Chrome`, and it offers only expand. UP-DEVT has been NOT
+  MEASURED in three runs, and the slice still has budget (one attempt, two fix rounds). So fix round 2 runs before any
+  later slice:
+  1. A measurer proves the Chrome 156 menu path to "Developer tools" on a window the wave opened, reading names and
+     patterns only.
+  2. A fixer updates the opener, with tests.
+  3. An Opus verifier checks it.
+  4. **Attempt 3** runs the whole of liveB19.
+- **How S7-record reads the two attempts:** each row's verdict comes from attempt 3, and attempt 2's verdicts are kept
+  beside it. A row that reads differently in the two attempts is reported with both readings, never with the better one.
+  If DEVPROBE still reads `attached=no`, the three rows stay NOT MEASURED, and the cause goes to the user.
+- **liveA19's stray W window is accepted as closed.** The step agent closed it (fixture tabs only, left open by
+  attempt 2's STOP).
+- **Three gotcha candidates go to `recipes/CLAUDE.md` at the close-out:** `{css}` never matches `body`, `html` or
+  `head`; Chrome 156's menu button is `Chrome`; and a STOP leaves windows open, so list them after it.
+
+**Why:** a NOT MEASURED that a recipes fix can turn into a measurement should get that fix while the budget allows it. No
+pass rule moves.
+**Instead of:** carrying UP-DEVT NOT MEASURED a fourth time; a separate DevTools-only re-run outside the slice's order.
+**Revisit if:** the menu path needs a click on a window the wave did not open (forbidden), in which case the rows stay NOT
+MEASURED.
+**By:** Claude (session agent's rulings)
+
 ### 2026-10-29 · liveA19 done in three attempts; its five FAILs go to S7-record for a cause reading; fix budget per slice (#367)
 **Decided:** liveA19 ran to the end in attempt 3 (`785da10`, `rows=32 warns=0 stop-return=0`). R19-RESTORE was equal to
 R19-0 by count and hash, and R19-LOGS passed.
