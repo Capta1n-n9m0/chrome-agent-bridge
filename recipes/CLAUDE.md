@@ -29,10 +29,13 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   runner; Step 12 S1, §4.26), `s12-forms{,-b,-c}.ts` (Run 19's line forms, pure), `s12-r19.ts` / `s12-r19.ps1` +
   `s12-r19-lib.ps1` (Run 19's block runner), `s12-r19-{a,b,c,de}.{ts,ps1}` (the per-slice actors and row drivers),
   `s12-win-{b,c}.ps1` (their Windows helpers), `s12-oldbuild.ts` (the old-build swap and restore, #356) (Step 12 S7,
-  §4.27), `tsconfig{,.fe,.s6,.s9,.s10,.s11,.s11b}.json` (recipes are not in `npm run typecheck`: `npx tsc
-  --noEmit -p recipes/tsconfig.s6.json`; all seven exit 0, 2026-10-29; `.s11b` also covers `s12-r19-{a,b,c,de}.ts`,
-  and `.s6`'s `test/*.test.ts` glob compiles the other `s12-*.ts` through their tests). Fixtures: `test-fixtures/s10-{cap,mcpf,save}.html`,
-  `test-fixtures/s11-{upload,frame,patched}.*`.
+  §4.27), `s13-forms.ts` (Run 20's line forms and judges, on the product's own constants), `s13-r20.ts` /
+  `s13-r20.ps1` (Run 20's shared block runner over Run 19's, read-only) and `s13-r20-a.{ts,ps1}` (slice A's rows and
+  entry script) (Step 13 S5, §4.28), `tsconfig{,.fe,.s6,.s9,.s10,.s11,.s11b,.s13}.json` (recipes are not in `npm run
+  typecheck`: `npx tsc --noEmit -p recipes/tsconfig.s6.json`; all eight exit 0, 2026-10-29; `.s11b` also covers
+  `s12-r19-{a,b,c,de}.ts`, `.s13` the `s13-*` files with `"chrome"` in `types`, and `.s6`'s `test/*.test.ts` glob
+  compiles the other `s12-*.ts` through their tests; `.s6` excludes `s13-forms.test.ts`, which needs `chrome` types). Fixtures: `test-fixtures/s10-{cap,mcpf,save}.html`,
+  `test-fixtures/s11-{upload,frame,patched}.*`, `test-fixtures/s13-chooser.*` (reporter `window.__s13ch`).
 
 ## Runtime gotchas (live runs, Windows tooling, driving Chrome from the outside)
 - **Windows PowerShell 5.1 mangles `—`** (U+2014): it decodes program output with the console code

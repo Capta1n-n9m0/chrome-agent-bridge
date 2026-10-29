@@ -38,3 +38,6 @@
 - 2026-10-29T14:48:54Z · S5-drivers-A · step agent · ended DONE-PARTIAL · A1 `2224637` · verifier FAIL → FAIL → PASS-with-notes (2 of 3 rounds) · tests 5705 → 5772 · `S5-drivers-A.md`. A2 remains.
 - 2026-10-29T14:48:54Z · decisions · #401 (ARGS-ORDER `ref` leg RECORD; §4.28 dated note, before any observation), #402 (the A1/A2 split; one #395 breach, no residue).
 - 2026-10-29T14:48:54Z · S5-drivers-A2 · step agent · Opus · medium · started (output `S5-drivers-A2.md`).
+- 2026-10-29T16:21:39Z · S5-drivers-A2 · step agent · ended · `97613f2` · verifier FAIL → FAIL → PASS-with-notes (2 of 3 rounds; 3 MAJOR fixed) · tests 5772 → 5798, files 242 → 243 · 585 lines · #395 held · `S5-drivers-A2.md`. liveA20 runnable.
+- 2026-10-29T16:21:39Z · decisions · #403. §4.28 dated note (CON-DESC form, no deferral, pre-click grant), before any observation. `recipes/CLAUDE.md`: the s13 files, eight tsconfigs, the `.s6` exclude, the s13 fixture.
+- 2026-10-29T16:21:39Z · order · liveA20 runs now (earliest feedback on the reload and the S1/S2 proof), then drivers B and C, then liveB20 and liveC20; every live slice alone, from a clean tree at a committed HEAD.

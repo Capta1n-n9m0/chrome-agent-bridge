@@ -192,6 +192,15 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · S5-drivers-A2: CON-DESC's line form, no deferral in slice A, a pre-click grant not counted (#403)
+**Decided:** as `S5-drivers-A2.md` §5 and the §4.28 dated note (before any observation): (a) R20-CON-DESC prints
+`CHECK R20-CON-DESC sentence-1=<n> sentence-2=<n> control-tool=<read or missing>`; (b) no slice-A row is deferred to
+R20-LOGS; (c) a POP grant earlier than the click minus 20 ms is not counted and the leg reads NOT DISCRIMINATING.
+**Why:** (a) §4.28 gave no form; (b) no ARGS or CON row has a console clause, and deferral let a logs problem change
+their verdicts or drop their ROW lines on a STOP; (c) a grant not caused by the click can never be a pass. **Instead
+of:** Run 19's deferral; clamping `in-ms` at 0. **Revisit if:** live runs show Node/.NET clock skew over 20 ms.
+**By:** Claude
+
 ### 2026-10-29 · S5-drivers-A: split into A1 and A2; one #395 breach recorded (#402)
 **Decided:** S5-drivers-A runs as A1 (`2224637`: the shared runner, R20-0, POP, ARGS-ORDER, ARGS-3; 1,074 lines, accepted
 only as DONE-PARTIAL) and A2 (the CON rows, ARGS-OLD, RESTORE, LOGS, the entry script, and A1's carried MINORs), capped
