@@ -192,6 +192,25 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-30 · S5-addendum407: how the -3 rows read #407's held-call, console and human-leg clauses (#410)
+**Decided:** (1) **Held-call:** met when B's popup call answers `TAB_HELD` and its message contains `held by "<A's
+hello name>"` (the text `checkLease` builds), and B's control call on O answers `TAB_HELD` by code; the record prints
+`holder=A`, never the message. (2) **Console:** judged by content over the whole worker-console capture saved after the
+leg (one line = one UI Automation element name). A line is from the join when it names `OpenerJoin`, `opener-join`,
+`opener_join` or `OPENER_JOIN`; the URL parts are `localhost:<P>`, `e2e-playground.html?popup` and `popup=1`. A join or
+URL count above 0 is FAIL whatever else reads. A liveness control: the after-leg capture holds more `[bridge] evaluate`
+lines than the before-leg one (A's popup call is an `evaluate` whose expression length is unique in the slice); if the
+control fails, a count of 0 prints `unread`, which turns only a would-be PASS into NOT MEASURED. `console-new` is a
+RECORD delta. (3) **Leg `human`:** `popup-opened=yes` when a `listTabs` row no client opened appears, read 1 000 ms or
+more after the click's sent time; the opener is recorded, not judged. Popup opened and `granted-to=none` is FAIL; no
+popup is NOT MEASURED; PASS needs 3 of 3 popups opened. (4) The rows run in liveB20 after R20-0B, before `CLOSERPROBE`.
+**Why:** #407 says what each clause judges, not how the instrument reads it; each reading is passable on a correct build
+(the defect that sank the `-2` rows, #406) and at least as strict as #407. All were written and committed (`8ec2789`)
+before any liveB20 observation. **Instead of:** a before/after diff with a prefix rule (can read `unread` by
+construction); reading `popup-opened` through the opener (could hide a popup leased to nobody). **Revisit if:** liveB20
+shows the liveness control failing (the capture cannot show the worker's rows), or a grouped or virtualized console
+list. **By:** Claude (proposed by S5-addendum407; verifier4 PASS-with-notes after 3 of 3 fix rounds)
+
 ### 2026-10-30 · S5-drivers-B3: the unstated cases of R20-G2-1 and R20-VERSION (#409)
 **Decided:** (1) B "timed out" means a code other than `ok` and `LOCK_TIMEOUT`, with its reply 30 000 ms or more after
 A's send. (2) A leg whose alone-control fails, or whose window WB is not fully uncovered (0 covered pixels), is NOT
