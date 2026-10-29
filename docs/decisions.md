@@ -192,6 +192,20 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · S1: mutants and pre-slice runs never touch the main tree (#395)
+**Decided:** a verifier or builder proves a test red on the pre-slice code, or runs a mutant, only in a scratch git
+worktree with its own `npm ci` (#220) or an in-memory copy, never by reverting, moving or editing files in the main
+tree. **Why:** S1's first verifier copied the stage's files out and reverted them in the main tree; the session's
+terminal closed mid-run and the work was missing from the tree until the session agent copied it back (journal,
+10:31Z). **Instead of:** "revert, run, restore" in place. **Revisit if:** never; it binds every later stage brief.
+**By:** Claude
+
+### 2026-10-29 · S1: a navigation target for a tab Chrome gave no `openerTabId` is ignored (#394)
+**Decided:** the join acts only on a tab whose `tabs.onCreated` carried an `openerTabId`; a navigation-target event for
+any other tab is dropped. **Why:** such a tab is sent at once under #385 and nothing waits for a join; ignoring the
+event keeps today's behaviour for it. **Instead of:** granting from a late navigation target. **Revisit if:** Run 20
+finds a popup Chrome creates without `openerTabId`. **By:** Claude (the builder's, endorsed by S1's step agent)
+
 #384–#393 record Stage 0's attack on them (`docs/plans/2026-10-29-step13-phase-f-followups-steps/Stage0.md` §5,
 commit `8f23ac9`, verifier PASS-with-notes); the full reasoning is there.
 

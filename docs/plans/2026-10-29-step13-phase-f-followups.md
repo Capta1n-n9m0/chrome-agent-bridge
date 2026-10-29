@@ -348,6 +348,23 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - **Numbers:** tests 5596 → 5596 (no product code); ~40 min for the second agent.
 - **Needs the user:** #385 (G1's shape) and #389 (chooser text) at the gate.
 
+### S1 — G1, the background opener's popup · 2026-10-29 · verifier: PASS-with-notes (round 1 of 3, then PASS-with-notes) · commits `6cb3d4b` (spec note), `8f6fc4d` · models Opus builder, fixer and verifiers
+- **Contracts (binding forward):** `tabCreated.openerTabId` is the navigation source when the extension joined
+  `webNavigation.onCreatedNavigationTarget` within 250 ms (`extension/src/opener-join.ts`, `OPENER_JOIN_HOLD_MS`), and
+  absent when it did not; a held `tabCreated` is released before that tab's `tabRemoved`/`tabReplaced`; the join keeps
+  tab ids only and logs nothing (log sites +0). The manifest gains exactly `webNavigation`, pinned by
+  `extension/test/manifest.test.ts`. The daemon's opener rule and the wire shape are unchanged. Spec §10 dated note.
+- **Decisions:** #394, #395. **Deviations:** 381 new lines against 350 (code 115; the extra is tests); the listener
+  pin in `extension/test/s3a-dnr-wiring.test.ts` (outside the lane, stricter: 20 → 21 listeners, exactly one
+  `onCreatedNavigationTarget`). The first S1 step agent and its verifier were cut off by the terminal closing; a fresh
+  step agent and verifier finished it (journal).
+- **Numbers:** tests 5596 → 5617, files 235 → 236; 14 of 15 mutants red, incl. the fallback-to-Chrome's-opener and
+  grant-to-caller mutants.
+- **Left for later (notes):** N2, an unjoined tab's `tabCreated` can be overtaken by other tabs' events for up to
+  250 ms; N3, the spec bullet's "reads" should say "acts on; the daemon relays" (S6).
+- **Needs the user:** the extension reload (the script exited 2 twice at 10:53Z; S5-live's R20-0 does it); #385 at
+  the gate.
+
 ## Follow-ups
 
 - The Phase F items left out (0.9): response bodies and WebSocket frames on the kept session; console lines in
