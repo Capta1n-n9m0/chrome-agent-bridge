@@ -192,6 +192,32 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-30 · S5-drivers-B3: the unstated cases of R20-G2-1 and R20-VERSION (#409)
+**Decided:** (1) B "timed out" means a code other than `ok` and `LOCK_TIMEOUT`, with its reply 30 000 ms or more after
+A's send. (2) A leg whose alone-control fails, or whose window WB is not fully uncovered (0 covered pixels), is NOT
+DISCRIMINATING and is not run; a refused placement is NOT MEASURED. (3) `a-effect` is the page counter's change over the
+leg. (4) VERSION's control upload not `ok` is the STOP `existing-tool-changed` (the sheet lists the control under it); a
+native dialog is `dialog-left-open`. (5) The placement margin is 16 px and the smallest window 500×400. **Why:** the
+sheet leaves each case open, and each choice is the strict one; all were fixed before any liveB20 observation.
+**Instead of:** judging a leg on a window not shown uncovered. **Revisit if:** liveB20 shows Chrome's invisible frame
+(about 7 px, read by `GetWindowRect`) making WB read covered. **By:** Claude (proposed by S5-drivers-B3's builder;
+verifier2 PASS-with-notes)
+
+### 2026-10-30 · S5-drivers-B2: #405's tree kill spares the daemon; the chooser rows' unstated cases (#408)
+**Decided:** (1) #405's tree kill is built as a ParentProcessId walk, descendants first and the root last, that skips a
+descendant running `daemon/dist/index.js` together with its subtree; only the actor (`node`) gets it, every other
+process name keeps Run 17's kill. #405 is amended to say so. (2) KEPT leg `same` prints `LEG … same RECORD`, so a
+passing row reads RECORD. (3) KEPT leg `different`: every clause is judged first; NOT MEASURED (`digest-differs=n/a`)
+only when all hold and a digest stays unreadable. (4) REFUSE-DIS: `btn` not answering `TIMEOUT` makes a PASS or RECORD
+NOT DISCRIMINATING; `ok` with a file on `self` is FAIL even beside a refusing `flip`; legs run btn, flip, self. (5) TWICE:
+call 1 times out 4 900–8 000 ms after its send (Run 19's margins for "about 5 s"); a serialised MCP (call 2 `other`,
+reply 4 000 ms or more after call 1's) prints only a CHECK line. (6) STOP reasons: a failed control upload is
+`chooser-interception-left-on`, a native dialog count above 0 `dialog-left-open`, KEPT's prelude `throw-after-state`.
+**Why:** a literal `taskkill /T` would also kill a daemon an actor spawned (B2 verifier F5); the sheet leaves the rest
+unstated, and each choice is the strict one, fixed before any liveB20 observation. **Instead of:** a literal `/T`; NOT
+MEASURED before the counters are read (rejected in B2's F1). **Revisit if:** liveB20 shows a stale parent PID pulling in
+an unrelated process (then add a creation-time filter). **By:** Claude (proposed by S5-drivers-B2)
+
 ### 2026-10-30 · G1.4: corrected POP rows, written before they run, prove G1 in liveB20 (#407)
 **Decided:** G1.4 is not accepted on liveA20. New rows `R20-POP-BG-3`, `R20-POP-FG-3` and `R20-POP-OTHER-3` are written
 into §4.28 as a dated addendum, committed before any liveB20 observation, and run in liveB20; G1.4 is judged on
@@ -225,8 +251,10 @@ row (masked message, a timed console window) written for a later run. G1.4 goes 
 evidence. **By:** Claude, for the user at the gate
 
 ### 2026-10-29 · liveA20: actors are killed with their tree; preflight refuses a fixture port other than 8081 (#405)
-**Decided:** Run 20's later slices kill an actor with `taskkill /F /T` (an s13 override; Run 17's
-`recipes/s11b-r17.ps1` stays read-only), and the slice preflight refuses any fixture port other than 8081. **Why:**
+**Decided:** Run 20's later slices kill an actor with its whole process tree (an s13 override; Run 17's
+`recipes/s11b-r17.ps1` stays read-only), and the slice preflight refuses any fixture port other than 8081. As built
+(S5-drivers-B2, amended 2026-10-30 by #408): not a literal `taskkill /F /T` but a ParentProcessId walk, descendants
+first and the root last, that spares a descendant running `daemon/dist/index.js` with its subtree. **Why:**
 after an actor-row STOP the real node survived under the nvm shim (attempts 1–2; none left after attempt 3); CON-NOTEA
 needs 8081. **Instead of:** editing a Run 17 helper; a NOT MEASURED leg by port. **By:** Claude
 

@@ -4,8 +4,9 @@ import { CHOOSER_BUSY_MESSAGE } from "../../extension/src/handlers/upload.js";
 import { CHOOSER_TIMEOUT_MESSAGE } from "../../extension/src/upload-files.js";
 import { DISABLED_INPUT_MESSAGE } from "../../extension/src/content/upload-target.js";
 import { catchDecision, HelperDefect, StopWhy } from "../s12-r19-a.js";
+import { CHOOSER_RELOAD_HINT } from "../../daemon/src/intercept.js";
 import { MCP_LINES, chkeptLine, chooseLine20, mcpLineRead } from "../s13-forms.js";
-import { cmds, controlOk, digestDiffers, judgeKeptDifferent, judgeRefuseDis, judgeTwiceMcp, judgeTwiceSdk, parseDialogCount, preludeStop, stopFor, type Ans, type KeptRead } from "../s13-r20-b.js";
+import { afterCheckLine, bTimedOut, g2LegGate, cmds, controlOk, coveredPx, g2Line20, g2Rows, judgeArgs7, judgeG2Leg, judgeVersionCall, judgeVersionControl, judgeVersionMcp, parsePlace, parseRects, versionStopFor, winCovered, digestDiffers, judgeKeptDifferent, judgeRefuseDis, judgeTwiceMcp, judgeTwiceSdk, parseDialogCount, preludeStop, stopFor, type Ans, type KeptRead } from "../s13-r20-b.js";
 const OVERLAP = "Chrome DevTools (or another extension) is already attached to this tab — Chrome allows one debugger per tab. Close DevTools on that tab and retry.";
 const c1: Ans = { code: "TIMEOUT", message: CHOOSER_TIMEOUT_MESSAGE, ms: 5_300 };
 const c2: Ans = { code: "DEBUGGER_DEVTOOLS", message: CHOOSER_BUSY_MESSAGE, ms: 40 };
@@ -133,6 +134,147 @@ describe("the STOPs return through the shared stop path", () => {
     }
   });
   it("registers the three rows' commands", () => {
-    expect(Object.keys(cmds).sort()).toEqual(["choose-kept", "choose-refuse-dis", "choose-twice"]);
+    expect(Object.keys(cmds).sort()).toEqual(["choose-kept", "choose-refuse-dis", "choose-twice", "g2-1", "version"]);
   });
+});
+// ---- B3: R20-G2-1 and R20-VERSION --------------------------------------------------------------------------------------------------------------
+const OBS = { a: "ok", aReplyMs: 520, bReplyMs: 1_100, rawGapMs: 580, holderAfterReplyMs: 480, aEffect: 1, b: "ok" };
+const RAW = "wa=0,0,1920,1040;A=100,100,800,600,0;B=300,200,800,600,1|100,100,800,600;X=50,50,400,300,2";
+describe("R20-G2-1 window arithmetic", () => {
+	it("the covered pixels are the union of the rectangles above, cut to the work area (overlaps counted once, the taskbar strip outside)", () => {
+		const wa = { x: 0, y: 0, w: 1920, h: 1040 }, t = { x: 100, y: 100, w: 100, h: 100 };
+		expect(coveredPx(t, [], wa)).toBe(0);
+		expect(coveredPx(t, [{ x: 0, y: 0, w: 150, h: 150 }], wa)).toBe(2_500);
+		expect(coveredPx(t, [{ x: 0, y: 0, w: 150, h: 150 }, { x: 120, y: 120, w: 20, h: 20 }, { x: 100, y: 100, w: 100, h: 100 }], wa)).toBe(10_000);
+		expect(coveredPx(t, [{ x: 200, y: 100, w: 50, h: 50 }], wa)).toBe(0);
+		expect(coveredPx({ x: 0, y: 1000, w: 100, h: 100 }, [{ x: 0, y: 1040, w: 100, h: 40 }], wa)).toBe(0);
+		expect(coveredPx({ x: 0, y: 1000, w: 100, h: 100 }, [{ x: 0, y: 1020, w: 100, h: 20 }], wa)).toBe(2_000);
+		expect(coveredPx({ x: 5_000, y: 0, w: 10, h: 10 }, [{ x: 0, y: 0, w: 9_000, h: 9_000 }], wa)).toBe(0);
+	});
+	it("parses the PowerShell answer and reads each window's coverage from it", () => {
+		const r = parseRects(RAW);
+		expect(r.wins.B.z).toBe(1);
+		expect(winCovered(r, "B")).toBe(600 * 500);
+		expect(winCovered(r, "A")).toBe(0);
+	});
+	it("a malformed, short or incomplete answer is a HelperDefect, never a guess", () => {
+		for (const bad of ["", "A=1,2,3", RAW.replace("wa=0,0,1920,1040;", ""), RAW.replace(";X=50,50,400,300,2", ""), RAW.replace("100,100,800,600,0", "100,100,800,x,0"), RAW.replace("600,0;", "600,-1;")]) expect(() => parseRects(bad)).toThrow(HelperDefect);
+	});
+	it("the placement answer is ok, refused <word>, or a HelperDefect", () => {
+		expect(parsePlace("ok\r\n")).toBe(true);
+		expect(parsePlace("refused not-wave-window")).toBe(false);
+		expect(() => parsePlace("")).toThrow(HelperDefect);
+		expect(() => parsePlace("okay")).toThrow(HelperDefect);
+	});
+});
+describe("R20-G2-1 fix round 1 (F2, F3, N1, N2)", () => {
+	it("coverage cuts to the work area in what the actor reads: a rectangle only in the taskbar strip covers nothing (T8)", () => {
+		const r = parseRects("wa=0,0,1920,1040;A=100,100,800,600,0;B=300,1000,800,100,1|0,1040,1920,40;X=50,50,400,300,2");
+		expect(winCovered(r, "B")).toBe(0);
+	});
+	it("the 30 000 ms boundary counts as timed out (T1); a negative work-area size and a bare `refused` are defects (T22, T23)", () => {
+		expect(bTimedOut("TIMEOUT", 30_000)).toBe(true);
+		expect(() => parseRects(RAW.replace("wa=0,0,1920,1040", "wa=0,0,-1,1040"))).toThrow(HelperDefect);
+		expect(() => parsePlace("refused")).toThrow(HelperDefect);
+	});
+	const L = (v: "PASS" | "FAIL", t = false) => ({ v, bTimedOut: t, usable: true });
+	it("covered times out while uncovered FAILs without a timeout: no cause is named (T4)", () => {
+		expect(g2Rows(L("FAIL", true), L("FAIL"))).toEqual({ covered: "FAIL", uncovered: "FAIL" });
+	});
+	it("a leg that uploaded nothing but whose files count is 1 is a FAIL even with every other clause right (T10)", () => {
+		expect(judgeVersionCall({ code: "VERSION", message: CHOOSER_RELOAD_HINT, files: 1, clicks: 0, leaked: 0 })).toBe("FAIL");
+	});
+	it("g2LegGate: a refused placement is NOT MEASURED (uncovered only); a failed alone-control or an uncovered WB not at 0 px is NOT DISCRIMINATING; else run", () => {
+		expect(g2LegGate("uncovered", { placeOk: false })).toBe("NOT MEASURED");
+		expect(g2LegGate("covered", { placeOk: false })).toBe("run");
+		expect(g2LegGate("uncovered", { placeOk: true })).toBe("run");
+		expect(g2LegGate("covered", { aloneErr: true, bCov: 0 })).toBe("NOT DISCRIMINATING");
+		expect(g2LegGate("uncovered", { aloneErr: true, bCov: 0 })).toBe("NOT DISCRIMINATING");
+		expect(g2LegGate("uncovered", { aloneErr: false, bCov: 1 })).toBe("NOT DISCRIMINATING");
+		expect(g2LegGate("uncovered", { aloneErr: false, bCov: 0 })).toBe("run");
+		expect(g2LegGate("covered", { aloneErr: false, bCov: 480_000 })).toBe("run");
+	});
+	it("the after-leg read prints a number, or `unread` for a malformed answer, and never throws on one; other errors still throw", () => {
+		expect(afterCheckLine("R", "covered", RAW)).toBe("CHECK R covered b-covered-after-px=" + 600 * 500);
+		expect(afterCheckLine("R", "covered", "garbage")).toBe("CHECK R covered b-covered-after-px=unread");
+		expect(afterCheckLine("R", "covered", "")).toBe("CHECK R covered b-covered-after-px=unread");
+	});
+});
+describe("R20-G2-1 judges", () => {
+	it("a leg passes on the R19 pass rule with the 450 ms bounds", () => {
+		expect(judgeG2Leg({ ...OBS, rawGapMs: 450 } as never)).toBe("PASS");
+	});
+	it("each clause failing is a FAIL: a no-hold build (gap near 0), no holder, no effect, A not ok, B not ok", () => {
+		expect(judgeG2Leg({ ...OBS, rawGapMs: 449 } as never)).toBe("FAIL");
+		expect(judgeG2Leg({ ...OBS, rawGapMs: 700, holderAfterReplyMs: 449 } as never)).toBe("FAIL");
+		expect(judgeG2Leg({ ...OBS, rawGapMs: 700, aEffect: 0 } as never)).toBe("FAIL");
+		expect(judgeG2Leg({ ...OBS, rawGapMs: 700, aEffect: 2 } as never)).toBe("FAIL");
+		expect(judgeG2Leg({ ...OBS, rawGapMs: 700, a: "TIMEOUT" } as never)).toBe("FAIL");
+		expect(judgeG2Leg({ ...OBS, rawGapMs: 700, b: "LOCK_TIMEOUT" } as never)).toBe("FAIL");
+	});
+	it("B timed out is a code other than ok and LOCK_TIMEOUT at 30 000 ms or later", () => {
+		expect(bTimedOut("TIMEOUT", 30_100)).toBe(true);
+		expect(bTimedOut("TIMEOUT", 29_999)).toBe(false);
+		expect(bTimedOut("LOCK_TIMEOUT", 31_000)).toBe(false);
+		expect(bTimedOut("ok", 31_000)).toBe(false);
+	});
+	const L = (v: "PASS" | "FAIL" | "NOT DISCRIMINATING", t = false, usable = true) => ({ v, bTimedOut: t, usable });
+	it("covered times out, uncovered passes: FAIL for covered with the cause named; both time out: FAIL, cause not established", () => {
+		expect(g2Rows(L("FAIL", true), L("PASS"))).toEqual({ covered: "FAIL", uncovered: "PASS", cause: "capture of a covered window" });
+		expect(g2Rows(L("FAIL", true), L("FAIL", true))).toEqual({ covered: "FAIL", uncovered: "FAIL", cause: "not established, rectangles recorded" });
+	});
+	it("no cause for plain passes, a plain FAIL, or a leg that was not usable (alone-control failed)", () => {
+		expect(g2Rows(L("PASS"), L("PASS"))).toEqual({ covered: "PASS", uncovered: "PASS" });
+		expect(g2Rows(L("FAIL"), L("PASS"))).toEqual({ covered: "FAIL", uncovered: "PASS" });
+		expect(g2Rows(L("FAIL", true), L("NOT DISCRIMINATING", false, false))).toEqual({ covered: "FAIL", uncovered: "NOT DISCRIMINATING" });
+		expect(g2Rows(L("NOT DISCRIMINATING", false, false), L("PASS"))).toEqual({ covered: "NOT DISCRIMINATING", uncovered: "PASS" });
+	});
+	it("prints the sheet's G2 line with the leg key, and a negative gap as 0", () => {
+		expect(g2Line20("R20-G2-1", "covered", { ...OBS }, 580)).toBe("G2 R20-G2-1 leg=covered a-reply=520 b-reply=1100 gap-ms=580 holder-after-reply-ms=480 a-effect=1 b=ok");
+		expect(g2Line20("R20-G2-1", "uncovered", { ...OBS }, -3)).toContain("leg=uncovered a-reply=520 b-reply=1100 gap-ms=0 ");
+	});
+});
+const HINT = CHOOSER_RELOAD_HINT;
+describe("R20-VERSION judges", () => {
+	const call = { code: "VERSION", message: HINT, files: 0, clicks: 0, leaked: 0 };
+	it("sdk and raw pass on VERSION with exactly the daemon's text and nothing on the page", () => {
+		expect(judgeVersionCall(call)).toBe("PASS");
+	});
+	it("a build that uploads (files=1, ok), another text, a click on the page or a path in the text each FAIL", () => {
+		expect(judgeVersionCall({ ...call, code: "ok", message: undefined, files: 1 })).toBe("FAIL");
+		expect(judgeVersionCall({ ...call, message: `${HINT} x` })).toBe("FAIL");
+		expect(judgeVersionCall({ ...call, code: "BAD_PARAMS" })).toBe("FAIL");
+		expect(judgeVersionCall({ ...call, clicks: 1 })).toBe("FAIL");
+		expect(judgeVersionCall({ ...call, leaked: 1 })).toBe("FAIL");
+	});
+	const mr = (o: { isError?: boolean; text?: string } = {}) => mcpLineRead({ isError: o.isError ?? true, text: o.text ?? HINT }, MCP_LINES.chooserOld);
+	it("the MCP leg is the bare text with isError, read by its own line, and the page untouched", () => {
+		expect(judgeVersionMcp(mr(), { files: 0, clicks: 0 }, 0)).toBe("PASS");
+		expect(MCP_LINES.chooserOld).toBe(HINT);
+	});
+	it("a code on line 1, the extension's text, no isError, a touched page or a leak FAIL; an unreadable page leaves NOT MEASURED", () => {
+		expect(judgeVersionMcp(mr({ text: `VERSION\n${HINT}` }), { files: 0, clicks: 0 }, 0)).toBe("FAIL");
+		expect(judgeVersionMcp(mr({ text: "other" }), { files: 0, clicks: 0 }, 0)).toBe("FAIL");
+		expect(judgeVersionMcp(mr({ isError: false }), { files: 0, clicks: 0 }, 0)).toBe("FAIL");
+		expect(judgeVersionMcp(mr(), { files: 1, clicks: 0 }, 0)).toBe("FAIL");
+		expect(judgeVersionMcp(mr(), { files: 0, clicks: 1 }, 0)).toBe("FAIL");
+		expect(judgeVersionMcp(mr(), { files: 0, clicks: 0 }, 1)).toBe("FAIL");
+		expect(judgeVersionMcp(mr(), { files: -1, clicks: -1 }, 0)).toBe("NOT MEASURED");
+		expect(judgeVersionMcp(mr({ text: "other" }), { files: -1, clicks: -1 }, 0)).toBe("FAIL");
+	});
+	it("the control upload is ok with one file and no hint; the args call answers 7", () => {
+		expect(judgeVersionControl({ code: "ok", files: 1 })).toBe("PASS");
+		expect(judgeVersionControl({ code: "VERSION", message: HINT, files: 0 })).toBe("FAIL");
+		expect(judgeVersionControl({ code: "ok", files: 0 })).toBe("FAIL");
+		expect(judgeVersionControl({ code: "ok", message: HINT, files: 1 })).toBe("FAIL");
+		expect(judgeArgs7(7)).toBe("PASS");
+		expect(judgeArgs7("7")).toBe("FAIL");
+		expect(judgeArgs7(undefined)).toBe("FAIL");
+	});
+	it("a control that is not ok is existing-tool-changed, before a dialog (dialog-left-open); both return exit 2 through run()", () => {
+		expect(versionStopFor("R", { controlOk: true, dialog: 0 })).toBeUndefined();
+		const s1 = versionStopFor("R", { controlOk: false, dialog: 1 }), s2 = versionStopFor("R", { controlOk: true, dialog: 2 });
+		expect([s1?.why, s2?.why]).toEqual(["existing-tool-changed", "dialog-left-open"]);
+		for (const s of [s1, s2]) expect(catchDecision(s, "R", {}, "x")).toEqual({ kind: "stop", line: `STOPWHY ${s!.why}` });
+	});
 });
