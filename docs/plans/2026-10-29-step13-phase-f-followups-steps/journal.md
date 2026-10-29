@@ -26,3 +26,5 @@
 - 2026-10-29T11:54:10Z · S3b · step agent · ended · `22d2217` · verifier PASS-with-notes (1 MINOR, 3 NIT; no fix round) · tests 5648 → 5650 · `S3b.md`. S3a not run (#387).
 - 2026-10-29T11:54:10Z · decisions · #398 (the marker wording). Phase doc: S3a/S3b As built.
 - 2026-10-29T11:54:10Z · S4 · step agent · Opus · medium · started (output `S4.md`).
+- 2026-10-29T12:07:55Z · S4 · step agent · ended · `c63273a` (spec note), `b3cbe84` · verifier PASS-with-notes (3 NIT; no fix round) · tests 5650 → 5654, files 237 → 238 · `S4.md`. Its "waiting on background work" notice checked: no process with the repo or scratchpad in its command line, no extra worktree, tree clean.
+- 2026-10-29T12:07:55Z · S5-sheet · step agent · Opus · medium · started (output `S5-sheet.md`).

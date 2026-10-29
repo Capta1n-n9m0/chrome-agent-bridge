@@ -389,6 +389,18 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   new form, so Run 20's helpers read the marker first; `mcp/CLAUDE.md`, `extension/src/CLAUDE.md` and `docs/setup.md`
   still describe the old direction and frames text (S6 and the session agent).
 
+### S4 — Small fixes · 2026-10-29 · verifier: PASS-with-notes · commits `c63273a` (spec note), `b3cbe84` · models Opus builder and verifier
+- **Contracts (binding forward):** a second chooser upload on a tab answers `DEBUGGER_DEVTOOLS` with the fixed
+  `CHOOSER_BUSY_MESSAGE` (`extension/src/handlers/upload.ts`: "uploadFiles: another file chooser upload is still
+  running on this tab; retry after it ends"); every other `DEBUGGER_DEVTOOLS` text byte-identical; the MCP prints it
+  bare with `isError: true`. The settle pause releases the visibility lock on rejection too (`daemon/src/intercept.ts`,
+  `.then(release, release)`). Codes 27 (26 on the wire), log sites +0.
+- **Decisions:** #389, #390 as built. **Deviations:** none (126 lines, cap 150).
+- **Numbers:** tests 5650 → 5654, files 237 → 238; new extension and daemon tests red on `33ba954` in a scratch
+  worktree (#395); 3 of 3 mutants red.
+- **Left for later (NITs):** the new extension test frees the chooser slot only on pass; the MCP test's fake does not
+  assert the method; E5.3's path-check list lacks the new constant. Docs naming the old overlap text are S6's.
+
 ## Follow-ups
 
 - The Phase F items left out (0.9): response bodies and WebSocket frames on the kept session; console lines in
