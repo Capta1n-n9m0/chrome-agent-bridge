@@ -103,3 +103,5 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
 - 2026-10-29T01:44Z · S7-live (liveD19) · step agent · Opus · medium · started ALONE at the next commit.
 - 2026-10-29T02:11Z · S7-live (liveD19) · step agent · ended ESCALATE · fix 1 `bd523bb` (-de #in → #vis), att 1 `3fdfbfd`: R19-0 PASS, swap ok, ARGS-OLD 5/6 legs PASS (mcp code=ERROR), raw twin kind=undefined; STOP devtools-left-open at RESTORE (the capture's own windows; helper); current build restored and proven; state equal. #371: fix round 2 + att 2.
 - 2026-10-29T02:11Z · S7-live (liveD19) · step agent (fresh) · Opus · medium · started (fix round 2, attempt 2).
+- 2026-10-29T02:34Z · S7-live (liveD19) · step agent · ended DONE · fix 2 `c55cf9d`, att 2 `5d4f247`: 10 rows, 0 STOP; 9 PASS + ARGS-OLD FAIL (mcp leg code=ERROR, as att 1); raw twin kind=undefined; DIALOGS devtools=0; current build proven; state equal. As ruled by #371 (no new decision).
+- 2026-10-29T02:34Z · S7-live (liveE19) · step agent · Opus · medium · started ALONE at the next commit.
