@@ -17,7 +17,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `(hidden: the bridge is off)` / `(hidden: blocked site)`; Step 10: `focusTab {tab}` before a trusted
   `browser_click`/`browser_type`/`browser_press_key` (#106, #214), `capped`/`CAP_WARNING_LINE` on the six action
   tools (#216), `browser_evaluate {saveTo, overwrite?}` → `Saved <path>` / `<bytes> bytes · <kind> · sha256 <hex>`
-  (#127, #218)); its tool names and input schemas are pinned through a real `tools/list` by
+  (#127, #218); the returned `value` has sorted object keys, which Step 13 fixes: `extension/src/evaluate/CLAUDE.md`, #374); its tool names and input schemas are pinned through a real `tools/list` by
   `mcp/test/s2-focus-first.test.ts` (+ `tool-schemas.ts`) against `mcp/test/fixtures/tool-schemas-f45e3bf.json`, re-baselined only by a recorded decision (#214).
 
 ## Runtime gotchas

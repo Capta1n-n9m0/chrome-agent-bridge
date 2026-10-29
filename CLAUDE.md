@@ -11,25 +11,18 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-29, Step 12 built and Run 19 recorded; the gate waits for the user)
+## Current state (2026-10-29, Step 12 closed; Step 13 is next)
 
-- **Shipped:** Steps 1–11b (Step 11b closed 2026-10-27, #320; `docs/decisions-archive/step11b.md`). Public on GitHub
-  (MIT). **25 tools, 27 codes (26 on the wire), 28 router methods** (S8's commands, `…-steps/S8.md`; the test count:
-  Commands).
-- **Step 12 (Phase F, `docs/plans/2026-10-27-step12-phase-f.md` § As built and its gate checklist):** `args` for
-  evaluate, `consoleMessages` / `browser_console_messages`, the kept debugger session, `uploadFiles {chooser: true}`, the
-  blocking trusted action (G2). Run 18 and Run 19 are recorded (`…-steps/S1-run-record.md`, `S7-run-record.md`).
-  Run 19's verdicts over 58 row ids: 42 PASS, 5 FAIL, 5 NOT DISCRIMINATING, 3 NOT MEASURED, 3 RECORD (#373). G1 is not
-  built: it waits for G12-2 (#337). Decisions #321–#373 are in `docs/decisions-archive/step12.md`.
-- **Waiting for the user:**
-  - G12-2: the `webNavigation` permission for G1.
-  - G12-1: nothing since Step 11b's push is pushed (`git rev-list --count origin/main..HEAD`).
-  - The Open decisions in `docs/decisions.md`, among them #366 (control-2 corrected after an observation), #369
-    (docked DevTools does not refuse the debugger on Chrome 156), #373 (ARGS-1's key order; CON-NOTEA's fix) and #355
-    (the formatter cap).
-  - #372: whether to redact the local path and name in committed docs.
-  - The next step is the user's to name. Candidates are the Run 19 re-measurement wave and the Phase F follow-ups
-    (phase doc § Follow-ups), then Phase G.
+- **Shipped:** Steps 1–12 (Step 12 closed 2026-10-29: the user ruled its gate, #374; `docs/decisions-archive/step12.md`).
+  Public on GitHub (MIT), pushed. **25 tools, 27 codes (26 on the wire), 28 router methods** (the test count: Commands).
+- **Step 12 (Phase F, `docs/plans/2026-10-27-step12-phase-f.md`):** `args` for evaluate, `consoleMessages` /
+  `browser_console_messages`, the kept debugger session, `uploadFiles {chooser: true}`, the blocking trusted action
+  (G2). Run 19 as ruled: 42 PASS, 4 FAIL, 6 NOT DISCRIMINATING, 3 NOT MEASURED, 3 RECORD (#373, #374).
+- **Next: Step 13** (`docs/plans/2026-10-29-step13-phase-f-followups.md`, kickoff `docs/plans/next-session-prompt.md`):
+  G1 with the `webNavigation` permission (granted, #374), `evaluate`'s value in the page's key order, CON-NOTEA, the
+  console cap keeping the newest lines, two texts, and Run 20, which also re-measures Run 19's helper-limited rows and
+  #369's two DevTools conditions. Its decisions are numbered after #374. After it, a minimal Phase G for the user's own use.
+- **Committed docs** carry no local path and no user name from now on (#374; `docs/docs-writing-guide.md`).
 - **How agents run (#289, #320):** Opus builds contract and safety code and runs every verifier; Sonnet does recipes,
   fixtures, docs and live runners; every agent at medium effort, passed explicitly; three fix rounds per stage (per
   slice in a live wave, #367). The first line of every step brief is the in-turn wait rule (#286, #350): a step agent

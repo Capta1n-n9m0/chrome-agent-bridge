@@ -990,6 +990,10 @@ The block itself is left as written.*
   method, code, event or field is added: a trusted `click`/`type`/`pressKey` (no `focusEmulation: true`) holds the
   visibility lock from a daemon-forwarded `focusTab` through the input and a 500 ms pause after its reply (§6.4).
   `LOCK_TIMEOUT {holder}` is a new answer for these three methods under contention.*
+- *Note 2026-10-29 (Step 12 S4; the kept debugger session, `extension/src/debugger-keeper.ts`, #335). The S2a and S3a
+  notes above that read "then the detach" describe the keeper's release, not a detach per call. A call's session is kept
+  per tab and reference-counted, and detached 5 s after its last use, or at once on a disarm, a block, a `file:` page, a
+  close or a replace. The banner therefore stays up between calls in that window.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 

@@ -175,7 +175,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
     wave's windows open: list them after it.
   - Chrome 156's app-menu button is named `Chrome` (not `Customize and control…`) and offers only expand; Run 19's
     DevTools opener reaches "Developer tools" through it by UIA patterns only, on a window the wave opened (#368, #369).
-    Docked DevTools did not make the bridge's debugger attach refuse (`extension/CLAUDE.md`, #369).
+    Docked DevTools did not refuse the debugger (`extension/CLAUDE.md`).
   - A fixture button that calls `click()` on a disabled input opens nothing (HTML spec); a row about the disabled-input
     refusal needs a handler that targets the input itself (#370).
   - Every segment save must close the worker-console capture window it opened: `Close-S11Window` closes only `S11Own`

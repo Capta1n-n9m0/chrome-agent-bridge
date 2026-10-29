@@ -5,33 +5,30 @@ runners, cleaners. A brief points here ("read `docs/agent-rules.md` first") and 
 rules**; it lists only its **deviations**. Everything else here holds (decisions.md · 2026-10-25 · Lean
 procedures: rules by pointer, package CLAUDE.md files, risk-tiered models (#230)).
 
-Changes are made in place. The history lives in `docs/decisions.md` and git; there is no per-phase copy.
+Changes are made in place. History lives in `docs/decisions.md` and git.
 
 ## 1. Before you start
 
 - Read the files your brief names, at the sections it names. If a path or section does not exist,
   say so in your report. Never guess its content.
 - `CLAUDE.md` loads at start. Each package's own `CLAUDE.md` (`extension/`, `daemon/`, `sdk/`, `mcp/`,
-  `shared/`, `recipes/`, `extension/src/`, and `extension/src/{content,evaluate,handlers}/`) loads by itself the first time you open a file in that package. Its gotchas
-  are measured facts and bind. If your work touches a package whose files you have not opened, read
-  its `CLAUDE.md` before deciding anything about it.
-- If you were started outside the repo (your working directory is another folder), nothing loaded by
-  itself: read the root `CLAUDE.md` first, and the `CLAUDE.md` of each package you touch.
+  `shared/`, `recipes/`, `extension/src/`, and `extension/src/{content,evaluate,handlers}/`) loads by itself the first
+  time you open a file there. Its gotchas are measured facts and bind. If your work touches a package whose files you
+  have not opened, read its `CLAUDE.md` first.
+- Started outside the repo, nothing loaded: read the root `CLAUDE.md` first, and the `CLAUDE.md` of each package you touch.
 - Explore and Plan agents load no `CLAUDE.md` at all: a brief for them names every file it relies on.
-- Numbers come from their source: a command you ran or the file that records them. Never from a
-  brief or a summary.
-- **Environment (Windows, the development machine):** Git Bash is the agents' shell; Windows
-  PowerShell 5.1 is also present. If `node` is missing from PATH, put the nvm-windows shim first:
+- Numbers come from a command you ran or the file that records them, never from a brief or a summary.
+- **Environment (Windows):** Git Bash is the agents' shell; PowerShell 5.1 is also present. If `node` is missing from PATH, put the nvm-windows shim first:
   `export PATH="$(cygpath "$LOCALAPPDATA")/Author Software/nvm/.nodejs:$PATH"`. Fixture servers run
-  under miniconda's `python`. Run anything that can hang in the background with a timeout.
-  On the Linux research server the repo is a copy for docs and host tests only: no live runs there.
+  under miniconda's `python`. Run anything that can hang in the background, with a timeout.
+  On the Linux research server the repo is a copy: no live runs there.
 
 ## 2. Integrity floor (never traded for progress)
 
 - Pass rules are written down before the measurement runs. A failed check is reported, never
   re-tuned until it passes. Expected text is never edited after its run; a re-measurement is a new row.
-- Never invent or estimate a result. If something did not run, say so.
-- Never weaken a protective check to make it pass: a test, a guard, a timeout, the token gate, a
+- Never invent or estimate a result. Say what did not run.
+- Never weaken a protective check to pass it: a test, a guard, a timeout, the token gate, a
   lease or lock rule, the safety gate, a log scan.
 - Never resolve a decision in the direction that flatters a result already seen.
 - **Security boundary:** the root `CLAUDE.md` § Invariants that bind every package (the bind, the
@@ -42,15 +39,14 @@ Changes are made in place. The history lives in `docs/decisions.md` and git; the
 
 ## 3. Stop and escalate (report and return; do not decide)
 
-The exhaustive list. Anything else, including a surprising result that trips none of these, is
-recorded and the work continues.
+The exhaustive list. Anything else, even a surprising result, is recorded and the work continues.
 1. A pre-registered STOP rule of the phase doc fires, or an integrity-floor item (§2) is at stake.
 2. A human gate of the phase doc. Standing ones: anything that drives the user's real Chrome profile,
    unless a standing decision or the kickoff grants it (standing: live fixture waves are Claude's,
    decisions.md · 2026-10-22 · Live E2E waves are run by Claude end to end (#33); reloads by
    `recipes/reload-extension.ps1`, #65, one re-run on exit 2, #99); any Chrome restart or kill without
    a grant for that step.
-3. Anything destructive or outward-facing outside your own outputs: pushing, tagging, publishing,
+3. Anything destructive or outward-facing beyond your own outputs: pushing, tagging, publishing,
    rewriting history, deleting outside the repo, touching the user's Chrome profile data or the
    user's own tabs and windows.
 4. Any loosening of the security boundary (§2).
@@ -72,7 +68,7 @@ pre-registered rules (exit checks, pass rules, STOP rules, human gates) > the ph
 the rest of this file and the skills.
 
 Intent beats procedure. Trace up the chain (brief → phase doc → design spec → `CLAUDE.md` measured
-facts) and say in your report which layer you followed; the deepest internally consistent layer wins.
+facts); say in your report which layer you followed; the deepest internally consistent layer wins.
 The stakes decide who resolves it:
 - **Mechanical** (a stale line number, a wrong count, a renamed file): fix or document it; the phase
   doc gets a dated note.
@@ -90,7 +86,7 @@ Verifiers report findings with the command and its output; they never rewrite th
 ## 5. Decisions
 
 Only the session agent writes `docs/decisions.md`, `CLAUDE.md` files and the as-built. Exception: the
-lead cleaner's mechanical fixes (`cleanup-pass` skill). Everyone else puts decisions in the report:
+lead cleaner's mechanical fixes (`cleanup-pass` skill). Others put decisions in the report:
 
 ```
 ### YYYY-MM-DD · <plain title>
@@ -108,25 +104,25 @@ our docs, tests and code first, then at most one targeted web search for an exte
   the resulting files before accepting. Does not build or commit itself: after the verdict it starts a committer.
   Keeps the ledger only if the stage holds a wait.
 - **Builder:** do exactly the task. Pure logic: the failing test first. Run `npm run typecheck`,
-  `npm test`, `npm run build` and quote the result lines with counts. `chrome.*` glue is not
-  unit-tested; it gets rows in `docs/e2e-test-plan.md` in the same stage.
+  `npm test`, `npm run build`; quote the result lines with counts. `chrome.*` glue gets rows in
+  `docs/e2e-test-plan.md` in the same stage.
 - **Verifier:** never the builder. Reads the phase doc and spec itself; the builder's report is
   claims to audit. Re-runs typecheck, test and build from a clean tree, re-derives counts, proves new
-  tests fail without the change, checks the package `CLAUDE.md` invariants and the security boundary,
+  tests fail without the change, checks the `CLAUDE.md` invariants and the security boundary,
   attacks the spec as well as the code. May read and run, never edit. Findings: severity
   (CRITICAL / MAJOR / MINOR / NIT), `file:line`, evidence (command + output excerpt), suggested fix.
   Verdict: **FAIL** on any CRITICAL or MAJOR or a failed exit check; **PASS-with-notes** on MINOR/NIT
   only; else **PASS**.
-- **Fixer:** fixes the listed findings and touches nothing else; disputes a wrong finding with evidence.
+- **Fixer:** fixes the listed findings only; disputes a wrong finding with evidence.
 - **Live runner:** drives a live wave from its **wave sheet**: the rows, their expected text, the steps
   and the restore, committed to the phase's steps dir before the run (the phase doc names it). It **returns** on every STOP line
   (a failed restore, a guard printing STOP, a human gate, any throw after the first state change),
   after restoring the safety state if it touched it. It may fix a helper only between rows, never past
   a STOP line. Every live wave leaves the safety state as it found it, read back by count and hash,
   never printed.
-- **Committer:** one task: stage the exact file list the brief names, commit with the verifier's verdict in the
-  message (§10), report the hash in one line. No other edit. The step agent writes the hash into the stage report
-  (Outputs), the session agent into the journal.
+- **Committer:** stage the exact file list the brief names, commit with the verifier's verdict in the
+  message (§10), report the hash in one line. No other edit. The step agent records the hash in the stage report, the
+  session agent in the journal.
 - **Checker, investigator, auditor, measurer** (read-only leaves; Sonnet unless the phase doc says otherwise): run a
   stated command set, answer a stated question from code or docs, or measure with the command shown. None edits or
   commits; each writes `<STAGE>-<role>[n].md`.
@@ -147,7 +143,7 @@ each stage **low** or **standard**.
   committers, and the area cleaners the `cleanup-pass` table marks Sonnet. Headless `claude -p` E2E actors may run Sonnet.
 - **Effort is medium for every agent**, Opus and Sonnet alike. Every brief states `effort`, and every `Agent` call
   passes `effort` and `model` explicitly; none is left to a default.
-- **Fix rounds:** at most three per stage (#320), counted per stage and never reset by a new attempt: a fix between two
+- **Fix rounds:** at most three per stage (#320), counted per stage and never reset by a new attempt (per slice in a live wave, #367): a fix between two
   live-run attempts is a round, as is a fix after a verifier's FAIL. A fourth runs only on an Opus fixer; if that fails,
   §3 item 9. A live stage's limit on runner attempts is set in its phase doc.
 - **Committer:** a fresh agent the step agent starts after the verifier's verdict (§10); Sonnet.
@@ -169,6 +165,9 @@ each stage **low** or **standard**.
   start a child in the background whatever the brief says: the step agent waits for the completion notification, or
   polls the child's report file with a bounded wait (Monitor or an until-loop), and never ends its turn meanwhile.
   Only the session agent ends its turn on a running child.
+- **A grandchild's completion notice** reaching the session agent: it checks in that turn that the step agent is alive,
+  else sends a fresh one from the ledger (#350).
+- **Runner briefs name scan patterns only as "the user's name"** (#372).
 - A notice that a child is "waiting on its own background work" is **not** completion: wait for its real
   hand-back.
 - A child kills any shell command it left hanging before it reports.
@@ -180,11 +179,10 @@ each stage **low** or **standard**.
 
 ## 9. Report
 
-Write the report to the path in your brief, then return at most ~15 lines plus that path. Keep it to
-what the next reader needs: **at most 1,500 words for builders, fixers and runners, 2,500 for verifiers**; logs and
+Write the report to the path in your brief; return at most ~15 lines plus that path. **At most 1,500 words for builders, fixers and runners, 2,500 for verifiers**; logs and
 raw output go to evidence files and are linked, never pasted.
 
-Area cleaners return numbered findings instead (`cleanup-pass` skill); everyone else uses these sections:
+Area cleaners return numbered findings (`cleanup-pass` skill); everyone else uses these sections:
 
 1. **Verdict:** DONE | DONE-PARTIAL | BLOCKED | ESCALATE (verifiers: PASS | PASS-with-notes | FAIL)
 2. **Outputs:** commits, files; numbers with the command that produced them; test count before → after
@@ -197,7 +195,7 @@ Area cleaners return numbered findings instead (`cleanup-pass` skill); everyone 
 
 ## 10. Commits
 
-Commit only when your brief says so (normally via the stage's committer, after the verifier's verdict, so the message carries it — #286). Exact file list; never
+Commit only when your brief says so (normally via the stage's committer, after the verifier's verdict — #286). Exact file list; never
 `git add -A`, `dist/`, `bridge.token`, `.env`, `exports/`, screenshots or a wave's scratch files.
 Message `<type>(<scope>): <what>`; types `feat`, `fix`, `docs`, `test`, `chore`; scopes `server`,
 `extension`, `shared`, `daemon`, `sdk`, `mcp`, `docs`, `test`, `e2e` or none. A stage commit names the
@@ -206,5 +204,5 @@ says why. End with exactly one trailer, `Co-Authored-By: Claude <model> <noreply
 the model that wrote the commit, and no `Claude-Session` line. Commit every
 bookkeeping edit before a live runner starts (a clean-tree guard stops the wave otherwise). On
 `git index.lock`, wait and retry. Never `git stash`, `git checkout -- <file>` or `git reset` in the main
-tree: other agents may have uncommitted work there; diff against `HEAD` with `git diff` or `git show` instead. Subagents never push or tag; the session agent pushes only when the
+tree (other agents may have uncommitted work there); use `git diff` or `git show`. Subagents never push or tag; the session agent pushes only when the
 user asks.

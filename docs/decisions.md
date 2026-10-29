@@ -9,29 +9,8 @@ as a dated entry and point back.
 
 ## Open decisions
 
-Step 12's contract-level decisions, open for the gate; the build follows the conservative option meanwhile (Step 11b's
-were ruled on 2026-10-27, #311, #320). The full entries are in `decisions-archive/step12.md`; #322, #323, #325 and
-#326 are amended by the Stage 0 entries named on their lines:
-- 2026-10-27 · Step 12: `args` for evaluate is a function source called with one JSON value (#322), amended by #330–#332
-- 2026-10-27 · Step 12: `consoleMessages`: read on demand, the entry shape, class `tab` (#323), amended by #333, #334
-- 2026-10-27 · Step 12: `uploadFiles {chooser: true}` intercepts the chooser only inside the call (#325), amended by #336
-- 2026-10-27 · Step 12: G1 and G2 as ruled, their contract left to Stage 0 (#326), amended by #337, #338
-- 2026-10-27 · Step 12: how every item passes the safety gate (#327)
-- 2026-10-27 · Stage 0: the kept session's lifecycle; an overlapping call keeps today's answer (#335)
-- 2026-10-27 · S2b: `browser_evaluate.args` as a written-out schema delta; the daemon's own reload text; the SDK's ninth refusal (#342)
-- 2026-10-27 · S3a: the reply `{entries}` and the `level` threshold … (#344, item 1)
-- 2026-10-27 · S3b: the console formatter's line form … the JavaScript-off line left for the gate (#345, items 1 and 3)
-- 2026-10-27 · S1-live: R18-LOGS slice A's `profile=2` stands as a FAIL … (#349, item (a): the MCP failure report's absolute screenshot path)
-- 2026-10-28 · Run 18's findings … (#351, items 1 and 2: product findings)
-- 2026-10-28 · S5a: the chooser's refusal texts; two by-construction claims and the disarm wait go to Run 19 (#353, its texts for user review)
-- 2026-10-28 · S6-G2: the daemon focuses under its own hold; an earlier client `focusTab` stays harmless (#354, contract-level, for user review)
-- 2026-10-28 · S5b as built; an old extension's `chooser` is refused `VERSION` by a hello feature, as #332 (#355, the formatter cap and the `chooser` texts, for user review)
-- 2026-10-28 · S7-sheet: what Run 19 cannot discriminate live … (#356, item 1)
-- 2026-10-29 · liveA19's STOP was a wrong constant in the sheet; control-2 is judged against the old build's measured answer; the MCP actor waits for its link (#366, a correction after an observation)
-- 2026-10-29 · liveB19 closed at attempt 3; docked DevTools on Chrome 156 does not refuse the bridge's debugger (#369): keep, reproduce or drop the `DEBUGGER_DEVTOOLS` claim?
-- 2026-10-29 · Run 19's five slices have run; S7-record next; the name in committed docs is the user's call (#372): redact the docs going forward, or leave them?
-- 2026-10-29 · Run 19's record accepted; its findings go to the user and a later recipes-only wave (#373): does R19-ARGS-1's key-order clause cover only what the page receives (then NOT DISCRIMINATING), or the returned `value` too (FAIL)? CON-NOTEA's product fix? (#373)
-- **G12-2 for the user:** add the `webNavigation` permission so G1 can be built? (#337)
+None. The user ruled Step 12's gate on 2026-10-29 (#374, `decisions-archive/step12.md`); every item listed here
+before was settled by it. Step 13's scope is ruled by the same entry (`docs/plans/2026-10-29-step13-phase-f-followups.md`).
 
 ## Standing decisions
 
@@ -61,6 +40,7 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-27 · The user rules Step 11b's gate: accept, `newTab` on `about:blank` (S6), then Run 17b (#311) — `decisions-archive/step11b.md`
 - 2026-10-27 · The user rules #318 and the cleanup proposals; Step 11b closes (#320) — three fix rounds per stage, the size-cap overrun, wave prompts in `handoffs.md`, the read-only roles; `decisions-archive/step11b.md`; `agent-rules.md` §6, §7
 - 2026-10-27 · The user rules Step 12's scope (G12-0) (#321) — `decisions-archive/step12.md`
+- 2026-10-29 · The user rules Step 12's gate; Step 12 closes (#374) — `webNavigation` granted; no local path or name in new committed docs (`docs-writing-guide.md`); Step 13 = the Phase F follow-ups and Run 19's re-measurement; then a minimal Phase G for the user's own use; `decisions-archive/step12.md`
 
 **Product promises: the daemon, the clients and their lifecycle**
 - 2026-10-21 · The actor name carries the MCP's own process id (#2) — `decisions-archive/step6.md`
@@ -199,9 +179,9 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 | [`step10.md`](decisions-archive/step10.md) | Step 10: the Step 8 follow-ups | #201, #203–#229 | 28 | 2026-10-24 → 2026-10-25 |
 | [`step11.md`](decisions-archive/step11.md) | Step 11: D3 file upload (and the lean procedures) | #230–#264, #266–#288 | 58 | 2026-10-25 → 2026-10-26 |
 | [`step11b.md`](decisions-archive/step11b.md) | Step 11b: the block list stops redirected requests | #289–#320 | 32 | 2026-10-26 → 2026-10-27 |
-| [`step12.md`](decisions-archive/step12.md) | Step 12: Phase F, ergonomics | #321–#373 | 53 | 2026-10-27 → 2026-10-29 |
+| [`step12.md`](decisions-archive/step12.md) | Step 12: Phase F, ergonomics | #321–#374 | 54 | 2026-10-27 → 2026-10-29 |
 
 ## Log
 
-The current step's entries: none since the Step 12 close-out. Step 12's (#321–#373) are in
+The current step's entries (Step 13, numbered after #374): none yet. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.

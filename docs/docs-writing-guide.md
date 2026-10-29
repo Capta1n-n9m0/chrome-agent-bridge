@@ -64,6 +64,9 @@ rewritten: closed phase docs, steps dirs, as-built files, `docs/decisions-archiv
    and when. Don't soften or generalise one without a new measurement.
 8. **The repo is public.** No private hostnames, tokens, personal URLs or captured page
    content in docs, fixtures or evidence.
+9. **No local path or user name in new docs.** Committed docs do not carry the local absolute path or the user's name:
+   write `<repo>`, `~` or `<user>`. Files already committed and git history are left as they are; `LICENSE` keeps the
+   name (decisions.md · 2026-10-29 · The user rules Step 12's gate; Step 12 closes (#374)).
 
 ## Decisions
 

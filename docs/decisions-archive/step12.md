@@ -5,6 +5,32 @@ first. Cite an entry by date + title ([`docs-writing-guide.md`](../docs-writing-
 [`decisions.md`](../decisions.md#archive). The entries still open for the user are listed in `decisions.md` →
 Open decisions; the decision text is unchanged.
 
+### 2026-10-29 · The user rules Step 12's gate; Step 12 closes (#374)
+**Decided (user),** on the session agent's grouped question list (chat, 2026-10-29):
+1. **G12-2 granted:** the `webNavigation` permission for G1 (#337). G1 is built in Step 13, not in Step 12.
+2. **#372 (b):** committed docs stop carrying the local path and the user's name from now on (write `<repo>`, `~` or
+   `<user>`); files already committed and git history are left as they are; `LICENSE` keeps the name. **G12-1 granted:**
+   push after the close-out.
+3. **#369 keep:** the `DEBUGGER_DEVTOOLS` code and its rows stay; the next live run measures undocked DevTools and DevTools
+   opened before the bridge's first attach; the doc claim is reworded only after that.
+4. **#373, ARGS-1:** the "key order" clause covers what the page receives, so R19-ARGS-1 is **NOT DISCRIMINATING**, not
+   FAIL. The returned `value`'s sorted keys are fixed in Step 13 (keep the page's key order).
+5. **#373, CON-NOTEA:** Step 13 fixes it if Stage 0 shows a cheap way to read a replayed object's contents; else it is a
+   documented limit.
+6. **#355, the cap:** the console formatter keeps the **newest** lines and says how many older lines were cut.
+7. **Texts:** #353's second-chooser refusal stops naming DevTools; the console tool's "frames are not read" becomes "only
+   other-site frames are not read" (cleanup P2).
+8. **#366 accepted** (control-2 judged against the old build's measured answer).
+9. **#354 and #355's `chooser: false` rule accepted** as built.
+10. **The cleanup pass's proposals P1–P11 approved** (`docs/cleanup/2026-10-29.md`).
+11. **Next:** a small Step 13: the Phase F follow-ups above plus Run 19's re-measurement wave (#373) in one live run.
+    After it, **Phase G is minimal: packaging for the user's own use only**; distribution to a wider audience later.
+
+Run 19's tally with item 4: 42 PASS, 4 FAIL, 6 NOT DISCRIMINATING, 3 NOT MEASURED, 3 RECORD.
+**Why:** the user's ruling.
+**Instead of:** a full Phase G next; redacting pushed files and history; dropping the DevTools claim.
+**By:** the user (ruled 2026-10-29; recorded by Claude)
+
 ### 2026-10-29 · Run 19's record accepted; its findings go to the user and a later recipes-only wave (#373)
 **Decided:** S7-record (`2f68f99`, PASS-with-notes after two fix rounds) is Run 19's record. Its verdicts over 58 row ids:
 42 PASS, 5 FAIL, 5 NOT DISCRIMINATING, 3 NOT MEASURED, 3 RECORD. R7.1–R7.6 are met.

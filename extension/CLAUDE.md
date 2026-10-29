@@ -68,6 +68,10 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   `extension/options.html` are page glue (DOM + `chrome.storage.local`, the Safety, Blocked sites and Upload folders
   boxes), not unit-tested, read statically by `safety-writers.test.ts`. Guards: `log-scan.test.ts`
   (+ `log-allowlist.ts`, 54 log sites), `log-sentinel.test.ts`, `safety-writers.test.ts`, `manifest.test.ts`.
+  Older files: handlers are listed by method in `sw.ts`: `handlers/{actions,evaluate,navigate,perceive}.ts` (the DOM
+  actions, evaluate, navigate, snapshot and screenshot methods), `evaluate/wrap.ts` (the `return` heuristic for
+  `replMode`), and `content/{actions,geometry,index,refmap}.ts` (the page-side actions, frame-aware element centres, the
+  `window.__agentBridge` entry, the `RefMap`).
 
 ## Runtime gotchas
 
@@ -88,12 +92,11 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   snapshot named and acted on the same tab (Run 9 R9-RESOLVER-1, 2026-10-23). With no normal window
   at all, calls fail with `No normal Chrome window is focused (a DevTools or popup window may have
   focus) …`.
-- **Chrome allows one debugger per tab**: with DevTools open, `chrome.debugger.attach` throws "Another
-  debugger is already attached…"; clicking the banner's Cancel mid-action makes `sendCommand` throw
+- **Chrome allows one debugger per tab**: `chrome.debugger.attach` can throw "Another
+  debugger is already attached…" (`DEBUGGER_DEVTOOLS` stays); clicking the banner's Cancel mid-action makes `sendCommand` throw
   "Detached while handling command". `withDebugger` maps both through `describeDebuggerError` — add new
-  Chrome strings there, not in handlers. *Measured 2026-10-29 (Chrome 156, Run 19, #369, open for the user):* a docked
-  DevTools window did not make the attach refuse (DEVPROBE `answer=ok attached=no`, 31 of 31 `ok`; Run 18's F12 probes the
-  same); undocked DevTools and DevTools opened before the first attach are unmeasured.
+  Chrome strings there, not in handlers. *Measured 2026-10-29 (Chrome 156, #369):* a docked DevTools did not make the attach
+  refuse. Undocked and DevTools-first are measured in Step 13's Run 20.
 - **`@types/chrome` quirks**: use `chrome.tabs.OnUpdatedInfo` (not `TabChangeInfo`);
   `InjectionResult<any>` (its `Awaited<T>` conflicts with TS's); `sendCommand` params want
   `{[k:string]:unknown}` (not `object`).

@@ -17,7 +17,8 @@ A brief points; it does not paste.
   phase doc section that holds them).
 - **Over ~1k words is a warning sign:** something was pasted.
 - **Size:** name line ranges and state the slice's size cap (`agent-rules.md` §7); a builder over it reports
-  DONE-PARTIAL, unless it is the accepted overrun of `agent-rules.md` §7. Do not ask for foreground children: the Agent tool may start any child in the background, and
+  DONE-PARTIAL. The step agent, not the builder, may accept a finished overrun afterwards, on the conditions in
+  `agent-rules.md` §7. Do not ask for foreground children: the Agent tool may start any child in the background, and
   `agent-rules.md` §8 says how to wait.
 - **Verifiers get the same READ list as the builder**, plus the builder's report labelled "claims
   to audit". They read the phase doc and spec themselves.
@@ -40,7 +41,7 @@ LANE: <files/packages it may change>. Anything outside escalates.
 DEVIATIONS from agent-rules.md: <only the differences, or "none">.
 RUNNING NOW: <PIDs, or "nothing">.
 OUTPUT: <steps-dir>/<STAGE>.md. Commit via a committer you start after the verifier's verdict, message per
-agent-rules.md §10, trailer: <trailer>.
+agent-rules.md §10 (trailer per `agent-rules.md` §10).
 ```
 
 ## LEAF BRIEF (step agent → builder / verifier / fixer / runner)
@@ -55,7 +56,7 @@ EXIT CRITERIA: <exit-check IDs from the phase doc>. SIZE CAP: <lines, for a buil
 MODEL / EFFORT: <model>, medium (§7).
 LANE: <files>. Committer: the exact file list and the verdict to carry.
 DEVIATIONS: <or "none">.
-OUTPUT: <steps-dir>/<STAGE>-<role>[n].md. Commit: yes (trailer: …) | no.
+OUTPUT: <steps-dir>/<STAGE>-<role>[n].md. Commit: yes (trailer per `agent-rules.md` §10) | no.
 ```
 
 ## Ledger (`<STAGE>.ledger.md`): stages that hold a wait only
