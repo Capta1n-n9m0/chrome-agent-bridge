@@ -23,7 +23,7 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
   built: it waits for G12-2 (#337). Decisions #321–#373 are in `docs/decisions-archive/step12.md`.
 - **Waiting for the user:**
   - G12-2: the `webNavigation` permission for G1.
-  - G12-1: 90 commits are not pushed.
+  - G12-1: nothing since Step 11b's push is pushed (`git rev-list --count origin/main..HEAD`).
   - The Open decisions in `docs/decisions.md`, among them #366 (control-2 corrected after an observation), #369
     (docked DevTools does not refuse the debugger on Chrome 156), #373 (ARGS-1's key order; CON-NOTEA's fix) and #355
     (the formatter cap).
@@ -117,7 +117,7 @@ npm run build        # daemon/dist/index.js + mcp/dist/index.js + extension/dist
 npm test             # vitest — 5596 passed, 235 files (`npm test` 2026-10-29, Step 12 S8; recipes/test included)
 npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension (chained with `&&`; see the cross-package gotchas below)
 npm run recipe -- recipes/<file>.ts [args]   # a script against the SDK, run with tsx (= npx tsx recipes/<file>.ts)
-npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10, .s11, .s11b cover the others; all seven exit 0 at Step 11b S4-helpers — run them: a code stage can break one, as S3 did)
+npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10, .s11, .s11b cover the others; all seven exit 0, 2026-10-29 cleanup pass — run them: a code stage can break one, as S3 did)
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
 token + port `9234` in its Options. The MCP config points at `<repo>/mcp/dist/index.js`; nobody starts

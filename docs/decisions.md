@@ -23,10 +23,14 @@ were ruled on 2026-10-27, #311, #320). The full entries are in `decisions-archiv
 - 2026-10-27 · S3b: the console formatter's line form … the JavaScript-off line left for the gate (#345, items 1 and 3)
 - 2026-10-27 · S1-live: R18-LOGS slice A's `profile=2` stands as a FAIL … (#349, item (a): the MCP failure report's absolute screenshot path)
 - 2026-10-28 · Run 18's findings … (#351, items 1 and 2: product findings)
+- 2026-10-28 · S5a: the chooser's refusal texts; two by-construction claims and the disarm wait go to Run 19 (#353, its texts for user review)
+- 2026-10-28 · S6-G2: the daemon focuses under its own hold; an earlier client `focusTab` stays harmless (#354, contract-level, for user review)
+- 2026-10-28 · S5b as built; an old extension's `chooser` is refused `VERSION` by a hello feature, as #332 (#355, the formatter cap and the `chooser` texts, for user review)
 - 2026-10-28 · S7-sheet: what Run 19 cannot discriminate live … (#356, item 1)
-- 2026-10-29 · liveA19's STOP was a wrong constant in the sheet; control-2 judged against the old build's measured answer (#366, a correction after an observation)
-- 2026-10-29 · liveB19: docked DevTools on Chrome 156 does not refuse the bridge's debugger; keep, reproduce or drop the `DEBUGGER_DEVTOOLS` claim (#369)
-- 2026-10-29 · Run 19: does R19-ARGS-1's key-order clause cover only what the page receives (then NOT DISCRIMINATING), or the returned `value` too (FAIL)? CON-NOTEA's product fix? (#373)
+- 2026-10-29 · liveA19's STOP was a wrong constant in the sheet; control-2 is judged against the old build's measured answer; the MCP actor waits for its link (#366, a correction after an observation)
+- 2026-10-29 · liveB19 closed at attempt 3; docked DevTools on Chrome 156 does not refuse the bridge's debugger (#369): keep, reproduce or drop the `DEBUGGER_DEVTOOLS` claim?
+- 2026-10-29 · Run 19's five slices have run; S7-record next; the name in committed docs is the user's call (#372): redact the docs going forward, or leave them?
+- 2026-10-29 · Run 19's record accepted; its findings go to the user and a later recipes-only wave (#373): does R19-ARGS-1's key-order clause cover only what the page receives (then NOT DISCRIMINATING), or the returned `value` too (FAIL)? CON-NOTEA's product fix? (#373)
 - **G12-2 for the user:** add the `webNavigation` permission so G1 can be built? (#337)
 
 ## Standing decisions
@@ -55,7 +59,8 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-26 · Stage 0 measures DNR in a separate scratch Chrome on a temporary profile (#294) — `decisions-archive/step11b.md`
 - 2026-10-26 · Stage 0's incident: a stray `chrome.exe --version` reached the user's Chrome; never run Chrome without an own profile (#297) — `decisions-archive/step11b.md`; reported to the user 2026-10-27
 - 2026-10-27 · The user rules Step 11b's gate: accept, `newTab` on `about:blank` (S6), then Run 17b (#311) — `decisions-archive/step11b.md`
-- 2026-10-27 · Step 11b closes; three fix rounds per stage, the size-cap overrun, wave prompts in `handoffs.md`, the read-only roles (#320) — `decisions-archive/step11b.md`; `agent-rules.md` §6, §7
+- 2026-10-27 · The user rules #318 and the cleanup proposals; Step 11b closes (#320) — three fix rounds per stage, the size-cap overrun, wave prompts in `handoffs.md`, the read-only roles; `decisions-archive/step11b.md`; `agent-rules.md` §6, §7
+- 2026-10-27 · The user rules Step 12's scope (G12-0) (#321) — `decisions-archive/step12.md`
 
 **Product promises: the daemon, the clients and their lifecycle**
 - 2026-10-21 · The actor name carries the MCP's own process id (#2) — `decisions-archive/step6.md`
@@ -151,7 +156,7 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-26 · Step 11b: the bridge's answers when a hop is blocked stay as today (#293) — `decisions-archive/step11b.md`
 - 2026-10-26 · S1: a default-port pattern makes two regex rules; an over-long regex fails closed (#300) — `decisions-archive/step11b.md`
 - 2026-10-27 · `newTab` with a URL opens `about:blank` first (#295 as ruled by #311; built S6, #312–#314) — `decisions-archive/step11b.md`
-- 2026-10-27 · A bridge `back`/`forward` reaches only pages a human or an activating call acted on (#308) — `decisions-archive/step11b.md`
+- 2026-10-27 · Run 17's STOP predates Step 11b: Chrome's `back` skips pages with no user activation … (#308) — a bridge `back`/`forward` reaches only pages a human or an activating call acted on; `decisions-archive/step11b.md`
 
 **Product promises: bulk data, `saveTo`, the cap warning and the schema baseline**
 - 2026-10-24 · Bulk data through `browser_evaluate` was a test device only; the MCP gets a `saveTo` path (#127) — `decisions-archive/step8.md`

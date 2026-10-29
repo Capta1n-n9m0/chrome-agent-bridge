@@ -131,7 +131,8 @@ our docs, tests and code first, then at most one targeted web search for an exte
   stated command set, answer a stated question from code or docs, or measure with the command shown. None edits or
   commits; each writes `<STAGE>-<role>[n].md`.
 - **Lead cleaner / area cleaner:** `cleanup-pass` skill (roles, areas, models, report form).
-- Leaf agents (builder, verifier, fixer, runner, committer, area cleaner) never spawn agents.
+- Leaf agents (builder, verifier, fixer, runner, committer, checker, investigator, auditor, measurer, area cleaner) never
+  spawn agents.
 
 ## 7. Models and effort
 

@@ -24,8 +24,14 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `s11-csp.py` / `s11-r16.ps1` + `s11-r16-plan.ts`, `s11-r16-opt.ts` (block runner) / `s11-win.ps1` + `s11-win-rules.ts`
   (Step 11 S5, Run 16), `s11b.ts` (SDK-free actor) / `s11b-rules.ts` (pass rules) / `s11b-r17.ps1` + `s11b-r17-plan.ts`
   (block runner) / `s11b-win.ps1` + `s11b-win-rules.ts` / `s11b-{delay,flip,slow}.py` (fixture servers) (Step 11b S4,
-  Run 17), `s11b-r17b.ps1` + `s11b-r17b-{plan,build,rules}.ts` (Run 17b's block runner, plan and pass rules; Step 11b S7), `tsconfig{,.fe,.s6,.s9,.s10,.s11,.s11b}.json` (recipes are not in `npm run typecheck`: `npx tsc
-  --noEmit -p recipes/tsconfig.s6.json`; all seven exit 0, 2026-10-27). Fixtures: `test-fixtures/s10-{cap,mcpf,save}.html`,
+  Run 17), `s11b-r17b.ps1` + `s11b-r17b-{plan,build,rules}.ts` (Run 17b's block runner, plan and pass rules; Step 11b S7),
+  `s12-rules.ts` / `s12-win.ps1` / `s12-r18.ps1` + `s12-r18-lib.ps1` (Run 18's pure rules, Windows helpers and block
+  runner; Step 12 S1, §4.26), `s12-forms{,-b,-c}.ts` (Run 19's line forms, pure), `s12-r19.ts` / `s12-r19.ps1` +
+  `s12-r19-lib.ps1` (Run 19's block runner), `s12-r19-{a,b,c,de}.{ts,ps1}` (the per-slice actors and row drivers),
+  `s12-win-{b,c}.ps1` (their Windows helpers), `s12-oldbuild.ts` (the old-build swap and restore, #356) (Step 12 S7,
+  §4.27), `tsconfig{,.fe,.s6,.s9,.s10,.s11,.s11b}.json` (recipes are not in `npm run typecheck`: `npx tsc
+  --noEmit -p recipes/tsconfig.s6.json`; all seven exit 0, 2026-10-29; `.s11b` also covers `s12-r19-{a,b,c,de}.ts`,
+  and `.s6`'s `test/*.test.ts` glob compiles the other `s12-*.ts` through their tests). Fixtures: `test-fixtures/s10-{cap,mcpf,save}.html`,
   `test-fixtures/s11-{upload,frame,patched}.*`.
 
 ## Runtime gotchas (live runs, Windows tooling, driving Chrome from the outside)

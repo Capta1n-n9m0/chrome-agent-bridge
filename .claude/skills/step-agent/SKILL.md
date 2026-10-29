@@ -27,6 +27,7 @@ A brief points; it does not paste.
 ## STEP BRIEF (session agent → step agent)
 
 ```
+FIRST LINE, BINDING (#286, #350): you never end your turn while a child agent you started is running (agent-rules.md §8).
 You are the STEP AGENT for stage <STAGE> ("<plain name>") of Step <N> (<plain title>) of the
 chrome-agent-bridge repo. Read docs/agent-rules.md first; it applies in full except the
 deviations below. Your role: §6 Step agent.

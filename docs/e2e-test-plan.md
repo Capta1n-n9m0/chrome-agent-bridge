@@ -13,7 +13,10 @@
   files" as the current count; at `025bdef` `npm test` runs 3273 tests in 132 files (Step 10 as-built § S8), and
   Step 10 is covered live by §4.21 (Run 14) and §4.22 (Run 15).* *Corrected 2026-10-26 (cleanup pass): was "3273
   tests in 132 files" as the current count; on S6's tree `npm test` runs 3811 tests in 154 files (Step 11 phase doc
-  § As built, Gate checklist), and Step 11 is covered live by §4.23 (Run 16 in §5).*
+  § As built, Gate checklist), and Step 11 is covered live by §4.23 (Run 16 in §5).* *Corrected 2026-10-29 (cleanup
+  pass): was "3811 tests in 154 files" as the current count; at `db7da74` `npm test` runs 5596 tests in 235 files (Step 12
+  phase doc § As built S8); Step 11b is covered live by §4.24–§4.25 (Runs 17, 17b) and Step 12 by §4.26–§4.27 (Runs 18,
+  19).*
 
 Each test has an **ID**, **objective**, **steps** (as MCP tool calls), and an **expected result**.
 Record outcomes in the [Results template](#results-template). A run "passes" when all **must-pass**
@@ -3477,7 +3480,7 @@ defect, and the verdict follows the OPT line.
 **Judgment calls and notes.** R18-UP-L1 and R18-SAVE-REFUSE printed no ROW line of their own (the runner prints them
 after R18-LOGS); both are judged PASS from their printed clause lines, because their console clause is met by R18-LOGS's
 console scan (all zeros over liveA18's own capture) and R18-LOGS (liveA) read FAIL, not "does not run" or NOT
-MEASURED; the stricter reading is in the record's section 7. R18-LOGS slice A is FAIL as written (#349): the two matches
+MEASURED; the reading and its clause-to-line map are in the record's section 7. R18-LOGS slice A is FAIL as written (#349): the two matches
 are the MCP failure report's screenshot path under the user's home and Claude Code's own image line, both in an actor's
 tool result. R18-UP-DEVT is NOT MEASURED for the second run (F12 into window X found the pane, control 1 answered `ok`).
 §4.26's prologue order (console before reload) and its stated cause for the old scanner's false FAILs are wrong (#348,

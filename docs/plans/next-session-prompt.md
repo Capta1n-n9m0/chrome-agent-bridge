@@ -1,5 +1,9 @@
 # Next session — Step 12: Phase F, ergonomics — resume at S7-drivers-C
 
+> *Superseded 2026-10-29 (cleanup pass): Step 12 is built and closed out (`db7da74`); its gate waits for the user. Do
+> not resume from this prompt. The next kickoff is written when the user names the next step (root `CLAUDE.md`,
+> Current state).*
+
 **How to start:** working directory `C:\Users\aliev\Projects\chrome-remote-extention`, on Windows. The driver is not a
 bridge client: `claude --strict-mcp-config --mcp-config <a file holding {"mcpServers":{}}>`. Paste everything below
 the line.

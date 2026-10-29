@@ -463,6 +463,8 @@ mechanical fix for the cleanup pass.
 **Instead of:** product fixes on unmeasured causes; another F12 row.
 **Revisit if:** the investigator shows O2 updates within 5 s with a corrected poll; the user wants the instrument.
 **By:** Claude (build decisions; (1) and (2) are product findings for user review)
+*Resolved 2026-10-29 (cleanup pass): (1) no product finding, the helper's poll (#363), R19-UP-OPT PASS; (2) not
+reproduced in Run 19 (#373).*
 
 ### 2026-10-28 · A step agent that ends its turn on a running runner stalls the stage; live step agents wait in-turn (#350)
 **Decided:** the liveB18 step agent ended its turn while its live runner ran ("waiting on my watch", against #286 and

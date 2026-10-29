@@ -45,6 +45,10 @@ The SDK finds, starts or hands over the daemon itself; the token comes from `BRI
 | `s11b.ts`, `s11b-rules.ts`, `s11b-delay.py`, `s11b-flip.py`, `s11b-slow.py` | Step 11b's live wave (Run 17, `docs/e2e-test-plan.md` §4.24): the SDK-free side of the helpers (`B17 <sub>`; Run 17b added `tabwatch`, `build-proof`, `newtab-timed`, `ctl-slow` and `history --activate`), their pure pass rules, and three fixture servers (a delayed 302, a 200-then-302, a slow file). |
 | `s11b-r17.ps1`, `s11b-r17-plan.ts`, `s11b-win.ps1`, `s11b-win-rules.ts` | Run 17's block runner (`-Block liveA` / `liveB` / `plan` / one block), its pure plan, and the UI Automation helpers with their pure half. |
 | `s11b-r17b.ps1`, `s11b-r17b-plan.ts`, `s11b-r17b-build.ts`, `s11b-r17b-rules.ts` | Run 17b (`docs/e2e-test-plan.md` §4.25): the block runner (`-Block liveA17B` / `liveB17B` / `plan` / one block; runs Run 17's carried blocks from `s11b-r17.ps1` by its parser), its pure plan, and the pure rules of the build proof, tab watcher and timed `newTab`, and of the history helpers. |
+| `s12-rules.ts`, `s12-win.ps1`, `s12-r18.ps1`, `s12-r18-lib.ps1` | Step 12's Run 18 (`docs/e2e-test-plan.md` §4.26; order in `docs/plans/2026-10-27-step12-phase-f-steps/S1-sheet.md`): the pure rules, the Windows helpers (mirroring the rules' constants), the block runner, and its sequencing, STOP and restore logic (unit-tested with stubs). |
+| `s12-forms.ts`, `s12-forms-b.ts`, `s12-forms-c.ts` | Run 19's line forms (§4.27) as pure formatters, each tied to the sheet's own paragraph by its test; counts and fixed codes only, never a text. |
+| `s12-r19.ts`, `s12-r19.ps1`, `s12-r19-lib.ps1`, `s12-r19-{a,b,c,de}.{ts,ps1}` | Run 19's block runner (§4.27; order in `…-steps/S7-sheet.md`): the pure part and its thin commands (`proof`, `swap`, `restore-head`), the runner and its STOP/RETURN and old-build logic, and per slice (liveA19–liveE19) the node actors and their PowerShell row drivers. |
+| `s12-win-b.ps1`, `s12-win-c.ps1`, `s12-oldbuild.ts` | Run 19's Windows helpers for liveB19 and liveC19 (dot-sourced after `s12-win.ps1`), and the old-build swap and restore of #356 (2): a scratch worktree with its own `npm ci`, never a `node_modules` junction (#220). |
 | `s10-ret1.ts`, `s10-ret1.ps1` | RET-1 (a killed Chrome retires N ≥ 1 held handles): the SDK holder and its driver, which **kills and relaunches the user's real Chrome** — only under the user's grant G10-2 (run in Run 15 as RET-1R under #221/#222). |
 
 *Retired 2026-10-25 (Step 10 S8): `blackboard/assemble-mcp.ts` (rebuilt SDK-7's MCP leg from an actor's transcript into
@@ -77,6 +81,6 @@ npx tsc --noEmit -p recipes/tsconfig.s6.json   # the S6 files (tsconfig.json and
 npx tsc --noEmit -p recipes/tsconfig.s9.json   # the Step 9 S4 files (and Step 10 S1's additions to them)
 npx tsc --noEmit -p recipes/tsconfig.s10.json  # the Step 10 S7 files
 npx tsc --noEmit -p recipes/tsconfig.s11.json  # the Step 11 S5 files
-npx tsc --noEmit -p recipes/tsconfig.s11b.json # the Step 11b S4 files
+npx tsc --noEmit -p recipes/tsconfig.s11b.json # the Step 11b S4 files and Step 12's s12-r19-{a,b,c,de}.ts (the other s12-*.ts compile through their tests under .s6)
 npx vitest run recipes/                        # recipes/test/*.test.ts (part of `npm test`)
 ```
