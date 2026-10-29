@@ -40,7 +40,7 @@ import {
   SINGLE_FILE_INPUT_MESSAGE,
   UPLOAD_MARK_ATTR,
 } from "../src/content/upload-target.js";
-import { CHOOSER_PARAM_MESSAGE, UPLOAD_PATHS_MESSAGE, UPLOAD_TARGET_REQUIRED_MESSAGE, checkUploadParams, uploadFiles } from "../src/handlers/upload.js";
+import { CHOOSER_BUSY_MESSAGE, CHOOSER_PARAM_MESSAGE, UPLOAD_PATHS_MESSAGE, UPLOAD_TARGET_REQUIRED_MESSAGE, checkUploadParams, uploadFiles } from "../src/handlers/upload.js";
 import type { HandlerSafety } from "../src/safety-call.js";
 import { GatedRouter } from "../src/router.js";
 import { CallSafety, type CallSafetyDeps } from "../src/safety-call.js";
@@ -563,6 +563,33 @@ describe("the handler's chooser path", () => {
     await wire(uploadFiles({ tabId: 5, ref, paths: [P1], chooser: true }, fakeCall()));
     delete cdp.fail["Page.getFrameTree"];
     expect(await uploadFiles({ tabId: 5, ref, paths: [P1], chooser: true }, fakeCall())).toEqual({ files: 1 });
+  });
+
+  it("Step 13 S4 (#389, T4.1): the second chooser call's message is its own fixed text, naming no DevTools; code DEBUGGER_DEVTOOLS", async () => {
+    document.body.innerHTML = `<button id="b">Pick</button>`;
+    const ref = refOf(document.getElementById("b")!);
+    let open!: () => void;
+    cdp.before["Page.enable"] = () => new Promise<void>((r) => (open = r));
+    const first = uploadFiles({ tabId: 5, ref, paths: [P1], chooser: true }, fakeCall());
+    await vi.waitFor(() => expect(log).toContain("Page.enable"));
+    const second = await wire(uploadFiles({ tabId: 5, ref, paths: [P1], chooser: true }, fakeCall()));
+    expect(second.code).toBe("DEBUGGER_DEVTOOLS");
+    expect(second.message).toBe(CHOOSER_BUSY_MESSAGE);
+    expect(CHOOSER_BUSY_MESSAGE).toBe("uploadFiles: another file chooser upload is still running on this tab; retry after it ends");
+    expect(second.message).not.toMatch(/devtools/i);
+    expect(second.message).not.toMatch(/\d/);
+    delete cdp.before["Page.enable"];
+    open();
+    expect(await first).toEqual({ files: 1 });
+  });
+
+  it("Step 13 S4 (#389): an overlapping debugger use elsewhere keeps describeDebuggerError's DevTools text, byte for byte", async () => {
+    const { describeDebuggerError } = await import("../src/debugger-errors.js");
+    expect(describeDebuggerError(new Error("Another debugger is already attached to the tab with id: 5."), "File upload")).toEqual({
+      code: "DEBUGGER_DEVTOOLS",
+      message:
+        "Chrome DevTools (or another extension) is already attached to this tab — Chrome allows one debugger per tab. Close DevTools on that tab and retry.",
+    });
   });
 
   it("E5.3: no path, segment or mark in any message the chooser path answers; no log call", async () => {

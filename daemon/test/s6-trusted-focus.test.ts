@@ -27,7 +27,7 @@ async function flush(): Promise<void> {
   for (let i = 0; i < 30; i++) await Promise.resolve();
 }
 
-async function setup() {
+async function setup(sleep?: (ms: number) => Promise<void>) {
   const fwd: Fwd[] = [];
   const names: Record<string, string> = { a: "A", b: "B" };
   let layer!: TabLayer;
@@ -48,7 +48,7 @@ async function setup() {
   } as unknown as ExtensionConnection;
   const bridge = new Bridge();
   bridge.setConnection(conn);
-  layer = new TabLayer({ bridge, nameOf: (id) => names[id], sendTo: () => {} });
+  layer = new TabLayer({ bridge, nameOf: (id) => names[id], sendTo: () => {}, ...(sleep ? { sleep } : {}) });
   layer.extensionConnected(conn, true);
   expect(await layer.request(A, "tabs.claim", { active: true }, undefined)).toEqual({ tab: "T1" }); // tabId 41
   expect(await layer.request(B, "tabs.claim", { tab: "T2" }, undefined)).toEqual({ tab: "T2" }); // tabId 42
@@ -376,5 +376,36 @@ describe("S6-G2 the blocking trusted input (G6.5, G6.7)", () => {
     expect(acquire).toHaveBeenCalledTimes(2);
     await vi.advanceTimersByTimeAsync(TRUSTED_SETTLE_MS);
     expect(layer.lock.holder()).toBeUndefined();
+  });
+});
+
+describe("Step 13 S4 (#390, T4.2): a rejecting settle sleep", () => {
+  it("frees the lock (another client's screenshot acquires it promptly) and raises no unhandled rejection", async () => {
+    vi.useRealTimers();
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const { layer, fwd, of } = await setup(() => Promise.reject(new Error("sleep failed")));
+      const r = outcome(layer.request(A, "click", { tab: "T1", ref: "e1", trusted: true }, undefined));
+      await flush();
+      fwd[0].resolve({ ok: true });
+      await flush();
+      fwd[1].resolve({ ok: true });
+      await flush();
+      expect(r.value()).toEqual({ ok: true });
+      expect(layer.lock.holder()).toBeUndefined();
+      const shot = outcome(layer.request(B, "screenshot", { tab: "T2" }, undefined));
+      await flush();
+      expect(of("screenshot")).toHaveLength(1);
+      expect(of("screenshot")[0].holder).toBe("b");
+      of("screenshot")[0].resolve({ dataUrl: "x" });
+      await flush();
+      expect(shot.value()).toEqual({ dataUrl: "x" });
+      for (let i = 0; i < 3; i++) await new Promise((res) => setImmediate(res));
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
   });
 });

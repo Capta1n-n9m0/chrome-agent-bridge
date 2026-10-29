@@ -34,7 +34,6 @@ import {
   uploadSweepTarget,
   uploadTimeoutMessage,
 } from "../upload-files.js";
-import { describeDebuggerError } from "../debugger-errors.js";
 import { UPLOAD_MAX_PATHS } from "../upload-paths.js";
 import { checkUploadFilesExist } from "../upload-exists.js";
 import { checkTarget, resolveTargetCapped, withCapFlag } from "./target.js";
@@ -46,6 +45,8 @@ export const UPLOAD_TARGET_REQUIRED_MESSAGE = "uploadFiles needs a ref or a loca
 export const UPLOAD_PATHS_MESSAGE = `paths must be an array of 1 to ${UPLOAD_MAX_PATHS} absolute file paths`;
 /** Step 12 S5a: `chooser` other than true, false, null or absent. */
 export const CHOOSER_PARAM_MESSAGE = "uploadFiles: chooser must be true or false";
+/** Step 13 S4 (#389): a second chooser call on a tab whose chooser call is still running. Fixed: no DevTools, path or id. */
+export const CHOOSER_BUSY_MESSAGE = "uploadFiles: another file chooser upload is still running on this tab; retry after it ends";
 
 /**
  * The params alone (no page call): a target, 1–20 non-empty strings, and (Step 12 S5a) `chooser` true, false, null or
@@ -159,13 +160,10 @@ const chooserTabs = new ChooserTabs();
 /**
  * Step 12 S5a (#325, #336): `uploadFiles {chooser: true}` after the shared prologue — effect → inject → `ref | locator`
  * → effect → the target marked (no file-input rule) → the CDP leg on the call's own session (`chooseByMark`). The mark
- * is swept on every failure, as the input path's. A second chooser call on the tab answers today's overlap text (#335).
+ * is swept on every failure, as the input path's. A second chooser call on the tab answers `DEBUGGER_DEVTOOLS CHOOSER_BUSY_MESSAGE` (#335, #389).
  */
 async function chooserUpload(tabId: number, p: Record<string, unknown>, paths: string[], call?: HandlerSafety): Promise<UploadFilesResult> {
-  if (!chooserTabs.take(tabId)) {
-    const d = describeDebuggerError(new Error(`Another debugger is already attached to the tab with id: ${tabId}.`), "File upload");
-    throw new BridgeError(d.code, d.message);
-  }
+  if (!chooserTabs.take(tabId)) throw new BridgeError(ErrorCodes.DEBUGGER_DEVTOOLS, CHOOSER_BUSY_MESSAGE);
   try {
     await call?.effect();
     await ensureContent(tabId);

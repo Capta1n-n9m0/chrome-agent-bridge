@@ -574,7 +574,7 @@ export class TabLayer {
       return await this.forward(method, forwarded, deadline);
     } finally {
       const pause = Math.min(TRUSTED_SETTLE_MS, deadline - this.now());
-      if (pause > 0) void this.sleep(pause).then(release);
+      if (pause > 0) void this.sleep(pause).then(release, release);
       else release();
     }
   }
