@@ -192,3 +192,13 @@
   sheet's discrimination holds on `#vis`; ARGS-OLD uses no locator; mutants (`#in`, `#open`, `input[type=file]`, `#vis`
   hidden) killed; npm test twice 5592/235 green; typecheck and 7 recipes tsconfigs exit 0; MINOR the fixer's one failing
   run not reproduced. Next: committer, then attempt 1 from the fix commit.
+- Fix round 1 committed `bd523bb` (trailer reads Opus; the code was written by the Sonnet fixer — a committer-brief slip, not amended). liveD19 att1 (runner Sonnet medium; out `$TEMP/bridge-e2e/s19-live/d1`; HEAD bd523bb) started.
+- liveD19 att1 (runner Sonnet medium; out `$TEMP/bridge-e2e/s19-live/d1`; HEAD bd523bb; 02:05-02:07Z): exit 2. R19-0 PASS;
+  swap ok; old proof `LOADED consoleMessages=UNKNOWN_METHOD … args=VERSION`; ARGS-OLD legs sdk/ref/file/raw(`forwarded=no`)
+  /control PASS, mcp FAIL (`code=ERROR hint=yes`); `CHECK R19-ARGS-OLD control raw-twin kind=undefined`; `RESTOREHEAD ok`;
+  `LOADED rerun=1 … args=answered`; RESTORE equal by count and hash; then `DIALOGS liveD19 native=0 devtools=2` -> STOP
+  `devtools-left-open` -> `RETURN 1 … restored=n/a readback=n/a`. No ROW R19-ARGS-OLD, no R19-LOGS. Cause (helper):
+  `Save-R19Seg` closes the capture D with `Close-S11Window`, which needs `S11Own`; D never enters it, so both earlier capture
+  windows stayed (and two chrome://extensions E windows). Step agent closed the 4 wave windows by UIA; the user's 2 untouched.
+  Daemon PID 9352 shut down; nothing on 9234/8080-8089; worktree list main only; scans 0. Escalating STOP by the sheet ->
+  back to the session agent (`S7-live-liveD19.md`). Attempts 1 of 3; fix rounds 1 of 3.
