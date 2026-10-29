@@ -163,3 +163,13 @@
   opinion agrees `dis` will answer TIMEOUT (HTML spec: `click()` on a disabled control returns). Pre-env: nothing on
   9234/8080-8089; node PID 22152 (unrelated codex runtime) only; no python; Chrome top-level windows 2 (38602544, 68708,
   the user's). Next: committer, then attempt 1 from the fix commit.
+- Fix round 1 committed `0c42637`. liveC19 att1 (runner Sonnet medium; out `$TEMP/bridge-e2e/s19-live/c1`; HEAD 0c42637,
+  build clean): exit 0, no STOP (`CHECK rows19 rows=26 warns=0 stop-return=0`). CLOSERPROBE `opened=yes closed=yes ms=147
+  native-after=0`. R19 rows: PASS 15; FAIL 3: R19-CHOOSE-REFUSE (`dis TIMEOUT exact=no ms=5023`, as predicted), R19-CHOOSE-KEPT
+  (second call `change=1`, judge wants 2; same file set twice), R19-G2-1 (`b=TIMEOUT b-reply=35106`, hold seen
+  `holder-after-reply-ms=477`); RECORD 2: CHOOSE-FRAME (`ok files=1`), CHOOSE-HUMAN (`received=clicked-input files=1`).
+  CHOOSE-4 a/b/c and DISARM `after-click=1 after-close=0`. R19-RESTORE PASS (equal by count and hash), `DIALOGS native=0
+  devtools=0 wave-windows-open=1`, R19-LOGS PASS. Daemon PID 37668 shut down; nothing on 9234/8080-8089; the user's two
+  windows present and untouched; scans all 0. Runner's duplicate console copy `-2` (byte-identical) deleted.
+  Attempts 1 of 3; fix rounds 1 of 3. liveC19 closed (`S7-live-liveC19.md`); the three FAILs go to S7-record / the session
+  agent (two look like expected-value questions). Next: liveD19 (a fresh step agent).
