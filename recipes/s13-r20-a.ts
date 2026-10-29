@@ -14,7 +14,9 @@ type Tab = import("../sdk/src/index.js").Tab;
 type Client = import("../sdk/src/index.js").BridgeClient;
 export type Who = "A" | "B" | "C";
 // ---- the POP rows ---------------------------------------------------------------------------------------------------------------------------------
-export interface Round { grantedTo: Who | "none"; inMs: number | null; others: number; held: "TAB_HELD" | "ok"; controlSame: boolean; ownCallOk: boolean; guard: "bg" | "fg" | "n/a"; preClick?: boolean }
+/** The -3 rows' extra reads (recipes/s13-r20-b4.ts); liveA20's rounds never carry them. `probed`: B's held-call probe ran (a popup opened and was granted to A). */
+export interface Round3 { probed: boolean; ctlHeld: boolean; holder: boolean; popupOpened?: boolean; opener?: "O" | "other" | "none" }
+export interface Round { grantedTo: Who | "none"; inMs: number | null; others: number; held: "TAB_HELD" | "ok"; controlSame: boolean; ownCallOk: boolean; guard: "bg" | "fg" | "n/a"; preClick?: boolean; r3?: Round3 }
 /** Slack for the clock difference between Node's Date.now() and the PowerShell click stamp (a few ms). A first grant earlier than the stamp by more than this was not caused by this round's click. */
 export const PRE_CLICK_TOL_MS = 20;
 /** A pre-click grant is never read as a fast pass (the old clamp at 0 did): the round is flagged and not counted, so the leg is NOT DISCRIMINATING (only a counted round is evidence). */
@@ -58,24 +60,24 @@ export function judgeBlocked(o: { before: number; after: number; grants: readonl
   return { v: "PASS", grantedTo: "none" };
 }
 // ---- the actor's world --------------------------------------------------------------------------------------------------------------------------------
-const NAMES: Record<Who, string> = { A: "s13-r20-a", B: "s13-r20-b", C: "s13-r20-c" };
-const U = (port: string, q: string): string => `http://localhost:${port}/e2e-playground.html?s12=${q}`;
-const POPUP = (port: string): string => `http://localhost:${port}/e2e-playground.html?popup=1`;
+export const NAMES: Record<Who, string> = { A: "s13-r20-a", B: "s13-r20-b", C: "s13-r20-c" };
+export const U = (port: string, q: string): string => `http://localhost:${port}/e2e-playground.html?s12=${q}`;
+export const POPUP = (port: string): string => `http://localhost:${port}/e2e-playground.html?popup=1`;
 const num = (s: string): number | null => (/^-?\d+$/.test(s) && Number(s) >= 0 ? Number(s) : null);
-interface Peer { c: Client; grants: Array<{ tab: string; at: number }> }
-async function peer(name: string): Promise<Peer> {
+export interface Peer { c: Client; grants: Array<{ tab: string; at: number }> }
+export async function peer(name: string): Promise<Peer> {
   const { connect } = await import("../sdk/src/index.js");
   const c = await connect({ name, failureReports: false });
   const p: Peer = { c, grants: [] };
   c.on("leaseGranted", (e) => p.grants.push({ tab: e.tab, at: Date.now() }));
   return p;
 }
-const activeOf = async (c: Client, handle: string): Promise<"bg" | "fg" | "n/a"> => {
+export const activeOf = async (c: Client, handle: string): Promise<"bg" | "fg" | "n/a"> => {
   const r = (await c.call("listTabs")) as { tabs?: Array<{ tab?: string; active?: unknown }> };
   const e = r.tabs?.find((t) => t.tab === handle);
   return e === undefined || typeof e.active !== "boolean" ? "n/a" : e.active ? "fg" : "bg";
 };
-type Guard = "bg" | "fg" | "n/a";
+export type Guard = "bg" | "fg" | "n/a";
 /** The round's order, which the grant listeners depend on: O is fronted, the guard read, every peer's grants cleared, and only THEN the trigger (a click or a call) runs. */
 export async function prepareRound<T>(io: { front: () => Promise<void>; guard: () => Promise<Guard>; reset: () => void; trigger: (g: Guard) => Promise<T> }, settleMs = 300): Promise<{ guard: Guard; t0: number; trig: T }> {
   await io.front(); await sleep(settleMs);
@@ -93,10 +95,13 @@ export const clickGate = async (g: Guard, send: (content: string) => Promise<str
 };
 /** The PowerShell side's click stamp (epoch ms) when the trigger returned one. */
 export const stampOf = (trig: unknown): number | null => (typeof trig === "object" && trig !== null && "at" in trig && typeof trig.at === "number" ? trig.at : null);
-const sigC = (name: string, content: string): Promise<string> => { realIo.signal(name, content); return realIo.pressed(name, 180_000); };
-const handlesOf = async (c: Client): Promise<string[]> => (((await c.call("listTabs")) as { tabs?: Array<{ tab?: string }> }).tabs ?? []).flatMap((e) => (typeof e.tab === "string" ? [e.tab] : []));
+export const sigC = (name: string, content: string): Promise<string> => { realIo.signal(name, content); return realIo.pressed(name, 180_000); };
+export const handlesOf = async (c: Client): Promise<string[]> => (((await c.call("listTabs")) as { tabs?: Array<{ tab?: string }> }).tabs ?? []).flatMap((e) => (typeof e.tab === "string" ? [e.tab] : []));
 /** One round (see prepareRound); the grant is awaited up to 2.5 s and 400 ms more for anyone else's; every popup the round opened is closed (and so released) before it returns. */
-async function popRound(P: { A: Peer; B: Peer; C?: Peer }, o: { O: Tab; front: () => Promise<void>; trigger: (g: Guard) => Promise<unknown> }, row: string): Promise<Round | "unsent"> {
+/** The -3 rows' parameters of a round (the "round" doc above is liveA20's; without `v3` nothing below changes): `holderName` is A's hello name, `nextExpr` the unique expression of A's popup call, `opened` the
+ * click leg's popup-opened read (it runs before B's probe, which only a round whose popup opened gets). */
+export interface V3 { holderName: string; nextExpr: () => string; opened?: (at: number) => Promise<{ opened: boolean; opener: "O" | "other" | "none" }> }
+export async function popRound(P: { A: Peer; B: Peer; C?: Peer }, o: { O: Tab; front: () => Promise<void>; trigger: (g: Guard) => Promise<unknown>; v3?: V3 }, row: string): Promise<Round | "unsent"> {
   const peers: Array<[Who, Peer]> = [["A", P.A], ["B", P.B], ...(P.C ? ([["C", P.C]] as Array<[Who, Peer]>) : [])];
   const base = await handlesOf(P.A.c);
   const { guard, t0: tPrep, trig } = await prepareRound({ front: o.front, guard: () => activeOf(P.A.c, o.O.handle), reset: () => { for (const [, p] of peers) p.grants.length = 0; }, trigger: o.trigger });
@@ -109,17 +114,20 @@ async function popRound(P: { A: Peer; B: Peer; C?: Peer }, o: { O: Tab; front: (
   const handle = P.A.grants[0]?.tab;
   const others = peers.filter(([w]) => w !== "A").reduce((n, [, p]) => n + p.grants.length, 0);
   const wrongWho = peers.find(([w, p]) => w !== "A" && p.grants.length > 0)?.[0];
-  let held: Round["held"] = "ok", controlSame = false, ownCallOk = false;
-  if (handle) {
-    const call = (c: Client, tab: string) => att(() => c.call("evaluate", { tab, expression: "1" }));
-    const popB = await call(P.B.c, handle), ctl = await call(P.B.c, o.O.handle), own = await call(P.A.c, handle);
+  let held: Round["held"] = "ok", controlSame = false, ownCallOk = false, r3: Round3 | undefined;
+  const po = o.v3?.opened && trig !== "skip" ? await o.v3.opened(t0) : undefined;   // -3 click legs: read before B's probe
+  if (handle && po?.opened !== false) {
+    const call = (c: Client, tab: string, expression = "1") => att(() => c.call("evaluate", { tab, expression }));
+    const popB = await call(P.B.c, handle), ctl = await call(P.B.c, o.O.handle), own = await call(P.A.c, handle, o.v3?.nextExpr());
     held = popB.e?.code === "TAB_HELD" ? "TAB_HELD" : "ok";
     controlSame = popB.e !== undefined && popB.e.code === ctl.e?.code && popB.e.message === ctl.e.message;
     ownCallOk = own.e === undefined;
+    if (o.v3) r3 = { probed: true, ctlHeld: ctl.e?.code === "TAB_HELD", holder: held === "TAB_HELD" && (popB.e?.message ?? "").includes(`held by ${JSON.stringify(o.v3.holderName)}`), ...(po ? { popupOpened: true, opener: po.opener } : {}) };
     say(`ANSWER ${row} ${popB.e?.code ?? "ok"} control=${ctl.e?.code ?? "ok"} own=${own.e?.code ?? "ok"}`);
   }
   await sweep();
-  return { grantedTo: wrongWho ?? (handle ? "A" : "none"), inMs, others, held, controlSame, ownCallOk, guard, preClick };
+  if (o.v3 && !r3) r3 = { probed: false, ctlHeld: false, holder: false, ...(po ? { popupOpened: po.opened, opener: po.opener } : {}) };
+  return { grantedTo: wrongWho ?? (handle ? "A" : "none"), inMs, others, held, controlSame, ownCallOk, guard, preClick, ...(r3 ? { r3 } : {}) };
 }
 /** One leg. `cn0` / `cn1` are the PowerShell side's worker-console line counts before the first popup and after the last grant (console-new is their difference; unreadable = null).
  * A `click` leg asks the PowerShell side for the human-style click as the round's trigger (after the front, guard and reset); an unsent click makes the leg NOT MEASURED. */
@@ -141,7 +149,7 @@ async function popLeg(row: string, leg: string, P: { A: Peer; B: Peer; C?: Peer 
   if (j.v === "STOP") throw new StopWhy(WRONG, `${row} ${leg}`);
   return { v: j.v, rounds };
 }
-const first = (x: Ctx): string => x.opts.port ?? "8081";
+export const first = (x: Ctx): string => x.opts.port ?? "8081";
 async function popBgFg(x: Ctx, row: string, fg: boolean): Promise<number> {
   const port = first(x);
   const A: Peer = { c: x.c, grants: [] };

@@ -166,12 +166,12 @@ function Register-R20Blocks {
   $global:R19Blocks['r20-logs'] = { Invoke-R20Logs }
 }
 # The value steps of a POP row, in the actor's signal order: per leg `<row>-<leg>-cn0`, (leg human: three click steps), `<row>-<leg>-cn1`. The console count is read at cn0 and cn1.
-function New-R20PopSteps([string]$Row, [string[]]$Legs, [bool]$Click) {
+function New-R20PopSteps([string]$Row, [string[]]$Legs, [bool]$Click, [switch]$Pop3) {   # -Pop3: the -3 rows' capture steps (recipes/s13-r20-b4.ps1); without it liveA20's steps, unchanged
   $r20l = @()
   foreach ($r20g in $Legs) {
-    $r20l += @{ k = 'val'; id = "$Row-$r20g-cn0"; f = { Get-R20ConsoleCount } }
+    $r20l += @{ k = 'val'; id = "$Row-$r20g-cn0"; f = $(if ($Pop3) { [scriptblock]::Create("Invoke-R20Pop3Cap '$Row' '$r20g' 'before'") } else { { Get-R20ConsoleCount } }) }
     if ($r20g -eq 'human') { foreach ($r20i in 1..3) { $r20l += @{ k = 'val'; id = "$Row-human-click$r20i"; f = { param($g) Invoke-R20PopClick $g } } } }
-    $r20l += @{ k = 'val'; id = "$Row-$r20g-cn1"; f = { Get-R20ConsoleCount } }
+    $r20l += @{ k = 'val'; id = "$Row-$r20g-cn1"; f = $(if ($Pop3) { [scriptblock]::Create("Invoke-R20Pop3Cap '$Row' '$r20g' 'after'") } else { { Get-R20ConsoleCount } }) }
   }
   , $r20l
 }
