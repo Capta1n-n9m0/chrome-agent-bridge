@@ -102,3 +102,12 @@
   prints `CHECK devtools-menu step=menu-button found=no`; `Open-S12DevToolsMenu` (`s12-win-b.ps1:51`) looks for a Button
   named `Customize and control*`, and Chrome 156's app-menu button (ClassName `BrowserAppMenuButton`, read by UIA, name
   only) is named `Chrome` and offers ExpandCollapse and ScrollItem, no Invoke. Proposal for the session agent.
+- Fix round 1 committed `a40aa86` (att 1 evidence `2ca7383`). liveB19 att2 (runner Sonnet medium; out
+  `$TEMP/bridge-e2e/s19-live/b2`; HEAD a40aa86, build clean): exit 0, no STOP (`CHECK rows19 rows=24 warns=0
+  stop-return=0`; `SLICE liveB19 done: calls with a failed check 0, not measured 0`). PASS: R19-0, -UP-OPT (`O2 shown=yes
+  at=362`), -BANNER-CTL, -UP-6, -F-RAW, -2, -DIR, -KEEP-1 (`answers=5/5`, banner-clause NOT DISCRIMINATING), -KEEP-2
+  (`medians idle=10021 ctl=5050`), -KEEP-3 (12/0), -CON-KEPT, -KEEP-OVERLAP, -RESTORE (equal by count and hash; `DIALOGS
+  liveB19 native=0 devtools=0 wave-windows-open=1`), -LOGS. NOT MEASURED (DevTools was not attached): -UP-DEVT, -KEEP-4,
+  -SWEEP-HELD (no reload ran, one capture segment). RECORD: -DEVT-NOFLAG. Runner stopped the daemon; nothing on
+  9234/8080-8089; file scans all 0. Attempts 2 of 3; fix rounds 1 of 3. liveB19 closed (`S7-live-liveB19.md`); next:
+  liveC19 (a fresh step agent).
