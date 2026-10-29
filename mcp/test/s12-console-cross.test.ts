@@ -142,12 +142,16 @@ describe("S3b — consoleMessages through the daemon, the SDK and browser_consol
     }
   });
 
-  it("the description says it is refused while JavaScript is off and that frames are not read", () => {
+  it("the description says it is refused while JavaScript is off, which frames are not read, and the class-name limit", () => {
     const server = new McpServer({ name: "t", version: "0" });
     registerTools(server, {} as never);
     const d = (server as unknown as { _registeredTools: Record<string, { description?: string }> })._registeredTools.browser_console_messages!.description ?? "";
     expect(d).toContain("Refused while JavaScript is off for the bridge");
-    expect(d).toContain("Messages of the page's frames are not read");
+    // Step 13 S3b (#379, plan-drift finding 1): only a frame in another site's process is not read (R19-CON-FRAME).
+    expect(d).toContain("Messages of a frame in another site's process are not read (a same-site frame's are, and are dropped like the page's when its site is blocked);");
+    expect(d).not.toContain("Messages of the page's frames are not read");
+    // Step 13 S3b (#387): CON-NOTEA stays a documented limit.
+    expect(d).toContain("An object logged before this call shows its class name only, not its contents.");
     expect(d).toContain("No source URL and no stack");
     expect(d).toContain("logged before the bridge was last switched on or before the extension's worker last restarted, are left out");
   });

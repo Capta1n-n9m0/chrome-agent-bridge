@@ -1,6 +1,7 @@
 // Step 12 S3b (phase doc 0.5; decisions.md #323, #344): the `browser_console_messages` text, one line per entry,
 // rendered from a `consoleMessages` result (oldest first, newest last). Pure; no log call. S5b (#345 (2)): the
-// text is capped as `formatNetwork`'s is.
+// text is capped in the size of `formatNetwork`'s. Step 13 S3b (#374 item 6, #379, #388): the cap keeps the newest
+// lines and the text opens with one marker line counting the lines cut.
 import type { ConsoleEntry } from "@bridge/shared";
 
 /** The text when a read found nothing. */
@@ -16,8 +17,11 @@ export interface FormatConsoleOptions {
 
 /**
  * One line per entry: `<ISO time, UTC> <level> [uncaught] <text>`. A line break inside `text` prints as `\n`, so
- * each entry stays one line. No entries → `NO_CONSOLE_MESSAGES`. Whole lines are kept, oldest first, while the text
- * stays within `maxChars`; a cut ends with `… [truncated: <n> more lines, the newest — narrow with level/limit]`.
+ * each entry stays one line. No entries → `NO_CONSOLE_MESSAGES`. Whole lines are kept from the newest back while the
+ * text stays within `maxChars` (stopping at the first line that does not fit, so the kept lines are the newest
+ * contiguous block), printed oldest first. A cut opens with one marker line outside the cap:
+ * `… [truncated: <n> older lines cut — narrow with level/limit]`, or, when not even the newest line fits,
+ * `… [truncated: <n> lines cut, none fits — narrow with level/limit]` alone; `<n>` is the number of lines cut.
  */
 export function formatConsole(entries: readonly ConsoleEntry[], opts: FormatConsoleOptions = {}): string {
   if (entries.length === 0) return NO_CONSOLE_MESSAGES;
@@ -27,15 +31,15 @@ export function formatConsole(entries: readonly ConsoleEntry[], opts: FormatCons
     const kind = e.kind === "exception" ? " uncaught" : "";
     return `${time} ${e.level}${kind} ${e.text.replace(/\r\n|\r|\n/g, "\\n")}`;
   });
-  const kept: string[] = [];
+  let start = rows.length;
   let used = 0;
-  for (const row of rows) {
-    const add = (kept.length === 0 ? 0 : 1) + row.length;
+  while (start > 0) {
+    const add = (start === rows.length ? 0 : 1) + rows[start - 1]!.length;
     if (used + add > maxChars) break;
-    kept.push(row);
+    start -= 1;
     used += add;
   }
-  if (kept.length === rows.length) return kept.join("\n");
-  const marker = `… [truncated: ${rows.length - kept.length} more lines, the newest — narrow with level/limit]`;
-  return kept.length === 0 ? marker : `${kept.join("\n")}\n${marker}`;
+  if (start === 0) return rows.join("\n");
+  if (start === rows.length) return `… [truncated: ${rows.length} lines cut, none fits — narrow with level/limit]`;
+  return [`… [truncated: ${start} older lines cut — narrow with level/limit]`, ...rows.slice(start)].join("\n");
 }

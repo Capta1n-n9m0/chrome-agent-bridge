@@ -1,6 +1,6 @@
 // Step 12 S5b (phase doc 0.7, exit check E5.3; decisions.md #325, #336, #353): `browser_upload_file {chooser}` over
 // a fake bridge. Without `chooser` the call and the answer are exactly today's; `chooser` is sent only when given; the
-// description gains one sentence. Also `browser_console_messages`'s text is capped as `formatConsole` caps it (#345).
+// description gains one sentence. Also `browser_console_messages`'s text is capped as `formatConsole` caps it (#345; newest kept, marker first since Step 13 S3b, #379).
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { realpath } from "node:fs/promises";
@@ -75,11 +75,12 @@ describe("S5b browser_upload_file {chooser}", () => {
     expect(d.endsWith(CHOOSER_SENTENCE)).toBe(true);
   });
 
-  it("browser_console_messages: 200 entries of 2000 characters answer at most 20 000 characters plus the marker line (#345)", async () => {
+  it("browser_console_messages: 200 entries of 2000 characters answer the marker line first, then at most 20 000 characters ending at the newest (#345, #379)", async () => {
     const entries = Array.from({ length: 200 }, (_, i) => ({ level: "info", text: `${i}:`.padEnd(2000, "x"), ts: 1_800_000_000_000 + i, kind: "console" }));
     const out = await setup((m) => (m === "consoleMessages" ? { entries } : { ok: true })).run("browser_console_messages", { tab: "T3" });
-    const cut = out.lastIndexOf("\n… [truncated: ");
-    expect(cut > 0 && cut <= 20_000).toBe(true);
-    expect(out.slice(cut)).toMatch(/^\n… \[truncated: \d+ more lines, the newest — narrow with level\/limit\]$/);
+    const nl = out.indexOf("\n");
+    expect(out.slice(0, nl)).toMatch(/^… \[truncated: \d+ older lines cut — narrow with level\/limit\]$/);
+    expect(out.length - nl - 1).toBeLessThanOrEqual(20_000);
+    expect(out.endsWith(` info 199:${"x".repeat(1996)}`)).toBe(true);
   });
 });

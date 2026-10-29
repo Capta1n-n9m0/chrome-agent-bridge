@@ -8,7 +8,6 @@ import { describe, expect, it } from "vitest";
 import * as B from "../s12-forms-b.js";
 import { K } from "../s11-rules.js";
 import type { ConEntry } from "../s12-forms.js";
-import { formatConsole } from "../../sdk/src/format/console-messages.js";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const DOC = readFileSync(join(REPO, "docs", "e2e-test-plan.md"), "utf8").replace(/\r\n/g, "\n");
@@ -245,9 +244,11 @@ ${MARK(197)}`;
     expect(B.concapStats(t, SENT).sentinel).toBe(2);
     expect(B.concapStats(t, SENT).lines).toBe(3);
   });
-  it("the marker is the SDK formatter's own text (its constant, not a copy), and a look-alike is no marker", () => {
-    const entries = Array.from({ length: 30 }, (_, i) => ({ ts: 1_700_000_000_000 + i, level: "info", kind: "console", text: `s12-cap-${i + 1}:${SENT}`.padEnd(900, "x") }));
-    const real = formatConsole(entries as never, { maxChars: 5000 });
+  it("the marker is the text Run 19's formatter printed (kept as a literal, #388), and a look-alike is no marker", () => {
+    // Step 13 S3b (#388): the SDK formatter now keeps the newest lines with its marker first; Run 19's helper is not
+    // edited, so this leg tests it against the pre-S3b formatter's output for 30 entries of 900 characters, cap 5000.
+    const rows = Array.from({ length: 5 }, (_, i) => `${new Date(1_700_000_000_000 + i).toISOString()} info ${`s12-cap-${i + 1}:${SENT}`.padEnd(900, "x")}`);
+    const real = `${rows.join("\n")}\n… [truncated: 25 more lines, the newest — narrow with level/limit]`;
     const s = B.concapStats(real, SENT);
     expect(s.marker).toBe(true);
     expect(s.moreLines).toBeGreaterThan(0);

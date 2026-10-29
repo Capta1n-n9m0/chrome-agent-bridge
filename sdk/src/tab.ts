@@ -386,7 +386,8 @@ export class Tab {
    * Step 12 S3b (#323, #334): the console messages and uncaught errors Chrome kept for this tab's page, oldest first,
    * newest last (`{level, text, ts, kind}`, no source URL or stack). `level` keeps that level and every more severe
    * one; `limit` (1–200, default 200) keeps the newest. Checked before any call (`BAD_PARAMS`). Refused while
-   * JavaScript is off (`JS_DISABLED`) and wherever `snapshot` is; frames' messages are not read.
+   * JavaScript is off (`JS_DISABLED`) and wherever `snapshot` is; messages of a frame in another
+   * site's process are not read (a same-site frame's are, and are dropped like the page's when its site is blocked).
    */
   async consoleMessages(options: ConsoleMessagesParams = {}): Promise<ConsoleEntry[]> {
     this.#guard();
