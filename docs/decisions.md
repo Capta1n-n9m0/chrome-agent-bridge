@@ -192,6 +192,13 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · S5-sheet: a refused DevTools row is FAIL with the finding `devtools-refuses`, not a STOP (#399)
+**Decided:** in liveC20, a DevTools row whose bridge call is refused while the independent control shows DevTools
+attached prints FAIL against its pre-written `ok`, is recorded as the finding `devtools-refuses`, and the conditional
+rows run; the slice does not stop. **Why:** the phase doc lists #369's conditions under "Continues anyway, recorded";
+a refusal is a product fact, not a safety event. **Instead of:** a STOP line. **Revisit if:** a refusal leaves the
+banner or a debugger session behind. **By:** Claude
+
 ### 2026-10-29 · S3b: the console cap's marker wording (#398)
 **Decided:** when lines are kept, the first line reads `… [truncated: <n> older lines cut — narrow with level/limit]`;
 when no line fits, the whole text is `… [truncated: <n> lines cut, none fits — narrow with level/limit]`; `<n>` is all

@@ -28,3 +28,7 @@
 - 2026-10-29T11:54:10Z · S4 · step agent · Opus · medium · started (output `S4.md`).
 - 2026-10-29T12:07:55Z · S4 · step agent · ended · `c63273a` (spec note), `b3cbe84` · verifier PASS-with-notes (3 NIT; no fix round) · tests 5650 → 5654, files 237 → 238 · `S4.md`. Its "waiting on background work" notice checked: no process with the repo or scratchpad in its command line, no extra worktree, tree clean.
 - 2026-10-29T12:07:55Z · S5-sheet · step agent · Opus · medium · started (output `S5-sheet.md`).
+- 2026-10-29T12:37:41Z · S5-sheet · step agent · ended · `246c115` (§4.28, 31 ids: liveA20 15, liveB20 8, liveC20 8; committed before any observation, R5.1) · verifier FAIL → FAIL → PASS-with-notes (2 of 3 rounds; 3 NITs carried to the helper/driver briefs, S5-sheet.md §7) · `S5-sheet.md`.
+- 2026-10-29T12:37:41Z · decisions · #399 (a refused DevTools row is FAIL + finding, no STOP).
+- 2026-10-29T12:37:41Z · split · S5-helpers (~590) → S5-drivers-A (~600) → -B (~560) → -C (~540), sequential, per S5-sheet.md's proposal.
+- 2026-10-29T12:37:41Z · S5-helpers · step agent · Opus · medium · started (output `S5-helpers.md`).
