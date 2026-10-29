@@ -99,7 +99,9 @@ machine that used the bridge before:
    turn on Allow access to file URLs ([Uploading files](#uploading-files)).* *Updated 2026-10-27: Step 11b changed the
    extension (a new permission, `declarativeNetRequestWithHostAccess`) — reload it after upgrading; an extension not
    reloaded since Step 11 does not stop redirect hops ([Safety](#safety)). Since Step 11b, `browser_new_tab` with a URL
-   opens a blank page first (R17B-RD-2).*
+   opens a blank page first (R17B-RD-2).* *Updated 2026-10-29: Step 13 S1 changed the extension (a new permission,
+   `webNavigation`, granted by the user, #374; no new install warning, #393) — reload it after upgrading; an extension
+   not reloaded since Step 12 leaves a background tab's popup unowned ([Owners](#owners-leases)).*
 
 Every client on a machine must use the same `BRIDGE_PORT`; see [The daemon](#the-daemon).
 
@@ -279,6 +281,10 @@ link or a popup — "click Export, a new tab appears" lands with the clicker; a 
 opener tab is in the background, Chrome named another tab as the popup's opener, so the popup stayed
 unowned and no `leaseGranted` came; with the opener in front it was granted (after 150 ms). Claim such a
 popup by handle (decisions.md · 2026-10-25 · S7: Run 15 stands as recorded; its follow-ups (#226)).*
+*Updated 2026-10-29 (Step 13 S1; decisions.md #385): the extension now names the tab whose page opened the popup
+(Chrome's `webNavigation` event, matched within 250 ms), so a background opener's popup, and a Ctrl+click or
+middle-click tab, goes to the opener tab's owner. If no match comes, the tab is unowned. The live check is Run 20's
+R20-POP-BG.*
 
 - Any call on a tab another actor owns fails at once with `TAB_HELD` and the owner's name; nobody
   waits for a tab. Reading the network log is the exception: `browser_network_requests` works on any

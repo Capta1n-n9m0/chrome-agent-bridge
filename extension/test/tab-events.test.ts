@@ -6,6 +6,7 @@ import {
   tabCreatedParams,
   tabRemovedParams,
   tabReplacedParams,
+  joinedTabCreated,
 } from "../src/tab-events.js";
 import { helloFrame } from "../src/client.js";
 
@@ -120,5 +121,22 @@ describe("extension hello carries the session marker (Step 8 S2b.5, decisions.md
     expect(h).toEqual({ type: "hello", token: "tok", role: "extension", proto: 2, session: "marker-1", features: ["evaluateArgs", "uploadChooser"] });
     expect(parse(helloFrame("tok", ""))).toEqual({ type: "hello", token: "tok", role: "extension", proto: 2, features: ["evaluateArgs", "uploadChooser"] });
     expect(parse(helloFrame("tok", undefined))).toEqual({ type: "hello", token: "tok", role: "extension", proto: 2, features: ["evaluateArgs", "uploadChooser"] });
+  });
+});
+
+describe("joinedTabCreated (Step 13 S1, #385): the joined opener replaces Chrome's", () => {
+  const params = { tabId: 9, url: "", openerTabId: 4 }; // 4: Chrome's value, the window's active tab
+  it("joined: openerTabId is the navigation source", () => {
+    expect(joinedTabCreated(params, 2)).toEqual({ tabId: 9, url: "", openerTabId: 2 });
+  });
+  it("not joined: no openerTabId at all, never Chrome's value", () => {
+    const out = joinedTabCreated(params, undefined);
+    expect(out).toEqual({ tabId: 9, url: "" });
+    expect("openerTabId" in out).toBe(false);
+    expect(isTabCreatedEvent(parse(eventFrame("tabCreated", out)))).toBe(true);
+  });
+  it("a tab without Chrome's openerTabId is unchanged (the same object)", () => {
+    const bare = tabCreatedParams({ id: 7 })!;
+    expect(joinedTabCreated(bare, undefined)).toBe(bare);
   });
 });

@@ -17,7 +17,8 @@ import { javaScriptOff } from "./evaluate-save-store.js";
 import { log as networkLog, ownPort, scheduleFlush, setOwnPort } from "./network-state.js";
 import { isOwnTraffic } from "./network-log.js";
 import type { WebRequestDetails, WebRequestEvent } from "./network-log.js";
-import { TabInfoCache, eventFrame, tabCreatedParams, tabRemovedParams, tabReplacedParams } from "./tab-events.js";
+import { TabInfoCache, eventFrame, joinedTabCreated, tabCreatedParams, tabRemovedParams, tabReplacedParams } from "./tab-events.js";
+import { OpenerJoin } from "./opener-join.js";
 import { MARKER_KEY, SessionMarker, type MarkerStore } from "./session-marker.js";
 import { DISARMED_ALL, SafetyReporter, SafetyStore, failClosedView, readStoredArmed, rebuildsRules, reportOf, touchesSafety, type SafetyView } from "./safety-state.js";
 import { CallSafety, acceptRelaySender, type CallSafetyDeps } from "./safety-call.js";
@@ -218,18 +219,34 @@ function sendTabEvent(build: (view: SafetyView) => string): void {
     .catch(() => {});
 }
 
+// Step 13 S1 (G1, #385; spec §10 Note 2026-10-29): a `tabCreated` with Chrome's `openerTabId` waits (≤ 250 ms) for
+// its `webNavigation.onCreatedNavigationTarget`, then goes out with `openerTabId` = the source tab, or with none.
+// The join sees tab ids only; a removed or replaced tab releases its held `tabCreated` before its own event.
+const releaseCreated = new Map<number, (openerTabId: number | undefined) => void>();
+const openerJoin = new OpenerJoin((tabId, openerTabId) => {
+  const release = releaseCreated.get(tabId);
+  releaseCreated.delete(tabId);
+  release?.(openerTabId);
+});
+
 chrome.tabs.onCreated.addListener((created) => {
   const params = tabCreatedParams(created);
   if (!params) return;
   tabInfo.update(params.tabId, {}, created);
   const urls = [created.url, created.pendingUrl];
-  sendTabEvent((v) => eventFrame("tabCreated", redactTabCreated(params, v.switches, v.ctx, urls)));
+  releaseCreated.set(params.tabId, (opener) =>
+    sendTabEvent((v) => eventFrame("tabCreated", redactTabCreated(joinedTabCreated(params, opener), v.switches, v.ctx, urls))),
+  );
+  openerJoin.created(params.tabId, created.openerTabId);
 });
+// Only the two ids are read; the event's address is never kept or logged.
+chrome.webNavigation.onCreatedNavigationTarget.addListener((d) => openerJoin.navigationTarget(d.tabId, d.sourceTabId));
 chrome.tabs.onUpdated.addListener((tabId, change, updated) => {
   tabInfo.update(tabId, change, updated);
   if (pageChanged(change)) void keeper.recheckTab(tabId); // Step 12 S4b: blocked, own or file: now → detach
 });
 chrome.tabs.onRemoved.addListener((tabId) => {
+  openerJoin.gone(tabId); // Step 13 S1: a held tabCreated goes out first
   // `retire`, not `take`: the last URL stays known for the length of a call (Stage 0 R2-1).
   const params = tabRemovedParams(tabId, tabInfo.retire(tabId));
   sendTabEvent((v) => eventFrame("tabRemoved", redactTabRemoved(params, v.switches, v.ctx)));
@@ -237,6 +254,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 chrome.tabs.onReplaced.addListener((addedTabId, removedTabId) => {
   dropEvaluateSavesForTab(removedTabId); // Step 10 S4 (#205): the old id is gone; its held values go
   void keeper.tabGone(removedTabId); // Step 12 S4b
+  openerJoin.gone(removedTabId); // Step 13 S1: a held tabCreated goes out first
   tabInfo.noteReplaced(removedTabId, addedTabId);
   tabInfo.move(removedTabId, addedTabId);
   const frame = eventFrame("tabReplaced", tabReplacedParams(addedTabId, removedTabId));

@@ -142,6 +142,17 @@ export function tabCreatedParams(tab: TabLike): TabCreatedParams | null {
   };
 }
 
+/**
+ * Step 13 S1 (#385): a held `tabCreated` as released by `OpenerJoin` (`opener-join.ts`). Joined, `openerTabId` is the
+ * navigation source; not joined, it has none (Chrome's value names the active tab for a background opener). A tab
+ * without Chrome's `openerTabId` is never held and passes unchanged.
+ */
+export function joinedTabCreated(params: TabCreatedParams, joinedOpener: number | undefined): TabCreatedParams {
+  if (params.openerTabId === undefined && joinedOpener === undefined) return params;
+  const { openerTabId: _chrome, ...rest } = params;
+  return joinedOpener === undefined ? rest : { ...rest, openerTabId: joinedOpener };
+}
+
 /** `tabRemoved` params; `lastUrl`/`lastTitle` only when known (never null, never ""). */
 export function tabRemovedParams(tabId: number, cached: TabInfo | undefined): TabRemovedParams {
   const out: TabRemovedParams = { tabId };

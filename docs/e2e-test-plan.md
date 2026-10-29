@@ -43,6 +43,8 @@ Record outcomes in the [Results template](#results-template). A run "passes" whe
    `mcp/dist/index.js`.*
 5. **Load the extension:** `chrome://extensions` → Developer mode → Load unpacked → select
    `extension/`.
+   *Note 2026-10-29 (Step 13 S1): the manifest's permissions include `webNavigation` (#374, for the popup's opener,
+   #385); no new install warning is expected (#393). An extension loaded before S1 must be reloaded.*
 6. **Configure the extension:** open its Options, set Port `9234` + Token `<TOKEN>`, Save.
    *Note 2026-10-22 (Step 6 D6): for the Step 6 daemon wave, item 8 replaces the token part — the
    Options get the token from `bridge.token`.*
@@ -312,6 +314,9 @@ If SMOKE-1/2 fail, stop and debug connection/injection before the rest.
 | TAB-4 | Close tab | `browser_close_tab {"tab":"<T#>"}` | `Closed tab <T#>`; that tab closes. `browser_close_tab {}` returns `browser_close_tab needs tab: a handle from browser_list_tabs` and closes nothing. *Superseded 2026-10-22: was `browser_close_tab {"id":<id>}`, because Step 7 T4 takes handles and gives `browser_close_tab` no default tab (#57).* |
 | TAB-5 | Focus a tab | After TAB-2 (this session's tab is the other tab, not on screen): `browser_focus_tab {}` | `Focused tab <T#>`; that tab comes on screen and its window is focused; it stays on screen afterwards (not restored). *Added 2026-10-22 (Step 7 T4): `browser_focus_tab` is the only tool that changes what the human sees.* |
 | HIST-1 | Back/forward | Navigate A → B, then `browser_back`, then `browser_forward` | Tab returns to A, then forward to B. |
+| POP-JOIN-1 | The `webNavigation` listener is live (Step 13 S1, `sw.ts`; added 2026-10-29) | After reloading the extension: its service-worker console evaluates `chrome.runtime.getManifest().permissions.includes("webNavigation")` and `typeof chrome.webNavigation.onCreatedNavigationTarget.hasListeners` then `chrome.webNavigation.onCreatedNavigationTarget.hasListeners()` | `true`, `"function"`, `true`; the card shows no new warning and stays enabled (#393). The worker console prints nothing when a popup opens (no URL logged). |
+| POP-JOIN-2 | A background opener's popup goes to the opener's holder (the join's live behaviour, #385) | Client A holds fixture tab O, client B holds tab H, H is the active tab of the window; A runs `evaluate` on O that calls `window.open(<fixture>)` (with the user activation `evaluate` gives) | A gets one `leaseGranted {reason:"opener"}` for the popup within 1 s; B gets none; B's call on the popup fails `TAB_HELD` naming A. With O in front the same holds. Run 20's R20-POP-BG is the recorded row. |
+| POP-JOIN-3 | A tab with no navigation target is not delayed or granted (#385) | A holds O; open a tab by Ctrl+T (and by `browser_new_tab` from B) | Ctrl+T's tab is unowned, listed at once; B's tab is B's (`opened`); no `leaseGranted` to A. A Ctrl+click on a link in O, O active: A gets the `opener` lease. |
 
 *Note 2026-10-27 (cleanup pass 2): HIST-1's expected text holds only when A and B had a user activation (a human
 click, or the bridge's `evaluate`). On a history the bridge built alone, `browser_back` answers `INTERNAL` "Cannot find

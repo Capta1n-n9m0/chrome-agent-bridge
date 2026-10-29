@@ -1009,6 +1009,10 @@ The block itself is left as written.*
   - *No wire shape, event or router method changes; the manifest gains the `webNavigation` permission (#374). The
     worker keeps only tab ids from the navigation event, never its URL. An extension older than S1 sends Chrome's
     `openerTabId` as before.*
+  - *`listTabs` rows still carry Chrome's own `openerTabId` (`extension/src/handlers/tabs.ts`), so a row and the
+    tab's `tabCreated` can name different openers. No daemon, SDK or MCP path reads the row's `openerTabId`.*
+  - *A limit: if the service worker restarts inside the 250 ms hold, the held `tabCreated` is lost, not only its grant.
+    The daemon then learns of the tab from its next `listTabs` reply, which mints a handle leased to nobody.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 

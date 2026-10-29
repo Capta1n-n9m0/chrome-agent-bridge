@@ -9,6 +9,10 @@
  * list; no install warning, as `<all_urls>` is already held). Nothing else changes, and there is no
  * `declarative_net_request` key (no static rule sets: session rules only, #291). S2b's tests below are unchanged
  * except the permission list they pin.
+ *
+ * Re-pinned 2026-10-29 (Step 13 S1; decisions.md · 2026-10-29 · The user rules Step 12's gate; Step 12 closes (#374),
+ * item 1, which granted the permission; #393: no new warning, the extension stays enabled): `permissions` gains exactly
+ * `webNavigation`, for `onCreatedNavigationTarget` (G1, #385). The earlier tests below pin the list through `NOW`.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -31,12 +35,26 @@ const BEFORE: Record<string, unknown> = {
 
 /** Step 11b S3a: the one permission added to S2b's list (0.3 (A), #290). */
 const ADDED_11B = "declarativeNetRequestWithHostAccess";
+/** Step 13 S1: the one permission added after Step 11b's (#374 item 1). */
+const ADDED_13 = "webNavigation";
+/** Today's list: S2b's, then 11b's, then Step 13's, in that order. */
+const NOW = [...(BEFORE.permissions as string[]), ADDED_11B, ADDED_13];
+
+describe("manifest.json (Step 13 S1 re-pin, #374)", () => {
+  it("permissions are Step 11b's list plus exactly webNavigation, appended; nothing else changes", () => {
+    expect(manifest.permissions).toEqual(NOW);
+    const added = (manifest.permissions as string[]).filter((p) => ![...(BEFORE.permissions as string[]), ADDED_11B].includes(p));
+    expect(added).toEqual([ADDED_13]);
+    expect(manifest.host_permissions).toEqual(BEFORE.host_permissions);
+    expect(manifest).not.toHaveProperty("optional_permissions");
+  });
+});
 
 describe("manifest.json (Step 11b S3a re-pin)", () => {
   it("permissions are S2b's list plus exactly one, appended", () => {
-    expect(manifest.permissions).toEqual([...(BEFORE.permissions as string[]), ADDED_11B]);
+    expect(manifest.permissions).toEqual(NOW);
     const added = (manifest.permissions as string[]).filter((p) => !(BEFORE.permissions as string[]).includes(p));
-    expect(added).toEqual([ADDED_11B]);
+    expect(added).toEqual([ADDED_11B, ADDED_13]);
     for (const p of ["declarativeNetRequest", "declarativeNetRequestFeedback"]) expect(manifest.permissions).not.toContain(p);
   });
 
@@ -48,7 +66,7 @@ describe("manifest.json (Step 11b S3a re-pin)", () => {
 
 describe("manifest.json (S2b)", () => {
   it("the permissions are exactly today's (no new permission; since Step 11b S3a: plus the one above)", () => {
-    expect(manifest.permissions).toEqual([...(BEFORE.permissions as string[]), ADDED_11B]);
+    expect(manifest.permissions).toEqual(NOW);
     expect(manifest.host_permissions).toEqual(BEFORE.host_permissions);
     expect(manifest).not.toHaveProperty("optional_permissions");
     expect(manifest).not.toHaveProperty("optional_host_permissions");

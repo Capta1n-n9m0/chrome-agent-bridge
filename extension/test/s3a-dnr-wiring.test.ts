@@ -221,15 +221,38 @@ describe("sw.ts wiring (static)", () => {
     expect(code).toContain("chrome.declarativeNetRequest");
   });
 
-  it("the listener count is unchanged (19); the rebuild sits in the safety storage.onChanged listener", () => {
+  it("the listener count is 21; the rebuild sits in the safety storage.onChanged listener", () => {
     // 19 → 20: Step 12 S3a (2026-10-27; decisions.md #333): the one top-level `chrome.debugger.onEvent` listener.
-    expect(code.match(/addListener\(/g)).toHaveLength(20);
+    // 20 → 21: Step 13 S1 (2026-10-29; decisions.md #385): the one top-level `webNavigation.onCreatedNavigationTarget` listener.
+    expect(code.match(/addListener\(/g)).toHaveLength(21);
+    expect(code.match(/webNavigation\.onCreatedNavigationTarget\.addListener\(/g)).toHaveLength(1);
     const i = code.indexOf("if (area === \"local\" && touchesSafety(changes)) {");
     const j = code.indexOf("ingestGate.flush();", i);
     expect(i).toBeGreaterThan(0);
     expect(code.slice(i, j)).toContain("dnrKeeper.rebuild(v.ctx.blockList)");
     expect(code.slice(i, j)).toContain("dnrKeeper.rebuild(null)");
     expect(code.match(/dnrKeeper\.rebuild\(/g)).toHaveLength(2);
+  });
+
+  it("a removed or replaced tab releases its held tabCreated before its own event (Step 13 S1 verifier M2, #385)", () => {
+    // The listener that builds the event (sw.ts has an earlier onRemoved listener too), up to its closing line.
+    const listener = (on: string, built: string): string => {
+      const at = code.indexOf(built);
+      const start = at < 0 ? -1 : code.lastIndexOf(on, at);
+      return start < 0 ? "" : code.slice(start, code.indexOf("\n});", start));
+    };
+    const removed = listener("chrome.tabs.onRemoved.addListener(", "tabRemovedParams(");
+    const replaced = listener("chrome.tabs.onReplaced.addListener(", "tabReplacedParams(");
+    for (const [body, built, event] of [
+      [removed, "tabRemovedParams(", "\"tabRemoved\""],
+      [replaced, "tabReplacedParams(", "\"tabReplaced\""],
+    ] as const) {
+      const gone = body.indexOf("openerJoin.gone(");
+      expect(gone).toBeGreaterThan(0);
+      expect(gone).toBeLessThan(body.indexOf(built));
+      expect(gone).toBeLessThan(body.indexOf(event));
+      expect(gone).toBeLessThan(body.indexOf("sendTabEvent("));
+    }
   });
 
   it("onDisarm sweeps (never clears a live call's rules); the router's factory hands each call its handle (S3b: no filter)", () => {
