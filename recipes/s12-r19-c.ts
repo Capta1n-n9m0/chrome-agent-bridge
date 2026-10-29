@@ -384,7 +384,7 @@ async function chooseMcp(x: Ctx): Promise<number> {
   const R = "R19-CHOOSE-MCP", s = state(), f = fileOf(s, "s11-1k.bin"), w = fileWant(s, "s11-1k.bin"), forbidden = [ROOT(), s.sentinel], m = await x.mcp(), legs: V[] = [];
   const ok = (r: { text: string; isError: boolean }): V => judgeMcpOk(r, w, forbidden);
   leg(R, "a", await mcpLeg(m, R, "a", CH("c1"), { locator: BTN, paths: [f], chooser: true }, ok, { files: 1, change: 1 }, `${R}-dlg1`), legs);
-  leg(R, "b", await mcpLeg(m, R, "b", CH("c1"), { locator: { css: "#in" }, paths: [f], chooser: true }, ok, { files: 1, change: 1 }, `${R}-dlg2`), legs);
+  leg(R, "b", await mcpLeg(m, R, "b", CH("c1"), { locator: { css: "#vis" }, paths: [f], chooser: true }, ok, { files: 1, change: 1 }, `${R}-dlg2`), legs);
   leg(R, "c", await mcpLeg(m, R, "c", CH("none"), { locator: BTN, paths: [f], chooser: true }, (r) => judgeMcpErr(r, "TIMEOUT", CH_MSG.timeout), { files: 0 }, `${R}-dlg3`), legs);
   const h = await mcpTab(m, "http://localhost:8081/s11-upload.html?s11=s12c");
   const e = await m.call("browser_upload_file", { tab: h, locator: { css: "#up-single" }, paths: [f] });

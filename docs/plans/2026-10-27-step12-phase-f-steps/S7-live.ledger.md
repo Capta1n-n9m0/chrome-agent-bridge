@@ -140,3 +140,26 @@
   SWEEP-HELD NOT MEASURED; DEVT-NOFLAG RECORD; every other row PASS as in att2; R19-RESTORE PASS (equal by count and hash),
   R19-LOGS PASS. Daemon PID 10264 shut down; nothing on 9234/8080-8089; the user's two windows untouched; scans all 0.
   Attempts 3 of 3; fix rounds 3 of 3. liveB19 closed (`S7-live-liveB19.md` Attempt 3); next: liveC19.
+
+## liveC19 (step agent liveC19, Claude Opus 5.5, medium)
+- 2026-10-29 start: HEAD `8994955`, tree clean. Budgets (#367, per slice): attempts 0 of 3; fix rounds 0 of 3.
+- Pre-attempt code check (the #366/#367/#368 defect classes, from code only): (1) titles: every page liveC19 puts in an
+  active W/X tab (`S12 chooser fixture`, `Agent Bridge E2E Playground`, `S11 upload fixture`) is known to
+  `Format-S9Title`; (2) MCP actor: `x.mcp()` is -a's `mcpOpen` with the #366 link wait; (3) locators: R19-CHOOSE-MCP
+  leg b targets `{css: "#in"}` (`s12-r19-c.ts:387`), and on `s12=c1` `#in` carries `hidden` (`test-fixtures/s12-chooser.js`
+  HID), which the walk prunes (`extension/src/content/a11y.ts:73`) -> `LOCATOR_NOT_FOUND` on any build: a helper defect
+  of #368's class. The sheet names only "the file input itself"; c1's visible file input is `#vis`. Same `{css:"#in"}` in
+  `s12-r19-de.ts:81` (liveE19; not this slice's lane, for the session agent). (4) Expected-value question, not fixed:
+  R19-CHOOSE-REFUSE `dis` clicks the button whose handler calls `click()` on a disabled input; a disabled control's
+  `click()` does nothing (HTML spec), so no chooser opens and the leg should answer `TIMEOUT`, not the sheet's
+  `the file input is disabled` (reachable only after a `fileChooserOpened`, `extension/src/upload-files.ts:457`). Recorded
+  as measured; for the session agent.
+- Next: fix round 1 of 3 (Sonnet fixer -> `S7-live-C-fixer.md`; Opus verifier -> `S7-live-C-verifier.md`): leg b's target
+  `#in` -> `#vis`, with a test.
+- Fix round 1 (1 of 3): fixer Sonnet medium DONE (`S7-live-C-fixer.md`; `s12-r19-c.ts:387` `#in` -> `#vis`; new
+  `recipes/test/s12-r19-c-legb.test.ts`, 2 tests; npm test 5588 -> 5590, 234 files). Verifier Opus medium PASS-with-notes
+  (`S7-live-C-verifier.md`): diagnosis confirmed; every other liveC19 locator reaches its element; 9 mutants, 7 killed
+  (N1: leg b's want and `chooser: true` not pinned, untested before too); typecheck and 7 recipes tsconfigs exit 0; side
+  opinion agrees `dis` will answer TIMEOUT (HTML spec: `click()` on a disabled control returns). Pre-env: nothing on
+  9234/8080-8089; node PID 22152 (unrelated codex runtime) only; no python; Chrome top-level windows 2 (38602544, 68708,
+  the user's). Next: committer, then attempt 1 from the fix commit.
