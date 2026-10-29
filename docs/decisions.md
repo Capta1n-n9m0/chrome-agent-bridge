@@ -25,6 +25,7 @@ were ruled on 2026-10-27, #311, #320). #322, #323, #325 and #326 are amended by 
 - 2026-10-28 · S7-sheet: what Run 19 cannot discriminate live … (#356, item 1)
 - 2026-10-29 · liveA19's STOP was a wrong constant in the sheet; control-2 judged against the old build's measured answer (#366, a correction after an observation)
 - 2026-10-29 · liveB19: docked DevTools on Chrome 156 does not refuse the bridge's debugger; keep, reproduce or drop the `DEBUGGER_DEVTOOLS` claim (#369)
+- 2026-10-29 · Run 19: does R19-ARGS-1's key-order clause cover only what the page receives (then NOT DISCRIMINATING), or the returned `value` too (FAIL)? CON-NOTEA's product fix? (#373)
 - **G12-2 for the user:** add the `webNavigation` permission so G1 can be built? (#337)
 
 ## Standing decisions
@@ -196,6 +197,33 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
+
+### 2026-10-29 · Run 19's record accepted; its findings go to the user and a later recipes-only wave (#373)
+**Decided:** S7-record (`2f68f99`, PASS-with-notes after two fix rounds) is Run 19's record. Its verdicts over 58 row ids:
+42 PASS, 5 FAIL, 5 NOT DISCRIMINATING, 3 NOT MEASURED, 3 RECORD. R7.1–R7.6 are met.
+- **S7-record's two choices against the result stand.** ARGS-1 is FAIL and ARGS-3 is FAIL. The user decides whether
+  ARGS-1's "key order" clause covers only what the page receives; then it would be NOT DISCRIMINATING. It is listed
+  under Open decisions.
+- **CON-NOTEA is a product finding** for the user: an object logged before the read comes back as `Object`, and nothing
+  leaks.
+- **No product change in Step 12.** The phase's forbidden fixes hold after the wave too, and a fix needs the user's
+  ruling.
+- **A later recipes-only wave** re-measures under new row ids:
+  - ARGS-3 with the MCP's own text;
+  - the MCP legs of CON-4, ARGS-OLD and VERSION, read from the MCP's own lines;
+  - CON-FLOOR with #361's waits;
+  - CHOOSE-KEPT with a second file;
+  - G2-1 with window geometry recorded.
+
+  It is listed in the phase doc's Follow-ups.
+- **Run 18's banner FAILs (#351 (2)) are marked not reproduced:** a 20 s idle and a passing control read none.
+- **Three gotchas go to the close-out:** pre-read console messages carry no preview; a returned `value` has sorted keys;
+  and the MCP prints its own code lines, which later waves must read.
+
+**Why:** cause before verdict, never in the result's favour. The re-measurements need new rows, not edited old ones.
+**Instead of:** re-running inside Step 12 past the per-slice budget.
+**Revisit if:** the user rules ARGS-1's clause or asks for CON-NOTEA's fix.
+**By:** Claude (session agent's rulings)
 
 ### 2026-10-29 · Run 19's five slices have run; S7-record next; the name in committed docs is the user's call (#372)
 **Decided:** liveE19 attempt 1 (`fabd5f4`, `rows=10 warns=0 stop-return=0`, no fix round) closes the wave's live part.
