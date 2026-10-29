@@ -1013,6 +1013,14 @@ The block itself is left as written.*
     tab's `tabCreated` can name different openers. No daemon, SDK or MCP path reads the row's `openerTabId`.*
   - *A limit: if the service worker restarts inside the 250 ms hold, the held `tabCreated` is lost, not only its grant.
     The daemon then learns of the tab from its next `listTabs` reply, which mints a handle leased to nobody.*
+- *Note 2026-10-29 (Step 13 S4; phase doc `docs/plans/2026-10-29-step13-phase-f-followups.md` 0.6 with its Stage 0
+  note; decisions.md · 2026-10-29 · Stage 0: the second-chooser refusal keeps `DEBUGGER_DEVTOOLS` with its own fixed
+  text (#389)). The S5a bullet above that reads "with the text an overlapping debugger use answers today (#335)" no
+  longer holds: from S4 on, a second `chooser: true` call on a tab whose chooser call has not ended answers
+  `DEBUGGER_DEVTOOLS` with its own fixed text, `CHOOSER_BUSY_MESSAGE` (`extension/src/handlers/upload.ts`): "uploadFiles:
+  another file chooser upload is still running on this tab; retry after it ends". It names no DevTools, path or tab id.
+  The code, the moment of the refusal (after the prologue, before any page call or attach) and every other
+  `DEBUGGER_DEVTOOLS` text are unchanged. No method, code or event is added.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
