@@ -365,6 +365,18 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - **Needs the user:** the extension reload (the script exited 2 twice at 10:53Z; S5-live's R20-0 does it); #385 at
   the gate.
 
+### S2 — Key order of `evaluate`'s value · 2026-10-29 · verifier: FAIL → PASS-with-notes (round 1 of 3) · commit `3ca60bd` · models Opus builder, fixer and verifiers
+- **Contracts (binding forward):** the serialiser's envelope crosses as one JSON string written by a closure-free
+  wrapper whose JSON writer calls no page `toJSON`; the extension parses it in `serializerCall`'s `callFn` and accepts
+  only the envelope's own keys and types, `__mark` exactly when asked, else today's fallback. `SERIALIZER_SRC`
+  byte-identical; paths `evaluate`, `args`, `asRef`, the mark sweep; reply shape unchanged; log sites +0. The fake CDP
+  (`extension/test/s12-engine-cdp.ts`) sorts keys under `returnByValue` as Chrome does.
+- **Decisions:** #396, #397. **Deviations:** exactly at the 300-line cap (code 85, tests 215).
+- **Numbers:** tests 5617 → 5648, files 236 → 237; 26 new tests red on the pre-slice code; the K2.1 mutant red (5).
+- **Left for later (notes):** no test of a non-function enumerable property on `Object.prototype`; a page that replaces
+  `Object.keys` can still bend `value` (pre-existing).
+- **Needs the user:** nothing new.
+
 ## Follow-ups
 
 - The Phase F items left out (0.9): response bodies and WebSocket frames on the kept session; console lines in

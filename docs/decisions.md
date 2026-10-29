@@ -192,6 +192,21 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · S2: a page's `toJSON` hook still shapes `description`; left as it was, a follow-up (#397)
+**Decided:** no change in Step 13. The text form is built in the page by `SERIALIZER_SRC`, which #386 keeps
+byte-identical; the behaviour predates S2. **Why:** fixing it changes the serialiser itself, outside #374's scope.
+**Instead of:** editing `SERIALIZER_SRC` now. **Revisit if:** the user wants `description` hook-proof; then a later step.
+**By:** Claude
+
+### 2026-10-29 · S2: page `toJSON` hooks never reach `value`; `__mark` present exactly when a mark was asked (#396)
+**Decided:** #386 narrowed: the wrapper's own JSON writer calls no page `toJSON`, so a hooked object no longer falls
+back but keeps its real value; the envelope is accepted only with its own keys and types, and with `__mark` exactly when
+the call asked for a mark; only a page that replaces a global such as `JSON.stringify` gets today's fallback. **Why:**
+S2's verifier found a page `Array.prototype.toJSON` silently changing `value`, a forged `__mark` reaching a plain reply
+and a dropped `__mark` leaving a mark in the page (`S2-verifier.md` F1–F3), all fixed in round 1. **Instead of:** the
+builder's acceptance of a forged envelope. **Revisit if:** a page hook passes the shape check with a wrong value.
+**By:** Claude
+
 ### 2026-10-29 · S1: mutants and pre-slice runs never touch the main tree (#395)
 **Decided:** a verifier or builder proves a test red on the pre-slice code, or runs a mutant, only in a scratch git
 worktree with its own `npm ci` (#220) or an in-memory copy, never by reverting, moving or editing files in the main
