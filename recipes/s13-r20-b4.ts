@@ -74,7 +74,7 @@ export function judgePop3(row: string, leg: string, rounds: readonly Round[], o:
   if (wrong) return fin("STOP", WRONG);
   const clauseFail = counted.some((r) => r.grantedTo !== "A" || r.inMs === null || r.inMs > 1000 || !r.r3?.probed || !heldOk(r) || !r.r3.holder || !r.ownCallOk);
   if (clauseFail || hit) return fin("FAIL");
-  if (counted.length < 3) return fin(o.human && rounds.some((r) => r.r3?.popupOpened === false) ? "NOT MEASURED" : "NOT DISCRIMINATING");
+  if (counted.length < 3) return fin(o.human ? "NOT MEASURED" : "NOT DISCRIMINATING");
   return fin(o.after === null || !control ? "NOT MEASURED" : "PASS");
 }
 // ---- the actors -------------------------------------------------------------------------------------------------------------------------------------------------

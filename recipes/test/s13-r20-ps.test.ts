@@ -177,7 +177,7 @@ describe.skipIf(!hasPs)("s13-r20.ps1 under PowerShell with stubbed helpers", () 
     expect(o.order!.some((l) => /^RET 0/.test(l))).toBe(true);
   });
   it("lists liveB20 and liveC20 for the plan", () => {
-    expect(o.orderBC![0]).toContain("r20-0b,closerprobe,r20-choose-twice");
+    expect(o.orderBC![0]).toContain("r20-0b,r20-pop-bg-3,r20-pop-fg-3,r20-pop-other-3,root-add,closerprobe,r20-choose-twice");
     expect(o.orderBC![1]).toContain("r20-0c,flag,r20-devt-undock");
   });
   it("names ids, record files and captures for Run 20, and ends the shared rows with slice=A", () => {

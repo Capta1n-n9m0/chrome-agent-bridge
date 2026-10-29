@@ -109,6 +109,22 @@ describe("leg human (items 3, 4, #407 clause 3)", () => {
     expect(Jh([H(), H({ grantedTo: "C" }), H()])).toMatchObject({ v: "STOP", why: "popup-lease-wrong" });
   });
   it("a held-call that is not as clause (1) is a FAIL", () => expect(Jh([H(), H({}, { holder: false }), H()]).v).toBe("FAIL"));
+  it("fewer than 3 counted rounds in leg human is NOT MEASURED whatever the cause (B4a verifier MINOR-1), where a non-human leg is NOT DISCRIMINATING", () => {
+    expect(Jh([H(), H(), H({ guard: "bg" })]).v).toBe("NOT MEASURED");   // a guard-skip round, no round without a popup
+    expect(Jh([H(), H(), H({ preClick: true })]).v).toBe("NOT MEASURED");
+    expect(J([R(), R(), R({ guard: "fg" })]).v).toBe("NOT DISCRIMINATING");
+  });
+});
+describe("rank with fewer than 3 counted rounds (B4a verifier MINOR-2)", () => {
+  it("two counted rounds with a failing clause are a FAIL, not NOT DISCRIMINATING", () => {
+    expect(J([R({ inMs: 1500 }), R(), R({ guard: "fg" })]).v).toBe("FAIL");
+    expect(J([R(), R({ grantedTo: "none", inMs: null }), R({ guard: "fg" })]).v).toBe("FAIL");
+    expect(J([R(), R(), R({ guard: "fg" })], { after: { ...A, join: 1 } }).v).toBe("FAIL");
+  });
+  it("a grant to C in an uncounted round of leg bg, and a pre-click grant to B, are the STOP", () => {
+    expect(J([R(), R(), R({ guard: "fg", grantedTo: "C" })])).toMatchObject({ v: "STOP", why: "popup-lease-wrong" });
+    expect(J([R(), R(), R({ preClick: true, grantedTo: "B" })])).toMatchObject({ v: "STOP", why: "popup-lease-wrong" });
+  });
 });
 describe("popup-opened (item 4)", () => {
   const before = [{ id: 1, tab: "T1" }, { id: 2, tab: "T2" }];

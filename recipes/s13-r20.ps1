@@ -11,7 +11,7 @@ $R20Prologue = @('preflight', 'servers', 'files', 'window', 'reload', 'console')
 # A2's slots (sheet order): CON-DESC, -NOTEA (allowed, pre), -CAP / CON-4, -FLOOR, -NOTEA blocked / ARGS-OLD.
 $R20SlotCon = @('r20-con-desc', 'r20-con-notea', 'r20-con-cap'); $R20SlotAfterArgs3 = @('r20-con-4', 'r20-con-floor', 'r20-con-notea-b'); $R20SlotOld = @('r20-args-old')
 $R19Order['liveA20'] = $R20Prologue + @('r20-0', 'r20-pop-bg', 'r20-pop-fg', 'r20-pop-other', 'r20-pop-none', 'r20-args-order') + $R20SlotCon + @('r20-args-3') + $R20SlotAfterArgs3 + $R20SlotOld + @('r20-restore', 'r20-logs')
-$R19Order['liveB20'] = $R20Prologue + @('r20-0b', 'closerprobe', 'r20-choose-twice', 'r20-choose-kept', 'r20-choose-refuse-dis', 'r20-g2-1', 'r20-version', 'r20-restore', 'r20-logs')
+$R19Order['liveB20'] = $R20Prologue + @('r20-0b', 'r20-pop-bg-3', 'r20-pop-fg-3', 'r20-pop-other-3', 'root-add', 'closerprobe', 'r20-choose-twice', 'r20-choose-kept', 'r20-choose-refuse-dis', 'r20-g2-1', 'r20-version', 'r20-restore', 'r20-logs')
 $R19Order['liveC20'] = $R20Prologue + @('r20-0c', 'flag', 'r20-devt-undock', 'r20-devt-early', 'r20-up-devt', 'r20-keep-4', 'r20-sweep-held', 'r20-restore', 'r20-logs')
 $R19Multi = @('R20-0', 'R20-0B', 'R20-0C', 'R20-RESTORE', 'R20-LOGS')   # the rows every slice holds end with slice=<letter>
 $R19DeferRe = '(?!)'   # matches nothing: no slice-A ARGS or CON row has a worker-console clause (e2e plan 4.28 l.1968-1975; the sentinel= counts are page reads), so each prints its own ROW inline and R20-LOGS never changes it (A2 fixer 2, N1; Run 19 deferred because its rows had one, #351 (4) (b)). A slice that has such rows sets its own pattern.
@@ -65,7 +65,7 @@ function Out-R20Held {   # LOADED20 (when held), then the proof's CHECK lines (w
   if ($global:R19Loaded) { & $r20r @($global:R19Loaded); $global:R19Loaded = $null }
   if (@($global:R20Checks).Count) { & $r20r @($global:R20Checks); $global:R20Checks = @() }
 }
-function Invoke-R20Zero([scriptblock]$Zero) {
+function Invoke-R20Zero([scriptblock]$Zero, [string]$Row = 'R20-0') {
   if ($global:S16Changed) { Fail-S16 'R20-0 after a state change would overwrite the found texts; refused' }
   $h = Get-R19Head
   if (-not $h.Clean) { Fail-S16 'R20-0: the tracked tree is not clean outside the steps dir' }
@@ -88,7 +88,7 @@ function Invoke-R20Zero([scriptblock]$Zero) {
   Show-S16 @("HEAD $($h.Head) tree=clean")
   $r20anc = Test-R20S4Ancestor
   [void](Invoke-R19Node 's13-r20' @('s4', '--ancestor', $(if ($r20anc) { 'yes' } else { 'no' })))
-  Write-R19RowLine 'R20-0' $(if ($rc -eq 0 -and $r20anc) { 'PASS' } else { 'FAIL' })
+  Write-R19RowLine $Row $(if ($rc -eq 0 -and $r20anc) { 'PASS' } else { 'FAIL' })
 }
 # ---- the restore read-back by count and hash (never printed): found.json against now.json, both written by Restore-S11Safety ---------------------------------------
 function Invoke-R20RestoreCheck {
@@ -180,7 +180,7 @@ function Read-R20Ready([string]$Id, [int]$TimeoutSec = 120) {   # a click step's
   while (-not (Test-Path -LiteralPath $r20f)) { if (((Get-Date) - $r20t).TotalSeconds -gt $TimeoutSec) { throw "no ready signal for $Id within the bound" }; Start-Sleep -Milliseconds 20 }
   (Get-Content -Raw -LiteralPath $r20f).Trim()
 }
-function Invoke-R19StepB($S) { if ($S.k -eq 'val') { $r20g = if ($S.id -match '-click\d$') { Read-R20Ready $S.id } else { '' }; [void](Wait-S11Ready $S.id); Write-S11Pressed $S.id "$(& $S.f $r20g)" } }
+function Invoke-R19StepB($S) { if ($S.k -eq 'serve') { Invoke-R20Serve $S.h $(if ($S.s) { [int]$S.s } else { 600 }) $(if ($S.i) { [int]$S.i } else { 120 }) } elseif ($S.k -eq 'val') { $r20g = if ($S.id -match '-click\d$') { Read-R20Ready $S.id } else { '' }; [void](Wait-S11Ready $S.id); Write-S11Pressed $S.id "$(& $S.f $r20g)" } }
 function Get-R20ConsoleCount {   # POP's console-new: the capture window saved to a scratch file and its lines counted; -1 = unreadable
   try { $r20f = Join-Path $env:S11_OUT 'cn-probe.txt'; [void](Save-S11bConsole $global:D $r20f); @(Get-Content -LiteralPath $r20f).Count } catch { -1 } finally { Remove-Item -LiteralPath (Join-Path $env:S11_OUT 'cn-probe.txt') -ErrorAction Ignore }
 }
