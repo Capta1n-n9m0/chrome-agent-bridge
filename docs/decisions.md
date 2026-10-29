@@ -192,6 +192,24 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-30 · G1.4: corrected POP rows, written before they run, prove G1 in liveB20 (#407)
+**Decided:** G1.4 is not accepted on liveA20. New rows `R20-POP-BG-3`, `R20-POP-FG-3` and `R20-POP-OTHER-3` are written
+into §4.28 as a dated addendum, committed before any liveB20 observation, and run in liveB20; G1.4 is judged on
+R20-POP-BG-3. They keep every clause of R20-POP-BG, -FG and -OTHER except three:
+(1) **held-call:** B's call on the popup answers `TAB_HELD` and its message names A's client as the holder (as §4.6
+POP-JOIN-2 asks), with B's control call on O answering `TAB_HELD` too; the handle and the time in the message are not
+compared. (2) **console:** judged by content, not by count: no worker-console line printed during the leg comes from
+the opener join, and none holds the popup's URL or any part of it; the count is printed as a RECORD line only.
+(3) **leg `human`:** the record also states whether a popup tab was created after each click (`popup-opened=yes|no`), so
+`granted-to=none` is read as a FAIL only when a popup opened, and as NOT MEASURED when none did.
+Leg `third` puts B in its own window W2 if it can be made, as the sheet asks. The liveA20 FAILs and #406 stay in the
+record unchanged. **Why:** liveA20 measured the lease right in legs `bg`, `fg` and `third` (`granted-to=A others=0`,
+60–94 ms), but two pre-written clauses could not pass on any build (#406); the user wants G1 proven by a row that prints
+PASS, not argued around a FAIL. A new row written before it runs is allowed; the old ones are not re-judged. The
+`human` leg is the one result that may hide a product gap. **Instead of:** (A) accepting G1.4 on liveA20's evidence;
+(C) shipping G1 as built but not proven live. **Revisit if:** R20-POP-BG-3 fails, or the `human` leg shows a popup opened
+and leased to nobody (a product finding: back to the user). **By:** the user, 2026-10-30
+
 ### 2026-10-29 · S5-drivers-B: #404's re-measurement withdrawn before it ran; the POP FAILs stand, cause a sheet clause (#406)
 **Decided:** no `R20-POP-*-2` rows run in Step 13; the uncommitted addendum was removed before any observation (its
 leaf reports stay in the steps dir). R20-POP-BG, -FG and -OTHER stay FAIL. #404's diagnosis is corrected: the

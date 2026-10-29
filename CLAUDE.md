@@ -22,6 +22,10 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
   G1 with the `webNavigation` permission (granted, #374), `evaluate`'s value in the page's key order, CON-NOTEA, the
   console cap keeping the newest lines, two texts, and Run 20, which also re-measures Run 19's helper-limited rows and
   #369's two DevTools conditions. Its decisions are numbered after #374. After it, a minimal Phase G for the user's own use.
+- **Step 13 resume point (2026-10-30, after a power cut):** Stage 0–S4 built; Run 20's liveA20 recorded (`ed66e36`;
+  the three POP rows FAIL on sheet clauses, #406); slice B's driver B2 committed (`97e7533`), B3 verified but
+  **uncommitted** in the tree. The user ruled G1.4 (#407): corrected POP rows run in liveB20. Next: commit B3, the #407
+  addendum, B4, drivers-C, liveB20, liveC20, the record, S6 (journal's last RESUME POINT line).
 - **Committed docs** carry no local path and no user name from now on (#374; `docs/docs-writing-guide.md`).
 - **How agents run (#289, #320):** Opus builds contract and safety code and runs every verifier; Sonnet does recipes,
   fixtures, docs and live runners; every agent at medium effort, passed explicitly; three fix rounds per stage (per
