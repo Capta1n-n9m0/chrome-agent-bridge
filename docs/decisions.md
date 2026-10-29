@@ -192,6 +192,25 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · liveA20: actors are killed with their tree; preflight refuses a fixture port other than 8081 (#405)
+**Decided:** Run 20's later slices kill an actor with `taskkill /F /T` (an s13 override; Run 17's
+`recipes/s11b-r17.ps1` stays read-only), and the slice preflight refuses any fixture port other than 8081. **Why:**
+after an actor-row STOP the real node survived under the nvm shim (attempts 1–2; none left after attempt 3); CON-NOTEA
+needs 8081. **Instead of:** editing a Run 17 helper; a NOT MEASURED leg by port. **By:** Claude
+
+### 2026-10-29 · liveA20: the POP rows' FAILs stand; a re-measurement with fixed readers runs as new rows (#404)
+**Decided:** R20-POP-BG, -FG and -OTHER stay FAIL as printed in `S13-live-record-liveA20-att3.txt` (`ed66e36`). In every
+leg the lease clause held (`granted-to=A others=0`, `in-ms` 60–94 under the 250 ms hold); each failed on `held-call=ok`
+while the same leg's three `ANSWER` lines read `TAB_HELD`, and on `console-new` 90–129, a count of the whole capture
+rather than the window between the first popup and the last grant. Both look like reader defects, but a verdict is
+never re-judged after its run (agent-rules §2). New rows `R20-POP-BG-2`, `R20-POP-FG-2` and `R20-POP-OTHER-2`, with the
+same expected text and pass rules, are written into §4.28 before they run, with readers that take `held-call` from the
+`ANSWER` control and count `console-new` only inside its window, and leg `third` in its own window W2 if it can be
+made; they run in liveB20. **Why:** #373's precedent: a row a helper limited is re-measured as a new row; the first
+rows' FAILs stay in the record. **Instead of:** re-judging the printed rows; accepting G1.4 on the lease clause alone.
+**Revisit if:** the re-measured rows show worker-console lines inside the window (then a product finding: the join or
+the tab path logs). G1.4 is judged on both sets at the gate. **By:** Claude, listed for the user at the gate
+
 ### 2026-10-29 · S5-drivers-A2: CON-DESC's line form, no deferral in slice A, a pre-click grant not counted (#403)
 **Decided:** as `S5-drivers-A2.md` §5 and the §4.28 dated note (before any observation): (a) R20-CON-DESC prints
 `CHECK R20-CON-DESC sentence-1=<n> sentence-2=<n> control-tool=<read or missing>`; (b) no slice-A row is deferred to
