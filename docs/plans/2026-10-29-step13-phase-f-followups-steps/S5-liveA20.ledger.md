@@ -63,3 +63,10 @@
   MINOR; N3 MAJOR out of lane: the orphan is the real node under the nvm shim (`taskkill /F` without `/T`,
   s11b-r17.ps1:94), only after an actor-row STOP. Fix rounds 3 of 3 used. Next: committer, then attempt 3 (last).
 - Redacted the capture's window-title line (profile display name, as #283) to <user> in S5-liveA20-console-att2-1.txt; the runner's scan missed it.
+- Fix round 3 committed `10db89d` (verifier PASS-with-notes).
+- liveA20 att3 (runner Sonnet medium; out `$TEMP/bridge-e2e/s20-live/a3`; HEAD 10db89d; build clean): 17:27:23Z-17:30:57Z,
+  exit 0; `CHECK rows20 rows=15 warns=0 stop-return=0`; LOADED20 as written, old build sorted/VERSION, `rerun=1` as
+  written; RESTORE equal by count and hash; DIALOGS native=0 devtools=0 wave-windows-open=1 (rd-restore's options
+  window, closed by teardown); SCAN20 name=0 token=0 everywhere, sentinel only on browser_evaluate (2) and
+  browser_console_messages (13). POP-BG/-FG/-OTHER FAIL as in att2. Teardown exit 0; 9234 daemon only; 8080-8089 free;
+  no orphan. Attempts 3 of 3. Step report `S5-liveA20.md`; next: committer.
