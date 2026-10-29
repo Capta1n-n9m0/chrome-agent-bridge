@@ -173,3 +173,22 @@
   windows present and untouched; scans all 0. Runner's duplicate console copy `-2` (byte-identical) deleted.
   Attempts 1 of 3; fix rounds 1 of 3. liveC19 closed (`S7-live-liveC19.md`); the three FAILs go to S7-record / the session
   agent (two look like expected-value questions). Next: liveD19 (a fresh step agent).
+
+## liveD19 (step agent liveD19, Claude Opus 5.5, medium)
+- 2026-10-29 start: HEAD `2f6ca57`, tree clean. Nothing listening on 9234 or 8080-8089; node PID 22152 (unrelated codex
+  runtime) only; no python. `git worktree list`: the main tree only. Chrome top-level windows 2 (38602544, 68708, the
+  user's). Budgets (#367, per slice): attempts 0 of 3; fix rounds 0 of 3.
+- Pre-attempt code check (#366/#367/#368/#370 classes): (1) titles: liveD19 puts `S12 console fixture` (proofs) and
+  `S12 chooser fixture` (`s12=none`, ARGS-OLD's page) in W, both known; (2) MCP actor: `x.mcp()` is -a's `mcpOpen` with
+  the #366 link wait, `handleOf` throws a helper defect on no handle; (3) locators: ARGS-OLD uses none; R19-VERSION's
+  `IN = {css:"#in"}` (`s12-r19-de.ts:81`) is c1's hidden input -> LOCATOR_NOT_FOUND on any build (#370 says fix it now;
+  serves liveE19). (4) Swap junction removal probed in the scratchpad (not a row): `realSwapIO` found a `node_modules/@bridge`
+  junction and node's `cmd /c rmdir` removed it, target kept (`links-before=1 links-after=0 target-kept=true`).
+- Fix round 1 (1 of 3): fixer Sonnet medium -> `S7-live-D-fixer.md` (`#in` -> `#vis`, a test); verifier Opus medium ->
+  `S7-live-D-verifier.md`.
+- Fix round 1 (1 of 3): fixer Sonnet medium DONE (`S7-live-D-fixer.md`; `s12-r19-de.ts:81` `#in` -> `#vis`; new
+  `recipes/test/s12-r19-de-target.test.ts`, 2 tests; npm test 5590 -> 5592, 235 files; one fixer run had 1 unidentified
+  failure, two re-runs green). Verifier Opus medium PASS-with-notes (`S7-live-D-verifier.md`): diagnosis confirmed; the
+  sheet's discrimination holds on `#vis`; ARGS-OLD uses no locator; mutants (`#in`, `#open`, `input[type=file]`, `#vis`
+  hidden) killed; npm test twice 5592/235 green; typecheck and 7 recipes tsconfigs exit 0; MINOR the fixer's one failing
+  run not reproduced. Next: committer, then attempt 1 from the fix commit.

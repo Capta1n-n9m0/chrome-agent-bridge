@@ -78,7 +78,7 @@ async function argsOld(x: Ctx): Promise<number> {
 
 // ---- R19-VERSION -------------------------------------------------------------------------------------------------------------------------------------
 async function version(x: Ctx): Promise<number> {
-  const R = "R19-VERSION", s = state(), f = fileOf(s, "s11-1k.bin"), legs: V[] = [], forbidden = [ROOT(), s.sentinel, "s11-1k.bin"], IN = { css: "#in" };
+  const R = "R19-VERSION", s = state(), f = fileOf(s, "s11-1k.bin"), legs: V[] = [], forbidden = [ROOT(), s.sentinel, "s11-1k.bin"], IN = { css: "#vis" };
   const page = (): Promise<Tab> => x.open(PAGE("c1"));
   const reporter = async (h: string): Promise<{ files: number; clicks: number }> => (await ev(x.c, h, "({files: window.__s12ch.files, clicks: window.__s12ch.clicks})")) as { files: number; clicks: number };
   const report = async (l: VerObs["leg"], e: Err | undefined, h: string): Promise<void> => {
