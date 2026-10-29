@@ -377,6 +377,18 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
   `Object.keys` can still bend `value` (pre-existing).
 - **Needs the user:** nothing new.
 
+### S3a — not run (#387)
+
+### S3b — The console texts · 2026-10-29 · verifier: PASS-with-notes · commit `22d2217` · models Opus builder and verifier
+- **Contracts (binding forward):** `formatConsole` keeps whole lines from the newest back, prints them oldest first, and
+  opens with the #398 marker; the console tool's description and `Tab.consoleMessages`' JSDoc say only other-site frames
+  are not read, and the description says an object logged before the call shows its class name only (#387).
+- **Decisions:** #398. **Deviations:** none (+82/−45 lines, cap 200).
+- **Numbers:** tests 5648 → 5650 (237 files); 8 changed tests red on the pre-stage code; 10 of 10 mutants red.
+- **Left for later:** Run 19's frozen helpers (`recipes/s12-forms-b.ts`, `recipes/s12-forms.ts`) find no marker in the
+  new form, so Run 20's helpers read the marker first; `mcp/CLAUDE.md`, `extension/src/CLAUDE.md` and `docs/setup.md`
+  still describe the old direction and frames text (S6 and the session agent).
+
 ## Follow-ups
 
 - The Phase F items left out (0.9): response bodies and WebSocket frames on the kept session; console lines in

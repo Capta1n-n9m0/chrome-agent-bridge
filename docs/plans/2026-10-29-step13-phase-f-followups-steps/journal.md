@@ -23,3 +23,6 @@
 - 2026-10-29T11:37:01Z · S2 · step agent · ended · `3ca60bd` · verifier FAIL (1 MAJOR, 2 MINOR, 1 NIT) → fix round 1 of 3 → verifier2 PASS-with-notes (2 NIT) · tests 5617 → 5648, files 236 → 237 · `S2.md`.
 - 2026-10-29T11:37:01Z · decisions · #396 (page `toJSON` hooks never reach `value`; `__mark` exact), #397 (`description` still hook-shaped; follow-up). Phase doc: S2's As built.
 - 2026-10-29T11:37:01Z · S3b · step agent · Opus · medium · started (output `S3b.md`).
+- 2026-10-29T11:54:10Z · S3b · step agent · ended · `22d2217` · verifier PASS-with-notes (1 MINOR, 3 NIT; no fix round) · tests 5648 → 5650 · `S3b.md`. S3a not run (#387).
+- 2026-10-29T11:54:10Z · decisions · #398 (the marker wording). Phase doc: S3a/S3b As built.
+- 2026-10-29T11:54:10Z · S4 · step agent · Opus · medium · started (output `S4.md`).

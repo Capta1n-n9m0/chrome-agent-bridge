@@ -192,6 +192,14 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · S3b: the console cap's marker wording (#398)
+**Decided:** when lines are kept, the first line reads `… [truncated: <n> older lines cut — narrow with level/limit]`;
+when no line fits, the whole text is `… [truncated: <n> lines cut, none fits — narrow with level/limit]`; `<n>` is all
+rows minus the kept ones. "None fits" is kept although it over-claims when only the newest line is too long and older
+ones would fit (reachable only through an SDK caller's own small `maxChars`, never through the MCP or the default cap).
+**Why:** #374 item 6; the verifier's MINOR-1 is a wording edge outside every default path. **Instead of:** a fix round
+for it. **Revisit if:** a script hits it. **By:** Claude
+
 ### 2026-10-29 · S2: a page's `toJSON` hook still shapes `description`; left as it was, a follow-up (#397)
 **Decided:** no change in Step 13. The text form is built in the page by `SERIALIZER_SRC`, which #386 keeps
 byte-identical; the behaviour predates S2. **Why:** fixing it changes the serialiser itself, outside #374's scope.
