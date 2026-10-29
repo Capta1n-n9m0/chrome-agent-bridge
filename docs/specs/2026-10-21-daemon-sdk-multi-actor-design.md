@@ -994,6 +994,21 @@ The block itself is left as written.*
   notes above that read "then the detach" describe the keeper's release, not a detach per call. A call's session is kept
   per tab and reference-counted, and detached 5 s after its last use, or at once on a disarm, a block, a `file:` page, a
   close or a replace. The banner therefore stays up between calls in that window.*
+- *Note 2026-10-29 (Step 13 S1; phase doc `docs/plans/2026-10-29-step13-phase-f-followups.md` 0.2 with its Stage 0
+  note; decisions.md · 2026-10-29 · Stage 0: G1 by a join in the extension — `tabCreated.openerTabId` is the navigation
+  source; no join, no grant (#385); · The user rules Step 12's gate; Step 12 closes (#374); · Stage 0: adding
+  `webNavigation` is not a G13-2 matter (#393)). From S1 on, `tabCreated.openerTabId` names the tab whose page opened
+  the new tab, not Chrome's `openerTabId`.*
+  - *The worker holds a `tabCreated` whose tab has Chrome's `openerTabId` until that tab's
+    `webNavigation.onCreatedNavigationTarget` arrives (either order) or 250 ms pass. Joined, the event carries
+    `openerTabId` = the navigation event's `sourceTabId`; not joined, it carries no `openerTabId`. There is no fallback
+    to Chrome's value, which names the window's active tab when the opener is a background tab.*
+  - *The daemon's opener rule (`daemon/src/intercept.ts`) is unchanged: a new tab is leased to the client holding the
+    tab named by `openerTabId`, never to the caller; no `openerTabId`, no grant. So a background opener's popup and a
+    Ctrl+click or middle-click tab now go to the opener's holder, and an unjoined tab is granted to nobody.*
+  - *No wire shape, event or router method changes; the manifest gains the `webNavigation` permission (#374). The
+    worker keeps only tab ids from the navigation event, never its URL. An extension older than S1 sends Chrome's
+    `openerTabId` as before.*
 
   *See Step 7 as-built § Stage T0, § Stage T1, § Stage T2.*
 
