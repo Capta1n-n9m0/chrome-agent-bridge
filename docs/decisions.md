@@ -197,6 +197,26 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · Run 19's five slices have run; S7-record next; the name in committed docs is the user's call (#372)
+**Decided:** liveE19 attempt 1 (`fabd5f4`, `rows=10 warns=0 stop-return=0`, no fix round) closes the wave's live part.
+- **liveE19's result:** R19-VERSION FAILs on its MCP leg alone (`code=ERROR`; the same shape as ARGS-OLD's MCP leg), and
+  R19-RESTORE and R19-LOGS pass. The current build is loaded and proven at the end, the state is equal to R19-0, and
+  nothing is left running.
+- **The MCP-leg readings go to S7-record.** These are liveA19's ARGS-3 and CON-4, liveD19's ARGS-OLD and liveE19's
+  VERSION. S7-record reads each MCP tool text against `mcpCodeOf`. A reader shown wrong makes its leg NOT
+  DISCRIMINATING, never PASS.
+- **The name in committed docs is the user's call.** The step agent found that steps-dir files carry the user's name.
+  The check shows `C:\Users\<user>` paths and the author name in 167 docs files, 147 of them already on `origin/main`,
+  plus `LICENSE`. That is the repo's long-standing practice, not a Run 19 leak, so nothing is rewritten. The question,
+  redact the docs going forward or leave them, goes to the user with the push (G12-1).
+- **Runner briefs from here** name scan patterns only as "the user's name", never spelled out.
+
+**Why:** the wave ran in full, and every slice ended restored. A history rewrite, or a mass redaction of pushed files, is
+not mine to take while the user is away.
+**Instead of:** redacting 167 files in the close-out.
+**Revisit if:** the user wants the docs redacted.
+**By:** Claude (session agent's rulings)
+
 ### 2026-10-29 · liveD19's `devtools-left-open` STOP was the capture's own windows; fix round 2 and attempt 2 (#371)
 **Decided:** liveD19 attempt 1 (`3fdfbfd`) escalated at R19-RESTORE: `DIALOGS … devtools=2`. The current build was
 restored and proven (`LOADED rerun=1 … args=answered`), and the safety state was equal to R19-0.
