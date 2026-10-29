@@ -109,3 +109,5 @@ Session agent: Claude Opus 5.5, medium effort. One line per check, decision poin
 - 2026-10-29T02:44Z · S7-record · step agent · Opus · medium · started.
 - 2026-10-29T03:31Z · S7-record · step agent · ended · `2f68f99` · PASS-with-notes (two fix rounds) · 58 ids: 42 PASS, 5 FAIL, 5 NOT DISCRIMINATING, 3 NOT MEASURED, 3 RECORD; R7.1–R7.6 met. #373; S7 as-built written.
 - 2026-10-29T03:31Z · S8 · step agent · Opus · medium · started.
+- 2026-10-29T03:56Z · S8 · step agent · ended · `87aa919` · PASS (two fix rounds) · 25 tools, 28 router methods, 27 codes (26 on the wire); npm test 5596 / 235 files; doc-check exit 0 (close-out items left: CLAUDE.md counts, decisions.md over budget). DevTools limit note in setup.md accepted (a measurement, no claim removed; #369 forbade removing claims, not stating the measured limit).
+- 2026-10-29T04:04Z · close-out · builder (records) · Opus · medium · ended · gate checklist (all met except S6-G1 not run, G12-2 open, G12-1 not granted), CLAUDE.md proposals applied, decisions #321–#373 archived to step12.md; Current state rewritten by the session agent; doc-check exit 0. Next: full cleanup pass.

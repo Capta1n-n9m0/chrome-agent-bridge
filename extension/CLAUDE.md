@@ -3,7 +3,7 @@
 The root `CLAUDE.md` and `docs/agent-rules.md` also apply. `src/` and three of its sub-folders have their own `CLAUDE.md`, loaded only when
 you open a file there; read the one whose topic you touch from elsewhere in `extension/`:
 - `src/` (any file under it) — the block list and redirect hops, the DNR rule builder's facts, the `file:` page rule, the
-  upload's file-access, existence and closure-free rules.
+  upload's file-access, existence and closure-free rules, the chooser upload, the console read, the kept session.
 - `src/content/` — IIFE build, snapshot rules, `centerOf`, content-script failures, locators and `a11y.ts`, `locate` vs RefMap, marks.
 - `src/evaluate/` — `returnByValue` flattening, `replMode` levels, primitive values over CDP.
 - `src/handlers/` — `browser_download` from the worker, `tabId` and `targetTab`, `newTab` in the background, the CDP screenshot refusal.
@@ -14,7 +14,8 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   `{code, message, data?}`; Step 9's `GatedRouter`, the only router `sw.ts` builds: `on` throws for a method
   with no safety class, unknown → `UNKNOWN_METHOD` in every state), `offscreen.ts` (the socket; accepts only
   this extension's non-tab senders, `relay-sender.ts`),
-  `client.ts` (the hello), `session-marker.ts` (pure: the session marker's choice over event orders),
+  `client.ts` (the hello; since Step 12 `features: ["evaluateArgs", "uploadChooser"]`, pinned by the last test of
+  `extension/test/s12-args-call.test.ts`; the daemon's `VERSION` for a hello without them is in `daemon/CLAUDE.md`), `session-marker.ts` (pure: the session marker's choice over event orders),
   `trusted-input.ts` (pure: the CDP steps of trusted input, with or without focus emulation),
   `tabs.ts` (`targetTab` — `tabId` required since S2b — `humansTab`, `activateForCapture` + restore,
   `cdpCaptureRefusal`),
@@ -25,10 +26,11 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   — the 100 ms `waitFor {locator}` poll), `content/{index,snapshot,refmap,actions,geometry,guard}.ts`
   and Step 8's `content/a11y.ts` (the one walk, `roleOf`, the accessible name, the pruning gates —
   shared by snapshot and locate), `content/locate.ts`, `content/nearest.ts` (candidate ranking),
-  `content/marked.ts` (`refOfMarked`), `content/upload-target.ts` (Step 11: `uploadInputOf`, the one-off mark), `debugger.ts`, `debugger-errors.ts`
+  `content/marked.ts` (`refOfMarked`), `content/upload-target.ts` (Step 11: `uploadInputOf`, the one-off mark), `debugger.ts` (`withDebugger`, through Step 12's
+  `debugger-keeper.ts`: one kept session per tab, #335), `debugger-errors.ts`
   (pure: CDP failure → `{code, message}`), `keys.ts` (pure: key name → CDP key params),
   `evaluate/{serialize,wrap,result,mark}.ts` (pure: in-page serialiser source, `return`-wrapper,
-  CDP-result → `EvalEnvelope`, the `asRef` mark), `network-log.ts` (pure: `NetworkLog` reducer + query (its text formatter moved to `sdk/src/format`),
+  CDP-result → `EvalEnvelope`, the `asRef` mark; Step 12's `evaluate/call.ts`, the `args` call form, #330), `network-log.ts` (pure: `NetworkLog` reducer + query (its text formatter moved to `sdk/src/format`),
   redaction, body summary, serialise/merge), `network-state.ts` (the singleton log, the
   `storage.session` rehydrate/flush, the own-port variable), `handlers/network.ts`,
   `download.ts` (pure: `DownloadStore`, base64, filename from `content-disposition`) +
@@ -39,7 +41,8 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   `handlers/evaluate-save.ts` (the three `evaluateSave*` handlers; the CDP-leg slices in `debugger.ts`);
   `content/locate.ts` computes `pastSnapshotCap` and `handlers/{target,locate,actions}.ts` carry it (#216).
   Step 9 (Phase E safety): pure, unit-tested, with no log call — `safety.ts` (the gate
-  `safetyDecision`, the method table `METHOD_CLASSES` over all 27 router methods (Step 11 S2 added `uploadFiles`, class `upload`; Step 10 S4 added
+  `safetyDecision`, the method table `METHOD_CLASSES` over all 28 router methods (Step 12 S3a added `consoleMessages`, class `evaluate`, #334,
+  served by `handlers/console.ts` over `console-messages.ts`; Step 11 S2 added `uploadFiles`, class `upload`; Step 10 S4 added
   `evaluateSaveStart`/`evaluateSaveChunk`/`evaluateSaveEnd`, class `evaluate`) — `methodClass` throws
   on an unknown name — the refusal messages (since Step 10 S4b `JS_DISABLED_MESSAGE`, with
   `DISARMED_EVALUATE_MESSAGE` kept as its alias, #219), `listTabs`/event redaction, the network predicate),
@@ -88,7 +91,9 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
 - **Chrome allows one debugger per tab**: with DevTools open, `chrome.debugger.attach` throws "Another
   debugger is already attached…"; clicking the banner's Cancel mid-action makes `sendCommand` throw
   "Detached while handling command". `withDebugger` maps both through `describeDebuggerError` — add new
-  Chrome strings there, not in handlers.
+  Chrome strings there, not in handlers. *Measured 2026-10-29 (Chrome 156, Run 19, #369, open for the user):* a docked
+  DevTools window did not make the attach refuse (DEVPROBE `answer=ok attached=no`, 31 of 31 `ok`; Run 18's F12 probes the
+  same); undocked DevTools and DevTools opened before the first attach are unmeasured.
 - **`@types/chrome` quirks**: use `chrome.tabs.OnUpdatedInfo` (not `TabChangeInfo`);
   `InjectionResult<any>` (its `Awaited<T>` conflicts with TS's); `sendCommand` params want
   `{[k:string]:unknown}` (not `object`).

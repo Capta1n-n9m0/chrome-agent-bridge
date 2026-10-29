@@ -13,13 +13,15 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   one owner per tab, `TAB_HELD {owner, since}`), `lock.ts` (`VisibilityLock`: FIFO, `LOCK_TIMEOUT
   {holder}`, released on completion, deadline or disconnect), `methods.ts` (the one method-class
   table — a new extension method must enter it; `REMOVED_METHODS`: `selectTab` → `UNKNOWN_METHOD`; Step 10's
-  `evaluateSaveStart`/`Chunk`/`End` and Step 11's `uploadFiles` are tab methods, lease-checked, no lock, #205, #238),
+  `evaluateSaveStart`/`Chunk`/`End`, Step 11's `uploadFiles` and Step 12's `consoleMessages` are tab methods,
+  lease-checked, no lock, #205, #238, #334 — 28 router methods; Step 12's `trustedFocus` and `TRUSTED_SETTLE_MS`),
   `intercept.ts` (`TabLayer`: resolve, lease check, lock, forward with `tabId`; events → handles; the
   opener rule and `leaseGranted`; `tab is required`; `retireAll` on a changed session marker; Step 9: keeps the extension's last
   `safetyState` (null until reported, from each new extension hello until that socket reports, and after the socket closes;
   `safetyStatus` is never sent with null), logs one line per change (booleans and the
   count), serves `daemon.status.safety`, broadcasts `safetyStatus`, withholds URLs/titles while the last state
-  says disarmed, one `listTabs` per change),
+  says disarmed, one `listTabs` per change; Step 12: each extension socket's hello `features`, the `VERSION` refusals and
+  `trustedInput`, both below),
   `handle-mark.ts` (Step 8 S2b: handle numbers continue across daemons from
   `~/.chrome-agent-bridge/handle-mark`, reserved in blocks of 64, a time base when the file fails).
 
@@ -108,6 +110,18 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `daemon/src/intercept.ts` `onSafetyState` vs the resync; Run 13 SAFE-9, a wrong expected text, #195). A
   reload also closes an open options page (SAFE-9 record), and right after it `daemon.status` shows URLs one
   round trip later than the state (S3.md §6, by reading the code).
+- **A trusted input holds the visibility lock across its focus** (Step 12 S6-G2, #338, #354): a `click`/`type`/`pressKey`
+  with `trusted: true` and no `focusEmulation` takes the lock, forwards `focusTab`, re-checks the caller and the lease,
+  forwards the input, replies, then holds the lock `TRUSTED_SETTLE_MS` (500 ms) more (`methods.ts` `trustedFocus`,
+  `intercept.ts` `trustedInput`; `daemon/test/s6-trusted-focus.test.ts`; `takesLock` unchanged). Live, 2026-10-29: R19-G2-2
+  PASS (5 of 5 typed strings intact under a competing capture); R19-G2-1 FAIL, the other client's screenshot got
+  `TIMEOUT` at about 35 s while the hold was seen (`holder-after-reply-ms=477`), cause not established (a covered-window
+  capture hang fits but is not shown; #373).
+- **A feature belongs to its extension socket's hello.** `evaluate`/`evaluateSaveStart` with `args` to a socket whose
+  hello lacked `"evaluateArgs"` is refused `VERSION` with `ARGS_RELOAD_HINT`, and `uploadFiles` with a `chooser` key
+  (`false` and `null` included) lacking `"uploadChooser"` with `CHOOSER_RELOAD_HINT`, before the tab and lease checks and
+  with nothing forwarded (`intercept.ts`; `daemon/test/s12-args-feature.test.ts`, `s12-chooser-feature.test.ts`,
+  `s12-chooser-wire.test.ts`; #332, #355). A rethrown `VERSION` reaches an MCP agent without its code (`mcp/CLAUDE.md`).
 
 The per-call timeout the SDK passes (`client.call(…, { timeoutMs })`) and the bounds `route.ts` applies to it are described in `sdk/CLAUDE.md`.
 The SDK's knock, spawn and handover facts (a pre-Step-6 server on the port, `BRIDGE_PORT` and `BRIDGE_DAEMON` agreement, the `Start-Process` pipe, `spawn(…, {detached:true})` on Windows, several `ws` frames per read) are in `sdk/CLAUDE.md`.

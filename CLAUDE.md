@@ -11,28 +11,32 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-28, Step 12 mid-phase: S1–S6 built, S7 Run 19 prep in progress)
+## Current state (2026-10-29, Step 12 built and Run 19 recorded; the gate waits for the user)
 
-- **Shipped:** Steps 1–11b (Step 11b, the block list stops redirected requests, closed 2026-10-27, #320;
-  `docs/decisions-archive/step11b.md`). Public on GitHub (MIT), pushed. **24 tools, 27 codes (26 on the wire),
-  27 router methods** (the test count: Commands).
-- **Step 11b in one line:** while a bridge `navigate`, `newTab` with a URL, `back`, `forward` or `downloadStart` runs,
-  session `declarativeNetRequest` rules built from the block list stop a redirect hop onto a blocked host (0 requests:
-  Run 17 RD-1, RD-3; Run 17b R17B-RD-2, R17B-BACK, R17B-FWD); `newTab` opens `about:blank` first (#311); a bridge
-  `back`/`forward` reaches only pages a human or an activating call acted on (#308).
+- **Shipped:** Steps 1–11b (Step 11b closed 2026-10-27, #320; `docs/decisions-archive/step11b.md`). Public on GitHub
+  (MIT). **25 tools, 27 codes (26 on the wire), 28 router methods** (S8's commands, `…-steps/S8.md`; the test count:
+  Commands).
+- **Step 12 (Phase F, `docs/plans/2026-10-27-step12-phase-f.md` § As built and its gate checklist):** `args` for
+  evaluate, `consoleMessages` / `browser_console_messages`, the kept debugger session, `uploadFiles {chooser: true}`, the
+  blocking trusted action (G2). Run 18 and Run 19 are recorded (`…-steps/S1-run-record.md`, `S7-run-record.md`).
+  Run 19's verdicts over 58 row ids: 42 PASS, 5 FAIL, 5 NOT DISCRIMINATING, 3 NOT MEASURED, 3 RECORD (#373). G1 is not
+  built: it waits for G12-2 (#337). Decisions #321–#373 are in `docs/decisions-archive/step12.md`.
+- **Waiting for the user:**
+  - G12-2: the `webNavigation` permission for G1.
+  - G12-1: 90 commits are not pushed.
+  - The Open decisions in `docs/decisions.md`, among them #366 (control-2 corrected after an observation), #369
+    (docked DevTools does not refuse the debugger on Chrome 156), #373 (ARGS-1's key order; CON-NOTEA's fix) and #355
+    (the formatter cap).
+  - #372: whether to redact the local path and name in committed docs.
+  - The next step is the user's to name. Candidates are the Run 19 re-measurement wave and the Phase F follow-ups
+    (phase doc § Follow-ups), then Phase G.
 - **How agents run (#289, #320):** Opus builds contract and safety code and runs every verifier; Sonnet does recipes,
-  fixtures, docs and live runners; every agent at medium effort, passed explicitly; three fix rounds per stage; a step
-  agent never ends its turn on a running child (#286). Rules: `docs/agent-rules.md` §6–§8, §10.
-- **Step 12 so far (Phase F, `docs/plans/2026-10-27-step12-phase-f.md` § As built):** Run 18 (S1), `args` for evaluate
-  (S2), console messages (S3), the kept debugger session (S4), the native file chooser (S5) and G2, the blocking trusted
-  action (S6-G2), all committed and verified; G1 waits for G12-2 (#337). S7 (Run 19): sheet, helpers a–d, drivers A and
-  B committed (`9b14658`); S7-drivers-C has a fix round uncommitted in the tree, its second verifier not yet run.
-  Tool, code and method counts change in Step 12 and are recomputed at S8. 54 commits not pushed (G12-1).
-- **Reloads need no human:** `recipes/reload-extension.ps1` (#65; one re-run on exit 2, #99). Which build is loaded is
-  proven by each Run 19 slice's R19-0; interactive sessions using the bridge need `/mcp` or a fresh session.
-- **Resume: Step 12 at S7-drivers-C** from `docs/plans/next-session-prompt.md` and `…-steps/journal.md`: drivers-C's
-  verifier round 2, then drivers-DE, the UP-OPT investigator, Run 19 (liveA19–E19), S7-record, S8 docs, phase close.
-  Live waves run autonomously (#33).
+  fixtures, docs and live runners; every agent at medium effort, passed explicitly; three fix rounds per stage (per
+  slice in a live wave, #367). The first line of every step brief is the in-turn wait rule (#286, #350): a step agent
+  that ends its turn on a child stalls the stage. Rules: `docs/agent-rules.md` §6–§8, §10.
+- **Reloads need no human:** `recipes/reload-extension.ps1` (#65; one re-run on exit 2, #99). The loaded extension is
+  the HEAD build, proven by liveE19's closing R19-0 re-run. Interactive sessions using the bridge need `/mcp` or a fresh
+  session.
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
 
@@ -85,7 +89,7 @@ One `CLAUDE.md` per package holds its Key files (file by file) and its Runtime g
 - `shared/` — the wire protocol types and guards, the error codes (`shared/CLAUDE.md`).
 - `daemon/` — the one-per-machine daemon: bind lock, token gate, handles, leases, the visibility lock (`daemon/CLAUDE.md`).
 - `sdk/` — the TypeScript client: `connect`, `BridgeClient`, `Tab`, failure reports, the formatters (`sdk/CLAUDE.md`).
-- `mcp/` — the MCP server as an SDK client: the 24 tools, the cursor, the no-crash link (`mcp/CLAUDE.md`).
+- `mcp/` — the MCP server as an SDK client: the 25 tools, the cursor, the no-crash link (`mcp/CLAUDE.md`).
 - `extension/` — the Chrome MV3 extension: service worker, offscreen socket, content script, handlers, the safety gate
   (`extension/CLAUDE.md`; deeper files in `extension/src/` (redirects, DNR, `file:` pages, uploads), `extension/src/content/`,
   `extension/src/evaluate/`, `extension/src/handlers/`).
@@ -110,7 +114,7 @@ Details and measured facts are in the package file named; the integrity floor is
 ```bash
 npm install
 npm run build        # daemon/dist/index.js + mcp/dist/index.js + extension/dist/{sw,options,offscreen,content}.js
-npm test             # vitest — 4665 passed, 191 files (`npm test` 2026-10-27, Step 11b S7-live; recipes/test included)
+npm test             # vitest — 5596 passed, 235 files (`npm test` 2026-10-29, Step 12 S8; recipes/test included)
 npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension (chained with `&&`; see the cross-package gotchas below)
 npm run recipe -- recipes/<file>.ts [args]   # a script against the SDK, run with tsx (= npx tsx recipes/<file>.ts)
 npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10, .s11, .s11b cover the others; all seven exit 0 at Step 11b S4-helpers — run them: a code stage can break one, as S3 did)
@@ -140,7 +144,8 @@ and follow `docs/e2e-test-plan.md`.
   S4b, observed by its verifier; repaired by `npm ci`). Run `npm ci` in the worktree, or remove a junction only
   with `cmd /c rmdir <link>` before `git worktree remove` — never `rm -rf` / `Remove-Item -Recurse` across it
   (decisions.md · 2026-10-25 · Scratch worktrees never share `node_modules` through a junction a recursive delete
-  can follow (#220); S4b.md Findings 1).
+  can follow (#220); S4b.md Findings 1). Its own `npm ci` still leaves `node_modules/@bridge/*` junctions: remove them
+  first (`recipes/CLAUDE.md`, Run 19's helper facts; #364, #365).
 
 ## Testing philosophy
 

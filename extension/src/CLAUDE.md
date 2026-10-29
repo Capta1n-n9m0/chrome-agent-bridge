@@ -1,8 +1,8 @@
-# extension/src/ — the safety gate's redirect, DNR and `file:` rules; the upload rules
+# extension/src/ — the safety gate's redirect, DNR and `file:` rules; uploads; the console read and the kept session
 
 `extension/CLAUDE.md` also applies (Key files, the rest of the Safety gate). These bullets bind `safety.ts`,
-`safety-dnr.ts`, `safety-dnr-keeper.ts`, `safety-hop.ts`, `upload-exists.ts` and `upload-files.ts`, which sit flat in
-`src/`, and `handlers/upload.ts`, so this file loads with any file under `src/`.
+`safety-dnr.ts`, `safety-dnr-keeper.ts`, `safety-hop.ts`, `upload-exists.ts`, `upload-files.ts`, `console-messages.ts` and
+`debugger-keeper.ts`, which sit flat in `src/`, and `handlers/upload.ts`, so this file loads with any file under `src/`.
 
 ## Safety gate (Step 9, Step 11, Step 11b)
 
@@ -44,3 +44,25 @@
   options instead of reading `build.mjs`, so `keepNames: true` there would pass the tests and ship a source calling
   `__name` (S3 verifier 2 NIT A; same cause as tsx in `recipes/CLAUDE.md`). Extension tests are not type-checked
   (tsconfig covers `src`; S2.md §6).
+- **The chooser upload (`uploadFiles {chooser: true}`, Step 12 S5):** the disabled-input refusal is reached only after a
+  chooser opens, and a page button that calls `click()` on a disabled input opens none (HTML spec), so a live row cannot
+  reach it there (R19-CHOOSE-REFUSE leg `dis` NOT DISCRIMINATING, #370); it is unit-tested in `extension/test/s5a-chooser.test.ts`.
+  Two chooser calls in a row with the same file left the page's `change` count at 1 (R19-CHOOSE-KEPT FAIL, cause not
+  established; Run 19, 2026-10-29, #373).
+
+## Console read and the kept session (Step 12)
+
+- **Replayed console args carry no `preview`** (`console-messages.ts`, `remoteText`): an object logged before the read
+  comes back as its class name (`Object`), and an Error inside it loses its message; nothing leaks (`url=0 stack=0`).
+  Measured: Stage 0's replayed args against live ones (`…step12…-steps/stage0-m1-C.txt`); R19-CON-NOTEA FAIL (Run 19,
+  2026-10-29, #373). A shortened preview drops its entry, fail closed (#344); do not rebuild text from a page call.
+- **A same-site frame's console messages are read; a cross-site frame in another process is not** (R19-CON-FRAME PASS:
+  13 entries without the block pattern, 2 with it, 2 for the out-of-process frame; 2026-10-29). The MCP tool's
+  description still says only "frames are not read" (`mcp/CLAUDE.md`).
+- **A second `Runtime.enable` in a kept session replays every message again** (#352: 5 of 5 after S4b; R19-CON-KEPT PASS,
+  `first=11 second=11 equal=yes`), so the read is the same whether the session was kept or new.
+- **The kept session** (`debugger-keeper.ts`, `extension/test/debugger-keeper.test.ts`; #335): idle detach
+  `KEEPER_IDLE_MS` = 5000 after the last use; live, the idle detach ended the banner a median 5.1 s later than an
+  immediate drop (R19-KEEP-2 PASS, idle 10 132 ms against control 5 028 ms). That the banner stays steady across calls
+  is not shown live (R19-KEEP-1's banner clause NOT DISCRIMINATING: no attach counter exists, #351 (2)). Run 18's banner
+  `seen` on refused uploads did not reproduce at a 20 s idle with a passing control (R19-UP-6, R19-F-RAW family, #373).

@@ -159,3 +159,23 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   both slices lost liveA's capture, so R17B-LOGS was NOT MEASURED (#318) — give each slice its own path; the banner
   sampler read positive on legs that send no call (R17B-UP-6 `missing`/`relative`), so a positive reading does not show
   that the call raised the banner (cause of any banner FAIL not established).
+- **Run 19's helper facts** (Step 12, 2026-10-29; `…step12…-steps/S7-run-record.md` §5, the live ledgers):
+  - A pass constant copied from a fake-extension test is not a measurement: `evaluate "function f() {}"` answers
+    `kind=undefined` on a real page (a declaration) and `(function f() {})` answers `function` (#366). Measure a control's
+    expected answer on a real build. The scripted MCP actor waits for its link (the "connecting to the bridge daemon"
+    reply, up to 15 s) before its first call (#366).
+  - The driver window guard refuses a window title it does not know: a new fixture page's title is added to it (#367).
+  - `{css:"body"}` (also `html`, `head`) never matches in the locator walk; target a real element (#368). A STOP leaves the
+    wave's windows open: list them after it.
+  - Chrome 156's app-menu button is named `Chrome` (not `Customize and control…`) and offers only expand; Run 19's
+    DevTools opener reaches "Developer tools" through it by UIA patterns only, on a window the wave opened (#368, #369).
+    Docked DevTools did not make the bridge's debugger attach refuse (`extension/CLAUDE.md`, #369).
+  - A fixture button that calls `click()` on a disabled input opens nothing (HTML spec); a row about the disabled-input
+    refusal needs a handler that targets the input itself (#370).
+  - Every segment save must close the worker-console capture window it opened: `Close-S11Window` closes only `S11Own`
+    windows, and each reopen leaves a chrome://extensions window, which fired liveD19's `devtools-left-open` STOP (#371).
+  - Read MCP text by the MCP's own lines, never by the extension's message or a code on line 1 (`mcp/CLAUDE.md`); a row
+    whose reader is shown wrong is NOT DISCRIMINATING, while a wrong expected text in the sheet leaves it FAIL (#195, #373).
+  - A scratch worktree with its own `npm ci` still holds `node_modules/@bridge/*` junctions that `git worktree remove`
+    cannot delete: remove them one by one first (as #220). Git Bash's `cmd //c rmdir` leaves a junction in place;
+    PowerShell's `cmd /c rmdir` removes it (#364, #365).

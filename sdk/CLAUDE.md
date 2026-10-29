@@ -11,7 +11,9 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   and `on("safetyStatus")`, Step 10's `on("warning")` (a `BridgeWarning {tab, method, kind: "pastSnapshotCap"}`,
   #206), and the cursor's `Tab` methods mirrored but
   `close`), `tab.ts` (Step 8 `Tab {handle}`: navigate…release, stale after a 4002 reconnect →
-  `TAB_UNKNOWN` with no call; Step 10's `evaluateToFile` and the type `BridgeWarning`), `evaluate-save.ts` (Step 10
+  `TAB_UNKNOWN` with no call; Step 10's `evaluateToFile` and the type `BridgeWarning`; Step 12's `consoleMessages`,
+  `upload(…, {chooser})` and `{args}` on `evaluate`, `evaluateRef`, `evaluateToFile` — `sdk/test/s12-upload-chooser.test.ts`,
+  `mcp/test/s12-args-cross.test.ts`), `evaluate-save.ts` (Step 10
   S4: `saveEvaluateToFile` — the target checks, `.part` opened `"wx"`, 1 MiB pulls, the hard-link finish,
   `SAVE_TRANSFER_MS`; re-exported with `checkSaveTarget` on the `@bridge/sdk/download` subpath; #207, #218),
   `locator.ts` (`Target = ref | Locator`, `normalizeTarget`), `error.ts`
@@ -28,7 +30,9 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   the eight values unchanged, #240); `error.ts`'s `UPLOAD_REFUSED` line names both causes (#263, #264),
   `format/{snapshot,network}.ts` (the pure text formatters, moved from the extension in Step 7 T4,
   byte-identical to the baseline `sdk/test/fixtures/baseline-51de800.json`), exported as the
-  `@bridge/sdk/format` subpath (`sdk/package.json` `exports["./format"]`) and from `index.ts`.
+  `@bridge/sdk/format` subpath (`sdk/package.json` `exports["./format"]`) and from `index.ts`; Step 12's
+  `format/console-messages.ts` (`formatConsole`, capped at 20 000 characters, #345, #355) is on the subpath only, so the
+  main surface keeps its eight values (`sdk/test/s12-console-format.test.ts`, last test).
 
 ## Runtime gotchas
 - **No `console.` text anywhere in `sdk/src`**: `sdk/test/failure-report.test.ts` (the "no 'console.' in any sdk/src
@@ -113,5 +117,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   extension's folder rule could judge the wrong location. Not measured: an unreadable file (`EACCES`) and a folder on
   a `subst` or mapped drive. Since Step 11b S0F-b the extension also refuses a missing file before the attach
   (`BAD_PARAMS`, `extension/src/CLAUDE.md` Uploads; #288), so a raw `uploadFiles` no longer answers `ok` for one (UP-RAW, #284).
+- **`evaluate`'s returned `value` has its object keys sorted** (Chrome's `returnByValue`; R19-ARGS-1, 2026-10-29, #373):
+  compare by key or as parsed JSON. The measurement is in `extension/src/evaluate/CLAUDE.md`.
 
 The daemon's own lifecycle (outliving its session, the bind being the lock) is in `daemon/CLAUDE.md`; the `saveTo` store is in `extension/CLAUDE.md`; the MCP's trusted tools focus first too (`mcp/CLAUDE.md`).
