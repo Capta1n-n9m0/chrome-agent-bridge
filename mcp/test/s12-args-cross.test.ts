@@ -128,7 +128,9 @@ describe("S2b — evaluate args through the daemon, the SDK and browser_evaluate
     await start(["evaluateArgs"]);
     const tab = await client.claim({ active: true });
     for (const value of TABLE) {
-      expect(await tab.evaluate("(a) => a", { args: value })).toEqual(value);
+      const back = await tab.evaluate("(a) => a", { args: value });
+      expect(back).toEqual(value);
+      expect(JSON.stringify(back)).toBe(JSON.stringify(value)); // key order too: toEqual ignores it (Step 13 S2)
       const res = await tool("browser_evaluate")({ expression: "(a) => a", args: value, tab: tab.handle });
       expect(res.isError).toBeFalsy();
     }

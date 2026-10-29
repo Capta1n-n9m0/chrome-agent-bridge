@@ -3,8 +3,8 @@ import { trustedInputBody, trustedInputCleanup, type TrustedInput, type TrustedS
 import { describeDebuggerError, isExecutionTerminated, timeoutMessage } from "./debugger-errors.js";
 import { BridgeError, ErrorCodes } from "./errors.js";
 import { DebuggerSessions, runWithDebugger, type EffectGuard } from "./safety-debugger.js";
-import { SERIALIZER_SRC, type SerializeLimits } from "./evaluate/serialize.js";
-import { shapeEvaluateResult, pendingPromiseId, type CdpEvaluateResponse } from "./evaluate/result.js";
+import { SERIALIZER_JSON_SRC, type SerializeLimits } from "./evaluate/serialize.js";
+import { shapeEvaluateResult, pendingPromiseId, parseEnvelopeText, type CdpEvaluateResponse } from "./evaluate/result.js";
 import { collectSaveFromRaw, collectSaveText, type SaveText } from "./evaluate/save.js";
 import { callWithArgs, type ArgsCallDeps, type PausedEvent } from "./evaluate/call.js";
 import { UPLOAD_CDP_TIMEOUT_MS, setFilesByMark, uploadTimeoutMessage } from "./upload-files.js";
@@ -261,13 +261,17 @@ export async function evaluateInPage(
   }
 }
 
-/** The in-page serialiser over a result's objectId (`shapeEvaluateResult`'s `callFn`), on the call's deadline. */
+/**
+ * The in-page serialiser over a result's objectId (`shapeEvaluateResult`'s `callFn`), on the call's deadline. Step 13
+ * S2 (#386): the envelope crosses as one JSON string, parsed and shape-checked here, so its keys keep the page's order;
+ * a parse or shape failure throws into `shapeEvaluateResult`'s fallback.
+ */
 function serializerCall(tabId: number, remaining: () => number, timeoutMs: number) {
   return async (objectId: string, lim: SerializeLimits): Promise<EvalEnvelope> => {
     const res = (await raceTimeout(
       send(tabId, "Runtime.callFunctionOn", {
         objectId,
-        functionDeclaration: SERIALIZER_SRC,
+        functionDeclaration: SERIALIZER_JSON_SRC,
         arguments: [{ value: lim }],
         returnByValue: true,
       }),
@@ -280,7 +284,7 @@ function serializerCall(tabId: number, remaining: () => number, timeoutMs: numbe
     } catch {
       /* best effort — the context may already be gone */
     }
-    return res.result?.value as EvalEnvelope;
+    return parseEnvelopeText(res.result?.value, typeof lim.mark === "string" && lim.mark !== "");
   };
 }
 

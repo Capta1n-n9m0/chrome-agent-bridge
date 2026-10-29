@@ -90,6 +90,40 @@ export function pageError(details: CdpExceptionDetails): BridgeError {
   return new BridgeError(ErrorCodes.PAGE_ERROR, message, data);
 }
 
+const SERIALISER_KINDS = new Set(["json", "node", "function", "error"]);
+const MARK_STATUSES = new Set(["marked", "not-element", "detached", "closed-shadow"]);
+const ENVELOPE_KEYS = new Set(["kind", "value", "description", "truncated", "__mark"]);
+
+/**
+ * Step 13 S2 (#386): the serialiser wrapper's JSON text (`SERIALIZER_JSON_SRC`) → its envelope in the page's key
+ * order, or a throw with a fixed message (never a part of the text) that `shapeEvaluateResult`'s `callFn` catch turns
+ * into today's fallback. Accepted only with the envelope's own keys and types: a page `toJSON` / `JSON.stringify` hook
+ * controls the whole text, so anything else (another type, an extra key such as `ref`, a `value` beside a kind
+ * that has none, an unknown `__mark`) is refused. `__mark` must be present exactly when the call asked for a mark
+ * (`markRequested`, as the composite decides it): a forged one on a plain call, or one dropped after the page was
+ * marked, is refused, so the second reaches `evaluateAsRef`'s sweep (S2-verifier F2, F3).
+ */
+export function parseEnvelopeText(text: unknown, markRequested: boolean): EvalEnvelope {
+  let o: unknown;
+  try {
+    o = typeof text === "string" ? JSON.parse(text) : undefined;
+  } catch {
+    o = undefined;
+  }
+  if (o === null || typeof o !== "object" || Array.isArray(o)) throw new Error("the serialiser's reply is not an envelope");
+  const env = o as Record<string, unknown>;
+  const ok =
+    Object.keys(env).every((k) => ENVELOPE_KEYS.has(k)) &&
+    SERIALISER_KINDS.has(env.kind as string) &&
+    typeof env.description === "string" &&
+    typeof env.truncated === "boolean" &&
+    (!("value" in env) || env.kind === "json") &&
+    ("__mark" in env) === markRequested &&
+    (!markRequested || MARK_STATUSES.has(env.__mark as string));
+  if (!ok) throw new Error("the serialiser's reply is not an envelope");
+  return env as unknown as EvalEnvelope;
+}
+
 function cap(env: EvalEnvelope, maxChars: number): EvalEnvelope {
   if (env.description.length <= maxChars) return env;
   const over = env.description.length - maxChars;

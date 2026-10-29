@@ -5,6 +5,18 @@
 import { CALL_WRAPPER_SRC } from "../src/evaluate/call.js";
 
 export const FN_SCRIPT = "fn-script-1";
+
+/**
+ * Step 13 S2 (#386): what Chrome's `returnByValue` does to a value — object keys sorted at every depth (integer-like
+ * first, then code-unit order: the sort, then this engine's own integer-key order), arrays in place (Stage 0, 6/6).
+ */
+export function byValue(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(byValue);
+  if (v === null || typeof v !== "object") return v;
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(v).sort()) out[k] = byValue((v as Record<string, unknown>)[k]);
+  return out;
+}
 type Call = { method: string; params: Record<string, unknown> };
 
 /** A CDP over this engine's real values: objects by id, primitives by value; shipped sources are evaluated here. */
@@ -59,7 +71,7 @@ export class EngineCdp {
       } catch (e) {
         return this.exc(e);
       }
-      return params.returnByValue ? { result: { type: typeof out, value: out } } : { result: this.remote(out) };
+      return params.returnByValue ? { result: { type: typeof out, value: byValue(out) } } : { result: this.remote(out) };
     }
     throw new Error(`unexpected ${method}`);
   };

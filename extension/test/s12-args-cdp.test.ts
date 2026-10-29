@@ -18,7 +18,7 @@ import { clearEvaluateSaves, evaluateSaveChunk, evaluateSaveStart } from "../src
 import { evaluateFunctionInPage, evaluateInPage } from "../src/debugger.js";
 import { CALL_WRAPPER_SRC } from "../src/evaluate/call.js";
 import { EngineCdp, FN_SCRIPT } from "./s12-engine-cdp.js";
-import { DEFAULT_LIMITS } from "../src/evaluate/serialize.js";
+import { DEFAULT_LIMITS, SERIALIZER_JSON_SRC } from "../src/evaluate/serialize.js";
 import { timeoutMessage } from "../src/debugger-errors.js";
 import { toWireError } from "../src/errors.js";
 import { GatedRouter } from "../src/router.js";
@@ -250,5 +250,86 @@ describe("B2.2 JavaScript off: JS_DISABLED for evaluate {args} and evaluateSaveS
     const r = await send("evaluate", calls[0]![1]);
     expect(r.result).toMatchObject({ kind: "json" });
     expect(n.attach).toBe(1);
+  });
+});
+
+describe("Step 13 S2 (K2.1, #386): the value keeps the page's key order through every serialiser path; the fake sorts like Chrome", () => {
+  const PAGE = '({ z: { y: 1, b: { d: 1, c: 2 } }, a: [{ q: 1, c: 2 }, { z: 0, a: 0, m: { y: 1, b: 2 } }], "10": 1, "2": 2, m: "x" })';
+  // eslint-disable-next-line no-eval
+  const page = (0, eval)(PAGE) as unknown;
+
+  it("the fake's returnByValue sorts keys at every depth (the model of Chrome this suite needs)", async () => {
+    const r = (await cdp.send("Runtime.callFunctionOn", { objectId: "none", functionDeclaration: `function () { return ${PAGE}; }`, returnByValue: true })) as { result: { value: unknown } };
+    expect(JSON.stringify(r.result.value)).toBe('{"2":2,"10":1,"a":[{"c":2,"q":1},{"a":0,"m":{"b":2,"y":1},"z":0}],"m":"x","z":{"b":{"c":2,"d":1},"y":1}}');
+  });
+
+  it("evaluate: nested objects and arrays of objects in page order; the description unchanged", async () => {
+    const env = await evaluate({ tabId: 7, expression: PAGE });
+    expect(Object.keys(env)).toEqual(["kind", "value", "description", "truncated"]);
+    expect(JSON.stringify(env.value)).toBe(JSON.stringify(page));
+    expect(env.description).toBe(JSON.stringify(page, null, 2));
+  });
+
+  it("evaluate {args}: the same value in page order, the description unchanged", async () => {
+    const env = await evaluate({ tabId: 7, expression: `(a) => (${PAGE})`, args: { s: 1 } });
+    expect(JSON.stringify(env.value)).toBe(JSON.stringify(page));
+    expect(env.description).toBe(JSON.stringify(page, null, 2));
+  });
+
+  it("asRef: the mark status crosses (ref minted); a non-element is refused as today", async () => {
+    document.body.innerHTML = '<button id="b-go">Go</button>';
+    const env = await evaluate({ tabId: 7, expression: "document.getElementById('b-go')", asRef: true });
+    expect(env).toMatchObject({ kind: "node", ref: "e9" });
+    expect("__mark" in env).toBe(false);
+    const e = await rejection(evaluate({ tabId: 7, expression: PAGE, asRef: true }));
+    expect(e).toMatchObject({ code: ErrorCodes.BAD_PARAMS, message: "asRef needs an Element; the value is not one" });
+  });
+
+  it("the mark sweep runs through the same path: a failed ref leaves no mark", async () => {
+    document.body.innerHTML = '<button id="b-go">Go</button>';
+    m.callInPage.mockRejectedValueOnce(new Error("content gone"));
+    await expect(evaluate({ tabId: 7, expression: "document.getElementById('b-go')", asRef: true })).rejects.toThrow("content gone");
+    expect(document.querySelector("[data-__bridge-mark]")).toBeNull();
+  });
+
+  it("page toJSON hooks (Object.prototype, Array.prototype) do not reach the value: same value, page order (S2-verifier F1)", async () => {
+    const op = Object.prototype as { toJSON?: () => string };
+    const ap = Array.prototype as { toJSON?: () => string };
+    op.toJSON = () => "HOOKED";
+    ap.toJSON = () => "HOOKED";
+    let env;
+    try {
+      env = await evaluate({ tabId: 7, expression: PAGE });
+    } finally {
+      delete op.toJSON;
+      delete ap.toJSON;
+    }
+    expect(env!.kind).toBe("json");
+    expect(JSON.stringify(env!.value)).toBe(JSON.stringify(page));
+  });
+
+  it("a __mark on a call that asked for none falls back; the reply carries no __mark (S2-verifier F2)", async () => {
+    cdp.override["Runtime.callFunctionOn"] = () => ({ result: { type: "string", value: JSON.stringify({ kind: "json", value: 1, description: "1", truncated: false, __mark: "marked" }) } });
+    expect(await evaluate({ tabId: 7, expression: "({ a: 1 })" })).toEqual({ kind: "other", description: "Object", truncated: false });
+  });
+
+  it("asRef: a reply that drops __mark after the page was marked is swept and answered INTERNAL (S2-verifier F3)", async () => {
+    document.body.innerHTML = '<button id="b-go">Go</button>';
+    cdp.override["Runtime.callFunctionOn"] = (p) => {
+      if (p.functionDeclaration !== SERIALIZER_JSON_SRC) return undefined;
+      const fn = (0, eval)(`(${SERIALIZER_JSON_SRC})`) as (this: unknown, l: unknown) => string;
+      const env = JSON.parse(fn.call(cdp.objects.get(String(p.objectId)), (p.arguments as Array<{ value: unknown }>)[0]!.value)) as Record<string, unknown>;
+      delete env.__mark;
+      return { result: { type: "string", value: JSON.stringify(env) } };
+    };
+    const e = await rejection(evaluate({ tabId: 7, expression: "document.getElementById('b-go')", asRef: true }));
+    expect(e).toMatchObject({ code: ErrorCodes.INTERNAL });
+    expect(document.querySelector("[data-__bridge-mark]")).toBeNull();
+    expect(m.callInPage).not.toHaveBeenCalled();
+  });
+
+  it("a forged envelope (an extra key) falls back as today", async () => {
+    cdp.override["Runtime.callFunctionOn"] = () => ({ result: { type: "string", value: JSON.stringify({ kind: "json", value: 1, description: "1", truncated: false, ref: "e1" }) } });
+    expect(await evaluate({ tabId: 7, expression: "({ a: 1 })" })).toEqual({ kind: "other", description: "Object", truncated: false });
   });
 });

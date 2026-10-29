@@ -411,6 +411,48 @@ export const SERIALIZER_SRC: string = [
   "}",
 ].join("\n");
 
+/**
+ * Step 13 S2 fixer 1 (S2-verifier F1): the envelope's JSON text, written by hand so no page `toJSON` (`Object.prototype`,
+ * `Array.prototype`, …) is consulted: only strings, numbers and booleans reach `JSON.stringify`, which reads no `toJSON`
+ * on a primitive. Own enumerable keys in their order (`Object.keys`), non-data skipped in objects and `null` in arrays,
+ * as `JSON.stringify`. It mutates nothing. Closure-free: shipped as its source.
+ */
+function envelopeJsonFn(env: unknown): string | undefined {
+  function w(x: any): string | undefined {
+    if (x === null) return "null";
+    const t = typeof x;
+    if (t === "string" || t === "number" || t === "boolean") return JSON.stringify(x);
+    if (t !== "object") return undefined;
+    let out = "";
+    if (Array.isArray(x)) {
+      for (let i = 0; i < x.length; i++) {
+        const s = w(x[i]);
+        out += (i ? "," : "") + (s === undefined ? "null" : s);
+      }
+      return "[" + out + "]";
+    }
+    const keys = Object.keys(x);
+    for (let i = 0; i < keys.length; i++) {
+      const s = w(x[keys[i]!]);
+      if (s !== undefined) out += (out ? "," : "") + JSON.stringify(keys[i]) + ":" + s;
+    }
+    return "{" + out + "}";
+  }
+  return w(env);
+}
+
+/**
+ * Step 13 S2 (#386): what `serializerCall` ships — `SERIALIZER_SRC` unchanged inside a closure-free wrapper that
+ * returns its envelope as one JSON string, because `returnByValue` on an object sorts its keys at every depth while a
+ * string crosses as it is. The text is `envelopeJsonFn`'s, not the page's `JSON.stringify` of the object, so a page
+ * `toJSON` cannot change it (S2-verifier F1). The extension parses it and checks the shape (`parseEnvelopeText`).
+ */
+export const SERIALIZER_JSON_SRC: string = [
+  "function bridgeSerializeToJson(limits) {",
+  "  return (" + String(envelopeJsonFn) + ")((" + SERIALIZER_SRC + ").call(this, limits));",
+  "}",
+].join("\n");
+
 /** Node-side entry point (tests, and any future in-extension use). `this` is the value. */
 export function serializeForAgent(value: unknown, limits: SerializeLimits = DEFAULT_LIMITS): EvalEnvelope {
   return serializerFn.call(value, limits);
