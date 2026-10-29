@@ -45,3 +45,6 @@
 - 2026-10-29T17:35:10Z · decisions · #404 (POP FAILs stand; `-2` re-measure rows with fixed readers in liveB20), #405 (actor kill with /T; preflight 8081 only).
 - 2026-10-29T17:35:10Z · RESUME POINT (if this session dies): the phase doc § As built holds Stage 0–S4; Run 20 so far: S5-sheet, -helpers, -drivers-A1/A2, liveA20 done (this journal). Next: S5-drivers-B (liveB20 rows + the #404 `-2` rows written into §4.28 before running + #405), S5-drivers-C, liveB20, liveC20, S5-record, S6, close-out (long-run §5). Open for the user: #385, #389, #404. Push waits for the user (G13-1).
 - 2026-10-29T17:35:10Z · S5-drivers-B · step agent · Opus · medium · started (output `S5-drivers-B.md`).
+- 2026-10-29T17:47:13Z · S5-drivers-B · step agent · ended ESCALATE at its first goal (the §4.28 `-2` addendum): verifier2 N1, the `held-call` clause cannot pass by construction (TAB_HELD messages carry handle and time). 1 of 3 fix rounds. Nothing committed by it.
+- 2026-10-29T17:47:13Z · decisions · #406: #404's re-measurement withdrawn before it ran (the uncommitted addendum removed by the session agent; the e2e plan equals HEAD); the POP FAILs stand; #404's wording corrected. G1.4 to the user at the gate.
+- 2026-10-29T17:47:13Z · S5-drivers-B · step agent (fresh) · Opus · medium · started: the slice-B rows and #405 only (output `S5-drivers-B2.md`).

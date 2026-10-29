@@ -192,6 +192,20 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-29 · S5-drivers-B: #404's re-measurement withdrawn before it ran; the POP FAILs stand, cause a sheet clause (#406)
+**Decided:** no `R20-POP-*-2` rows run in Step 13; the uncommitted addendum was removed before any observation (its
+leaf reports stay in the steps dir). R20-POP-BG, -FG and -OTHER stay FAIL. #404's diagnosis is corrected: the
+`held-call` clause of the pre-written text requires B's popup call to be `TAB_HELD` *equal in code and message* to B's
+control call on O, but the daemon's `TAB_HELD` message names the handle and the lease time (`daemon/src/intercept.ts`,
+`checkLease`), so the two never match: the clause cannot pass by construction, and the reader followed the sheet
+(S5-drivers-B's verifier2, N1). The `console-new` clause's window cannot be bounded from console lines, which carry no
+time. #404's "in every leg the lease clause held" is corrected to: in legs `bg`, `fg` and `third` (`granted-to=A
+others=0`, `in-ms` 60–94); leg `human` printed `granted-to=none`. **Why:** each way to rescue the clause (mask the handle
+and time; compare the code only) changes a pass rule after its FAIL was seen (agent-rules §2); re-running the same text
+would only FAIL again. **Instead of:** (a) a masked comparison; (b) code only. **Revisit if:** the user wants a corrected
+row (masked message, a timed console window) written for a later run. G1.4 goes to the user at the gate with this
+evidence. **By:** Claude, for the user at the gate
+
 ### 2026-10-29 · liveA20: actors are killed with their tree; preflight refuses a fixture port other than 8081 (#405)
 **Decided:** Run 20's later slices kill an actor with `taskkill /F /T` (an s13 override; Run 17's
 `recipes/s11b-r17.ps1` stays read-only), and the slice preflight refuses any fixture port other than 8081. **Why:**
