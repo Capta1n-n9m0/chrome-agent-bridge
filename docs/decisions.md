@@ -24,6 +24,7 @@ were ruled on 2026-10-27, #311, #320). #322, #323, #325 and #326 are amended by 
 - 2026-10-28 · Run 18's findings … (#351, items 1 and 2: product findings)
 - 2026-10-28 · S7-sheet: what Run 19 cannot discriminate live … (#356, item 1)
 - 2026-10-29 · liveA19's STOP was a wrong constant in the sheet; control-2 judged against the old build's measured answer (#366, a correction after an observation)
+- 2026-10-29 · liveB19: docked DevTools on Chrome 156 does not refuse the bridge's debugger; keep, reproduce or drop the `DEBUGGER_DEVTOOLS` claim (#369)
 - **G12-2 for the user:** add the `webNavigation` permission so G1 can be built? (#337)
 
 ## Standing decisions
@@ -195,6 +196,31 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries (Step 12), newest first. Step 11b's are in `decisions-archive/step11b.md`.
+
+### 2026-10-29 · liveB19 closed at attempt 3; docked DevTools on Chrome 156 does not refuse the bridge's debugger (#369)
+**Decided:** liveB19 attempt 3 (`a9393ed`, `rows=24 warns=0 stop-return=0`) gives the slice's verdicts:
+- **14 PASS, 3 NOT MEASURED, 1 RECORD.** The NOT MEASURED rows are UP-DEVT, KEEP-4 and SWEEP-HELD; the RECORD is
+  DEVT-NOFLAG. No verdict differs from attempt 2. R19-RESTORE was equal to R19-0, and R19-LOGS passed.
+- **The opener fix is accepted.** Fix rounds 2–3 (`3478261`, PASS-with-notes) open DevTools through Chrome 156's menu,
+  measured by UIA patterns only. The `found=yes` steps and the open pane prove the opener works. The verifier's MINOR (no
+  test pins the ClassName finder) is carried.
+- **The three DevTools rows stay NOT MEASURED.** DEVPROBE read `answer=ok attached=no` with DevTools open: 31 of 31 calls
+  were `ok`, and one more was `ok` 70 s later. Run 18's F12 and Ctrl+Shift+I probes read the same.
+- **This is a product-level finding.** On Chrome 156, a docked DevTools window did not make `chrome.debugger` refuse the
+  bridge. So the `DEBUGGER_DEVTOOLS` path may be unreachable as the rows are written. Undocked DevTools, or DevTools
+  opened before the bridge's first attach, were not measured.
+- **It goes to the user** under Open decisions, as #351 (3) foresaw: keep the code and rows (a refusal that cannot be
+  built live), find a condition that reproduces it, or drop the claim from `extension/CLAUDE.md`'s "one debugger per
+  tab" bullet. No product or doc change is made meanwhile.
+- **Two gotcha candidates go to `recipes/CLAUDE.md` at the close-out:** the Chrome 156 app-menu facts, and the fact
+  that docked DevTools did not refuse the debugger.
+- **liveB19 used every attempt and fix round** (three each).
+
+**Why:** a NOT MEASURED whose instrument now works is a measurement of the product's environment. It is not a helper gap
+any longer.
+**Instead of:** a fourth attempt with undocked DevTools, which is past the budget, and its opener is unmeasured.
+**Revisit if:** the user wants the undocked or DevTools-first conditions measured, as a new row in a later wave.
+**By:** Claude (session agent's rulings; the DevTools question open for the user)
 
 ### 2026-10-29 · liveB19's attempt 2 accepted; its last attempt is spent on the DevTools opener (#368)
 **Decided:** liveB19 attempt 2 (`6b56edd`, `rows=24 warns=0 stop-return=0`) ran with no FAIL. R19-UP-OPT passed at 362 ms
