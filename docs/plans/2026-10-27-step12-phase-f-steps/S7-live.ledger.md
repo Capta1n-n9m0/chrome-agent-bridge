@@ -226,3 +226,23 @@
   Current build loaded and proven (`LOADED rerun=1 ... args=answered`). Daemon PID 14040 shut down; nothing on
   9234/8080-8089; worktree list main only; Chrome windows the user's 2 only. Attempts 2 of 3; fix rounds 2 of 3. liveD19
   closed (`S7-live-liveD19.md` Attempt 2); next: liveE19 (a fresh step agent).
+
+## liveE19 (step agent liveE19, Claude Opus 5.5, medium)
+- 2026-10-29 start: HEAD `772a53e`, tree clean. Nothing listening on 9234 or 8080-8089; node PID 22152 (unrelated codex
+  runtime) only; no python. `git worktree list`: the main tree only. Chrome top-level windows 2 (38602544, 68708, the
+  user's). Budgets (#367, per slice): attempts 0 of 3; fix rounds 0 of 3.
+- Pre-attempt code check of R19-VERSION (`recipes/s12-r19-de.ts` `version`, `s12-r19-de.ps1`, frame `Invoke-R19Swapped`):
+  (1) locators: `IN = {css:"#vis"}` (bd523bb), c1's visible file input (`test-fixtures/s12-chooser.js` BODY.c1), used by
+  every leg incl. the control; no `body`/hidden target. (2) titles: only `S12 chooser fixture` pages (`s12=c1`), known to
+  the guard (`recipes/s12-win.ps1:17`). (3) MCP actor: `x.mcp()` = mcpOpen with the #366 link wait (worked in liveD19);
+  `handleOf` throws on no handle. (4) closers: the capture D/E closed by `Close-R19CaptureWindows` (c55cf9d); ROOT via
+  `Add-R19RootOnce` -> the same `root-add` block liveB19/liveC19 ran; SDK/MCP tabs live in W (MCP tab closed by the row).
+  Nothing found: no fix round before attempt 1. Expected from code, not fixed (S7-record, #371): the mcp leg's code is read
+  by `mcpCodeOf` from line 1, as ARGS-OLD's.
+- liveE19 att1 (runner Sonnet medium; out `$TEMP/bridge-e2e/s19-live/e1`; HEAD 772a53e; 02:37-02:39Z): exit 0, no STOP
+  (`CHECK rows19 rows=10 warns=0 stop-return=0`). ROW lines 10 PASS, 1 FAIL: R19-VERSION FAIL (mcp leg `code=ERROR
+  hint=yes exact=yes files=0`; sdk/raw `VERSION exact=yes files=0`, control `ok files=1`, `args=answered`). ROOT added
+  (`uploadfolders lines=1`) and restored. `RESTOREHEAD ok`, `LOADED rerun=1 … args=answered`. RESTORE equal by count and
+  hash; `DIALOGS native=0 devtools=0`; R19-LOGS PASS (scans 0). Daemon PID 4280 shut down; nothing on 9234/8080-8089;
+  worktree list main only, old-wt empty; Chrome windows the user's 2 only. Runner report's literal name patterns redacted.
+  Attempts 1 of 3; fix rounds 0 of 3. liveE19 closed (`S7-live-liveE19.md`); next: committer, then S7-record.
