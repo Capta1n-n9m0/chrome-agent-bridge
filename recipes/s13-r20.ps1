@@ -94,8 +94,37 @@ function Invoke-R20Zero([scriptblock]$Zero) {
 function Invoke-R20RestoreCheck {
   if ([int](Invoke-R19Node 's13-r20' @('restore-compare', '--found', $FoundJson, '--now', $NowJson)) -ne 0) { Stop-R19 'not-restored' 'the stored state read back differs from the found state (count or hash)' }
 }
+# ---- #405: an actor dies with its process tree (after an actor-row STOP the real node survived under the nvm shim, liveA20 attempts 1-2) -------------------------------------
+# Run 17's Stop-S16Pid (s11b-r17.ps1, read-only) kills the recorded actor without /T. The entry script loads Run 17's functions AFTER dot-sourcing this file, which would overwrite a
+# plain definition here, so Register-R20Blocks (called after that load) installs this override over it. Only the recorded PID is the root (same PID + start-time check as Run 17);
+# every other name goes to Run 17's own function. A descendant that is the product daemon (command line daemon/dist/index.js, an actor can spawn it detached), and everything under it, is never killed.
+$R20DaemonRe = 'daemon[\\/]dist[\\/]index\.js'
+function Get-R20Procs { , @(Get-CimInstance Win32_Process | ForEach-Object { [pscustomobject]@{ Id = [int]$_.ProcessId; Parent = [int]$_.ParentProcessId; Cmd = "$($_.CommandLine)" } }) }
+function Get-R20KillList([int]$Root, $Procs) {   # descendants first (deepest last in discovery, reversed), the root last; the daemon and its subtree left out
+  $r20kids = @{}; foreach ($r20p in @($Procs)) { if (-not $r20kids.ContainsKey($r20p.Parent)) { $r20kids[$r20p.Parent] = @() }; $r20kids[$r20p.Parent] += $r20p }
+  $r20me = @($Procs | Where-Object { $_.Id -eq $Root })[0]; if ($r20me -and $r20me.Cmd -match $R20DaemonRe) { return }
+  $r20out = @(); $r20q = @($Root)
+  while ($r20q.Count) {
+    $r20h = $r20q[0]; $r20q = @($r20q | Select-Object -Skip 1)
+    foreach ($r20c in @($r20kids[$r20h])) { if (-not $r20c -or $r20c.Cmd -match $R20DaemonRe -or $r20c.Id -eq $Root -or $r20out -contains $r20c.Id) { continue }; $r20out += $r20c.Id; $r20q += $r20c.Id }
+  }
+  [array]::Reverse($r20out)
+  $r20out + $Root   # no comma-wrap: the caller's @() restores the array
+}
+function Install-R20StopKill {
+  if (-not $global:R20StopOrig) { $global:R20StopOrig = ${function:Stop-S16Pid} }   # Run 17's function, kept once (a second Register call keeps the first)
+  function global:Stop-S16Pid([string]$Name) {
+    if ($Name -ne 'node') { return (& $global:R20StopOrig $Name) }
+    $r20id = $global:S16Pids[$Name]
+    if (-not $r20id) { return }
+    $r20pr = Get-Process -Id $r20id -ErrorAction SilentlyContinue
+    if ($r20pr -and $r20pr.StartTime.Ticks -eq $global:S16Born[$Name]) { foreach ($r20k in @(Get-R20KillList $r20id (Get-R20Procs))) { & taskkill /F /PID $r20k | Out-Null }; Say9 "stopped own process $Name with its tree" }
+    $global:S16Pids.Remove($Name); $global:S16Born.Remove($Name)
+  }
+}
 # ---- the blocks of liveA20's A1 rows (A2 appends its own below the marker; none of these is rewritten) -------------------------------------------------------
 function Register-R20Blocks {
+  Install-R20StopKill   # after Run 17's functions were loaded by the entry script (#405)
   Set-R19Reused @('files', 'window', 'console', 'teardown', 'root-add') $R17Blocks
   $global:R19Blocks['reload'] = {
     $r20n0 = @(Get-R19RecordLines).Count

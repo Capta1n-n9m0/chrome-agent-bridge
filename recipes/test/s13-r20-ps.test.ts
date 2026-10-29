@@ -367,3 +367,77 @@ describe("s13-r20.ps1 R20-CON-NOTEA loads the options window fresh before touchi
 		expect(b).toMatch(/\{ Invoke-R20OptionsStep 'R20-CON-NOTEA' \{ Restore-R19Block \} \}\) -Restore \{ Invoke-R20OptionsStep 'R20-CON-NOTEA' \{ Restore-R19Block \} \}/);
 	});
 });
+
+// S5-drivers-B2, decision #405: the actor's tree kill (an s13 override of Run 17's Stop-S16Pid) and the shared preflight's port refusal, behaviourally, in PowerShell with stubs.
+const BODY4 = `
+function Get-Process { [pscustomobject]@{ ProcessName = 'chrome'; StartTime = [datetime]::new(5000) } }
+function taskkill { Write-Host "KILL $($args -join ' ')" }
+function Get-R20Procs { , @($global:Procs) }
+function P([int]$i, [int]$p, [string]$c) { [pscustomobject]@{ Id = $i; Parent = $p; Cmd = $c } }
+# KillSetup defines Run 17's Stop-S16Pid AFTER s13-r20.ps1 was dot-sourced (the entry script's order), then registers
+function KillSetup { function global:Stop-S16Pid([string]$Name) { Write-Host "ORIG $Name" }; $global:R19Blocks = @{}; $global:R20StopOrig = $null; Register-R20Blocks; $global:S16Pids = @{ node = 100; srv8081 = 300 }; $global:S16Born = @{ node = 5000 } }
+T killPlain { KillSetup; $global:Procs = @((P 100 1 'node a.js'), (P 101 100 'node b.js'), (P 102 101 'x'), (P 103 100 'y'), (P 999 1 'unrelated')); Stop-S16Pid 'node'; Write-Host "LEFT $(@($global:S16Pids.Keys) -join ',')"; 'end' }
+T killDaemon { KillSetup; $global:Procs = @((P 100 1 'node a.js'), (P 101 100 'node b.js'), (P 200 101 'node C:\\r\\daemon\\dist\\index.js'), (P 201 200 'child of the daemon'), (P 102 100 'y')); Stop-S16Pid 'node'; 'end' }
+T killStale { KillSetup; $global:S16Born = @{ node = 4999 }; $global:Procs = @((P 100 1 'node a.js'), (P 101 100 'b')); Stop-S16Pid 'node'; Write-Host "LEFT $(@($global:S16Pids.Keys) -join ',')"; 'end' }
+T killOther { KillSetup; $global:Procs = @((P 300 1 'python')); Stop-S16Pid 'srv8081'; 'end' }
+T killTwice { KillSetup; Register-R20Blocks; $global:Procs = @((P 100 1 'n')); Stop-S16Pid 'node'; Stop-S16Pid 'srv8081'; 'end' }
+function Assert-R17TreeClean { }; function Get-Command { 1 }; function Test-Path { $true }
+function Test-S16Port($p) { Write-Host "TESTPORT $p"; $true }; function Assert-R19CaptureFree($s) { Write-Host "CAPFREE $s"; $true }
+function Set-R20Port { $global:R20Port = $global:FakePort }
+$LogDir = Join-Path $env:S11_OUT 'logs'
+foreach ($pf in @(@('liveA20', 8082), @('liveB20', 8082), @('liveC20', 8083), @('liveB20', 8081), @('liveC20', 8081))) {
+  $sl = $pf[0]; $pt = $pf[1]
+  T "pf-$sl-$pt" { $global:R19Slice = $sl; $global:FakePort = $pt; $global:S16Mark = 99; $global:R19Blocks = @{}; Register-R20Blocks; try { & $global:R19Blocks['preflight'] } finally { Write-Host "MARK $($global:S16Mark) CHANGED $($global:S16Changed)" }; 'end' }.GetNewClosure()
+}
+`;
+function runBody(): Obs {
+	const d = mkdtempSync(join(tmpdir(), "s13r20k-"));
+	try {
+		const f = join(d, "t.ps1");
+		writeFileSync(f, PRE(d.replace(/\\/g, "\\")) + BODY4, "utf8");
+		const out = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", f], { encoding: "utf8", timeout: 120_000 }).stdout ?? "";
+		const obs: Obs = {};
+		let cur = "";
+		for (const l of out.split(/\r?\n/)) { const m = /^BEGIN (\S+)$/.exec(l); if (m) { cur = m[1]!; obs[cur] = []; } else if (cur) obs[cur]!.push(l); }
+		return obs;
+	} finally { rmSync(d, { recursive: true, force: true }); }
+}
+describe.skipIf(!hasPs)("s13-r20.ps1 kills an actor with its tree (#405) and refuses a fixture port other than 8081", () => {
+	const o = runBody();
+	const kills = (l: string[]): string[] => l.filter((x) => x.startsWith("KILL ")).map((x) => x.slice(13));
+	it("after the load order of the entry script (Run 17's function second) the effective Stop-S16Pid is the override: the descendants deepest first, the root last", () => {
+		expect(o.killPlain!.filter((x) => x.startsWith("ORIG"))).toEqual([]);
+		expect(kills(o.killPlain!)).toEqual(["102", "103", "101", "100"]);
+		expect(o.killPlain).toContain("LEFT srv8081");
+	});
+	it("a descendant that is the daemon, and everything under it, is never killed", () => {
+		expect(kills(o.killDaemon!)).toEqual(["102", "101", "100"]);
+	});
+	it("a process with another start time is not killed (the same PID and start-time check as Run 17)", () => {
+		expect(kills(o.killStale!)).toEqual([]);
+		expect(o.killStale).toContain("LEFT srv8081");
+	});
+	it("every name but the actor's goes to Run 17's own function, and a second Register keeps Run 17's function as the original", () => {
+		expect(o.killOther).toContain("ORIG srv8081");
+		expect(kills(o.killOther!)).toEqual([]);
+		expect(o.killTwice).toContain("ORIG srv8081");
+		expect(kills(o.killTwice!)).toEqual(["100"]);
+	});
+	it("s13-r20.ps1 defines no top-level Stop-S16Pid, and the entry script reads Run 17's functions before it registers", () => {
+		const src = readFileSync(process.env.S13_R20_PS1 ?? join(REPO, "recipes", "s13-r20.ps1"), "utf8");
+		expect(src).not.toMatch(/^function Stop-S16Pid/m);
+		const entry = readFileSync(process.env.S13_R20_A_PS1 ?? join(REPO, "recipes", "s13-r20-a.ps1"), "utf8");
+		expect(entry.indexOf("Get-R18Defs (Join-Path $PSScriptRoot 's11b-r17.ps1')")).toBeGreaterThan(-1);
+		expect(entry.indexOf("Get-R18Defs (Join-Path $PSScriptRoot 's11b-r17.ps1')")).toBeLessThan(entry.indexOf("\nRegister-R20Blocks"));
+	});
+	for (const [sl, port, ok] of [["liveA20", 8082, false], ["liveB20", 8082, false], ["liveC20", 8083, false], ["liveB20", 8081, true], ["liveC20", 8081, true]] as const) {
+		it(`the shared preflight ${ok ? "passes" : "fails before any state change"} for ${sl} on port ${port}`, () => {
+			const l = o[`pf-${sl}-${port}`]!;
+			expect(l.some((x) => x.includes("port 8081 is not free"))).toBe(!ok);
+			expect(l.some((x) => x.startsWith("THREW"))).toBe(!ok);
+			expect(l.filter((x) => x.startsWith("TESTPORT"))).toEqual(ok ? ["TESTPORT 9234"] : []);
+			expect(l.filter((x) => x.startsWith("CAPFREE"))).toEqual(ok ? [`CAPFREE ${sl}`] : []);
+			expect(l).toContain(ok ? "MARK 0 CHANGED False" : "MARK 99 CHANGED False");
+		});
+	}
+});
