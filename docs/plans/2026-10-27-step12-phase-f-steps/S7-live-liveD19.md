@@ -106,5 +106,106 @@ the STOP as a true integrity-floor event. **By:** Claude (proposed, for the sess
 - Gotcha candidate (`recipes/CLAUDE.md`): a worker-console window opened by `Open-S9WorkerConsole` is not in `S11Own`;
   close it with `Test-S9Live` + `Close-S9Window`, never `Close-S11Window`.
 - Measured: the swap of `3ab9207` (worktree, `npm ci`, build, copy) took about 20 s here and left no worktree.
-</content>
-</invoke>
+
+## Attempt 2 (fresh step agent, Claude Opus 5.5, medium; #371)
+
+### Verdict
+**DONE.** Fix round 2 (`c55cf9d`) and attempt 2 ran as #371 ruled. Attempt 2 exited 0 with no STOP: `CHECK rows19
+rows=10 warns=0 stop-return=0`, `SLICE liveD19 done: calls with a failed check 1, not measured 0`. The current build is
+loaded and proven (`LOADED rerun=1 consoleMessages=answered entries=11 console=10 exception=1 args=answered` after
+`RESTOREHEAD ok`). The safety state is equal to R19-0 by count and hash. Budget: attempts 2 of 3, fix rounds 2 of 3.
+(Also removed two stray lines, `</content>` and `</invoke>`, that `3fdfbfd` left at the end of this file.)
+
+### Fix round 2 (2 of 3)
+- Fixer: Sonnet 5.5, medium (`S7-live-D-fixer2.md`). A new `Close-R19CaptureWindows` (`recipes/s12-r19-lib.ps1`) closes D
+  and then E with `Test-S9Live` + `Close-S9Window` and sets each to 0. `Save-R19Seg`'s non-'end' branch calls it, even when
+  the save failed. reload-extension.ps1 opens its own chrome://extensions window. Two new checks in
+  `recipes/test/s12-r19.test.ts` model the real `Close-S11Window`, which refuses handles outside S11Own, and use distinct
+  D/E handles per open. Both fail on the old lib (`2 failed | 54 passed`). npm test went 5592 -> 5596 (235 files).
+- Verifier: Opus 5.5, medium, **PASS-with-notes** (`S7-live-D-verifier2.md`, `-evidence.txt`).
+  - At DIALOGS only the last D (left out by `Get-R19DevToolsCount`) and E (not a DevTools window) remain.
+  - The new checks fail on HEAD's lib.
+  - Mutants killed: Close-S11Window again, D-only, E-only, no reset. Mutants that survived (the code is right on each, but
+    no test pins it): no `Test-S9Live` guard, skip the close on a failed save, close before the save.
+  - The test diff only adds lines. npm test passes at 5596/235. typecheck and all seven recipes tsconfigs exit 0.
+  - MINOR: the early return when D is not live can orphan an E. It is reached only after a failed reopen, which is itself
+    a STOP.
+- Commit `c55cf9d`, Sonnet trailer.
+
+### Run
+HEAD `c55cf9d`. The tree was clean apart from the steps-dir ledger. `npm run build` -> `built extension → dist/`. Out
+`$TEMP/bridge-e2e/s19-live/d2` (fresh), `-Att 2`, ran 02:28-02:30Z. Runner: Sonnet 5.5, medium
+(`S7-live-runner-liveD19-att2.md`). Before the run nothing listened on 9234/8080-8089. The only node process was PID 22152
+(an unrelated codex runtime), and no python ran. `git worktree list` showed the main tree only. Chrome top-level windows:
+38602544 and 68708 (the user's).
+
+### Rows as printed (record `S7-live-record-liveD19-att2.txt`)
+- ROW verdict lines: **10 PASS, 1 FAIL**.
+  - PASS: RD-0 (a), RULES x2, RD-0 (c), RD-0 (d), R17B-0 (e)(f), **R19-0 PASS slice=D**, UP-RESTORE,
+    **R19-RESTORE PASS slice=D**, **R19-LOGS PASS slice=D**.
+  - FAIL: **R19-ARGS-OLD FAIL**.
+  - `CHECK rows19 rows=10`.
+- Old-build proof: `LOADED consoleMessages=UNKNOWN_METHOD entries=0 console=0 exception=0 args=VERSION`.
+- R19-ARGS-OLD legs: sdk `code=VERSION hint=yes` PASS; **mcp `code=ERROR hint=yes` FAIL**; ref `VERSION` PASS; file
+  `VERSION` PASS; raw `VERSION forwarded=no` PASS; control `code=ok hint=no` PASS. `CHECK R19-ARGS-OLD clauses=6 failed=1`.
+  The console clause was pending until R19-LOGS (PASS).
+- **Control-2 reference kind:** `CHECK R19-ARGS-OLD control raw-twin kind=undefined`. This is the same as attempt 1, so by
+  #371 attempt 1's reading stands, and both are recorded.
+- Segments: `CAPSEG liveD19 seg=1 saved=yes before=reload`, `seg=2 ... before=reload`, `seg=3 ... before=end`. After each
+  reload save, the capture window and its Extensions window printed `window <h> closed` (2 + 2). No "not closed" line.
+- R19-RESTORE: `RESTORE armed=equal evaluate=equal blocklist lines=0 hash=equal uploadfolders lines=0 hash=equal`; `ROW
+  UP-RESTORE PASS`; `RULES 0`; **`DIALOGS liveD19 native=0 devtools=0 wave-windows-open=1`**.
+- R19-LOGS:
+  - `CONSOLE liveD19 segments=3 ... texts=837 control-disarmed=3`.
+  - `SCAN console`, `SCAN daemon`: all 0.
+  - `DAEMONLOG liveD19 sentinel=0 console-text=0 args-text=0`.
+  - SCANTOOL browser_new_tab/evaluate/close_tab: all 0.
+  - `SCAN actors: ://=1 (fixture 1, other 0)`, `profile-all=0`.
+- The script ran its own teardown: `CHECK clean PASS`.
+
+### Readings that differ from attempt 1
+| Reading | Attempt 1 | Attempt 2 |
+|---|---|---|
+| Capture windows after a reload save | `window <D> is not live and the wave's own - not closed` (x2) | `window <h> closed` for D and E (x2 each) |
+| DIALOGS at R19-RESTORE | `devtools=2` -> STOP `devtools-left-open` | `devtools=0`, no STOP |
+| `ROW R19-ARGS-OLD` | not printed (the STOP came before R19-LOGS) | `FAIL` (mcp leg) |
+| `ROW R19-RESTORE`, `ROW R19-LOGS`, `CHECK rows19` | not printed | PASS, PASS, `rows=10 warns=0 stop-return=0` |
+| Script exit | 2 | 0 |
+| Console segments kept (lines after dropping titles) | 588 / 92 / 143 | 587 / 91 / 142, plus `-all` 820 |
+
+The legs, both proofs, `RESTOREHEAD` and RESTORE read the same as attempt 1, and so did the control-2 kind (`undefined`).
+
+### STOPs
+None.
+
+### Restore and after-state
+- `RESTOREHEAD ok`, then a reload and the re-run proof (`args=answered`): the current build is loaded.
+- RESTORE was equal by count and hash. The read-back passed (`CHECK UP-RESTORE stored PASS`, `daemon PASS`).
+- Daemon PID 14040 was shut down by the runner (`s9.ts daemon-shutdown`).
+- The step agent re-read the after-state:
+  - nothing listening on 9234/8080-8089;
+  - node PID 22152 only, and no python;
+  - `git worktree list` shows the main tree only, and `old-wt` is empty;
+  - Chrome top-level windows are 38602544 and 68708 only, so no DevTools or wave window was left and none was closed.
+
+### Evidence and scans
+- Files:
+  - `S7-live-record-liveD19-att2.txt` (150 lines)
+  - `S7-live-evidence-liveD19-att2.txt` (272)
+  - `S7-live-console-liveD19-att2-1.txt`, `-2`, `-3`, `-all` (587, 91, 142, 820; `DevTools` lines dropped)
+- `scan18 --what other` on all six files: 0. The step agent grepped for the user's name, `Users\`, `Users/` and `AppData`:
+  0 hits. The only `DevTools` matches are the placeholder `'<DevTools window>'` and the DIALOGS line.
+
+### Proposals
+- **2026-10-29 · liveD19 closes on attempt 2.** **Decided (proposed):** liveD19's result is attempt 2:
+  - R19-0, R19-RESTORE and R19-LOGS PASS.
+  - R19-ARGS-OLD FAIL from the mcp leg alone (`code=ERROR`), which S7-record reads with liveA19's MCP legs (#367, #371).
+  - Control-2's reference is `undefined` on both attempts.
+
+  **Why:** the run printed it, and the only change since attempt 1 was the window-close fix. **Revisit if:** S7-record finds
+  the MCP reader wrong. **By:** Claude (proposed)
+- liveE19 shares `Invoke-R19Swapped` and now has the fix. No further change is needed before its run.
+- Optional, low: tests for the three surviving mutants. Close the windows on `Save-R19Seg`'s early return too (verifier
+  MINOR). Neither one blocks liveE19.
+- Gotcha candidate (`recipes/CLAUDE.md`), as attempt 1 found and fix round 2 confirms: windows opened by
+  `Open-S9WorkerConsole` and `Open-S9ChromePage` are not in `S11Own`. Close them with `Test-S9Live` + `Close-S9Window`.

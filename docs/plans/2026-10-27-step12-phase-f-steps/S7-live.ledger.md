@@ -216,3 +216,13 @@
   no test weakened (diff is additions only); npm test 5596/235 exit 0; typecheck and 7 recipes tsconfigs exit 0. MINOR: early
   return when D is not live can orphan an E (reached only after a failed reopen, itself a STOP). Accepted as notes. Next:
   committer, then attempt 2 from the fix commit.
+- Fix round 2 committed `c55cf9d` (Sonnet trailer). Pre-env: nothing on 9234/8080-8089; node PID 22152 (unrelated codex
+  runtime) only; no python; `git worktree list` main only; Chrome top-level windows 38602544, 68708 (the user's). liveD19 att2
+  (runner Sonnet medium; out `$TEMP/bridge-e2e/s19-live/d2`; `-Att 2`; HEAD c55cf9d) started -> `S7-live-runner-liveD19-att2.md`.
+- liveD19 att2 (runner Sonnet medium; out `$TEMP/bridge-e2e/s19-live/d2`; HEAD c55cf9d; 02:28-02:30Z): exit 0, no STOP
+  (`CHECK rows19 rows=10 warns=0 stop-return=0`). ROW lines 10 PASS, 1 FAIL: R19-ARGS-OLD FAIL (mcp leg `code=ERROR`, as
+  att1; sdk/ref/file/raw VERSION, control ok). Control-2 reference `kind=undefined` (= att1). Capture windows closed after
+  each reload save; `DIALOGS native=0 devtools=0`. R19-RESTORE PASS (equal by count and hash), R19-LOGS PASS (scans 0).
+  Current build loaded and proven (`LOADED rerun=1 ... args=answered`). Daemon PID 14040 shut down; nothing on
+  9234/8080-8089; worktree list main only; Chrome windows the user's 2 only. Attempts 2 of 3; fix rounds 2 of 3. liveD19
+  closed (`S7-live-liveD19.md` Attempt 2); next: liveE19 (a fresh step agent).
