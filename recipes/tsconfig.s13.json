@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": { "types": ["node", "chrome"], "lib": ["ES2022", "DOM", "DOM.Iterable"] },
-  "include": ["s13-forms.ts", "test/s13-forms.test.ts"]
+  "include": ["s13-forms.ts", "test/s13-forms.test.ts", "s13-r20.ts", "s13-r20-a.ts", "test/s13-r20.test.ts", "test/s13-r20-a.test.ts", "test/s13-r20-ps.test.ts"]
 }
