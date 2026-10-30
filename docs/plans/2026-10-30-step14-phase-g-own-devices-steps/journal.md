@@ -37,3 +37,4 @@ One line per event, UTC.
 - 2026-10-30T11:30Z · S5 fixer1 DONE; S5 verifier2 PASS-with-notes (S5-verifier2.md): F1, F2, F4 fixed; R1 MINOR — the doc's Chrome steps are numbered off setup's printed six. Fix round 2 of 3 (Sonnet): follow setup's numbering.
 - 2026-10-30T11:31Z · S5 fixer2 DONE; S5 verifier3 PASS (S5-verifier3.md): Chrome steps match setup's six one to one. S5 committed by the session agent.
 - 2026-10-30T11:33Z · Close-out: phase doc As built + gate checklist (every exit check met; #432 and G14-1 wait), progress-and-roadmap, CLAUDE.md Current state and Commands, recipes/CLAUDE.md install-rehearsal facts, memory. Next: full cleanup pass.
+- 2026-10-30T11:42Z · Cleanup pass 2026-10-30-2 committed b2899f0 (17 mechanical fixes; 11 proposals). Decisions #433–#441 recorded (968615c). Run ends: the gate waits for the user (#432, #441, G14-1); no kickoff until the ruling.
