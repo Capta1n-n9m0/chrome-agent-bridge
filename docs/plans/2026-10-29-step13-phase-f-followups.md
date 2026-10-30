@@ -1,6 +1,6 @@
 # Step 13 — Phase F follow-ups: a background opener's popup, evaluate's key order, the console fixes, and Run 20
 
-**Date:** 2026-10-29 · **Status:** Built, Run 20 recorded; not closed, the gate waits for the user (§ Gate checklist); G13-0 met by #374
+**Date:** 2026-10-29 · **Status:** **Closed 2026-10-30**: the user ruled the gate (#420, `decisions-archive/step13.md`); G13-0 met by #374; G13-1 (push) not granted yet
 *(updated 2026-10-30, cleanup pass: was "Planned")*
 **Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change (§10 protocol, events and codes with their dated notes) · **Carried from:**
@@ -448,10 +448,19 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 **The phase is not closed.** R5.4 and R5.5 wait for the user's rulings on #417 and #419 (and R20-ARGS-ORDER). No
 Phase G kickoff until then (`long-run` §5).
 
+**Ruled 2026-10-30 (#420): the phase is closed.** R5.3 met (R20-ARGS-ORDER PASS); R5.4 met (the wave's own options window
+is outside `DIALOGS`; R20-RESTORE A, B, C PASS); R5.5 met (#417 (c): R20-LOGS B RECORD; liveB20's record committed); #419
+accepted and the #369 reword applied (`docs/setup.md`, `extension/CLAUDE.md`); #385 and #389 kept. Run 20 final: 24 PASS,
+4 FAIL, 1 NOT MEASURED, 3 NOT RUN, 2 RECORD. G13-1 (push) waits for its own grant.
+
 ## Follow-ups
 
 - The Phase F items left out (0.9): response bodies and WebSocket frames on the kept session; console lines in
   `evaluate` results; `chrome.userScripts`; frame targeting; cookie and storage reads; multi-window awareness.
 - Dropping the SDK's and MCP's own `focusTab` before a trusted input (#354).
 - Whatever Run 20 leaves NOT MEASURED or NOT DISCRIMINATING, as proposed decisions.
-- **Next: a minimal Phase G**, packaging for the user's own use only (#374 item 11).
+- **Next: a minimal Phase G**, packaging for the user's own use only (#374 item 11): a clean install on the user's other
+  Windows devices for Claude Code (MCP) and SDK scripts (#420 item 7), and the MCP failure report's screenshot path with
+  the home folder as `~` (#417 (c)), unit-tested only.
+- R20-G2-1: a fully covered window's screenshot times out (~35 s; uncovered 529 ms), a product finding (`S5-run-record.md` §6).
+- The Run 20 helper proposals (`S5-run-record.md` §7 proposals 2-3; proposal 1 is moot under #420 item 2, proposal 4 is already in `recipes/CLAUDE.md`).

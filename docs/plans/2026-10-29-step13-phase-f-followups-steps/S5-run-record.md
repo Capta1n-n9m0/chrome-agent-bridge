@@ -13,6 +13,14 @@ lines and the sheet, and the S5-record verifier re-derives it first. Slice B's v
 `S5-liveB20-verifier1.md` (read-only, on the held record, #417). Slice C's were checked by `S5-liveC20-verifier1.md`
 (attempt 1) and `S5-liveC20-verifier2.md` (attempt 2).
 
+**The user's ruling, 2026-10-30 (#420; added at the Step 13 close).** The verdicts below are as verified before the
+ruling and are not rewritten. The ruling changes five of them: R20-RESTORE A, B and C read **PASS** (the wave's own
+options window is outside the `DIALOGS` clause); R20-LOGS B reads **RECORD** (a tool reply to the calling client is not
+the log R20-LOGS guards, #417 (c)); R20-ARGS-ORDER reads **PASS**. Slice C's attempt 2 stands (#419). **Final
+tally: 24 PASS, 4 FAIL (R20-POP-BG, R20-POP-FG, R20-POP-OTHER: sheet clauses, #406; R20-G2-1: covered-window capture),
+1 NOT MEASURED, 3 NOT RUN, 2 RECORD (R20-CHOOSE-KEPT, R20-LOGS B); 34.** R5.4 and R5.5 are met; section 7's open
+items are closed.
+
 **Held.** Slice B's record, `S13-live-record-liveB20.txt` (298 lines), its -3 evidence `S13-live-evidence-liveB20-pop3.txt`
 (8 lines) and `S5-liveB20-verifier1.md` (216 lines) are untracked and **held, uncommitted, pending the user's ruling on
 #417** (as are `S5-liveB20.md`, `S5-liveB20-runner-att1.md` and `S5-liveB20.ledger.md`). They were read, not changed,

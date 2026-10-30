@@ -98,8 +98,8 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
 - **Chrome allows one debugger per tab**: `chrome.debugger.attach` can throw "Another
   debugger is already attached…" (`DEBUGGER_DEVTOOLS` stays); clicking the banner's Cancel mid-action makes `sendCommand` throw
   "Detached while handling command". `withDebugger` maps both through `describeDebuggerError` — add new
-  Chrome strings there, not in handlers. *Measured 2026-10-29 (Chrome 156, #369):* a docked DevTools did not make the attach
-  refuse. Undocked and DevTools-first are measured in Step 13's Run 20.
+  Chrome strings there, not in handlers. *Measured (Chrome 156):* DevTools docked, undocked, or opened first never made
+  the attach refuse (#369; R20-DEVT-UNDOCK, R20-DEVT-EARLY).
 - **`@types/chrome` quirks**: use `chrome.tabs.OnUpdatedInfo` (not `TabChangeInfo`);
   `InjectionResult<any>` (its `Awaited<T>` conflicts with TS's); `sendCommand` params want
   `{[k:string]:unknown}` (not `object`).

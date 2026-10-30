@@ -11,22 +11,20 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-30, Step 13 built and Run 20 recorded; the gate waits for the user)
+## Current state (2026-10-30, Step 13 closed; next: the minimal Phase G)
 
-- **Shipped:** Steps 1–12, public on GitHub (MIT), pushed. Step 13 (`docs/plans/2026-10-29-step13-phase-f-followups.md`)
-  built, **not pushed** (G13-1): G1, the background opener's popup leased to its holder via `webNavigation` (S1
-  `8f6fc4d`); `evaluate`'s value in the page's key order (S2 `3ca60bd`); console texts and the newest-lines cap (S3b
-  `22d2217`); the second-chooser text (S4 `b3cbe84`); S3a not run (#387). **25 tools, 27 codes (26 on the wire), 28
-  router methods** (the test count: Commands).
-- **Run 20 recorded** (`…-steps/S5-run-record.md`, `2c2c214`): 34 verdicts as verified, 20 PASS, 8 FAIL, 1 NOT
-  MEASURED, 3 NOT RUN, 2 RECORD. G1.4 met on R20-POP-BG-3 (#407). S6 docs done (`1b4483d`).
-- **The gate is stopped and waits for the user** (`docs/decisions.md` Open decisions; the phase doc's Gate checklist):
-  #417 (slice B's `text-leak` STOP from the MCP failure report's screenshot path; slice B's record and five more files
-  are **untracked and held** in the steps dir: never stage them before the ruling; and the `DIALOGS` clause counting
-  the wave's own options window), #419 (liveC20's fix-round breach; with it #374 item 3's #369 reword: neither DevTools
-  condition refuses), R20-ARGS-ORDER (RECORD vs PASS), #385, #389.
-- **Next:** the user's rulings, then Step 13's close (its decisions to a new `step13.md` in `docs/decisions-archive/`)
-  and a minimal Phase G for the user's own use; its kickoff waits for the ruling (`long-run` §5).
+- **Shipped:** Steps 1–12, public on GitHub (MIT), pushed. **Step 13 closed 2026-10-30** (the user ruled the gate, #420,
+  `docs/decisions-archive/step13.md`), **not pushed** (G13-1 needs its own grant): G1, the background opener's popup
+  leased to its holder via `webNavigation`; `evaluate`'s value in the page's key order; console texts and the
+  newest-lines cap; the second-chooser text. **25 tools, 27 codes (26 on the wire), 28 router methods** (the test count:
+  Commands).
+- **Run 20 final** (`docs/plans/2026-10-29-step13-phase-f-followups-steps/S5-run-record.md`, as ruled by #420): 24 PASS,
+  4 FAIL (three POP sheet clauses, #406; R20-G2-1, a fully covered window's screenshot times out), 1 NOT MEASURED, 3 NOT
+  RUN, 2 RECORD. DevTools docked, undocked or opened first does not refuse the bridge's attach (`docs/setup.md`).
+- **Next: the minimal Phase G** (#374 item 11, #420 item 7): the bridge installs cleanly on the user's other **Windows**
+  devices, the extension imports cleanly, and both Claude Code (MCP) and SDK scripts drive Chrome there without trouble;
+  plus the MCP failure report's screenshot path with the home folder as `~` (#417 (c)), unit-tested only, no live re-run.
+  Kickoff: `docs/plans/next-session-prompt.md`.
 - **Committed docs** carry no local path and no user name from now on (#374; `docs/docs-writing-guide.md`).
 - **How agents run (#289, #320):** Opus builds contract and safety code and runs every verifier; Sonnet does recipes,
   fixtures, docs and live runners; every agent at medium effort, passed explicitly; three fix rounds per stage (per

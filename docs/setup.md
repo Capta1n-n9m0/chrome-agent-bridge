@@ -584,10 +584,11 @@ gate while a session was kept answered with the refusal itself (R19-KEEP-3). A r
 after 20 s of quiet (R19-UP-6, R19-F-RAW, -F-RAW-2, -F-RAW-DIR); Run 18 had read a banner on those rows,
 and why the two runs differ is not shown. `browser_console_messages` and the chooser upload show it during the call
 (R19-CON-BANNER, R19-CHOOSE-1); a call refused for JavaScript off, a blocked, own or `file:` page showed none
-(R19-CON-JSOFF, R19-CON-3, R19-CON-OWN, R19-CON-FILE, R19-CHOOSE-JSOFF). **Not measured:** Chrome's DevTools opened
-docked did not make the bridge's calls fail (a probe: 31 of 31 `ok`), so what the bridge does when DevTools is open,
-a kept session meeting DevTools and the start-up sweep of a held tab are not shown live (R19-UP-DEVT, R19-KEEP-4,
-R19-SWEEP-HELD: NOT MEASURED; decisions.md #369).
+(R19-CON-JSOFF, R19-CON-3, R19-CON-OWN, R19-CON-FILE, R19-CHOOSE-JSOFF). Chrome's DevTools did not
+make the bridge's calls fail in Run 19 (docked, 31 of 31 `ok`) or in Run 20 (undocked after an earlier attach, and
+opened before the first attach, docked and undocked; R20-DEVT-UNDOCK, R20-DEVT-EARLY PASS). A kept session meeting
+DevTools and the start-up sweep of a held tab are not shown live (R20-UP-DEVT, R20-KEEP-4, R20-SWEEP-HELD NOT RUN; R19
+rows NOT MEASURED; decisions-archive/step13.md #420).
 
 Reach for `trusted:true` when a site ignores synthetic input — some editors, canvas apps and
 anti-automation checks test `event.isTrusted`. Trusted typing focuses the field and selects
@@ -1446,10 +1447,13 @@ S2 added `UPLOAD_REFUSED` (#237).*
   windows, so Chrome produces no frame to capture; uncover it (your tab is put back after ~30 s).
 - **"The tab was discarded by Chrome's Memory Saver"**: Chrome unloaded the tab; `browser_focus_tab`
   or `browser_navigate` reloads it.
-- **"Chrome DevTools (or another extension) is already attached to this tab"**: Chrome allows
-  one debugger per tab, and DevTools wins. Close DevTools on that tab and retry the trusted action. *Limit, 2026-10-29:*
-  in Run 19 docked DevTools on Chrome 156 did not make the bridge's calls fail (31 of 31 `ok`), so this message was not
-  reproduced live (R19-UP-DEVT, R19-KEEP-4, R19-SWEEP-HELD: NOT MEASURED; decisions.md #369). The overlap case, two
+- **"Chrome DevTools (or another extension) is already attached to this tab"**: another
+  debugger client holds the tab's debugger, so the trusted action cannot attach. Close that client on the tab and retry.
+  *Measured 2026-10-30 (Chrome 156, fixture pages):* neither DevTools undocked and opened after an earlier attach
+  (R20-DEVT-UNDOCK, PASS) nor DevTools opened before the bridge's first attach, docked or undocked (R20-DEVT-EARLY, PASS),
+  made the bridge's attach refuse; each call answered `ok` with a bridge-independent control showing DevTools open. So
+  DevTools does not take the tab from the bridge in these cases; the message is still produced for another extension's
+  debugger (not measured). The overlap case, two
   bridge calls on one tab at once, answers it (R19-KEEP-OVERLAP, PASS). *Updated 2026-10-30: a second `chooser` upload on
   a tab no longer uses this message; it has its own text (see [Uploading files](#uploading-files), R20-CHOOSE-TWICE).*
 - **"The debugging session was cancelled mid-action"**: someone clicked **Cancel** on the

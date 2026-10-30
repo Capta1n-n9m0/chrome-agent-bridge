@@ -3710,6 +3710,11 @@ Exit checks: R5.1 met, R5.2 met, R5.3 met with notes, R5.4 met for the state (DI
 R5.6 met. G1.4 met. The gate is stopped (phase doc STOP rule) until the user rules on #417 and the DIALOGS clause.
 ```
 
+*Ruled 2026-10-30 (#420), the Step 13 close:* R20-RESTORE A, B and C read **PASS** (the wave's own options window is outside
+the `DIALOGS` clause); R20-LOGS B reads **RECORD** (a tool reply to the calling client is not the log R20-LOGS guards; the
+`~` path in the failure report comes in Phase G); R20-ARGS-ORDER reads **PASS**; liveC20 attempt 2 stands (#419); liveB20's
+record is committed. Final tally: **PASS 24 / FAIL 4 / NOT MEASURED 1 / NOT RUN 3 / RECORD 2**; R5.4 and R5.5 met.
+
 **What the new features show.** G1: a background opener's popup is leased to its holder in 3 of 3 rounds (R20-POP-BG-3,
 `granted-to=A in-ms=110 others=0`, B's call `TAB_HELD` naming A, no join or URL line in the worker console; the liveness
 control read 9 → 27 `evaluate` lines), and the foreground and other-holder cases hold (`in-ms` 54 and 57). G1.4 is met on
