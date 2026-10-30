@@ -9,14 +9,16 @@ as a dated entry and point back.
 
 ## Open decisions
 
-None. The user ruled Step 12's gate on 2026-10-29 (#374, `decisions-archive/step12.md`); every item listed here
-before was settled by it. Step 13's scope is ruled by the same entry (`docs/plans/2026-10-29-step13-phase-f-followups.md`).
+Step 13's gate waits for the user on the items below (the phase doc's Gate checklist,
+`docs/plans/2026-10-29-step13-phase-f-followups.md`). Step 12's items were all settled by #374.
 
-For Step 13's gate (contract-level; the run goes on with the conservative option, recorded in the Log):
+Contract-level, built with the conservative option (Stage 0):
 - **#385, G1's shape.** Stage 0 replaced #376: the extension joins Chrome's navigation-target event and sends the real
   opener in `tabCreated.openerTabId`; with no join it sends none and nothing is granted. No wire shape changes, but the
   field's meaning does. Options: keep #385 (recommended), or (A) a new `sourceTabId` field with a hello feature.
 - **#389, the chooser text.** Option (a), the same code with its own message (recommended); (b) a new code.
+
+Run 20's results (`…-steps/S5-run-record.md`):
 - **#417, liveB20's `text-leak`.** The MCP failure report's screenshot path (a home path) in a by-design TIMEOUT reply
   tripped R20-LOGS; recorded in Runs 18–20, never ruled. Options: (a) print the path with `~` in a later step and re-run
   slice B; (b) a reply to the calling agent is not the log R20-LOGS guards: LOGS RECORD, record committed; (c) both, (b)
@@ -27,7 +29,7 @@ For Step 13's gate (contract-level; the run goes on with the conservative option
   MEASURED. With it: #374 item 3's #369 reword (both DevTools conditions answer `ok`), proposed in
   `…-steps/S6-claude-md-proposals.md` (f).
 - **R20-ARGS-ORDER:** kept RECORD as printed; #401 makes the `ref` leg RECORD but the row may read PASS. Keep RECORD
-  (recommended, conservative) or read PASS.
+  (recommended, conservative) or read PASS (`S5-run-record.md`; #401).
 
 ## Standing decisions
 
