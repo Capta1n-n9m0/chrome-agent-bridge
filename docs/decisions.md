@@ -31,6 +31,7 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-25 · Gotchas follow the code they bind (#232) — `decisions-archive/step11.md`
 - 2026-10-25 · Builders, fixers and live runners run Sonnet at medium effort from S5 on (#270) — `decisions-archive/step11.md`; amended by #289
 - 2026-10-25 · S5 is split into seven slices; the stopped prep is salvaged per slice (#271) — `decisions-archive/step11.md`; its rule for small iterations is in `agent-rules.md` §7
+- 2026-10-29 · S1: mutants and pre-slice runs never touch the main tree (#395) — `decisions-archive/step13.md`
 - 2026-10-26 · Step agents never end their turn on a running child; commits carry the verifier's verdict (#286) — `decisions-archive/step11.md`; made permanent by #289; `agent-rules.md` §8, §10
 - 2026-10-26 · How agents are run from Step 11b on; #286 stands; the cleanup pass's proposals applied (#289) — `decisions-archive/step11b.md`
 - 2026-10-26 · Step 11b: the permission and the rule's scope ruled; Step 11's follow-ups become its stage S0F (#290) — `decisions-archive/step11b.md`
@@ -90,6 +91,8 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-24 · `evaluate {asRef}` on a non-element stays an error (#123) — `decisions-archive/step8.md`
 - 2026-10-25 · S7: Run 15 stands as recorded; its follow-ups (#226) — `decisions-archive/step10.md`
 - 2026-10-29 · Stage 0: G1 by a join in the extension — `tabCreated.openerTabId` is the navigation source; no join, no grant (#385) — `decisions-archive/step13.md`; kept by #420
+- 2026-10-29 · `evaluate`'s value keeps the page's key order: the serialiser's envelope crosses as a JSON string (#377) — `decisions-archive/step13.md`; built by #386, narrowed by #396 (page `toJSON` hooks never reach `value`)
+- 2026-10-29 · The console texts: newest lines kept with a cut marker (#379) — `decisions-archive/step13.md`; the cap's marker wording by #398
 
 **Product promises: background input, the screen and the MCP result shape**
 - 2026-10-23 · The background-input policy (#89) — `decisions-archive/step8.md`; ratified 2026-10-24 (#106)

@@ -103,6 +103,8 @@ our docs, tests and code first, then at most one targeted web search for an exte
   an Opus fixer (§7); a fresh verifier re-checks only the affected items after each. Reads its children's reports and
   the resulting files before accepting. Does not build or commit itself: after the verdict it starts a committer.
   Keeps the ledger only if the stage holds a wait.
+  **Two-level form (Step 14):** the session agent commits each stage after the verdict and a path-and-name scan;
+  a journal line is the stage report (decisions.md · 2026-10-30 · Two-level stages (#440)).
 - **Builder:** do exactly the task. Pure logic: the failing test first. Run `npm run typecheck`,
   `npm test`, `npm run build`; quote the result lines with counts. `chrome.*` glue gets rows in
   `docs/e2e-test-plan.md` in the same stage.

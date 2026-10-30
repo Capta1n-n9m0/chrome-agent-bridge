@@ -236,6 +236,7 @@ and time; compare the code only) changes a pass rule after its FAIL was seen (ag
 would only FAIL again. **Instead of:** (a) a masked comparison; (b) code only. **Revisit if:** the user wants a corrected
 row (masked message, a timed console window) written for a later run. G1.4 goes to the user at the gate with this
 evidence. **By:** Claude, for the user at the gate
+*Superseded 2026-10-30: ruled by #407.*
 
 ### 2026-10-29 · liveA20: actors are killed with their tree; preflight refuses a fixture port other than 8081 (#405)
 **Decided:** Run 20's later slices kill an actor with its whole process tree (an s13 override; Run 17's
@@ -257,6 +258,7 @@ made; they run in liveB20. **Why:** #373's precedent: a row a helper limited is 
 rows' FAILs stay in the record. **Instead of:** re-judging the printed rows; accepting G1.4 on the lease clause alone.
 **Revisit if:** the re-measured rows show worker-console lines inside the window (then a product finding: the join or
 the tab path logs). G1.4 is judged on both sets at the gate. **By:** Claude, listed for the user at the gate
+*Superseded 2026-10-30: withdrawn by #406; G1.4 was judged by #407.*
 
 ### 2026-10-29 · S5-drivers-A2: CON-DESC's line form, no deferral in slice A, a pre-click grant not counted (#403)
 **Decided:** as `S5-drivers-A2.md` §5 and the §4.28 dated note (before any observation): (a) R20-CON-DESC prints
@@ -381,6 +383,7 @@ of the envelope, parsed inside `serializerCall`; a value without the envelope's 
 (a page's `toJSON` hook controls the string). Paths: `evaluate`, `args`, `asRef`, the mark sweep; `evaluateSaveStart`
 is not one. The fake CDP sorts keys under `returnByValue` first, so S2's mutant can fail. **Why:** measured page order
 6 of 6; the fake did not sort, so today's "page order" test could not fail. **By:** Claude
+*Superseded 2026-10-30: narrowed by #396 (page `toJSON` hooks never reach `value`); the rest stands.*
 
 ### 2026-10-29 · Stage 0: G1 by a join in the extension — `tabCreated.openerTabId` is the navigation source; no join, no grant (#385)
 **Decided:** #376 replaced. The worker holds a `tabCreated` whose tab has an `openerTabId` until that tab's
@@ -442,6 +445,7 @@ finds an envelope value a JSON string changes. **By:** Claude (proposed; Stage 0
 router method; the manifest gains exactly `webNavigation`). **Why:** #374 item 1 granted the permission; #337 measured
 `sourceTabId` names the opener. **Instead of:** leaving #226's limit. **Revisit if:** Stage 0 cannot join the event in
 a usable bound and the late event fails too. **By:** Claude (proposed; the permission by the user, #374)
+*Superseded 2026-10-30: replaced by #385 (the join in the extension); #385 is the standing entry.*
 
 ### 2026-10-29 · Step 13's order and slices: Stage 0 → S1 → S2/S3a/S3b/S4 → S5 Run 20 → S6 (#375)
 **Decided:** as phase doc § 0.1; S2, S3b and S4 may run beside S1 once S1's spec note is committed; live slices run

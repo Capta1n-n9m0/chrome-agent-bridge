@@ -1,5 +1,10 @@
 # Next session — Step 14, Phase G (minimal): a clean install on the user's other Windows devices
 
+> **Spent (2026-10-30).** Step 14 ran from this prompt and closed (decisions.md · 2026-10-30 · The user rules Step
+> 14's gate; Step 14 closes (#442)). Do not run it again. The next kickoff, a small wave for U.1's findings and the
+> Step 14 follow-ups, is written by `phase-kickoff` after the user's install on another device; until then, the
+> resume point is the root `CLAUDE.md` Current state.
+
 **How to start:** working directory `<repo>` (the chrome-remote-extention checkout), on Windows. The driver is not a
 bridge client: `claude --strict-mcp-config --mcp-config <a file holding {"mcpServers":{}}>`. Paste everything below
 the line.

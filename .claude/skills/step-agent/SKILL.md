@@ -71,3 +71,4 @@ substep. It is the recovery path after outages and respawns. If you cannot read 
 runner (`-verifier2.md` after a fix round; Stage 0 is `Stage0` and its evidence `stage0-…`); a ledger only
 for a waiting stage; and evidence the phase doc asks for (run records, logs as `.txt`). Nothing else: no brief copies, no raw dumps
 pasted into reports.
+A builder may also hand a doc stage a draft section or a proposal file (`S3-doc-section.md`, `S5-claude-md-proposals.md`); the doc stage reads it and the session agent decides.

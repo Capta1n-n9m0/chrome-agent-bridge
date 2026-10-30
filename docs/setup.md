@@ -91,9 +91,11 @@ skips the reload step and prints how to do it by hand.
 The rest of this file ([Use it](#5-use-it) onward) describes the tools. The sections below describe the install by
 hand, which is what `npm run setup` does for you.
 
-## Manual install (what setup does by hand)
+## Manual install
 
-Use this if you cannot run setup (another operating system, a locked-down machine) or want to see each step. The
+Use this if you cannot run setup (another operating system, a locked-down machine) or want to see each step. It reaches
+the same result by a slightly different route: it uses `npm install` where setup uses `npm ci`, a token you choose by
+hand where setup writes `bridge.token`, and `BRIDGE_TOKEN` in the MCP entry's env where setup's entry has none. The
 numbers 1 to 4 below are what other documents mean by "setup.md §1" to "§4".
 
 ### Prerequisites

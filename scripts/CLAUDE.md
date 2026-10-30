@@ -1,0 +1,32 @@
+# scripts/ — Key files and runtime gotchas
+
+The root `CLAUDE.md` and `docs/agent-rules.md` also apply. Also covers `examples/`.
+
+## Key files
+- `scripts/bridge/lib.mjs`: the pure logic of the three commands (prerequisites, token decision, install and build
+  staleness, the MCP entry decision and argv, `finish`, the doctor's lines, the update steps). It reads no file,
+  spawns no process and holds no token value. Typed by JSDoc (`// @ts-check`).
+- `scripts/bridge/setup.mjs` (`npm run setup`), `scripts/bridge/update.mjs` (`npm run bridge-update`): the I/O around
+  `lib.mjs`.
+- `scripts/bridge/doctor.ts` (`npm run doctor`): runs under `tsx` because it reads the SDK's TypeScript; one hello and
+  `daemon.status` over the SDK's own socket, never spawns or hands over a daemon, never calls the `claude` CLI.
+- `scripts/test/s14-{setup,doctor,update}.test.ts`: vitest over `lib.mjs` with injected facts; no real config or CLI.
+- `scripts/tsconfig.json`: extends `tsconfig.base.json` with `allowJs` and `checkJs`; includes `bridge/*.mjs`,
+  `bridge/*.ts`, `test/*.ts`.
+- `scripts/doc-check.mjs`: the cleanup pass's objective checks (`cleanup-pass` skill).
+- `examples/list-tabs.ts`: the smallest script outside the repo, using the SDK through a `file:` dependency (#430);
+  steps in `docs/setup.md`, "Scripts from any folder".
+
+## Runtime gotchas
+- **No root npm script may be named like an npm lifecycle hook** (`install`, `postinstall`, `prepare`, `update`, …):
+  npm runs those itself, `npm ci` among them. `LIFECYCLE_NAMES` in `lib.mjs` lists them and the tests read
+  `package.json` against it (Stage0.md C1; decisions.md · 2026-10-30 · Stage 0: the three commands are Node scripts with
+  non-lifecycle names; S2 in two slices (#427)).
+- **`setup.mjs`, `update.mjs` and `lib.mjs` use Node built-ins only**: setup runs before `npm ci`, so no `tsx` and no
+  dependency. Only `doctor.ts` may import the SDK.
+- **Rehearsing an install (measured 2026-10-30):** `claude mcp get` and `claude mcp list` health-check each server, so
+  they start `mcp/dist/index.js`; decide from the config file instead. `CLAUDE_CONFIG_DIR` moves the CLI's
+  `.claude.json`: an `add` under a scratch value wrote only there (`claudeConfigPath` in `lib.mjs` reads the same
+  variable). Claude Code rewrites `~/.claude.json` on its own, so a guard hashes its `mcpServers` key, not the whole
+  file. Rehearse in a scratch clone with a scratch `CLAUDE_CONFIG_DIR`; for the reload script's behaviour there, see
+  `recipes/CLAUDE.md`.

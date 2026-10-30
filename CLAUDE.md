@@ -87,6 +87,7 @@ One `CLAUDE.md` per package holds its Key files (file by file) and its Runtime g
 - `extension/` — the Chrome MV3 extension: service worker, offscreen socket, content script, handlers, the safety gate
   (`extension/CLAUDE.md`; deeper files in `extension/src/` (redirects, DNR, `file:` pages, uploads), `extension/src/content/`,
   `extension/src/evaluate/`, `extension/src/handlers/`).
+- `scripts/` — the setup, doctor and update commands, their tests, `examples/` (`scripts/CLAUDE.md`).
 - `recipes/` — scripts and live-run helpers, and the facts about driving Chrome and Windows tooling (`recipes/CLAUDE.md`).
 
 ## Invariants that bind every package
@@ -111,9 +112,9 @@ npm run build        # daemon/dist/index.js + mcp/dist/index.js + extension/dist
 npm test             # vitest — 6089 passed, 255 files (`npm test` 2026-10-30, Step 14; recipes/test and scripts/test included)
 npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension/scripts (chained with `&&`; see the cross-package gotchas below)
 npm run recipe -- recipes/<file>.ts [args]   # a script against the SDK, run with tsx (= npx tsx recipes/<file>.ts)
-npm run setup        # one-command install on a Windows device (scripts/bridge/setup.mjs): prerequisites, npm ci + build when stale, bridge.token, `claude mcp add -s user`, the Chrome steps; exit 0/1/2; `-- --dry-run`, `-- --replace-mcp`
-npm run doctor       # one line per part (OK / HINT / FAIL with its fix); never spawns or hands over a daemon; the extension-build line is a heuristic (#432)
-npm run bridge-update  # git pull --ff-only, npm ci/build when needed, recipes/reload-extension.ps1, the /mcp hint; `-- --no-reload`
+npm run setup        # one-command install on a Windows device; `-- --dry-run`, `-- --replace-mcp` (`scripts/CLAUDE.md`)
+npm run doctor       # one line per part, read-only (`scripts/CLAUDE.md`)
+npm run bridge-update  # pull, rebuild, reload the extension; `-- --no-reload` (`scripts/CLAUDE.md`)
 npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10, .s11, .s11b, .s13 cover the others; all eight exit 0, 2026-10-30 cleanup pass — run them: a code stage can break one, as S3 did)
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
