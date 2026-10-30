@@ -9,7 +9,8 @@ as a dated entry and point back.
 
 ## Open decisions
 
-None. Step 13's gate was ruled by #420 (`decisions-archive/step13.md`).
+- 2026-10-30 · Stage 0: the doctor reads the extension's build as a heuristic; no protocol change (#432) — for the
+  user's review at Step 14's gate.
 
 ## Standing decisions
 
@@ -188,3 +189,76 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 
 The current step's entries, newest first. Step 13's (#375–#420) are in `decisions-archive/step13.md`, Step 12's
 (#321–#374) in `decisions-archive/step12.md`. New entries start at 421.
+
+### 2026-10-30 · Stage 0: the doctor reads the extension's build as a heuristic; no protocol change (#432)
+**Decided:** the doctor says "extension connected" from `daemon.status`, compares the daemon's build with the one on
+disk, and, as a heuristic named as such, "the extension may be older than the build — reload it" when
+`extension\dist\sw.js` is newer than the last `extension resync` line in the daemon's log. The doctor never spawns or
+hands over a daemon. The phase doc's Outcome and R4.1 are amended to this wording. **Why:** nothing on the wire reports
+the loaded extension's build (Stage0.md C2); the Outcome forbids a protocol change; the conservative option (§4).
+**Instead of:** a build id in the extension's hello and `daemon.status` (a contract change), or driving a tab.
+**Revisit if:** the user wants an exact check. **By:** Claude (for user review; listed under Open decisions)
+
+### 2026-10-30 · Stage 0: update treats "nothing reloaded" as a hint; `--no-reload` for the rehearsal (#431)
+**Decided:** update prints the reload's outcome; `reload-extension.ps1` exit 2 is a hint ("reload it by hand"), not a
+failure; a `--no-reload` switch, which S4 uses. **Why:** the reload script drives the user's Chrome and finds no card
+for a scratch clone (Stage0.md M2). **Instead of:** running the reload from a scratch clone. **By:** Claude
+
+### 2026-10-30 · Stage 0: scripts outside the repo use a `file:` dependency on the checkout's `sdk`, run with tsx (#430)
+**Decided:** `npm install <repo>\sdk` in the script's folder, then `npx tsx script.ts`; the doc says how to remove the
+junction it leaves (#220). Changes #425's open question. **Why:** measured (Stage0.md 0.6): resolves, typechecks, finds
+the checkout's `bridge.token` from the SDK's own folder, records itself, no global state; `sdk/dist` does not exist and
+plain `node` cannot load the `.ts` SDK. **Instead of:** `npm link`, importing `sdk/src` by path. **Revisit if:** the
+SDK gets a build. **By:** Claude
+
+### 2026-10-30 · Stage 0: the MCP entry is read from the config file and written by `claude mcp add -s user` (#429)
+**Decided:** read `<CLAUDE_CONFIG_DIR or ~>\.claude.json` read-only to decide; register with `claude mcp add -s user
+chrome-agent-bridge -- node <repo>\mcp\dist\index.js`; replace a different entry only with a flag; the doctor reports
+an entry's `BRIDGE_TOKEN` that differs from `bridge.token`, compared by equality, never printed. S4 sets
+`CLAUDE_CONFIG_DIR` to a scratch folder and stops if it does not isolate. Refines #424. **Why:** `claude mcp get`/`list`
+start the server; `add` defaults to local scope; an env token wins over the file (Stage0.md M5, M6). **By:** Claude
+
+### 2026-10-30 · Stage 0: the token goes to the clipboard by `clip.exe` on stdin and is cleared after the paste (#428)
+**Decided:** the install copies `bridge.token` with `clip.exe` (stdin), says so, waits for Enter, then empties the
+clipboard; no Options page is opened; a history-excluded copy is used only if S2 measures it. Settles #423. **Why:**
+measured exact from Node with no profile; the extension is not loaded at install time; clipboard history is on here
+(Stage0.md M4). **Instead of:** `Set-Clipboard -Value` on a command line. **By:** Claude
+
+### 2026-10-30 · Stage 0: the three commands are Node scripts with non-lifecycle names; S2 in two slices (#427)
+**Decided:** `npm run setup`, `npm run doctor`, `npm run bridge-update`, Node `.mjs` (the setup entry on Node built-ins
+only, since it runs before `npm ci`; `npm ci --no-audit --no-fund`); PowerShell only through `spawnSync` for the
+clipboard and the reload; a test pins that no root script takes an npm lifecycle name. S2 splits into S2a (setup and the
+shared logic) and S2b (doctor and update); S4 needs S2b and S3. Changes #422; keeps #421, #426. **Why:** Stage0.md C1,
+M3, 0.3; node, npm and git are on PATH in a profile-less shell (measured). **Instead of:** `.ps1` entry points; a script
+named `install`. **Revisit if:** U.1 finds npm missing from a new shell. **By:** Claude
+
+Entries #421–#426 record the phase doc's proposed decisions 0.2–0.7 (`docs/plans/2026-10-30-step14-phase-g-own-devices.md`
+§ Decisions holds each in full) before Stage 0, so the audit can attack them (kickoff §4). Stage 0's `Stage0.md` keeps
+or changes each; a change is a new entry.
+
+### 2026-10-30 · Step 14 (0.7): what is not in Step 14 (#426)
+**Decided:** a Web Store or signed build, macOS/Linux, a stable extension key, auto-update, R20-G2-1, the Phase F items
+left out and the Run 20 helper proposals stay in Follow-ups. **Why:** #374 item 11, Phase G minimal. **By:** Claude (proposed)
+
+### 2026-10-30 · Step 14 (0.6): scripts from any folder, one measured way (#425)
+**Decided:** Stage 0 measures `npm link`, a `file:` dependency and importing `<repo>/sdk/dist`; one way is documented.
+**Why:** one documented way is what a new device needs. **By:** Claude (proposed)
+
+### 2026-10-30 · Step 14 (0.5): the MCP entry by `claude mcp add`, user scope, idempotent (#424)
+**Decided:** an entry pointing at this checkout is left alone; one pointing elsewhere is reported and replaced only with
+a flag; without the `claude` CLI the command says what to add and where. **Why:** no hand-edited `~/.claude.json`.
+**By:** Claude (proposed)
+
+### 2026-10-30 · Step 14 (0.4): the token reaches the extension unprinted (#423)
+**Decided:** clipboard or the Options page opened; never the console, a log or a committed file; the MCP entry carries
+no `BRIDGE_TOKEN`. Stage 0 decides the mechanism. **Why:** the token is a password (root `CLAUDE.md` invariants).
+**By:** Claude (proposed)
+
+### 2026-10-30 · Step 14 (0.3): Node first, PowerShell 5.1 only for Windows UI or the clipboard (#422)
+**Decided:** `npm run <script>` calling Node where it can do the job; PowerShell with `-NoProfile -ExecutionPolicy Bypass
+-File` otherwise; nothing changes the machine's execution policy. Stage 0 decides. **Why:** runs on a fresh Windows 11
+with Node, git and Chrome only. **By:** Claude (proposed)
+
+### 2026-10-30 · Step 14 (0.2): two levels; Stage 0, S1–S5 in order, S1 beside S2 (#421)
+**Decided:** the session agent runs each stage with one builder and one verifier. **Why:** a small phase; three levels
+cost more than they catch here. **By:** Claude (proposed)

@@ -28,6 +28,8 @@ wave of rows.
   what to do in Chrome (the folder to load, where to paste the token).
 - **One check command** ("doctor") that says in plain lines whether each part works: Node, the build, the token, the
   MCP entry, the daemon, the extension connected and running the current build. Each failed line names its fix.
+  *(2026-10-30, Stage 0, #432: nothing reports the loaded extension's build; the doctor says "connected" and, as a
+  named heuristic, "may be older than the build". It never spawns or hands over a daemon.)*
 - **One update command:** pull, install, build, reload the extension (`recipes/reload-extension.ps1`), and the hint to
   run `/mcp`.
 - **Scripts from any folder:** a script outside the repo can import the SDK and find the token, by one documented way.
@@ -73,6 +75,11 @@ the Phase F items left out, and the Run 20 helper proposals: all stay in Follow-
 
 ## Stages
 
+*(2026-10-30, Stage 0: the split below is amended by #427–#431: the commands are `npm run setup`, `npm run doctor`,
+`npm run bridge-update`; S2 runs as S2a (setup and shared logic, cap 300) then S2b (doctor and update, cap 300); S3
+needs S1 and S2a; S4 needs S2b and S3 and runs update with `--no-reload` and a scratch `CLAUDE_CONFIG_DIR`; S1's lane
+adds `recipes/test/s12-r19-static.test.ts`. Stage0.md §6.)*
+
 ### Stage 0 — Spec audit and measurements (1 h, first, alone; risk: standard)
 Lenses: every path and command this doc names exists or is marked new; re-run Step 13's contract tests on port 0; the
 counts recomputed (`node scripts/doc-check.mjs`). Measure, on this machine without touching the user's setup: 0.3 (what
@@ -112,6 +119,7 @@ down; `README.md` quick start; root `CLAUDE.md` Commands.
 - **I2.4** update on the scratch clone ends with exit 0.
 - **S3.1** the example script runs from a folder outside the repo and lists the tabs it may see.
 - **R4.1** the doctor against the user's running bridge prints every part green.
+  *(2026-10-30, #432: "the extension's build" is the heuristic line; green = connected and not flagged older.)*
 - **D5.1** a reader can install from the new section alone (the verifier follows it on the scratch clone);
   `node scripts/doc-check.mjs` clean.
 - **Counts at the close:** 25 tools, 28 router methods, 27 codes (26 on the wire).
