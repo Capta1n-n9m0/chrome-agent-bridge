@@ -192,6 +192,22 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-30 · liveC20: the dock reader is measured and fixed, then attempt 2 (#418)
+**Decided:** liveC20 attempt 1 (`3f19f28`, HEAD `777400d`, exit 0, verifier PASS-with-notes) stands as recorded: R20-0C
+PASS; the five DevTools rows NOT RUN ("dock side unreadable"); R20-RESTORE NOT MEASURED in #416's form; R20-LOGS PASS;
+`FLAG debugging-flag=no`. DevTools did open as a docked pane, yet the dock-side reader read `unread` twice: #413's
+Revisit-if is met. Claude takes option (b) of `S5-liveC20.md` §5: a recipes-only fix round (1 of 3) adds a counts-only
+diagnostic of which UI Automation step fails (Customize button, item names, pressed state), a `remaining` check after
+`Restore-R20CDock`'s close (verifier F2), and, from one live diagnostic read in the wave's own window X, a corrected
+reader; then attempt 2 into a new record file. **Why:** Run 20 exists in part to re-measure #369's two DevTools
+conditions; attempt 1 measured neither, for an instrument defect. A reader that finds the real buttons does not change
+#413's rule (side `unread` unless exactly one button reads pressed), any expected text or any pass rule; opening
+DevTools in window X is what liveC20 already does under the Human gates' DevTools grant. The attempt-1 record is not
+re-judged. **Instead of:** (a) accepting #369 unmeasured for a third run. **Revisit if:** the diagnostic shows the dock
+side cannot be read by UI Automation at all (then attempt 2 is not run, and (a) stands). The `DIALOGS … wave-windows-open=1`
+count of the wave's own options window (verifier F1; slices A and B too) is not changed by this round: it goes to the
+user with #417. **By:** Claude
+
 ### 2026-10-30 · liveB20's `text-leak` STOP goes to the user; the record is held, verified, not committed; liveC20 goes on (#417)
 **Decided:** liveB20 attempt 1 (HEAD `a5476bf`) ran every row and ended in the pre-registered STOP `text-leak` at
 R20-LOGS: `SCAN20 actors browser_upload_file name=1`. Cause: R20-CHOOSE-TWICE's call 1 times out by design, and the
