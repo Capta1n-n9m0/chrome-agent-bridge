@@ -192,6 +192,24 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-30 · liveB20's `text-leak` STOP goes to the user; the record is held, verified, not committed; liveC20 goes on (#417)
+**Decided:** liveB20 attempt 1 (HEAD `a5476bf`) ran every row and ended in the pre-registered STOP `text-leak` at
+R20-LOGS: `SCAN20 actors browser_upload_file name=1`. Cause: R20-CHOOSE-TWICE's call 1 times out by design, and the
+MCP's TIMEOUT reply carries the failure report's `Screenshot: <path>` line (`sdk/src/error.ts`), a path under the
+user's home folder. The hit is in the actors' transcript in the wave's out dir, outside the repo; the record and the
+`-3` evidence scan 0 for the name, the token and any home path. The STOP is agent-rules §3 item 1, so the ruling is the
+user's, not Claude's. Until it: (1) no product fix (the phase doc forbids a changed message on any path but the
+second-chooser refusal) and no narrowed scan (agent-rules §2); (2) R20-LOGS stays FAIL; no re-attempt, since every
+re-run would repeat the hit; (3) the record stays uncommitted in the steps dir (the how-to's text-leak rule), and an
+Opus verifier checks it read-only so the user rules on checked verdicts; (4) liveC20 runs, since it is a separate slice
+and the clean-tree guard ignores untracked files in the steps dir; liveC20's own LOGS scan judges it alone.
+**Options for the user:** (a) the product prints the screenshot path with the home folder replaced by `~` or relative
+to the repo (a later step: a changed message), then a re-run of slice B; (b) rule that a tool reply to the client is
+not the log R20-LOGS guards, so LOGS is a RECORD and the record is committed; (c) both: (b) for Run 20, (a) in Phase
+G. **Recommendation:** (c). The reply goes only to the calling agent on the same machine, which needs the path to open
+the screenshot; but a home path in an agent's transcript can end up in pasted logs, so `~` costs nothing. **By:**
+Claude, for the user at the gate
+
 ### 2026-10-30 · Before liveB20/liveC20: an unread dock side with no dock change is NOT MEASURED; the capture's order; the DIALOGS label (#416)
 **Decided:** three dated notes in §4.28, written and committed before any liveB20 or liveC20 observation, and the
 drivers changed to match: (1) **R20-RESTORE's dock clause (C3 verifier F2):** when R20-0C's found side is `unread` and
