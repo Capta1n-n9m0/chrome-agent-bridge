@@ -8,7 +8,7 @@ import { basename, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { BoxState } from "./s11-rules.js";
 import { answerWord } from "./s12-r19.js";
-import { actorsVerdict, loadedLine20, portLine, s4Line, scan20ActorsLine, scan20Line, type Order, type Read3, type Scan3 } from "./s13-forms.js";
+import { actorsVerdict, dockLine, dockRestoreVerdict, flagLine, loadedLine20, portLine, s4Line, scan20ActorsLine, scan20Line, type DockSide, type Order, type Read3, type Scan3 } from "./s13-forms.js";
 export const SLICES_20 = ["liveA20", "liveB20", "liveC20"] as const;
 export type Slice20 = (typeof SLICES_20)[number];
 export const isSlice20 = (s: string): s is Slice20 => (SLICES_20 as readonly string[]).includes(s);
@@ -141,12 +141,24 @@ export function scanArgs20(repo: string): ScanArgs {
   const also = [...new Set(loginNames().filter((s) => s !== "" && s.toLowerCase() !== name.toLowerCase()))];
   return { name, alsoNames: also, sentinels: ["s12sent-5f3a9c71", "sentinel-args-K7W3-"], token };
 }
+/** Slice C's record lines (C3, additive): `flag --value <word>` prints the FLAG line; `dock --row R20-0C|R20-RESTORE --side <word> [--found <word>]` prints the DOCK line. R20-RESTORE also judges the read-back
+ *  against R20-0C's side (dockRestoreVerdict): a different or unread side prints the found side for the user and exits 2 with STOPWHY not-restored. A word outside the lists reads as unread, never a guess. */
+export function lineCmd20(sub: string, o: Record<string, string>): { lines: string[]; exit: number } | undefined {
+  const side = (v: string | undefined): DockSide => (v === "bottom" || v === "right" || v === "left" || v === "undock" ? v : "unread");
+  if (sub === "flag") return { lines: [flagLine(read3(o.value))], exit: 0 };
+  if (sub !== "dock") return undefined;
+  if (o.row === "R20-0C") return { lines: [dockLine("R20-0C", side(o.side))], exit: 0 };
+  if (o.row !== "R20-RESTORE") return { lines: ["STOP: dock needs --row R20-0C or R20-RESTORE"], exit: 2 };
+  const v = dockRestoreVerdict(side(o.found), side(o.side));
+  return { lines: [dockLine("R20-RESTORE", side(o.side)), ...(v === "PASS" ? [] : [`CHECK R20-RESTORE found-side=${side(o.found)} read-back=${side(o.side)}`, "STOPWHY not-restored"])], exit: v === "PASS" ? 0 : 2 };
+}
 export async function main(argv: string[]): Promise<number> {
   const [sub, ...rest] = argv;
   const o: Record<string, string> = {};
   for (let i = 0; i < rest.length; i += 2) o[rest[i]!.replace(/^--/, "")] = rest[i + 1] ?? "";
   const repo = resolve(fileURLToPath(import.meta.url), "..", "..");
   if (sub === "proof") return proof(o);
+  const lc = lineCmd20(sub ?? "", o); if (lc) { lc.lines.forEach((l) => console.log(l)); return lc.exit; }
   if (sub === "s4") { console.log(s4Line(o.ancestor === "yes")); return 0; }
   if (sub === "port") { console.log(portLine(Number(o.port), new Date().toISOString(), Number(o.listed))); return 0; }
   if (sub === "restore-compare") {

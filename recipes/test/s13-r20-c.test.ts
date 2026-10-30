@@ -1,10 +1,13 @@
 // Step 13 S5-drivers-C2: the pure decisions of recipes/s13-r20-c.ts (liveC20's actor, docs/e2e-test-plan.md section 4.28).
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { IDLE_MIN_MS_19 } from "../s12-forms.js";
 import { K17 } from "../s11b-rules.js";
 import type { PageObs } from "../s11-rules.js";
 import { KEEPER_IDLE_MS } from "../../extension/src/debugger-keeper.js";
-import { MARKER, NO_REFUSAL_FINDING, ROWS_C, EARLIER_NM_IDLE, EARLIER_NM_VALUE, afterGate, cmds, condGate, condOf, earlierVerdict, devtLegResult, gateCond, gateDock, keep4Gate, keep4Legs, notRunLine, parseCount, parseCtl, parseOpen, rowOfLegs, sweepVerdict, upDevtLegs, type CtlRead, type LegIn } from "../s13-r20-c.js";
+import { LEG_ORDER, MARKER, NO_REFUSAL_FINDING, condFor, pickRefusing, ROWS_C, EARLIER_NM_IDLE, EARLIER_NM_VALUE, afterGate, cmds, condGate, condOf, earlierVerdict, devtLegResult, gateCond, gateDock, keep4Gate, keep4Legs, notRunLine, parseCount, parseCtl, parseOpen, rowOfLegs, sweepVerdict, upDevtLegs, type CtlRead, type LegIn } from "../s13-r20-c.js";
 const K = K17["K-devt"];
 const refusal = { code: K.code, message: K.message };
 const NO: CtlRead = { windows: 0, title: "none", attached: "no", targets: 7 };
@@ -166,7 +169,7 @@ describe("the gates print the sheet's NOT RUN texts", () => {
     expect(o.lines).toEqual(nr.concat(["CHECK R20-DEVT no-refusal legs-pass=1 legs-other=2"]));
     expect(gateCond("none", "FAIL").lines.at(-1)).toBe("CHECK R20-DEVT no-refusal legs-pass=0 legs-other=1");
     expect(gateCond("none").lines.at(-1)).toBe("CHECK R20-DEVT no-refusal legs-pass=0 legs-other=0");
-    expect(gateCond("undock", "FAIL,PASS")).toEqual({ lines: ["CHECK gate-cond run=yes refusing-legs=1"], exit: 0 });
+    expect(gateCond("undock", "FAIL,PASS")).toEqual({ lines: ["CHECK gate-cond run=yes refusing-legs=1", "CHECK gate-cond under=undock leg=undocked cond=earlier not-rerun=none"], exit: 0 });
     expect(gateCond("undocked,docked").exit).toBe(0);
     expect(notRunLine("R20-X", "why")).toBe("ROW R20-X NOT RUN — why");
   });
@@ -193,7 +196,31 @@ describe("the conditional rows re-create the refusing leg's condition (--cond)",
       expect(out.at(-1)).toBe(NO_REFUSAL_FINDING);
       out.length = 0;
       expect(await cmds["gate-cond"]!(["--findings", "undock", "--legs", "FAIL"])).toBe(0);
-      expect(out).toEqual(["CHECK gate-cond run=yes refusing-legs=1"]);
+      expect(out).toEqual(["CHECK gate-cond run=yes refusing-legs=1", "CHECK gate-cond under=undock leg=undocked cond=earlier not-rerun=none"]);
     } finally { spy.mockRestore(); }
+  });
+  it("a refusing leg maps to the conditional rows' --leg and --cond exactly as C2 fixer2 section 3 says; any other label is a helper defect (C2 verifier3 H2)", () => {
+    expect([condFor("undock"), condFor("undocked"), condFor("docked")]).toEqual([{ leg: "undocked", cond: "earlier" }, { leg: "undocked", cond: "none" }, { leg: "docked", cond: "none" }]);
+    for (const bad of ["", "none", "Undock", "control", "undocked,docked"]) expect(() => condFor(bad)).toThrow("DEVT leg label");
+  });
+  it("the conditional rows run once, under the first refusing leg in sheet order whatever order the labels arrive in; the others are named as not re-run", () => {
+    expect(LEG_ORDER).toEqual(["undock", "undocked", "docked"]);
+    expect(pickRefusing(["docked", "undocked"])).toEqual({ under: "undocked", others: ["docked"] });
+    expect(pickRefusing(["docked", "undock", "undocked"])).toEqual({ under: "undock", others: ["undocked", "docked"] });
+    expect(pickRefusing([])).toBeUndefined();
+    expect(() => pickRefusing(["undock", "other"])).toThrow("DEVT leg label");
+    expect(gateCond("docked,undocked").lines).toEqual(["CHECK gate-cond run=yes refusing-legs=2", "CHECK gate-cond under=undocked leg=undocked cond=none not-rerun=docked"]);
+    expect(() => gateCond("bogus")).toThrow("DEVT leg label");
+  });
+  it("UP-DEVT and SWEEP-HELD phase 1 run the earlier attach (with its idle wait) before the first control read, and earlierAttach attaches and idles (verifier3 H1: mutants e1, e2, e6)", () => {
+    const src = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "..", "s13-r20-c.ts"), "utf8");
+    const body = (name: string): string => { const i = src.indexOf(`async function ${name}(`); expect(i).toBeGreaterThan(-1); const j = src.indexOf("\nasync function ", i + 10); return src.slice(i, j < 0 ? undefined : j); };
+    const up = body("upDevt"), sw = body("sweepHeld"), ea = body("earlierAttach");
+    expect(up.indexOf("if (earlier) { const nm = await earlierAttach(t, R, \"control\")")).toBeGreaterThan(-1);
+    expect(up.indexOf("earlierAttach(")).toBeLessThan(up.indexOf("sig(id(\"ctl0\"))"));
+    const p1 = sw.slice(sw.indexOf("if (x.opts.phase !== \"2\")"));
+    expect(p1.indexOf("earlierAttach(t, R, \"control-pre\")")).toBeGreaterThan(-1);
+    expect(p1.indexOf("earlierAttach(")).toBeLessThan(p1.indexOf("sig(id(\"ctl0\"))"));
+    expect(ea).toContain('t.evaluate("1 + 1")'); expect(ea).toContain("await idle(row)"); expect(ea).toContain("earlierVerdict(");
   });
 });

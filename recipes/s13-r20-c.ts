@@ -69,6 +69,20 @@ export const EARLIER_NM_VALUE = "NOT MEASURED the earlier attach did not answer 
 export const earlierVerdict = (e: Err | undefined, value: unknown, idleMs: number): string | undefined => (e || value !== 2 ? EARLIER_NM_VALUE : idleMs < IDLE_MIN_MS_19 ? EARLIER_NM_IDLE : undefined);
 /** `--cond earlier` (#369 condition 1: an earlier attach, then idle) or `none` (condition 2: no CDP call before the open); anything else is a helper defect. */
 export const condOf = (o: Record<string, string>): boolean => { if (o.cond !== "earlier" && o.cond !== "none") throw new HelperDefect("--cond is earlier or none"); return o.cond === "earlier"; };
+/** The refusing leg's label (the `leg=` of its finding line) -> the conditional rows' `--leg` and `--cond` (C2 fixer2 section 3); any other label is a helper defect. */
+export function condFor(label: string): { leg: State; cond: "earlier" | "none" } {
+  if (label === "undock") return { leg: "undocked", cond: "earlier" };
+  if (label === "undocked") return { leg: "undocked", cond: "none" };
+  if (label === "docked") return { leg: "docked", cond: "none" };
+  throw new HelperDefect("not a DEVT leg label");
+}
+/** The DEVT legs in the sheet's order (UNDOCK, then EARLY's two); the conditional rows run once, under the first refusing leg of this order, whatever order the labels came in. */
+export const LEG_ORDER: readonly string[] = ["undock", "undocked", "docked"];
+export function pickRefusing(labels: readonly string[]): { under: string; others: string[] } | undefined {
+  labels.forEach((l) => condFor(l));
+  const sorted = LEG_ORDER.filter((l) => labels.includes(l));
+  return sorted.length === 0 ? undefined : { under: sorted[0]!, others: sorted.slice(1) };
+}
 /** The earlier attach and idle wait of condition 1, run before ctl0; undefined when it held, else the NOT MEASURED verdict (already printed as the leg's). */
 async function earlierAttach(t: Awaited<ReturnType<Ctx["open"]>>, row: string, label: string): Promise<string | undefined> {
   const e1 = await att(() => t.evaluate("1 + 1"));
@@ -161,6 +175,11 @@ async function keep4(x: Ctx): Promise<number> {
 /** Two actor runs, the reload between them at block level (the capture window is reopened before phase 2 so its control read works): phase 1 opens the tab and DevTools and reads the control; phase 2 re-claims, reads the control, calls, checks, closes. */
 async function sweepHeld(x: Ctx): Promise<number> {
   const R = "R20-SWEEP-HELD", s = need(x), id = (st: string): string => `${R}-${s}-${st}`;
+  if (x.opts.phase === "close") {   // phase 1 ended without a measurement (C3, C2 verifier3 H3): no reload, no phase 2; the kept tab is closed here
+    const t = await findTab(x.c, MARKER.sweep, 15_000).catch(() => undefined);
+    await att(async () => t?.close()); say(`CHECK ${R} tab-closed=${t ? "yes" : "no"}`);
+    return 0;
+  }
   if (x.opts.phase !== "2") {
     const earlier = needCond(x), t = await x.open(URL(`con&${MARKER.sweep}`), true, true);
     if (earlier) { const nm = await earlierAttach(t, R, "control-pre"); if (nm) return finish(R, [toV(nm)]); }
@@ -201,8 +220,10 @@ const noRefusal = (devtLegs: string): string => {
 };
 /** `gate-cond --findings <comma list of the refusing legs or none> --legs <comma list of the DEVT legs' verdicts: PASS, RECORD, NM or FAIL>`: no refusing leg prints the three conditional rows NOT RUN and the finding (or its counts), exit 3; else exit 0. */
 export function gateCond(findings: string, devtLegs = ""): { lines: string[]; exit: 0 | 3 } {
-  const legs: DevtLeg[] = findings.split(",").filter((l) => l !== "" && l !== "none").map(() => ({ verdict: "FAIL", finding: "devtools-refuses" as const }));
-  const c = conditionalRows(legs);
+  const labels = findings.split(",").filter((l) => l !== "" && l !== "none");
+  const legs: DevtLeg[] = labels.map(() => ({ verdict: "FAIL", finding: "devtools-refuses" as const }));
+  const c = conditionalRows(legs), pick = pickRefusing(labels);
+  if (c.run && pick) { const f = condFor(pick.under); return { lines: [`CHECK gate-cond run=yes refusing-legs=${legs.length}`, `CHECK gate-cond under=${pick.under} leg=${f.leg} cond=${f.cond} not-rerun=${pick.others.join(",") || "none"}`], exit: 0 }; }
   return c.run ? { lines: [`CHECK gate-cond run=yes refusing-legs=${legs.length}`], exit: 0 } : { lines: [...ROWS_C.slice(2).map((r) => notRunLine(r, c.line!)), noRefusal(devtLegs)], exit: 3 };
 }
 export const gateCmd = (f: (v: string, w: string) => { lines: string[]; exit: 0 | 3 }, key: string) => async (a: string[]): Promise<number> => {

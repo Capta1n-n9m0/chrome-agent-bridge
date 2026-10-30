@@ -13,7 +13,7 @@ const SCRIPT = `
 $ErrorActionPreference = 'Stop'
 . '${REPO}/recipes/s13-devt.ps1'
 $global:D = 99; $global:Log = @(); $global:State = 'bottom'; $global:S11Own = @{ '1' = $true }; $global:S9WinIds = @{ '1' = 1 }; $global:S12Dev = $null; $global:Dead = @{}; $global:Url = 'http://localhost:8081/e2e-playground.html?s12=con'
-$global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false
+$global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false; $global:PressFail = $false
 function Stop9([string]$m) { $global:Log += 'STOP' }
 function Assert-S11Own([long]$h, [string]$w) { if (-not $global:S11Own.ContainsKey([string]$h)) { throw 'not own' } }
 function Test-S13Alive([long]$h) { -not $global:Dead.ContainsKey([string]$h) -and -not ([string]$h -eq '50' -and $global:State -ne 'undock') }
@@ -42,10 +42,10 @@ function Get-S13UiaItems([long]$h) {
   [pscustomobject]@{ name = 'Dock side'; type = 'Text'; el = 'label' }
 }
 function Get-S13Pressed($el) { if ($global:NoPressed) { return $null }; "$el" -eq "dock:$global:State" }
-function Invoke-S13Item($el) { $global:Log += "inv:$el"; if ("$el" -like 'dock:*') { $global:State = "$el".Substring(5) }; $true }
+function Invoke-S13Item($el) { $global:Log += "inv:$el"; if ("$el" -like 'dock:*' -and $global:PressFail) { return $false }; if ("$el" -like 'dock:*') { $global:State = "$el".Substring(5) }; $true }
 function T([string]$n, [scriptblock]$b) {
   Write-Host "BEGIN $n"; $global:Log = @(); $global:State = 'bottom'; $global:S11Own = @{ '1' = $true }; $global:S9WinIds = @{ '1' = 1 }; $global:S12Dev = $null; $global:Dead = @{}; $global:Url = 'http://localhost:8081/e2e-playground.html?s12=con'
-  $global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false
+  $global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false; $global:PressFail = $false
   try { Write-Host "RET $(@(& $b)[-1])" } catch { Write-Host "THREW $_" }
   Write-Host "LOG $($global:Log -join ',')"
 }
@@ -119,6 +119,8 @@ T setUndockPid { [void](Set-S13DockSide 1 8081 'undock'); "pid=$($global:S9WinId
 T openAdopt { $global:S12Dev = [pscustomobject]@{ How = 'window'; Hwnd = 70 }; [void](Open-S13DevTools 1 8081); "pid=$($global:S9WinIds['70']) own=$($global:S11Own.ContainsKey('70'))" }
 T setKeepOthers { $global:S11Own['2'] = $true; [void](Set-S13DockSide 1 8081 'undock'); "OWN2=$($global:S11Own.ContainsKey('2'))" }
 T setUndockThenDock { [void](Set-S13DockSide 1 8081 'undock'); $r = Set-S13DockSide 1 8081 'left'; "$($r.done) $($r.now) OWN1=$($global:S11Own.ContainsKey('1')) OWN50=$($global:S11Own.ContainsKey('50'))" }
+T setPressFailX { $global:PressFail = $true; $r = Set-S13DockSide 1 8081 'left'; "$($r.done) $($r.changed) $($r.now)" }
+T setPressFailOwn { $global:State = 'undock'; $global:S11Own['50'] = $true; $global:S9WinIds['50'] = 4242; $global:PressFail = $true; $r = Set-S13DockSide 1 8081 'bottom'; "$($r.done) $($r.changed) $($r.now)" }
 T closeHumanOther { $global:State = 'closed'; $global:ForeignOther = $true; $r = Close-S13DevTools 1 8081; "$($r.closed) $($r.windows) $($r.remaining)" }
 T setForeign { $global:Foreign = $true; $r = Set-S13DockSide 1 8081 'bottom'; "$($r.done) $($r.changed) $($r.now)" }
 T setBadSide { Set-S13DockSide 1 8081 'top' }
@@ -235,6 +237,13 @@ it("opening goes through Run 19's menu opener on a wave window showing an 8081 f
 		expect(ret("closeHumanOther")).toBe("0 0 0");
 			expect(ret("closeStuckPane")).toBe("1 1 1");
 		expect(threw("closeForeignX")).toMatch(/not own/);
+	});
+	it("a failed press changes nothing and closes the menu it opened: an Escape into X for a menu in X, and no key at all for a menu in the wave's own DevTools window (C1 verifier2 N2)", () => {
+		expect(ret("setPressFailX")).toBe("False False bottom");
+		expect(log("setPressFailX")).toBe("inv:customize,esc1,inv:customize,inv:dock:left,esc1");
+		expect(ret("setPressFailOwn")).toBe("False False undock");
+		expect(log("setPressFailOwn")).toBe("inv:customize,inv:dock:bottom");
+		expect(log("setPressFailOwn")).not.toMatch(/esc/);
 	});
 	it("the file is ASCII, defines only S13-named functions, prints nothing (no Write-Host, Say9 or Show-S16) and reads no window text but through the one title wrapper", () => {
 		const src = readFileSync(resolve(REPO, "recipes", "s13-devt.ps1"), "utf8");
