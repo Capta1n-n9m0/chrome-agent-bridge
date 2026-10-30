@@ -419,6 +419,34 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - **Open for the user:** #417 (text-leak options, and the DIALOGS defect), #419, R20-ARGS-ORDER RECORD vs PASS, #385,
   #389.
 
+### S6 — Docs · 2026-10-30 · verifier: PASS-with-notes (round 1 of 3) · commit `1b4483d` · models Opus step agent and verifiers, Sonnet builder and fixer
+- `docs/setup.md` (the permission, the popup lease, key order, the console cap and the CON-NOTEA limit, the chooser
+  text; six Run 19 gaps closed by Run 20, as dated notes), `docs/progress-and-roadmap.md`, `README.md`; plan-drift
+  finding 1's two `setup.md` amendments removed. Every changed behaviour sentence cites an R20 row or a test. The #369
+  reword is **not** written: it waits for the user (#374 item 3, #419); proposed in `S6-claude-md-proposals.md` (f).
+- **Numbers:** 6030 tests in 251 files (`npm test` at `f6bafc5`); doc-check: 25 tools, 28 router methods, 27 codes.
+
+### Gate checklist · 2026-10-30 (session agent)
+| Check | State | Source |
+|---|---|---|
+| Z.1 | met | Stage 0 above |
+| G1.1–G1.3 | met | S1 above |
+| **G1.4** | **met**: R20-POP-BG-3 PASS 3 of 3 (verified) | `S5-run-record.md`; #407 |
+| K2.1, K2.2 | met | S2 above |
+| C3.1 | not run (S3a dropped, #387) | — |
+| C3.2, C3.3 | met | S3b above |
+| T4.1, T4.2 | met | S4 above |
+| R5.1, R5.2, R5.6 | met | `S5-run-record.md` |
+| R5.3 | met with notes (R20-ARGS-ORDER RECORD vs PASS open) | `S5-run-record.md` |
+| **R5.4** | **not met**: state restored equal by hash in every slice, but `DIALOGS` counts the wave's options window (all three slices) | #417, #419 |
+| **R5.5** | **not met in slice B** (STOP `text-leak`, record held) | #417 |
+| D6.1 | met (doc-check exit 0) | S6 above |
+| Counts at the close | 25 tools, 28 router methods, 27 codes (26 on the wire) | doc-check |
+| Human gates | G13-1 (push) waits; G13-2, G13-3 not touched | — |
+
+**The phase is not closed.** R5.4 and R5.5 wait for the user's rulings on #417 and #419 (and R20-ARGS-ORDER). No
+Phase G kickoff until then (`long-run` §5).
+
 ## Follow-ups
 
 - The Phase F items left out (0.9): response bodies and WebSocket frames on the kept session; console lines in

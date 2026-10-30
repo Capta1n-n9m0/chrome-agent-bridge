@@ -11,21 +11,22 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-29, Step 12 closed; Step 13 is next)
+## Current state (2026-10-30, Step 13 built and Run 20 recorded; the gate waits for the user)
 
-- **Shipped:** Steps 1–12 (Step 12 closed 2026-10-29: the user ruled its gate, #374; `docs/decisions-archive/step12.md`).
-  Public on GitHub (MIT), pushed. **25 tools, 27 codes (26 on the wire), 28 router methods** (the test count: Commands).
-- **Step 12 (Phase F, `docs/plans/2026-10-27-step12-phase-f.md`):** `args` for evaluate, `consoleMessages` /
-  `browser_console_messages`, the kept debugger session, `uploadFiles {chooser: true}`, the blocking trusted action
-  (G2). Run 19 as ruled: 42 PASS, 4 FAIL, 6 NOT DISCRIMINATING, 3 NOT MEASURED, 3 RECORD (#373, #374).
-- **Next: Step 13** (`docs/plans/2026-10-29-step13-phase-f-followups.md`, kickoff `docs/plans/next-session-prompt.md`):
-  G1 with the `webNavigation` permission (granted, #374), `evaluate`'s value in the page's key order, CON-NOTEA, the
-  console cap keeping the newest lines, two texts, and Run 20, which also re-measures Run 19's helper-limited rows and
-  #369's two DevTools conditions. Its decisions are numbered after #374. After it, a minimal Phase G for the user's own use.
-- **Step 13 resume point (2026-10-30, after a power cut):** Stage 0–S4 built; Run 20's liveA20 recorded (`ed66e36`;
-  the three POP rows FAIL on sheet clauses, #406); slice B's driver B2 committed (`97e7533`), B3 verified but
-  **uncommitted** in the tree. The user ruled G1.4 (#407): corrected POP rows run in liveB20. Next: commit B3, the #407
-  addendum, B4, drivers-C, liveB20, liveC20, the record, S6 (journal's last RESUME POINT line).
+- **Shipped:** Steps 1–12, public on GitHub (MIT), pushed. Step 13 (`docs/plans/2026-10-29-step13-phase-f-followups.md`)
+  built, **not pushed** (G13-1): G1, the background opener's popup leased to its holder via `webNavigation` (S1
+  `8f6fc4d`); `evaluate`'s value in the page's key order (S2 `3ca60bd`); console texts and the newest-lines cap (S3b
+  `22d2217`); the second-chooser text (S4 `b3cbe84`); S3a not run (#387). **25 tools, 27 codes (26 on the wire), 28
+  router methods** (the test count: Commands).
+- **Run 20 recorded** (`…-steps/S5-run-record.md`, `2c2c214`): 34 verdicts as verified, 20 PASS, 8 FAIL, 1 NOT
+  MEASURED, 3 NOT RUN, 2 RECORD. G1.4 met on R20-POP-BG-3 (#407). S6 docs done (`1b4483d`).
+- **The gate is stopped and waits for the user** (`docs/decisions.md` Open decisions; the phase doc's Gate checklist):
+  #417 (slice B's `text-leak` STOP from the MCP failure report's screenshot path; slice B's record and five more files
+  are **untracked and held** in the steps dir: never stage them before the ruling; and the `DIALOGS` clause counting
+  the wave's own options window), #419 (liveC20's fix-round breach; with it #374 item 3's #369 reword: neither DevTools
+  condition refuses), R20-ARGS-ORDER (RECORD vs PASS), #385, #389.
+- **Next:** the user's rulings, then Step 13's close (decisions to `docs/decisions-archive/step13.md`) and a minimal
+  Phase G for the user's own use; its kickoff waits for the ruling (`long-run` §5).
 - **Committed docs** carry no local path and no user name from now on (#374; `docs/docs-writing-guide.md`).
 - **How agents run (#289, #320):** Opus builds contract and safety code and runs every verifier; Sonnet does recipes,
   fixtures, docs and live runners; every agent at medium effort, passed explicitly; three fix rounds per stage (per
@@ -111,7 +112,7 @@ Details and measured facts are in the package file named; the integrity floor is
 ```bash
 npm install
 npm run build        # daemon/dist/index.js + mcp/dist/index.js + extension/dist/{sw,options,offscreen,content}.js
-npm test             # vitest — 5596 passed, 235 files (`npm test` 2026-10-29, Step 12 S8; recipes/test included)
+npm test             # vitest — 6030 passed, 251 files (`npm test` 2026-10-30, Step 13 S6; recipes/test included)
 npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension (chained with `&&`; see the cross-package gotchas below)
 npm run recipe -- recipes/<file>.ts [args]   # a script against the SDK, run with tsx (= npx tsx recipes/<file>.ts)
 npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10, .s11, .s11b cover the others; all seven exit 0, 2026-10-29 cleanup pass — run them: a code stage can break one, as S3 did)

@@ -17,6 +17,17 @@ For Step 13's gate (contract-level; the run goes on with the conservative option
   opener in `tabCreated.openerTabId`; with no join it sends none and nothing is granted. No wire shape changes, but the
   field's meaning does. Options: keep #385 (recommended), or (A) a new `sourceTabId` field with a hello feature.
 - **#389, the chooser text.** Option (a), the same code with its own message (recommended); (b) a new code.
+- **#417, liveB20's `text-leak`.** The MCP failure report's screenshot path (a home path) in a by-design TIMEOUT reply
+  tripped R20-LOGS; recorded in Runs 18–20, never ruled. Options: (a) print the path with `~` in a later step and re-run
+  slice B; (b) a reply to the calling agent is not the log R20-LOGS guards: LOGS RECORD, record committed; (c) both, (b)
+  now and (a) in Phase G (recommended). Same entry: the `DIALOGS` clause counts the wave's own options window in all
+  three slices, so the three R20-RESTOREs read FAIL; options: keep FAIL (recommended, a helper defect to fix next run)
+  or rule the options window outside the clause.
+- **#419, liveC20 attempt 2 after five fixer passes.** Accept attempt 2 (recommended) or rule the DEVT rows NOT
+  MEASURED. With it: #374 item 3's #369 reword (both DevTools conditions answer `ok`), proposed in
+  `…-steps/S6-claude-md-proposals.md` (f).
+- **R20-ARGS-ORDER:** kept RECORD as printed; #401 makes the `ref` leg RECORD but the row may read PASS. Keep RECORD
+  (recommended, conservative) or read PASS.
 
 ## Standing decisions
 

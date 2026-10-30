@@ -85,3 +85,6 @@
 - 2026-10-30T04:37:46Z · S5-record · step agent · Opus · medium · started (output `S5-record.md`, record `S5-run-record.md`).
 - 2026-10-30T05:00:43Z · S5-record · step agent · ended DONE · `2c2c214` (S5-run-record.md, e2e plan §5 Run 20) · verifier FAIL → verifier2 PASS-with-notes (1 of 3) · 34 verdicts as verified: PASS 20, FAIL 8, NOT MEASURED 1, NOT RUN 3, RECORD 2 (printed: PASS 23, FAIL 5; the three RESTOREs by the DIALOGS clause) · G1.4 met; R5.1, R5.2, R5.6 met; R5.3 with notes; R5.4 not met (DIALOGS); R5.5 not met in B (#417). Open: R20-ARGS-ORDER RECORD kept as printed (a PASS reading per #401 left to the user).
 - 2026-10-30T05:00:43Z · S6 · step agent · Opus · medium · started (output `S6.md`).
+- 2026-10-30T05:16:35Z · S6 · step agent · ended DONE · `1b4483d` (setup.md, roadmap, README; #369 reword withheld for the user) · verifier PASS-with-notes (1 of 3) · 6030 tests / 251 files · proposals `S6-claude-md-proposals.md`.
+- 2026-10-30T05:16:35Z · close-out (session agent): phase doc S6 as built + Gate checklist (phase NOT closed: R5.4, R5.5 wait for #417/#419); Open decisions (#417, #419, R20-ARGS-ORDER); root CLAUDE.md Current state + test count.
+- 2026-10-30T05:16:35Z · closeout-claudemd · step agent · Opus · medium · started (apply S6-claude-md-proposals (b)–(e),(g) to package CLAUDE.md files; then the full cleanup pass).
