@@ -190,7 +190,7 @@ All reports are in the steps dir; the journal there has one line per event. Ever
 | Counts | 25 tools, 28 router methods, 27 codes (`node scripts/doc-check.mjs`); `npm test` 6089 passed in 255 files | `S5-verifier.md` §2, `S2b-verifier2.md` |
 | U.1 | the user's, after the push (G14-1) | — |
 
-Open for the user: #432 (the doctor's heuristic instead of a protocol change), G14-1 (the push).
+Open for the user: #432 (the doctor's heuristic instead of a protocol change), #441 (squash the one history line with a local path before the push), G14-1 (the push). Stage-level decisions: #433–#440.
 
 ## Follow-ups
 

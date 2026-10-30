@@ -9,8 +9,13 @@ as a dated entry and point back.
 
 ## Open decisions
 
-- 2026-10-30 · Stage 0: the doctor reads the extension's build as a heuristic; no protocol change (#432) — for the
-  user's review at Step 14's gate.
+- 2026-10-30 · Stage 0: the doctor reads the extension's build as a heuristic; no protocol change (#432). Options:
+  (a) keep the heuristic (built; no protocol change); (b) a later step adds a build id to the extension's hello and
+  `daemon.status` (a contract change, protocol bump) for an exact line. Recommendation: (a) now, (b) only if U.1 shows
+  the heuristic misleads.
+- 2026-10-30 · The Stage 0 commit carries one evidence line with the checkout's absolute path (#441). Options: (a)
+  squash or amend before the push (rewrites unpushed history); (b) push as is (the path stays in history, as #372 (b)
+  allowed for older docs). Recommendation: (a), since nothing of it is pushed yet.
 
 ## Standing decisions
 
@@ -188,7 +193,53 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries, newest first. Step 13's (#375–#420) are in `decisions-archive/step13.md`, Step 12's
-(#321–#374) in `decisions-archive/step12.md`. New entries start at 421.
+(#321–#374) in `decisions-archive/step12.md`. The next entry is 442.
+
+### 2026-10-30 · Step 14's close: the history line with a local path waits for the user (#441)
+**Decided:** none yet; Open decisions lists the options. 6e22e3b (unpushed) holds one `kickoff-checker-test.txt` line
+with the checkout's absolute path; b2c45b7 redacted it in the tree. **By:** Claude (for the user)
+
+### 2026-10-30 · Two-level stages: the session agent commits each stage after its verifier's verdict (#440)
+**Decided:** in Step 14's two-level form the session agent committed S1–S5 itself, after scanning the files for the
+user's name, instead of starting a committer. **Why:** the first committer stopped (correctly) on unredacted evidence;
+the session agent redacted and committed, and kept that for the small stages. **Instead of:** a Sonnet committer per
+stage (`agent-rules.md` §6). **Revisit if:** a later phase runs two levels again — then write it into `long-run`.
+**By:** Claude
+
+### 2026-10-30 · S2b: an MCP entry whose `BRIDGE_TOKEN` equals the bridge's reads OK (#439)
+**Decided:** the doctor's line is OK with a note that the env entry is optional; only a differing token is flagged.
+**Why:** it works; R4.1 asks for green on a working setup. **By:** Claude
+
+### 2026-10-30 · S2b: the doctor runs under tsx with its own hello probe; update exits 0 or 1 (#438)
+**Decided:** `npm run doctor` = `tsx scripts/bridge/doctor.ts`: one hello and `daemon.status` through the SDK's
+`tryConnect`, never `connect()`/knock (no spawn, no handover); OK / HINT / FAIL lines. `npm run bridge-update` (Node)
+runs npm through `npm-cli.js` with no shell and exits 0 or 1 only, so its exit never means "re-run" as the reload's
+exit 2 does. Amends #427 (the doctor is not plain Node: it needs the SDK). The S2b build's 252 code + 151 test lines
+against a cap of 300 are accepted under `agent-rules.md` §7's 1.5× rule. **By:** Claude
+
+### 2026-10-30 · S2a: setup skips an unneeded build and exits 0 / 1 / 2 (#437)
+**Decided:** the build runs unless every output is newer than every input (any doubt builds), so a second run leaves
+`dist/` and #432's heuristic alone; exit 1 = a prerequisite missing, 2 = the MCP step failed (the other steps still
+run), 0 with a missing `claude` CLI (the next steps say what to add); Node floor 20. Built as #428 and #429 decided.
+**By:** Claude
+
+### 2026-10-30 · S1: the `~` rewrite folds ASCII case only and uses the injected home (#436)
+**Decided:** a Windows home matches case-insensitively for A–Z (length-preserving; a home with `İ` keeps its dot) with
+either separator and prints `~\`; only a path strictly inside the home is rewritten; a throwing `homedir` prints the
+absolute path. **By:** Claude
+
+### 2026-10-30 · S3: the consumer folder runs `npm pkg set type=module` and installs tsx beside the SDK (#435)
+**Decided:** `npm init -y`, `npm pkg set type=module`, `npm install <repo>\sdk tsx`, then `npx tsx list-tabs.ts`.
+Built as #430 decided. **Why:** measured: the `file:` SDK brings no tsx, and npm 11's init writes `commonjs`. **By:** Claude
+
+### 2026-10-30 · S5: the npm.cmd hint for a fresh Windows (#434)
+**Decided:** the install section says to run `npm.cmd run setup` (or Command Prompt) if PowerShell refuses `npm.ps1`;
+nothing changes the machine's execution policy. **Why:** a known Windows default (one web search; not measured here,
+where npm is an `npm.exe`). **Revisit if:** U.1 sees it. **By:** Claude
+
+### 2026-10-30 · S4: the rehearsal's guard hashes the `mcpServers` key, not the whole `~/.claude.json` (#433)
+**Decided:** Claude Code rewrites the file on its own, so a whole-file hash moves without any MCP change; the S4
+verifier measured that `mcpServers` stayed the same. Later rehearsals guard that key only. **By:** Claude
 
 ### 2026-10-30 · Stage 0: the doctor reads the extension's build as a heuristic; no protocol change (#432)
 **Decided:** the doctor says "extension connected" from `daemon.status`, compares the daemon's build with the one on
