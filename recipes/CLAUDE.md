@@ -199,3 +199,9 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   - A scratch worktree with its own `npm ci` still holds `node_modules/@bridge/*` junctions that `git worktree remove`
     cannot delete: remove them one by one first (as #220). Git Bash's `cmd //c rmdir` leaves a junction in place;
     PowerShell's `cmd /c rmdir` removes it (#364, #365).
+- **Rehearsing an install (Step 14, measured 2026-10-30):** `claude mcp get` and `claude mcp list` health-check each
+  server, so they start `mcp/dist/index.js`; decide from the config file instead. `CLAUDE_CONFIG_DIR` moves the CLI's
+  `.claude.json`: an `add` under a scratch value wrote only there. Claude Code rewrites `~/.claude.json` on its own, so a
+  guard hashes its `mcpServers` key, not the whole file. `reload-extension.ps1` run from a scratch clone opens and
+  closes its own window, finds no card for that clone's `extension\` and exits 2: rehearsals pass `--no-reload`. A fresh
+  clone's `npm test` has 9 reds in `recipes/test/s11-r16-runner.test.ts` (CRLF `.ps1` checkouts).

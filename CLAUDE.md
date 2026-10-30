@@ -11,28 +11,27 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-30, Step 13 closed; next: the minimal Phase G)
+## Current state (2026-10-30, Step 14 built; the gate waits for the user)
 
-- **Shipped:** Steps 1–12, public on GitHub (MIT), pushed. **Step 13 closed 2026-10-30** (the user ruled the gate, #420,
-  `docs/decisions-archive/step13.md`), **not pushed** (G13-1 needs its own grant): G1, the background opener's popup
-  leased to its holder via `webNavigation`; `evaluate`'s value in the page's key order; console texts and the
-  newest-lines cap; the second-chooser text. **25 tools, 27 codes (26 on the wire), 28 router methods** (the test count:
-  Commands).
-- **Run 20 final** (`docs/plans/2026-10-29-step13-phase-f-followups-steps/S5-run-record.md`, as ruled by #420): 24 PASS,
-  4 FAIL (three POP sheet clauses, #406; R20-G2-1, a fully covered window's screenshot times out), 1 NOT MEASURED, 3 NOT
-  RUN, 2 RECORD. DevTools docked, undocked or opened first does not refuse the bridge's attach (`docs/setup.md`).
-- **Next: the minimal Phase G** (#374 item 11, #420 item 7): the bridge installs cleanly on the user's other **Windows**
-  devices, the extension imports cleanly, and both Claude Code (MCP) and SDK scripts drive Chrome there without trouble;
-  plus the MCP failure report's screenshot path with the home folder as `~` (#417 (c)), unit-tested only, no live re-run.
-  Kickoff: `docs/plans/next-session-prompt.md`.
-- **Committed docs** carry no local path and no user name from now on (#374; `docs/docs-writing-guide.md`).
+- **Shipped:** Steps 1–13, public on GitHub (MIT), pushed (Step 13 was found on origin at Step 14's start). **Step 14
+  (Phase G, minimal) is built, not pushed** (`docs/plans/2026-10-30-step14-phase-g-own-devices.md` § As built):
+  `npm run setup` / `doctor` / `bridge-update` (`scripts/bridge/`), scripts from any folder (`examples/list-tabs.ts`, a
+  `file:` dependency, #430), the failure report's `~` screenshot path, "Install on a new device" first in
+  `docs/setup.md`. **25 tools, 27 codes (26 on the wire), 28 router methods** (no product change beyond the `~` line).
+- **Exit checks:** every one met (Z.1, P1.1, I2.1–I2.4, S3.1, R4.1, D5.1); the rehearsal ran on a scratch clone with a
+  scratch `CLAUDE_CONFIG_DIR` (`S4-rehearsal.md`); the doctor printed 7 of 7 OK against the running bridge.
+- **The gate waits for the user:** #432 (the doctor reads the extension's build as a heuristic, no protocol change) and
+  G14-1 (the push; the other devices get the code from GitHub). Then U.1, the user's own install on another device;
+  its findings become a small follow-up. The Stage 0 commit 6e22e3b holds one evidence line with the checkout's
+  absolute path (redacted in b2c45b7); squashing it before the push is the user's call.
+- **Committed docs** carry no local path and no user name (#374; `docs/docs-writing-guide.md`); evidence files write
+  `<repo>`, `<scratch>`, `~`.
 - **How agents run (#289, #320):** Opus builds contract and safety code and runs every verifier; Sonnet does recipes,
   fixtures, docs and live runners; every agent at medium effort, passed explicitly; three fix rounds per stage (per
-  slice in a live wave, #367). The first line of every step brief is the in-turn wait rule (#286, #350): a step agent
-  that ends its turn on a child stalls the stage. Rules: `docs/agent-rules.md` §6–§8, §10.
-- **Reloads need no human:** `recipes/reload-extension.ps1` (#65; one re-run on exit 2, #99). The loaded extension is
-  Step 13's build (no extension code after S4), proven by Run 20's R20-0, R20-0B and R20-0C rows. Interactive sessions using the bridge need `/mcp` or a fresh
-  session.
+  slice in a live wave, #367). The first line of every step brief is the in-turn wait rule (#286, #350). Rules:
+  `docs/agent-rules.md` §6–§8, §10.
+- **Reloads need no human:** `recipes/reload-extension.ps1` (#65; one re-run on exit 2, #99). Interactive sessions
+  using the bridge need `/mcp` or a fresh session.
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
 
@@ -110,15 +109,18 @@ Details and measured facts are in the package file named; the integrity floor is
 ```bash
 npm install
 npm run build        # daemon/dist/index.js + mcp/dist/index.js + extension/dist/{sw,options,offscreen,content}.js
-npm test             # vitest — 6030 passed, 251 files (`npm test` 2026-10-30, Step 13 S6; recipes/test included)
-npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension (chained with `&&`; see the cross-package gotchas below)
+npm test             # vitest — 6089 passed, 255 files (`npm test` 2026-10-30, Step 14; recipes/test and scripts/test included)
+npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension/scripts (chained with `&&`; see the cross-package gotchas below)
 npm run recipe -- recipes/<file>.ts [args]   # a script against the SDK, run with tsx (= npx tsx recipes/<file>.ts)
+npm run setup        # one-command install on a Windows device (scripts/bridge/setup.mjs): prerequisites, npm ci + build when stale, bridge.token, `claude mcp add -s user`, the Chrome steps; exit 0/1/2; `-- --dry-run`, `-- --replace-mcp`
+npm run doctor       # one line per part (OK / HINT / FAIL with its fix); never spawns or hands over a daemon; the extension-build line is a heuristic (#432)
+npm run bridge-update  # git pull --ff-only, npm ci/build when needed, recipes/reload-extension.ps1, the /mcp hint; `-- --no-reload`
 npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10, .s11, .s11b, .s13 cover the others; all eight exit 0, 2026-10-30 cleanup pass — run them: a code stage can break one, as S3 did)
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
 token + port `9234` in its Options. The MCP config points at `<repo>/mcp/dist/index.js`; nobody starts
 the daemon by hand (the first client spawns it). The token comes from `BRIDGE_TOKEN`, else `bridge.token`
-at the repo root (gitignored). Full setup + the tools + "Writing a script": `docs/setup.md`. After `npm run build`, reload the extension (on Windows `recipes/reload-extension.ps1` does it by UI Automation; `docs/setup.md` §4).
+at the repo root (gitignored). Full setup + the tools + "Writing a script": `docs/setup.md`. After `npm run build`, reload the extension (on Windows `recipes/reload-extension.ps1` does it by UI Automation; `docs/setup.md` Manual install §4). New devices start at "Install on a new device", the first section of `docs/setup.md`; a script outside the repo: `examples/list-tabs.ts`.
 E2E: serve `test-fixtures/e2e-playground.html` (`python -m http.server 8080 --directory test-fixtures`)
 and follow `docs/e2e-test-plan.md`.
 

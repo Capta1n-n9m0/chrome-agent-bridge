@@ -1,6 +1,6 @@
 # Step 14 — Phase G, minimal: a clean install on the user's other Windows devices
 
-**Date:** 2026-10-30 · **Status:** Planned · **Design of record:** this doc's "Decisions"; the design spec
+**Date:** 2026-10-30 · **Status:** Built; the gate waits for the user (#432, G14-1) · **Design of record:** this doc's "Decisions"; the design spec
 `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md` binds for everything it does not change · **Carried from:**
 `docs/plans/2026-10-29-step13-phase-f-followups.md` (closed by #420; its § Follow-ups) · **Steps dir:**
 `docs/plans/2026-10-30-step14-phase-g-own-devices-steps/` (created at kickoff).
@@ -145,9 +145,59 @@ down; `README.md` quick start; root `CLAUDE.md` Commands.
 
 ## As built
 
-(filled at each stage close)
+All reports are in the steps dir; the journal there has one line per event. Every agent ran at medium effort.
+
+- **Stage 0** (`Stage0.md`, Opus): 2 CRITICAL (an npm script named `install` is a lifecycle hook; nothing reports
+  the loaded extension's build), 7 MAJOR. Decisions #427–#432 changed or settled 0.3–0.6; #432 is open for the user.
+  A fresh clone's `npm test` shows 9 red tests in `recipes/test/s11-r16-runner.test.ts` (CRLF `.ps1` checkouts): a
+  follow-up.
+- **S1 the `~` path** (b2c45b7; verifier PASS after one fix round): `homeAsTilde` in `sdk/src/error.ts` on the
+  `Screenshot:` line only, from the injected `homedir`; ASCII-only case folding (a home with `İ` kept its dot); a
+  throwing `homedir` keeps the report. `err.screenshotPath` stays absolute.
+- **S2a setup** (329b518; PASS-with-notes, one fix round): `npm run setup` = `scripts/bridge/setup.mjs` on Node
+  built-ins; the build is skipped when `dist/` is newer than every input; exit 0 / 1 (a prerequisite missing) / 2 (the
+  MCP step failed); `--dry-run`, `--replace-mcp`. `npm run typecheck` now ends with `scripts/tsconfig.json`.
+- **S2b doctor and update** (0a5ea8f; PASS after one fix round): `npm run doctor` (tsx) probes the daemon with one
+  hello and `daemon.status`, never `connect()`; OK / HINT / FAIL lines. `npm run bridge-update` (Node) pulls
+  fast-forward only, runs npm through `npm-cli.js` with no shell, reloads by `reload-extension.ps1` (exit 2: one
+  re-run, then a hint), exits 0 or 1. Size 252 code + 151 test lines against a cap of 300: accepted under §7's 1.5×
+  rule (the extra is tests).
+- **S3 scripts from any folder** (8f50b9e; PASS after one fix round): `examples/list-tabs.ts`; the folder runs
+  `npm init -y`, `npm pkg set type=module`, `npm install <repo>\sdk tsx` (npm 11's init writes `commonjs`).
+- **S4 rehearsal** (81882c5; PASS-with-notes): `S4-rehearsal.md`.
+- **S5 docs** (a3b5b86; PASS after two fix rounds): "Install on a new device" opens `docs/setup.md`, the manual
+  install sits below it unchanged, and the README has a quick start. On a fresh Windows, PowerShell may refuse
+  `npm.ps1`; the doc gives `npm.cmd run setup` (known Windows default, not measured here).
+- **Incidents, recorded:** the S2a verifier's broken PATH ran the real `claude mcp add` once with a scratch
+  `CLAUDE_CONFIG_DIR` (only the scratch config was written); the S2b verifier ran update from a scratch clone without
+  `--no-reload` once (the reload script opened and closed its own window, found no card, pressed nothing); evidence
+  logs carried the checkout's absolute path until redacted (S1 commit), and the Stage 0 commit 6e22e3b still holds one
+  such line in history.
+
+### Gate checklist
+
+| Check | Result | Source |
+|---|---|---|
+| Z.1 | met | `Stage0.md` §3; #427–#432 |
+| P1.1 | met | `S1-verifier.md`, `S1-verifier2.md` |
+| I2.1 | met: exit 0, next steps printed; a second run 0 diffs over 2116 entries, token and config hashes same | `S4-rehearsal.md`, `S4-verifier.md` |
+| I2.2 | met: 0 token hits (real and clone) in every S2–S5 capture | `S4-verifier.md`, `S2a/S2b-verifier*.md` |
+| I2.3 | met: a FAIL line with its fix for each failure case, unit-tested | `S2b-verifier.md`, `S2b-verifier2.md` |
+| I2.4 | met: a real fast-forward then a no-op, both exit 0 | `S4-rehearsal.md` |
+| S3.1 | met: exit 0, 1 tab listed, from a folder outside the repo (measured three times) | `S3-builder.md`, `S3-verifier*.md` |
+| R4.1 | met: 7 of 7 OK, exit 0 (the extension line is #432's heuristic) | `S4-rehearsal.md`, `S4-verifier.md` |
+| D5.1 | met: the section walked alone on a fresh clone; `doc-check` clean apart from the planned `docs/install.md` (not made: the section went into `docs/setup.md`) | `S5-verifier.md`, `S5-verifier3.md` |
+| Counts | 25 tools, 28 router methods, 27 codes (`node scripts/doc-check.mjs`); `npm test` 6089 passed in 255 files | `S5-verifier.md` §2, `S2b-verifier2.md` |
+| U.1 | the user's, after the push (G14-1) | — |
+
+Open for the user: #432 (the doctor's heuristic instead of a protocol change), G14-1 (the push).
 
 ## Follow-ups
+
+- From Step 14: a fresh clone's 9 red tests on CRLF `.ps1` checkouts (`*.ps1 text eol=lf` in `.gitattributes`, or a
+  CRLF-tolerant regex in `recipes/test/s11-r16-runner.test.ts`); setup and update each keep their own npm lookup
+  (S2b-verifier2 NIT-A, B); update prints "Already up to date." twice; an exact extension build check needs a build id
+  in the hello (#432).
 
 - From Step 13: R20-G2-1, a fully covered window's screenshot times out; the Phase F items left out; the Run 20 helper
   proposals 2–3; dropping the SDK's and MCP's own `focusTab` before a trusted input (#354).
