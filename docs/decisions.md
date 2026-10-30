@@ -192,6 +192,58 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-30 · Before liveB20/liveC20: an unread dock side with no dock change is NOT MEASURED; the capture's order; the DIALOGS label (#416)
+**Decided:** three dated notes in §4.28, written and committed before any liveB20 or liveC20 observation, and the
+drivers changed to match: (1) **R20-RESTORE's dock clause (C3 verifier F2):** when R20-0C's found side is `unread` and
+no row of the slice changed the dock side (the driver tracks this explicitly, not by inference from NOT RUN lines), the
+clause prints NOT MEASURED "found side unread, nothing changed" and the slice goes on to R20-LOGS; if any dock change
+ran, an unread or different side stays the STOP `not-restored`. (2) **The capture window (C3 verifier F4):**
+R20-RESTORE's DevTools count leaves out the wave's worker-console capture; R20-LOGS saves it; teardown or a STOP closes
+it, as slices A and B already do. (3) **The DIALOGS label:** slice B prints `DIALOGS B`, as §4.28 writes; slice A's
+recorded `DIALOGS liveA20` line is read as `DIALOGS A` in the record (a label, not a judged value). **Why:** (1) the
+literal rule ends slice C in a STOP before R20-LOGS when nothing was changed, so R5.5 could not be met for a reason the
+wave did not cause; the STOP still guards every case where the wave did change the side. (2) is the only order in which
+R20-LOGS can read the capture. (3) matches code to the sheet before slice B runs. None is written after an
+observation of its row (agent-rules §2). **Instead of:** leaving (1) literal (a certain spurious STOP whenever the
+DevTools UI names are unreadable on Chrome 156, which is unmeasured). **Revisit if:** liveC20 reads the side. **By:**
+Claude
+
+### 2026-10-30 · S5-drivers-C3: liveC20's PowerShell side (#415)
+**Decided:** (1) The record runs R20-0C's ROW, `DOCK R20-0C`, the five NOT RUN rows if the side is unread, then the one
+`FLAG` line. (2) A docked leg uses R20-0C's found side when it is bottom, right or left, else bottom; R20-RESTORE always
+sets the found side back. (3) The three conditional rows are gated by one `gate-cond` call that prints the chosen leg
+and condition. (4) `Invoke-R20Serve` and `Test-R20NodeAlive` are read from `s13-r20-b-defs.ps1` by the parser, never
+dot-sourced (that file overrides `Format-S9Title` and resets `R19Xk`); a missing one is a STOP before any state change.
+(5) KEEP-4's dock side is set in an earlier DevTools session, so its open needs no dock change. **Why:** strict and
+order-neutral. **Instead of:** a hook inside `Invoke-R20Zero`; dot-sourcing slice B. **By:** Claude (proposed by
+S5-drivers-C3; verifier2 PASS-with-notes)
+
+### 2026-10-30 · S5-drivers-C2: how the DEVT and conditional rows read the unstated cases (#414)
+**Decided:** (1) The finding `devtools-refuses` is the line `CHECK <row> finding=devtools-refuses leg=<label>`. (2)
+UNDOCK's earlier attach not answering 2, or an idle under 20 000 ms, makes the leg NOT MEASURED; `ok` with a value other
+than 2 is FAIL; a conditional call not refused while its control passes is FAIL; a `close` answer that is not a count is
+the STOP `devtools-left-open`. (3) An `open` answered other than `ok` makes the leg RECORD `devtools-control-unreadable`.
+(4) KEEP-4: both legs NOT MEASURED when the open took `KEEPER_IDLE_MS` or longer, counted from before the kept session's
+first call; no before-open control (its first step keeps a session); its docked leg has no bridge-independent control
+and is RECORD. (5) UP-DEVT and SWEEP-HELD read a before-open control and re-create the refusing leg's condition
+(`--cond earlier` for UNDOCK's leg; `none` for EARLY's); when more than one leg refused, they run once, under the first in
+sheet order. (6) The "both conditions answer ok" finding prints only when every DEVT leg passed; otherwise a counts-only
+`CHECK R20-DEVT no-refusal legs-pass=<n> legs-other=<n>`. **Why:** each is the strict reading; every new branch is
+stricter or ends NOT MEASURED or RECORD. **Instead of:** an unjudged `open-ms`, an assumed `attached=no`, one condition
+for every leg, an unobserved finding. **Revisit if:** the user wants one conditional run per refusing leg. **By:** Claude
+(proposed by S5-drivers-C2; verifier3 PASS-with-notes)
+
+### 2026-10-30 · S5-drivers-C1: the unstated cases of liveC20's DevTools helpers (#413)
+**Decided:** The dock side is `unread` unless exactly one DevTools window is titled for the fixture (`undock`), or none
+is and exactly one of the four Dock side buttons reads pressed. `attached` is `unread` unless exactly one page target
+carries the tab's marker; `targets` is the total count (0 when unread). FLAG reads browser processes only. A dock change
+is refused while a DevTools window the wave did not open exists. The per-row `remaining` count covers the wave's own
+DevTools windows, any window titled for the fixture port and the pane, never a human DevTools on another page; the
+slice-end `DIALOGS C … devtools=` count covers every DevTools window but the capture. **Why:** each is the strict
+reading; the narrower per-row count avoids a STOP the wave did not cause. **Instead of:** guessing a side or a target.
+**Revisit if:** liveC20 shows the DevTools UIA names differ (unmeasured on Chrome 156; a mismatch reads `unread`, so the
+rows are NOT RUN, never passed). **By:** Claude (proposed by S5-drivers-C1; verifier2 PASS-with-notes)
+
 ### 2026-10-30 · S5-drivers-B4b: liveB20's PowerShell side (#412)
 **Decided:** (1) `root-add` runs after R20-POP-OTHER-3 and before `CLOSERPROBE`. (2) Slice-B actor rows answer their
 value steps through one `serve` step: it answers whichever ids are asked, ends when the actor exits (by PID and recorded

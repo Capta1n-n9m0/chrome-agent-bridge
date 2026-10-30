@@ -65,3 +65,6 @@
 - 2026-10-29T23:08:25Z · decisions · #411 (B4a, the -3 judges' unstated cases), #412 (B4b, liveB20's PowerShell side). recipes/CLAUDE.md Key files: the slice-B s13 files.
 - 2026-10-29T23:08:25Z · RESUME POINT: liveB20 runnable (`cbd7c77`). Next: S5-drivers-C, then liveB20 and liveC20 (each alone, clean tree, committed HEAD), S5-record, S6, close-out.
 - 2026-10-29T23:08:25Z · S5-drivers-C · step agent · Opus · medium · started (output `S5-drivers-C.md`).
+- 2026-10-30T02:05:18Z · S5-drivers-C · step agent · ended DONE · C1 `803d02d` (1 round), C2 `34e640b` (2 rounds), C3 `8dafe79` (1 round; a CRITICAL hidden by a green suite: serve functions never loaded), report `8549519` · all verifiers PASS-with-notes · tests 5934/248 → 6013/251 · `S5-drivers-C.md` (how-to §8). DevTools UIA names unmeasured on Chrome 156 (a mismatch reads NOT RUN).
+- 2026-10-30T02:05:18Z · decisions · #413–#415 (C1–C3 proposals), #416 (before liveB20/C20: unread dock side with no dock change is NOT MEASURED, not STOP; the capture window's order; slice B prints `DIALOGS B`). recipes/CLAUDE.md Key files: slice C's files.
+- 2026-10-30T02:05:18Z · S5-drivers-C4 · step agent · Opus · medium · started (#416: three §4.28 dated notes + driver changes, before any liveB20/C20 observation; output `S5-drivers-C4.md`).
