@@ -164,9 +164,9 @@ export const conditionalRows = (legs: readonly DevtLeg[]): { run: boolean; line?
 /** R20-0C: an unreadable dock side means no DevTools row may change it (it could not be restored). */
 export const devtRowGate = (side: DockSide): { run: true } | { run: false; reason: string } =>
   side === "unread" ? { run: false, reason: "dock side unreadable, it could not be restored" } : { run: true };
-/** R20-RESTORE: the read-back (a reopened tab DevTools) equals R20-0C's side, else the STOP; an unread side never passes. */
-export const dockRestoreVerdict = (found: DockSide, readback: DockSide): "PASS" | "STOP not-restored" =>
-  found !== "unread" && found === readback ? "PASS" : "STOP not-restored";
+/** R20-RESTORE: the read-back (a reopened tab DevTools) equals R20-0C's side, else the STOP; an unread side never passes. #416: a found side that is unread when no dock change ran in the slice is NOT MEASURED, whatever the read-back. */
+export const dockRestoreVerdict = (found: DockSide, readback: DockSide, changed: boolean): "PASS" | "STOP not-restored" | "NOT MEASURED" =>
+  found === "unread" && !changed ? "NOT MEASURED" : found !== "unread" && found === readback ? "PASS" : "STOP not-restored";
 
 // ---------------------------------------------------------------- the disabled-input reachability map (#370, #391 (7))
 export interface DisAnswer { code: string; message?: string; files: number; change: number; data?: unknown }

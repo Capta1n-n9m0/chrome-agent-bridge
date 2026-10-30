@@ -86,7 +86,7 @@ function Invoke-R20Version {
 function Get-R20EvidenceCopy { Join-Path $Repo "$Steps/S13-live-evidence-liveB20-pop3$(if ($Att -gt 1) { "-att$Att" }).txt" }
 function Reset-R20Pop3Evidence { $r20p = & $R20Pop3Evidence; if (Test-Path -LiteralPath $r20p) { Move-Item -LiteralPath $r20p -Destination "$r20p.prev-$(Get-Date -Format yyyyMMddHHmmssfff)" -Force } }
 function Copy-R20Pop3Evidence { $r20p = & $R20Pop3Evidence; if (Test-Path -LiteralPath $r20p) { Copy-Item -LiteralPath $r20p -Destination (Get-R20EvidenceCopy) -Force } }
-function Invoke-R20BRestore { Close-R20Xk; $global:S13Hwnd = $null; Invoke-R20Restore }   # WA is closed first, so DIALOGS counts no wave window of it
+function Invoke-R20BRestore { Close-R20Xk; $global:S13Hwnd = $null; Invoke-R20Restore 'B' }   # WA is closed first, so DIALOGS counts no wave window of it
 function Invoke-R20BLogs { try { Invoke-R20Logs } finally { Copy-R20Pop3Evidence } }
 function Get-R20MissingBlocks([string]$Slice) { Get-R19Order $Slice | Where-Object { -not $global:R19Blocks.ContainsKey($_) } }   # callers wrap it in @()
 function Register-R20BBlocks {

@@ -141,15 +141,17 @@ export function scanArgs20(repo: string): ScanArgs {
   const also = [...new Set(loginNames().filter((s) => s !== "" && s.toLowerCase() !== name.toLowerCase()))];
   return { name, alsoNames: also, sentinels: ["s12sent-5f3a9c71", "sentinel-args-K7W3-"], token };
 }
-/** Slice C's record lines (C3, additive): `flag --value <word>` prints the FLAG line; `dock --row R20-0C|R20-RESTORE --side <word> [--found <word>]` prints the DOCK line. R20-RESTORE also judges the read-back
- *  against R20-0C's side (dockRestoreVerdict): a different or unread side prints the found side for the user and exits 2 with STOPWHY not-restored. A word outside the lists reads as unread, never a guess. */
+const NOTHING_CHANGED = "found side unread, nothing changed";
+/** Slice C's record lines (C3, additive): `flag --value <word>` prints the FLAG line; `dock --row R20-0C|R20-RESTORE --side <word> [--found <word> --changed yes|no]` prints the DOCK line. R20-RESTORE also judges the read-back
+ *  against R20-0C's side (dockRestoreVerdict): a different or unread side prints the found side for the user and exits 2 with STOPWHY not-restored. A word outside the lists reads as unread, never a guess. #416: found unread with `--changed no` (exactly) prints the CHECK line and a `ROW R20-RESTORE dock NOT MEASURED` note (the row verdict, Get-R19Verdict, reads ROW lines only) and exits 0; any other --changed counts as changed. */
 export function lineCmd20(sub: string, o: Record<string, string>): { lines: string[]; exit: number } | undefined {
   const side = (v: string | undefined): DockSide => (v === "bottom" || v === "right" || v === "left" || v === "undock" ? v : "unread");
   if (sub === "flag") return { lines: [flagLine(read3(o.value))], exit: 0 };
   if (sub !== "dock") return undefined;
   if (o.row === "R20-0C") return { lines: [dockLine("R20-0C", side(o.side))], exit: 0 };
   if (o.row !== "R20-RESTORE") return { lines: ["STOP: dock needs --row R20-0C or R20-RESTORE"], exit: 2 };
-  const v = dockRestoreVerdict(side(o.found), side(o.side));
+  const v = dockRestoreVerdict(side(o.found), side(o.side), o.changed !== "no");   // strict (#416): only exactly `no` means nothing changed
+  if (v === "NOT MEASURED") return { lines: [dockLine("R20-RESTORE", side(o.side)), `CHECK R20-RESTORE found-side=unread read-back=${side(o.side)} NOT MEASURED ${NOTHING_CHANGED}`, `ROW R20-RESTORE dock NOT MEASURED ${NOTHING_CHANGED}`], exit: 0 };
   return { lines: [dockLine("R20-RESTORE", side(o.side)), ...(v === "PASS" ? [] : [`CHECK R20-RESTORE found-side=${side(o.found)} read-back=${side(o.side)}`, "STOPWHY not-restored"])], exit: v === "PASS" ? 0 : 2 };
 }
 export async function main(argv: string[]): Promise<number> {

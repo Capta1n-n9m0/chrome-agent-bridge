@@ -298,10 +298,16 @@ describe("the dock side (R20-0C, R20-RESTORE; verifier3 NITs E and F)", () => {
     expect(F.devtRowGate("right")).toEqual({ run: true });
   });
   it("the restore read-back equals the found side, else the STOP not-restored; an unread read-back never passes", () => {
-    expect(F.dockRestoreVerdict("right", "right")).toBe("PASS");
-    expect(F.dockRestoreVerdict("right", "bottom")).toBe("STOP not-restored");
-    expect(F.dockRestoreVerdict("right", "unread")).toBe("STOP not-restored");
-    expect(F.dockRestoreVerdict("unread", "unread")).toBe("STOP not-restored");
+    expect(F.dockRestoreVerdict("right", "right", true)).toBe("PASS");
+    expect(F.dockRestoreVerdict("right", "right", false)).toBe("PASS");
+    expect(F.dockRestoreVerdict("right", "bottom", false)).toBe("STOP not-restored");
+    expect(F.dockRestoreVerdict("right", "unread", true)).toBe("STOP not-restored");
+    expect(F.dockRestoreVerdict("unread", "unread", true)).toBe("STOP not-restored");
+    expect(F.dockRestoreVerdict("unread", "bottom", true)).toBe("STOP not-restored");
+  });
+  it("#416: an unread found side with no dock change is NOT MEASURED whatever the read-back; with a change it stays the STOP", () => {
+    expect(F.dockRestoreVerdict("unread", "unread", false)).toBe("NOT MEASURED");
+    expect(F.dockRestoreVerdict("unread", "bottom", false)).toBe("NOT MEASURED");
   });
   it("the sheet reads the side in a tab's DevTools in window X, never the capture window", () => {
     expect(F.DOCK_READ_PLACE).toBe("a tab's DevTools in window X");

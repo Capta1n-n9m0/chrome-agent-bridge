@@ -237,12 +237,21 @@ function Invoke-R20OldArgs {
   if (-not ($r20l.Count -and "$($r20l[-1])" -match 'keys=sorted|perm=no')) { Say9 "ROW R20-ARGS-OLD NOT RUN $([char]0x2014) old build not loadable (the proof reads neither keys=sorted nor perm=no)"; return }
   Invoke-R19Row 'R20-ARGS-OLD' @('args-old', '--port', "$($global:R20Port)") -Actor 's13-r20-a2'
 }
-function Invoke-R20Restore {
+# Same counts as Run 19's Write-R19Dialogs (read-only; Get-R19DevToolsCount leaves the capture out), but the line carries the slice LETTER as the sheet writes it (#416; slice B passes 'B').
+function Write-R20Dialogs([string]$Label) {
+  $r20n = 0; foreach ($r20h in (Get-R19DlgWindows)) { $r20n += [int](Get-S12DialogCount $r20h) }
+  $r20d = [int](Get-R19DevToolsCount)
+  $r20w = @(@($global:R19Xk, $global:O) | Where-Object { $_ -and (Test-S9Live $_) } | Select-Object -Unique).Count
+  [void](Invoke-R19Node 's12-r19-c' @('dialogs', '--slice', $Label, '--native', "$r20n", '--devtools', "$r20d", '--windows', "$r20w"))
+  if ($r20n -gt 0) { Stop-R19 'dialog-left-open' 'a native file dialog is still open at the slice end' }
+  if ($r20d -gt 0) { Stop-R19 'devtools-left-open' 'a DevTools window is still open at the slice end' }
+}
+function Invoke-R20Restore([string]$Label = '') {   # no label (slice A, already run): Run 19's line with the slice id; a label (slice B): DIALOGS <label>
   Invoke-R19RowBlock 'R20-RESTORE' {
     if (Test-S11Own $global:O) { Close-S11Window $global:O; $global:O = 0 }
     Invoke-R19Stamped $R17Blocks['rd-restore']
     Invoke-R20RestoreCheck
-    Write-R19Dialogs   # DIALOGS <slice> native= devtools= wave-windows-open=; a dialog or DevTools window left open is the STOP dialog-left-open / devtools-left-open
+    if ($Label) { Write-R20Dialogs $Label } else { Write-R19Dialogs }   # DIALOGS <slice> native= devtools= wave-windows-open=; a dialog or DevTools window left open is the STOP dialog-left-open / devtools-left-open
   }
 }
 # Counts only. Console, daemon (since the slice's mark), evidence (the record) and the actors' results; the console capture must hold the control line in its last segment.

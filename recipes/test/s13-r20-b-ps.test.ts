@@ -133,7 +133,13 @@ T oldLoaded {
     $global:NodeOut['s13-r20 proof'] = $l; Write-Host "OLD $(Test-R20OldLoaded)"
   }
 }
-T restore { function Close-R20Xk { Write-Host 'CLOSE-XK' }; function Invoke-R20Restore { Write-Host "RESTORE hwnd-null=$($null -eq $global:S13Hwnd)" }; $global:S13Hwnd = 1; Invoke-R20BRestore }
+T restoreLabel {   # #416: the real Invoke-R20Restore with a label prints DIALOGS B (letter), Run 19's count; no label keeps the slice id (slice A's recorded form)
+  function Get-R19DlgWindows { @() }; function Get-S12DialogCount($h) { 0 }; function Get-R19DevToolsCount { $global:Dev }; function Invoke-R20RestoreCheck { }; function Test-S11Own($h) { $false }; $R17Blocks['rd-restore'] = { }
+  function Invoke-R17Node([string]$Which, [string[]]$NodeArgs, [scriptblock]$Driver = $null, [int]$BudgetS = 300, [switch]$StopOnFail) { Write-Host "NODE $Which $($NodeArgs -join ' ')"; 0 }
+  $global:R19Xk = 0; $global:O = 0; $global:Dev = 0; Invoke-R20Restore 'B'; Invoke-R20Restore
+  $global:Dev = 2; try { Invoke-R20Restore 'B' } catch { Write-Host "THREWL $_" }; Write-Host "REASONL [$global:R19Reason]"
+}
+T restore { function Close-R20Xk { Write-Host 'CLOSE-XK' }; function Invoke-R20Restore($Label) { Write-Host "RESTORE hwnd-null=$($null -eq $global:S13Hwnd) label=$Label" }; $global:S13Hwnd = 1; Invoke-R20BRestore }
 T evidence {
   $p = & $R20Pop3Evidence
   Reset-R20Pop3Evidence; Set-Content -LiteralPath $p 'R-3 bg before lines=1 eval=0'
@@ -250,7 +256,10 @@ describe.skipIf(!hasPs)("s13-r20-b-defs.ps1 under PowerShell with stubbed helper
 		expect(o.oldLoaded!.filter((l) => l.startsWith("OLD "))).toEqual(["OLD True", "OLD False", "OLD False"]);
 	});
 	it("the restore closes WA before the shared restore; the -3 evidence is rotated at the start and copied at LOGS even when LOGS throws", () => {
-		expect(o.restore).toEqual(["CLOSE-XK", "RESTORE hwnd-null=True"]);
+		expect(o.restore).toEqual(["CLOSE-XK", "RESTORE hwnd-null=True label=B"]);
+		const rl = o.restoreLabel!.filter((l) => l.startsWith("NODE "));
+		expect(rl).toEqual(["NODE s12-r19-c dialogs --slice B --native 0 --devtools 0 --windows 0", "NODE s12-r19-c dialogs --slice liveB20 --native 0 --devtools 0 --windows 0", "NODE s12-r19-c dialogs --slice B --native 0 --devtools 2 --windows 0"]);
+		expect(o.restoreLabel).toContain("REASONL [devtools-left-open]");
 		const e = o.evidence!;
 		expect(e).toContain("ROTATED False PREV=1");
 		expect(e).toContain("NAME S13-live-evidence-liveB20-pop3.txt");

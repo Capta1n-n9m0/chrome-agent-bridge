@@ -158,7 +158,20 @@ T restoreOk {
   & $global:R19Blocks['r20-restore']
 }
 T restoreDiff { $global:NodeRc['s13-r20 dock'] = 2; $global:R20DockFound = 'left'; $global:Sides = @('bottom'); try { & $global:R19Blocks['r20-restore'] } catch { Write-Host "THREWR $_" } }
-T restoreUnread { $global:NodeRc['s13-r20 dock'] = 2; $global:R20DockFound = 'unread'; $global:Sides = @('bottom'); function global:Invoke-R20RestoreCheck { }; function global:Get-R19DlgWindows { @() }; try { & $global:R19Blocks['r20-restore'] } catch { Write-Host "THREWR $_" } }
+T restoreUnread { $global:NodeRc['s13-r20 dock'] = 2; $global:R20DockFound = 'unread'; $global:R20CDockChanged = $true; $global:Sides = @('bottom'); function global:Invoke-R20RestoreCheck { }; function global:Get-R19DlgWindows { @() }; try { & $global:R19Blocks['r20-restore'] } catch { Write-Host "THREWR $_" } }
+T restoreUnreadNoChange {   # #416: unread found side, no dock change ran: the node call (rc 0 here, as the real NOT MEASURED exit) must not stop; the block goes on to the check and the dialogs
+  $global:R20DockFound = 'unread'; $global:Sides = @('unread'); function global:Invoke-R20RestoreCheck { Write-Host 'RESTORECHECK' }; function global:Get-R19DlgWindows { @() }
+  Write-Host "FLAG0 $global:R20CDockChanged"; & $global:R19Blocks['r20-restore']
+}
+T flagOpen { Write-Host "F0 $global:R20CDockChanged"; [void](Open-R20CDevt ''); Write-Host "F1 $global:R20CDockChanged"; [void](Open-R20CDevt 'undock'); Write-Host "F2 $global:R20CDockChanged"; Register-R20CBlocks; Write-Host "F3 $global:R20CDockChanged" }
+T flagLeg {   # a leg's open step with a side sets the flag, then the restore (unread found side) is the STOP
+  $global:R20DockFound = 'unread'; $global:Sides = @('bottom'); $global:NodeRc['s13-r20 dock'] = 2; function global:Invoke-R20RestoreCheck { }; function global:Get-R19DlgWindows { @() }
+  $r20h = New-R20CHandlers 'R20-DEVT-UNDOCK' 'undock' 'undock' $R20CMark.undock @('open') 'undock'; [void](& $r20h['R20-DEVT-UNDOCK-undock-open'])
+  try { & $global:R19Blocks['r20-restore'] } catch { Write-Host "THREWR $_" }
+}
+T flagKeep { $global:R20CGate = 'run'; $global:R20CPick = [pscustomobject]@{ under = 'docked'; leg = 'docked'; cond = 'none' }; $global:R20CCondSet = $true; $global:R20DockFound = 'undock'
+  function global:Invoke-R19Row($id, $cmd, $StepList, $Actor, $BudgetS, [scriptblock]$Pre) { Write-Host "KEEPROW $global:R20CDockChanged" }; & $global:R19Blocks['r20-keep-4'] }
+T flagRestoreFound { $global:R20DockFound = 'left'; $global:Sides = @('left'); function global:Invoke-R20RestoreCheck { }; function global:Get-R19DlgWindows { @() }; & $global:R19Blocks['r20-restore']; Write-Host "FR $global:R20CDockChanged" }
 T restoreNever { $global:NodeRc['s13-r20 dock'] = 2; $global:R20DockFound = ''; $global:Sides = @('unread'); try { Restore-R20CDock } catch { Write-Host "THREWR $_" } }
 T dialogs {
   function global:Get-R19DlgWindows { @(7) }; function global:Get-S12DialogCount($h) { 0 }; function global:Test-S11Own($h) { $h -ne 9 }   # window 9 is a human's DevTools
@@ -240,9 +253,15 @@ describe("the TS side of the record lines (flag, dock)", () => {
 		expect(lineCmd20("dock", { row: "R20-0C", side: "right" })).toEqual({ lines: ["DOCK R20-0C side=right"], exit: 0 });
 		expect(lineCmd20("dock", { row: "R20-RESTORE", side: "left", found: "left" })).toEqual({ lines: ["DOCK R20-RESTORE side=left"], exit: 0 });
 		expect(lineCmd20("dock", { row: "R20-RESTORE", side: "bottom", found: "left" })).toEqual({ lines: ["DOCK R20-RESTORE side=bottom", "CHECK R20-RESTORE found-side=left read-back=bottom", "STOPWHY not-restored"], exit: 2 });
-		expect(lineCmd20("dock", { row: "R20-RESTORE", side: "unread", found: "unread" })!.exit).toBe(2);
-		expect(lineCmd20("dock", { row: "R20-RESTORE", side: "bottom", found: "unread" })!.exit).toBe(2);
+		expect(lineCmd20("dock", { row: "R20-RESTORE", side: "unread", found: "unread", changed: "yes" })!.exit).toBe(2);
+		expect(lineCmd20("dock", { row: "R20-RESTORE", side: "bottom", found: "unread", changed: "yes" })!.exit).toBe(2);
 		expect(lineCmd20("dock", { row: "X", side: "bottom" })!.exit).toBe(2);
+	});
+	it("#416: found unread and --changed exactly no is NOT MEASURED (a ROW note the row verdict reads, exit 0); a missing, empty or other --changed counts as changed and stays the STOP", () => {
+		const nm = lineCmd20("dock", { row: "R20-RESTORE", side: "bottom", found: "unread", changed: "no" })!;
+		expect(nm).toEqual({ lines: ["DOCK R20-RESTORE side=bottom", "CHECK R20-RESTORE found-side=unread read-back=bottom NOT MEASURED found side unread, nothing changed", "ROW R20-RESTORE dock NOT MEASURED found side unread, nothing changed"], exit: 0 });
+		for (const c of [undefined, "", "No", "false", "yes"]) expect(lineCmd20("dock", { row: "R20-RESTORE", side: "unread", found: "unread", ...(c === undefined ? {} : { changed: c }) })!.exit).toBe(2);
+		expect(lineCmd20("dock", { row: "R20-RESTORE", side: "bottom", found: "left", changed: "no" })!.exit).toBe(2);   // a found side that was read is judged as before
 	});
 });
 describe("every STOP reason slice C can reach is known to the pairing check", () => {
@@ -329,12 +348,23 @@ describe.skipIf(!hasPs)("s13-r20-c-defs.ps1 under PowerShell with stubbed helper
 	});
 	it("R20-RESTORE: Open, Set to R20-0C's side, Close, Open plain, read back, Close; then the safety restore, the folders check and the counts; a different or unread side is the STOP not-restored naming the found side", () => {
 		const r = o.restoreOk!.filter((l) => /^(OPEN|SETSIDE|CLOSE|READSIDE|NODE s13-r20 dock|RD-RESTORE|RESTORECHECK|NODE s12-r19-c)/.test(l));
-		expect(r.slice(0, 8)).toEqual(["OPEN []", "SETSIDE left", "CLOSE", "OPEN []", "READSIDE", "CLOSE", "NODE s13-r20 dock --row R20-RESTORE --side left --found left", "RD-RESTORE"]);
+		expect(r.slice(0, 8)).toEqual(["OPEN []", "SETSIDE left", "CLOSE", "OPEN []", "READSIDE", "CLOSE", "NODE s13-r20 dock --row R20-RESTORE --side left --found left --changed yes", "RD-RESTORE"]);
 		expect(r.slice(8)).toEqual(["RESTORECHECK", "NODE s12-r19-c dialogs --slice C --native 0 --devtools 0 --windows 0"]);
 		expect(has("restoreDiff", "REASON [not-restored]")).toBe(true); expect(has("restoreDiff", "RD-RESTORE")).toBe(false);
 		expect(has("restoreDiff", "--side bottom --found left")).toBe(true);
-		expect(has("restoreUnread", "REASON [not-restored]")).toBe(true); expect(has("restoreUnread", "SETSIDE")).toBe(false);
+		expect(has("restoreUnread", "REASON [not-restored]")).toBe(true); expect(has("restoreUnread", "SETSIDE")).toBe(false); expect(has("restoreUnread", "--found unread --changed yes")).toBe(true);
 		expect(has("restoreNever", "--side unread --found unread")).toBe(true); expect(has("restoreNever", "SETSIDE")).toBe(false);
+	});
+	it("#416: an unread found side with no dock change goes on (no STOP, the check and DIALOGS run); the flag is set by an open with a side, the KEEP-4 pre-open and the restore's own change, reset by Register, and never by a plain open", () => {
+		const u = o.restoreUnreadNoChange!;
+		expect(u).toContain("FLAG0 False"); expect(u).toContain("NODE s13-r20 dock --row R20-RESTORE --side unread --found unread --changed no");
+		expect(u).toContain("RESTORECHECK"); expect(u).toContain("NODE s12-r19-c dialogs --slice C --native 0 --devtools 0 --windows 0");
+		expect(u).toContain("REASON []"); expect(u.some((l) => l.startsWith("THREW"))).toBe(false);
+		expect(o.flagOpen).toEqual(expect.arrayContaining(["F0 False", "F1 False", "F2 True", "F3 False"]));
+		expect(o.flagLeg).toContain("REASON [not-restored]"); expect(has("flagLeg", "--found unread --changed yes")).toBe(true);
+		expect(o.flagKeep).toContain("KEEPROW True");
+		expect(has("flagRestoreFound", "SETSIDE left")).toBe(true); expect(o.flagRestoreFound).toContain("FR True");
+		expect(has("restoreOk", "--changed yes")).toBe(true);
 	});
 	it("DIALOGS C counts EVERY DevTools window but the capture (a human's on another page too), not Close-S13DevTools's narrower remaining; one left is the STOP devtools-left-open, a native dialog dialog-left-open", () => {
 		expect(o.dialogs).toEqual(expect.arrayContaining(["N0 0", "N1 1", "NODE s12-r19-c dialogs --slice C --native 0 --devtools 0 --windows 0", "NODE s12-r19-c dialogs --slice C --native 0 --devtools 1 --windows 0", "THREWD stop devtools-left-open [devtools-left-open]", "THREWD2 stop dialog-left-open [dialog-left-open]"]));

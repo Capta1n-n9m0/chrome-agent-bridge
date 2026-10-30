@@ -3,7 +3,7 @@
 # then calls Register-R20Blocks and Register-R20CBlocks (this file's, last: it replaces the restore block). The actor is recipes/s13-r20-c.ts (interface: S5-drivers-C2-fixer2.md section 3); the DevTools
 # helpers are recipes/s13-devt.ps1. Window X is the wave's window W (it shows the fixture page of Run 17's window block; the actors open their tabs active in it). Run 17/19 files are read-only; names carry R20C.
 # Every actor row is answered through ONE `serve` step (#412: 120 s idle, 600 s per row; a throw is the STOP throw-after-state). DevTools is opened only in X on a fixture page, closed by the wave after each row.
-$global:R20DockFound = ''; $global:R20CGate = ''; $global:R20CRoot = $false; $global:R20CWords = @(); $global:R20CRefuse = @(); $global:R20CPick = $null; $global:R20CCondSet = $false; $global:R20CFlagDone = $false
+$global:R20DockFound = ''; $global:R20CGate = ''; $global:R20CRoot = $false; $global:R20CWords = @(); $global:R20CRefuse = @(); $global:R20CPick = $null; $global:R20CCondSet = $false; $global:R20CFlagDone = $false; $global:R20CDockChanged = $false
 # The legs' tab markers: tied to MARKER in recipes/s13-r20-c.ts by a test.
 $R20CMark = @{ undock = 's12x=r20u1'; early_undocked = 's12x=r20eu1'; early_docked = 's12x=r20ed1'; up = 's12x=r20cup'; keep = 's12x=r20ck4'; sweep = 's12x=r20csw' }
 # ---- pure parts (tested with stubs: recipes/test/s13-r20-c-ps.test.ts) -----------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ function Get-R20CX { [long]$global:W }
 function Get-R20CSide([string]$State) { if ($State -ne 'docked') { return 'undock' }; if ($global:R20DockFound -in 'bottom', 'right', 'left') { $global:R20DockFound } else { 'bottom' } }   # a docked leg keeps the found docked side, else bottom: fewest changes
 # ---- the answers ---------------------------------------------------------------------------------------------------------------------------------------
 function Read-R20CCtl([string]$Marker, [string]$State) { Format-R20Ctl (Get-S13Control (Get-R20CX) 8081 $Marker $(if ($State -eq 'docked') { 'docked' } else { 'undock' })) }
-function Open-R20CDevt([string]$Side) { $r20r = Open-S13DevTools (Get-R20CX) 8081 $Side; if ($r20r.opened -and $r20r.done) { 'ok' } else { 'fail' } }
+function Open-R20CDevt([string]$Side) { if ($Side) { $global:R20CDockChanged = $true }; $r20r = Open-S13DevTools (Get-R20CX) 8081 $Side; if ($r20r.opened -and $r20r.done) { 'ok' } else { 'fail' } }
 function Close-R20CDevt { try { "$((Close-S13DevTools (Get-R20CX) 8081).remaining)" } catch { 'unread' } }
 function Read-R20CCheck { if ((Test-S13Pane (Get-R20CX)) -or @(Get-S13Titles | Where-Object { (Test-S13DevtTitle $_.title 8081) -or ($_.title -match '^DevTools' -and (Test-S11Own $_.h)) }).Count) { 'yes' } else { 'no' } }
 # One leg's handlers: <row>-<leg>-<step>, the steps in the actor's names. The marker and the side are fixed words, so the blocks are built from text and carry no closure.
@@ -117,7 +117,7 @@ function Invoke-R20CUpDevt {
 function Invoke-R20CKeep4 {
   $r20p = $global:R20CPick; $r20side = Get-R20CSide $r20p.leg
   $r20h = New-R20CHandlers 'R20-KEEP-4' $r20p.leg $(if ($r20p.leg -eq 'docked') { 'docked' } else { 'undock' }) $R20CMark.keep @('open', 'ctl1', 'close') ''
-  Invoke-R20CRow 'R20-KEEP-4' @('keep-4', '--leg', $r20p.leg) $r20h -Pre { try { [void](Open-S13DevTools (Get-R20CX) 8081 $r20side) } finally { [void](Close-S13DevTools (Get-R20CX) 8081) } }.GetNewClosure()
+  Invoke-R20CRow 'R20-KEEP-4' @('keep-4', '--leg', $r20p.leg) $r20h -Pre { $global:R20CDockChanged = $true; try { [void](Open-S13DevTools (Get-R20CX) 8081 $r20side) } finally { [void](Close-S13DevTools (Get-R20CX) 8081) } }.GetNewClosure()
 }
 # SWEEP-HELD: two actor runs and ONE row. Phase 1 holds DevTools open; unless it ended in a measurement (exit 0) there is no reload and no phase 2, and the tab is closed (C2 verifier3 H3). Otherwise the
 # capture is saved before the reload and reopened after it, the build is proven again (LOADED20 rerun=<k>), and phase 2 judges. Phase 1's lines are carried (R20Carry) into the row phase 2 (or the early exit) completes.
@@ -163,13 +163,14 @@ function Write-R20CDialogs {
   if ($r20d -gt 0) { Stop-R19 'devtools-left-open' 'a DevTools window is still open at the slice end' }
 }
 # The dock side back as found, in a tab's DevTools in X (C1 verifier1 F4): Open -> Set to R20-0C's side -> Close -> Open plain -> read back (this is DOCK R20-RESTORE) -> Close. A different or unread side is the
-# STOP not-restored (dockRestoreVerdict, in the node line), and the record names the found side. A found side of unread (R20-0C could not read it, or never ran) skips the change and still reads back: it never passes.
+# STOP not-restored (dockRestoreVerdict, in the node line), and the record names the found side. A found side of unread (R20-0C could not read it, or never ran) skips the change and still reads back.
+# #416: it is then NOT MEASURED ("found side unread, nothing changed", exit 0, the slice goes on) only when $global:R20CDockChanged is $false; the flag is set BEFORE every call that can change the side (Open-R20CDevt with a side, KEEP-4's pre-open, this function's own Set), so a throw mid-change still counts. Else it stays the STOP.
 function Restore-R20CDock {
   $r20x = Get-R20CX; $r20found = if ($global:R20DockFound) { $global:R20DockFound } else { 'unread' }; $r20rb = 'unread'
   [void](Set-S11Front $r20x 'R20-RESTORE')
-  if ($r20found -ne 'unread') { try { $r20o = Open-S13DevTools $r20x 8081; if ($r20o.opened) { [void](Set-S13DockSide $r20x 8081 $r20found) } } finally { [void](Close-S13DevTools $r20x 8081) } }
+  if ($r20found -ne 'unread') { try { $r20o = Open-S13DevTools $r20x 8081; if ($r20o.opened) { $global:R20CDockChanged = $true; [void](Set-S13DockSide $r20x 8081 $r20found) } } finally { [void](Close-S13DevTools $r20x 8081) } }
   try { $r20o2 = Open-S13DevTools $r20x 8081; if ($r20o2.opened) { $r20rb = Read-S13DockSide $r20x 8081 } } finally { [void](Close-S13DevTools $r20x 8081) }
-  if ([int](Invoke-R19Node 's13-r20' @('dock', '--row', 'R20-RESTORE', '--side', $r20rb, '--found', $r20found)) -eq 2) { Stop-R19 'not-restored' 'the DevTools dock side read back differs from R20-0C''s (the record names the found side)' }
+  if ([int](Invoke-R19Node 's13-r20' @('dock', '--row', 'R20-RESTORE', '--side', $r20rb, '--found', $r20found, '--changed', $(if ($global:R20CDockChanged) { 'yes' } else { 'no' }))) -eq 2) { Stop-R19 'not-restored' 'the DevTools dock side read back differs from R20-0C''s (the record names the found side)' }
 }
 function Invoke-R20CRestore {
   Invoke-R19RowBlock 'R20-RESTORE' {
@@ -182,7 +183,7 @@ function Invoke-R20CRestore {
 }
 function Get-R20CMissingBlocks([string]$Slice) { Get-R19Order $Slice | Where-Object { -not $global:R19Blocks.ContainsKey($_) } }   # callers wrap it in @()
 function Register-R20CBlocks {
-  $global:R20DockFound = ''; $global:R20CGate = ''; $global:R20CRoot = $false; $global:R20CWords = @(); $global:R20CRefuse = @(); $global:R20CPick = $null; $global:R20CCondSet = $false; $global:R20CFlagDone = $false
+  $global:R20DockFound = ''; $global:R20CGate = ''; $global:R20CRoot = $false; $global:R20CWords = @(); $global:R20CRefuse = @(); $global:R20CPick = $null; $global:R20CCondSet = $false; $global:R20CFlagDone = $false; $global:R20CDockChanged = $false
   $global:R19Blocks['r20-0c'] = { Invoke-R20CZero }
   $global:R19Blocks['flag'] = { Write-R20CFlag }
   $global:R19Blocks['r20-devt-undock'] = { if ($global:R20CGate -eq 'run') { Invoke-R20CUndock } }
