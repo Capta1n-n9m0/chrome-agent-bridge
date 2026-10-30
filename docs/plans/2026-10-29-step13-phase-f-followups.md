@@ -401,6 +401,24 @@ doc header); at the phase close, the gate checklist (item → met? → evidence)
 - **Left for later (NITs):** the new extension test frees the chooser slot only on pass; the MCP test's fake does not
   assert the method; E5.3's path-check list lacks the new constant. Docs naming the old overlap text are S6's.
 
+### S5 — Run 20 · 2026-10-29 → 2026-10-30 · record verifier: PASS-with-notes · record `2c2c214` · models Opus step agents and verifiers, Sonnet builders, fixers, runners and committers
+- **Prep:** S5-sheet `246c115` (§4.28, before any observation); helpers `b4ff74c`; drivers A1 `2224637`, A2 `97613f2`,
+  B2 `97e7533`, B3 `39b51cd` (re-checked after a power cut), B4a `489bf47`, B4b `cbd7c77`, C1 `803d02d`, C2 `34e640b`,
+  C3 `8dafe79`, C4 `ae05349` (#416's notes). Additions to §4.28 before their slice ran: #400, #401, #403, the #407
+  addendum `8ec2789` (R20-POP-*-3), #416. The `-2` addendum was withdrawn before it ran (#406).
+- **Live:** liveA20 attempt 3 of 3 (`ed66e36`); liveB20 attempt 1, ended in the pre-registered STOP `text-leak` at
+  R20-LOGS (the MCP failure report's screenshot path; record **held uncommitted**, verified, #417); liveC20 attempt 1
+  (`3f19f28`, dock side unreadable) and attempt 2 (`1a9032e`, after the dock-reader fix, #418; five fixer passes, the
+  round cap breached, #419).
+- **Verdicts (verified, `S5-run-record.md`):** 34 ids: PASS 20, FAIL 8, NOT MEASURED 1, NOT RUN 3, RECORD 2. G1.4 met
+  on R20-POP-BG-3. FAILs: R20-POP-BG, -FG, -OTHER (liveA20, a sheet clause, #406), R20-G2-1 (covered-window capture
+  timeout, the row's product finding), the three R20-RESTOREs (the wave's options window counted in `DIALOGS`; printed
+  PASS), liveB20's R20-LOGS. NOT MEASURED: R20-POP-OTHER-3 (`human` leg: no popup opened in 3 clicks). #369's two
+  DevTools conditions: both answer `ok`.
+- **Decisions:** #399–#419. **Tests:** 5654 → 6030, files 238 → 251 (recipes only; no product code).
+- **Open for the user:** #417 (text-leak options, and the DIALOGS defect), #419, R20-ARGS-ORDER RECORD vs PASS, #385,
+  #389.
+
 ## Follow-ups
 
 - The Phase F items left out (0.9): response bodies and WebSocket frames on the kept session; console lines in
