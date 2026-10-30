@@ -53,7 +53,7 @@ opens or acts on `file:` pages. See [`docs/setup.md` → Uploading files](docs/s
 `back`, `forward` or download runs, the block list also stops a redirect hop onto a blocked site (Runs 17 and 17b,
 2026-10-27).
 
-**Step 12 (Phase F, ergonomics; built, Runs 18 and 19 run, not closed).** `browser_evaluate {args}` passes data to a
+**Step 12 (Phase F, ergonomics; built, Runs 18 and 19 run, closed 2026-10-29, #374).** *(Superseded 2026-10-30: was "not closed", because the user ruled the gate on 2026-10-29, #374.)* `browser_evaluate {args}` passes data to a
 function without escaping it into the string (SDK: `{args}` on `evaluate`, `evaluateRef`, `evaluateToFile`; R19-ARGS-2, R19-ARGS-GLOBAL: PASS);
 `browser_console_messages` (SDK `tab.consoleMessages()`) reads the page's console, earlier messages included (R19-CON-1: PASS); the bridge
 keeps one debugger session per tab while an agent works, to avoid the banner flicker (tested: `extension/test/debugger-keeper.test.ts`; the
@@ -63,7 +63,20 @@ pages): of 58 row ids, 42 passed, 5 failed, 5 did not discriminate, 3 were not m
 (`docs/plans/2026-10-27-step12-phase-f-steps/S7-run-record.md`). Known limits are in
 [`docs/setup.md`](docs/setup.md#reading-the-console) and under Running JavaScript, Uploading files and Troubleshooting.
 
-5596 unit tests green in 235 files (`npm test` 2026-10-29, Step 12 S8). The Step 6 daemon split was E2E-tested in
+**Step 13 (the Phase F follow-ups; built, Run 20 recorded, not closed: the gate waits for the user).** A popup opened by a
+background tab now goes to that tab's owner, matched through Chrome's `webNavigation` event, a new permission you granted
+(R20-POP-BG-3: PASS, 3 of 3; `extension/test/opener-join.test.ts`; a popup with no bridge caller was not measured,
+R20-POP-OTHER-3). `browser_evaluate` returns an object's keys in the page's order through the SDK too (SDK leg of
+R20-ARGS-ORDER: 5 of 5 equal; the row's printed verdict is RECORD; `extension/test/s13-envelope.test.ts`). When
+`browser_console_messages` has more than 20 000 characters it keeps the newest lines and says how many older lines it cut
+(R20-CON-CAP: PASS; `sdk/test/s12-console-cap.test.ts`); an object logged before the call still shows its class name only, now
+stated in the tool's description (R20-CON-NOTEA, R20-CON-DESC: PASS). A second file-chooser upload on a tab running one is refused
+with its own text, which no longer mentions DevTools (R20-CHOOSE-TWICE: PASS; `mcp/test/s13-chooser-busy.test.ts`). Run 20
+(2026-10-29/30, fixture pages): of 34 verdicts, 20 passed, 8 failed, 1 was not measured, 3 were not run and 2 are records
+(`docs/plans/2026-10-29-step13-phase-f-followups-steps/S5-run-record.md`); the failures are three popup rows that fail on two sheet clauses (#406), a covered-window screenshot timeout (R20-G2-1), a text-leak stop in one slice and the wave's own options window counted
+in the three restore rows. Nothing of Step 13's build is pushed.
+
+6030 unit tests green in 251 files (`npm test` 2026-10-30, HEAD `f6bafc5`). *Superseded 2026-10-30: was "5596 unit tests green in 235 files (`npm test` 2026-10-29, Step 12 S8)", because Step 13 landed.* The Step 6 daemon split was E2E-tested in
 wave W1 (2026-10-22), Step 7's multi-actor tabs in Runs 8–10 (2026-10-22/23), Step 8 in Runs 11–12
 (2026-10-23/24), Step 9's safety controls in Run 13 (2026-10-24; 24 rows passed, 7 failed — none
 shown to be a product defect; ratified by the user, #202), Step 10 in Runs 14–15 (2026-10-25; Run 15:
