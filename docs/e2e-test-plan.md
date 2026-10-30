@@ -33,7 +33,7 @@ Record outcomes in the [Results template](#results-template). A run "passes" whe
 3. **Token:** choose a secret, e.g. `openssl rand -hex 16`. Call it `<TOKEN>`.
    *Note 2026-10-22 (Step 6 D6): for the Step 6 daemon wave (§4.12, §4.13), item 8 replaces this
    item — the token is generated into `bridge.token` at the repo root.*
-4. **Register the MCP server** in your client (see `docs/setup.md` §3) with env
+4. **Register the MCP server** in your client (see `docs/setup.md`, Manual install §3) with env
    `BRIDGE_TOKEN=<TOKEN>`, `BRIDGE_PORT=9234`. (Or run the inspector:
    `$env:BRIDGE_TOKEN="<TOKEN>"; npx @modelcontextprotocol/inspector node mcp/dist/index.js`.)
    The MCP starts the daemon (`daemon/dist/index.js`) on its first connect; it keeps running after

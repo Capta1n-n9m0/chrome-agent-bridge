@@ -9,6 +9,21 @@ restores agent control of that profile via a Chrome extension + an MCP server, s
 
 > Think of it as "Playwright MCP, but pointed at your real logged-in Chrome."
 
+## Quick start (Windows)
+
+```powershell
+git clone https://github.com/Capta1n-n9m0/chrome-agent-bridge
+cd chrome-agent-bridge
+npm run setup
+```
+
+Setup installs, builds, creates the token, registers the MCP server in Claude Code and prints the Chrome steps: load
+the `extension\` folder unpacked, set its Options (port `9234` and the token), pin its button. Then run `/mcp` in Claude
+Code (or start a new session) and `npm run doctor`; every line should say `OK`. Update later with `npm run bridge-update`.
+Without Claude Code the MCP entry line fails; scripts do not need it. If PowerShell says running scripts is disabled,
+type `npm.cmd run setup` (likewise `npm.cmd run doctor`). An older clone needs `git pull` first.
+The full walk-through: [`docs/setup.md` → Install on a new device](docs/setup.md#install-on-a-new-device).
+
 ## Documentation
 
 All documentation lives in [`docs/`](docs/).
@@ -63,18 +78,20 @@ pages): of 58 row ids, 42 passed, 5 failed, 5 did not discriminate, 3 were not m
 (`docs/plans/2026-10-27-step12-phase-f-steps/S7-run-record.md`). Known limits are in
 [`docs/setup.md`](docs/setup.md#reading-the-console) and under Running JavaScript, Uploading files and Troubleshooting.
 
-**Step 13 (the Phase F follow-ups; built, Run 20 recorded, not closed: the gate waits for the user).** A popup opened by a
+**Step 13 (the Phase F follow-ups; closed 2026-10-30, #420).** A popup opened by a
 background tab now goes to that tab's owner, matched through Chrome's `webNavigation` event, a new permission you granted
-(R20-POP-BG-3: PASS, 3 of 3; `extension/test/opener-join.test.ts`; a popup with no bridge caller was not measured,
-R20-POP-OTHER-3). `browser_evaluate` returns an object's keys in the page's order through the SDK too (SDK leg of
-R20-ARGS-ORDER: 5 of 5 equal; the row's printed verdict is RECORD; `extension/test/s13-envelope.test.ts`). When
-`browser_console_messages` has more than 20 000 characters it keeps the newest lines and says how many older lines it cut
-(R20-CON-CAP: PASS; `sdk/test/s12-console-cap.test.ts`); an object logged before the call still shows its class name only, now
-stated in the tool's description (R20-CON-NOTEA, R20-CON-DESC: PASS). A second file-chooser upload on a tab running one is refused
-with its own text, which no longer mentions DevTools (R20-CHOOSE-TWICE: PASS; `mcp/test/s13-chooser-busy.test.ts`). Run 20
-(2026-10-29/30, fixture pages): of 34 verdicts, 20 passed, 8 failed, 1 was not measured, 3 were not run and 2 are records
-(`docs/plans/2026-10-29-step13-phase-f-followups-steps/S5-run-record.md`); the failures are three popup rows that fail on two sheet clauses (#406), a covered-window screenshot timeout (R20-G2-1), a text-leak stop in one slice and the wave's own options window counted
-in the three restore rows. Nothing of Step 13's build is pushed.
+(R20-POP-BG-3: PASS, 3 of 3; `extension/test/opener-join.test.ts`). `browser_evaluate` returns an object's keys in the page's
+order through the SDK too (`extension/test/s13-envelope.test.ts`). When `browser_console_messages` has more than 20 000
+characters it keeps the newest lines and says how many older lines it cut (R20-CON-CAP: PASS;
+`sdk/test/s12-console-cap.test.ts`). A second file-chooser upload on a tab running one is refused with its own text
+(R20-CHOOSE-TWICE: PASS; `mcp/test/s13-chooser-busy.test.ts`). Run 20 (2026-10-29/30, fixture pages), as the user ruled it
+(#420): 24 passed, 4 failed (three popup rows on two sheet clauses, #406; a covered-window screenshot timeout, R20-G2-1),
+1 not measured, 3 not run, 2 records
+(`docs/plans/2026-10-29-step13-phase-f-followups-steps/S5-run-record.md`). Step 13's build is not pushed.
+
+**Step 14 (Phase G, your own devices; in progress).** `npm run setup` installs the bridge on a new Windows device,
+`npm run doctor` checks every part, `npm run bridge-update` updates it, and a script in any folder imports the SDK
+([`docs/setup.md`](docs/setup.md#install-on-a-new-device)). The failure report prints a home-folder screenshot path as `~`.
 
 6030 unit tests green in 251 files (`npm test` 2026-10-30, HEAD `f6bafc5`). *Superseded 2026-10-30: was "5596 unit tests green in 235 files (`npm test` 2026-10-29, Step 12 S8)", because Step 13 landed.* The Step 6 daemon split was E2E-tested in
 wave W1 (2026-10-22), Step 7's multi-actor tabs in Runs 8–10 (2026-10-22/23), Step 8 in Runs 11–12

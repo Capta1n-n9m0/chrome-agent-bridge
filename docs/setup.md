@@ -5,12 +5,101 @@ This bridge lets an MCP client (e.g. Claude) drive your **real, logged-in Chrome
 a Chrome extension (loaded into your real profile) that connects to it, and the MCP server
 your client runs, which connects to the daemon as one of its clients.
 
-## Prerequisites
+## Install on a new device
+
+For a Windows device that has never run the bridge. Total time: a few minutes, most of it `npm ci` and the build.
+
+**You need:** Node.js 20 or newer (with npm), git, Google Chrome 116 or newer. Claude Code is optional: without it
+the bridge still works for scripts, and setup prints the one command to register it later. Use PowerShell. The
+commands need a checkout that includes them: if you cloned the bridge earlier, run `git pull` first.
+
+If PowerShell says running scripts is disabled (`npm.ps1 cannot be loaded`), type `npm.cmd run setup` instead, and
+likewise `npm.cmd run doctor` and `npm.cmd run bridge-update`, or use Command Prompt. This is a known Windows
+default, not measured on the machine this guide was written on. Do not change the machine's execution policy for it.
+
+1. **Clone and run setup.** Pick a folder to keep; the bridge runs from it.
+
+   ```powershell
+   git clone https://github.com/Capta1n-n9m0/chrome-agent-bridge
+   cd chrome-agent-bridge
+   npm run setup
+   ```
+
+   Setup works in this order, and each step skips itself when it is already done, so you can run it again at any time:
+   it checks the prerequisites, runs `npm ci` and `npm run build` (only when `package-lock.json` or the sources are
+   newer than what is installed or built), creates `bridge.token` (a random 256-bit secret; it is never printed and the
+   file is gitignored), and registers the MCP server in Claude Code at user scope (`claude mcp add -s user`).
+   An entry that already points at another checkout is left alone and reported; `npm run setup -- --replace-mcp`
+   replaces it. `npm run setup -- --dry-run` shows what it would do and changes nothing.
+
+   **The one question:** "Copy the token to the clipboard for the extension's Options page? [y/N]". Answer `y` to
+   paste the token in the Options page (step 4 of the list below); setup then waits, and once you press Enter it empties the clipboard. Windows
+   clipboard history (**Win+V**) may keep a copy: delete it there after pasting. Answer `n` (or run without a
+   terminal) and the token is not copied: open `bridge.token` in Notepad and copy its one line instead.
+
+   **Exit codes:** `0` done; `1` Node, npm or git is missing, or `npm ci` or the build failed (the line says which);
+   `2` setup finished but a part failed (the MCP registration, or a config file it could not parse). Fix what the
+   line says and run setup again.
+
+2. **Follow the next steps setup prints.** Setup ends with "Next steps in Chrome", with your real folder paths:
+   1. Open `chrome://extensions` and turn on **Developer mode** (top right).
+   2. Click **Load unpacked** and choose the `extension\` folder of the checkout.
+   3. Open its Options page (Details → Extension options).
+   4. **Port** `9234`; **Token** pasted from the clipboard (Ctrl+V), or the one line of `bridge.token` opened in
+      Notepad. **Save**.
+   5. Pin the extension's toolbar button (puzzle-piece menu → pin). It is the kill switch, and so is `Alt+Shift+K`
+      ([Safety](#safety)).
+   6. In Claude Code run `/mcp` (or start a new session). `browser_status` should then say the daemon is connected
+      and the extension is connected. You never start the daemon yourself ([The daemon](#the-daemon)).
+3. **Check with the doctor.**
+
+   ```powershell
+   npm run doctor
+   ```
+
+   It prints one line per part: Node.js, Build, Token file, MCP entry, Daemon, Extension, and Extension build. A
+   healthy install prints `OK` on every line and `No part failed.` (exit 0). A `FAIL` line names what is wrong and its
+   fix, and makes the exit code 1. A `HINT` line is not a failure: for example, "Extension: not checked" when no
+   daemon answered yet; start Claude Code or a script, then run the doctor again. Without Claude Code, the MCP
+   entry line fails (exit 1): a script-only reader can ignore that line. The doctor only reads: it starts
+   no daemon, never calls the `claude` CLI and never prints the token.
+
+   **The Extension build line is a heuristic, named as such** (decisions.md · 2026-10-30 · the doctor reads the
+   extension's build as a heuristic; #432). Nothing on the wire reports which build the loaded extension runs, so
+   the doctor compares `extension\dist\sw.js` with the last "extension resync" line in the daemon's log. If the build
+   is newer, it says the extension may be older than the build and tells you to reload it. If it says "resynced
+   after the last build", that is a good sign, not a proof.
+
+**Updating later:**
+
+```powershell
+npm run bridge-update
+```
+
+It runs `git pull --ff-only` (it stops with a plain line if you have local changes or the pull cannot fast-forward),
+`npm ci` and `npm run build` when needed, then reloads the extension by `recipes\reload-extension.ps1` (UI
+automation in a window of its own; if it presses nothing it runs once more, then tells you to reload by hand:
+`chrome://extensions` → the reload button on the card). It exits 0 or 1. Then run `/mcp` in Claude Code, or start a new
+session; the next client that connects hands the daemon over to the new build. `npm run bridge-update -- --no-reload`
+skips the reload step and prints how to do it by hand.
+
+**Scripts from any folder** need no extra setup beyond this install: see
+[Scripts from any folder](#scripts-from-any-folder) under Writing a script.
+
+The rest of this file ([Use it](#5-use-it) onward) describes the tools. The sections below describe the install by
+hand, which is what `npm run setup` does for you.
+
+## Manual install (what setup does by hand)
+
+Use this if you cannot run setup (another operating system, a locked-down machine) or want to see each step. The
+numbers 1 to 4 below are what other documents mean by "setup.md §1" to "§4".
+
+### Prerequisites
 
 - Node.js 20+ and npm
 - Google Chrome 116+
 
-## 1. Build
+### 1. Build
 
 ```bash
 npm install
@@ -23,7 +112,7 @@ extension bundles in `extension/dist/`.
 bridge server, which holds port 9234 itself. While one is open the new MCP cannot connect: its tools
 say a pre-Step-6 bridge server holds the port. End that session (or restart Claude Code) once.
 
-## 2. Choose a shared token
+### 2. Choose a shared token
 
 Pick any random secret string (e.g. `openssl rand -hex 16`). The daemon, every client and the
 extension must use the **same** token. Treat it like a password — anything that can
@@ -39,7 +128,7 @@ Every client must also use the **same** `BRIDGE_PORT` (default `9234`), the port
 extension's Options. A client on another port starts a second daemon there, which the extension
 never reaches; that client then fails with `Extension not connected — …`.
 
-## 3. Register the MCP server with your client
+### 3. Register the MCP server with your client
 
 Add this to your MCP client config (Claude Desktop / Claude Code), substituting your
 token and the absolute path to this repo:
@@ -56,7 +145,7 @@ token and the absolute path to this repo:
 }
 ```
 
-### Upgrading a machine that ran the bridge before Step 6
+#### Upgrading a machine that ran the bridge before Step 6
 
 Step 6 (2026-10-22) moved the MCP entry from `server/dist/index.js` to `mcp/dist/index.js`. The old
 path no longer exists, and the build does not touch your client config, so do this once on every
@@ -107,6 +196,8 @@ machine that used the bridge before:
 
 Every client on a machine must use the same `BRIDGE_PORT`; see [The daemon](#the-daemon).
 
+`start-bridge.sh` at the repo root is a macOS-only launcher written for the author's machine (a TODO in its header says so); it is not the Windows way and nothing here needs it.
+
 You do not start the daemon yourself. The first client to connect (usually this MCP server)
 starts it in the background; later clients join it. It **outlives the Claude session on purpose**,
 so the next session and any script reuse it, and it exits on its own after 10 minutes with no
@@ -118,7 +209,7 @@ To try it without an MCP client, use the inspector:
 $env:BRIDGE_TOKEN="<your-token>"; npx @modelcontextprotocol/inspector node mcp/dist/index.js
 ```
 
-## 4. Load the extension into your real profile
+### 4. Load the extension into your real profile
 
 1. Open `chrome://extensions`.
 2. Enable **Developer mode** (top-right).
@@ -516,6 +607,50 @@ their image, and this session's tab ([Tabs](#tabs)) — which never follows you 
 the tab to the front of its window and leaves it there; untrusted actions never do. *Superseded
 2026-10-25: was "The MCP's trusted tools do not focus first; `browser_focus_tab` is an explicit call",
 because Step 10 S2 made them focus first (#106).*
+
+### Scripts from any folder
+
+A script does not have to live in the repo. Give its own folder the SDK and `tsx`, and it can connect to the bridge
+like any other client. Needs a built checkout (`npm run setup` or `npm install`) and Node.
+
+1. In the script's folder, in PowerShell, one command per line:
+
+   ```powershell
+   npm init -y
+   npm pkg set type=module
+   npm install <repo>\sdk tsx
+   ```
+
+   `type=module` lets the script use top-level `await`. The first package is a `file:` dependency: npm puts a junction
+   `node_modules\@bridge\sdk` that points into your checkout. It does not bring `tsx` or fetch the SDK's own packages
+   (they come from the checkout), so `tsx` is a second package from the registry, fetched once; after that nothing
+   needs the network. The SDK is TypeScript source with no build, so plain `node` cannot load it: run scripts with
+   `npx tsx my-script.ts`.
+2. Copy `examples/list-tabs.ts` there and run `npx tsx list-tabs.ts`. It prints each tab the client may see (handle,
+   holder, title) and the count. The script changes no tab and no setting; `connect()` may start the daemon, or hand
+   it over to a newer build, as any client does. A tab whose title the bridge withholds (the bridge is off, or a
+   blocked site) shows as `(hidden: ...)`.
+3. The token is found for you. The SDK looks for `BRIDGE_TOKEN`, else `bridge.token` in the checkout it was installed
+   from (it walks up from its own folder, not from the script's). Never put the token in a script.
+4. To type-check, put your own `tsconfig.json` in the folder (`module` and `moduleResolution` `NodeNext`, `strict`)
+   and run the checkout's compiler:
+
+   ```powershell
+   node <repo>\node_modules\typescript\bin\tsc -p .
+   ```
+
+#### Removing the folder safely
+
+`node_modules\@bridge\sdk` is a junction into your checkout. Deleting the script's folder recursively can follow the
+junction and empty the checkout's `sdk\`. Remove the junction first, in **PowerShell** (not Git Bash, whose
+`cmd //c rmdir` leaves it in place):
+
+```powershell
+cmd /c rmdir node_modules\@bridge\sdk
+```
+
+Check that `<repo>\sdk\src` is still there, then delete the folder. `npm uninstall @bridge/sdk` also removes the
+junction.
 
 ## The daemon
 
