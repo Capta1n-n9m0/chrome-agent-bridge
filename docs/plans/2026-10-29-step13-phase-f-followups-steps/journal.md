@@ -75,3 +75,4 @@
 - 2026-10-30T02:47:54Z · decisions · #417 (text-leak to the user; record held and verified, not committed; liveC20 goes on).
 - 2026-10-30T02:47:54Z · S5-liveB20 · verifier (session-started leaf, read-only) · Opus · medium · started (output `S5-liveB20-verifier1.md`).
 - 2026-10-30T02:47:54Z · S5-liveC20 · step agent · Opus · medium · started (ledger `S5-liveC20.ledger.md`; output `S5-liveC20.md`).
+- 2026-10-30T02:58:11Z · S5-liveB20 · verifier1 · ended FAIL on the record (LOGS: text-leak stands; RESTORE printed PASS but DIALOGS wave-windows-open=1 = the wave's options window — same defect in liveA20's record) · G1.4 met (POP-BG-3 PASS verified) · record clean to commit · `S5-liveB20-verifier1.md` (uncommitted, with the held record). #417 amended with the history (#349, #370 carve-out) and the verified verdicts.

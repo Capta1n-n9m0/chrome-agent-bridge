@@ -207,8 +207,15 @@ and the clean-tree guard ignores untracked files in the steps dir; liveC20's own
 to the repo (a later step: a changed message), then a re-run of slice B; (b) rule that a tool reply to the client is
 not the log R20-LOGS guards, so LOGS is a RECORD and the record is committed; (c) both: (b) for Run 20, (a) in Phase
 G. **Recommendation:** (c). The reply goes only to the calling agent on the same machine, which needs the path to open
-the screenshot; but a home path in an agent's transcript can end up in pasted logs, so `~` costs nothing. **By:**
-Claude, for the user at the gate
+the screenshot; but a home path in an agent's transcript can end up in pasted logs, so `~` costs nothing. **History
+(the verifier, `S5-liveB20-verifier1.md`):** this is the third time the line was recorded and it was never ruled: Run
+18 (step12 #349 (a)), Run 19 (#370, which carried a carve-out for the line), and not in #374; Run 20's R20-LOGS was
+written without that carve-out. **Verified verdicts (verifier1, FAIL on the record):** PASS R20-0B, POP-BG-3 (G1.4
+met; liveness control 9 → 27 evaluate lines), POP-FG-3, CHOOSE-TWICE, CHOOSE-REFUSE-DIS, VERSION; NOT MEASURED
+POP-OTHER-3 (`human`: popup-opened=no ×3); RECORD CHOOSE-KEPT; FAIL G2-1 (the row's own "covered window" product
+finding), **R20-RESTORE** (printed PASS, but `DIALOGS B wave-windows-open=1`, the wave's own options window counted
+before teardown closes it; liveA20's recorded RESTORE PASS has the same defect and is read as FAIL in S5-record), and
+LOGS. **By:** Claude, for the user at the gate
 
 ### 2026-10-30 · Before liveB20/liveC20: an unread dock side with no dock change is NOT MEASURED; the capture's order; the DIALOGS label (#416)
 **Decided:** three dated notes in §4.28, written and committed before any liveB20 or liveC20 observation, and the
