@@ -1,7 +1,7 @@
 # Step 14 S1 verifier: the ~ path
 
 Model / effort: Opus, medium. Role: verifier (`docs/agent-rules.md` §6). Deviation (from the brief): verified in a scratch
-git worktree at HEAD `6e22e3b` with S1's four files copied in, its own `npm ci` (no junction to the main tree), because
+git worktree at HEAD `b9ac1bf` with S1's four files copied in, its own `npm ci` (no junction to the main tree), because
 S2a is in flight in the main tree. The worktree was removed after its `@bridge/*` junctions (all pointing inside the
 worktree) were removed with `cmd /c rmdir`; the main tree's `node_modules/.bin` is still present.
 

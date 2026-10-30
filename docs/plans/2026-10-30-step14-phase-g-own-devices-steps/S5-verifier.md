@@ -10,7 +10,7 @@ Options page; `node scripts/doc-check.mjs` exits 0. Findings: 4 MINOR, 6 NIT; no
 
 ## 2. Outputs
 
-- The walk (Windows PowerShell 5.1.26100; a new clone of `<repo>` at HEAD `81882c5` in `<scratch>\s5\clone`;
+- The walk (Windows PowerShell 5.1.26100; a new clone of `<repo>` at HEAD `625e315` in `<scratch>\s5\clone`;
   `CLAUDE_CONFIG_DIR=<scratch>\s5\claude-config`, new and empty, asserted before every step; `BRIDGE_TOKEN` and
   `BRIDGE_PORT` unset; no TTY). Evidence: `S5-verifier-walk.txt`.
 

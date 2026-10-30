@@ -1,4 +1,4 @@
-# S2b verifier — counts (main tree, S2b uncommitted; HEAD 329b518)
+# S2b verifier — counts (main tree, S2b uncommitted; HEAD 51a0ad8)
 typecheck exit=0
 scripts tsc exit=0
  Test Files  255 passed (255)

@@ -9,13 +9,7 @@ as a dated entry and point back.
 
 ## Open decisions
 
-- 2026-10-30 · Stage 0: the doctor reads the extension's build as a heuristic; no protocol change (#432). Options:
-  (a) keep the heuristic (built; no protocol change); (b) a later step adds a build id to the extension's hello and
-  `daemon.status` (a contract change, protocol bump) for an exact line. Recommendation: (a) now, (b) only if U.1 shows
-  the heuristic misleads.
-- 2026-10-30 · The Stage 0 commit carries one evidence line with the checkout's absolute path (#441). Options: (a)
-  squash or amend before the push (rewrites unpushed history); (b) push as is (the path stays in history, as #372 (b)
-  allowed for older docs). Recommendation: (a), since nothing of it is pushed yet.
+None. Step 14's were ruled by #442.
 
 ## Standing decisions
 
@@ -47,6 +41,8 @@ settled a build detail of one stage, or that a later entry replaced, are not lis
 - 2026-10-27 · The user rules Step 12's scope (G12-0) (#321) — `decisions-archive/step12.md`
 - 2026-10-29 · The user rules Step 12's gate; Step 12 closes (#374) — `webNavigation` granted; no local path or name in new committed docs (`docs-writing-guide.md`); Step 13 = the Phase F follow-ups and Run 19's re-measurement; then a minimal Phase G for the user's own use; `decisions-archive/step12.md`
 - 2026-10-30 · The user rules Step 13's gate; Step 13 closes (#420) — #417 (c): a reply to the calling client is not the log a LOGS row guards, the `~` path fix in Phase G; the wave's own options window is outside `DIALOGS`; next: a minimal Phase G for the user's Windows devices; `decisions-archive/step13.md`
+- 2026-10-30 · The user rules Step 14's gate; Step 14 closes (#442) — the doctor's build heuristic kept; the clone
+  command keeps the public GitHub URL (rule 9's exception)
 
 **Product promises: the daemon, the clients and their lifecycle**
 - 2026-10-21 · The actor name carries the MCP's own process id (#2) — `decisions-archive/step6.md`
@@ -193,11 +189,24 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 ## Log
 
 The current step's entries, newest first. Step 13's (#375–#420) are in `decisions-archive/step13.md`, Step 12's
-(#321–#374) in `decisions-archive/step12.md`. The next entry is 442.
+(#321–#374) in `decisions-archive/step12.md`. The next entry is 443.
+
+### 2026-10-30 · The user rules Step 14's gate; Step 14 closes (#442)
+**Decided (user),** on the session agent's plain-language list (chat, 2026-10-30):
+1. **#432 (a):** the doctor keeps its heuristic line for the extension's build; a build id in the hello only if U.1
+   shows the heuristic misleads.
+2. **#441 (a), "a very quick fix with very quick verification":** the eleven unpushed commits were rewritten so the
+   Stage 0 commit carries the already-redacted `kickoff-checker-test.txt`; the final tree is byte-identical to the old
+   tip, history holds no local path, and the commit ids cited in the docs were updated to the new ones.
+3. **G14-1 granted:** push. U.1 (the user's install on another device) follows; its findings become a small follow-up.
+4. **The clone command keeps the public GitHub URL** (`README.md`, `docs/setup.md`): an exception to
+   `docs-writing-guide.md` rule 9, which now says so; a clone command must work as pasted.
+5. **The cleanup pass 2026-10-30-2 proposals P5–P11:** the session agent's recommendations, applied.
+**By:** the user
 
 ### 2026-10-30 · Step 14's close: the history line with a local path waits for the user (#441)
-**Decided:** none yet; Open decisions lists the options. 6e22e3b (unpushed) holds one `kickoff-checker-test.txt` line
-with the checkout's absolute path; b2c45b7 redacted it in the tree. **By:** Claude (for the user)
+**Decided:** ruled by #442 (a). The Stage 0 commit held one `kickoff-checker-test.txt` line with the checkout's
+absolute path until the history rewrite. **By:** Claude (for the user)
 
 ### 2026-10-30 · Two-level stages: the session agent commits each stage after its verifier's verdict (#440)
 **Decided:** in Step 14's two-level form the session agent committed S1–S5 itself, after scanning the files for the
@@ -242,7 +251,7 @@ where npm is an `npm.exe`). **Revisit if:** U.1 sees it. **By:** Claude
 verifier measured that `mcpServers` stayed the same. Later rehearsals guard that key only. **By:** Claude
 
 ### 2026-10-30 · Stage 0: the doctor reads the extension's build as a heuristic; no protocol change (#432)
-**Decided:** the doctor says "extension connected" from `daemon.status`, compares the daemon's build with the one on
+**Decided (kept by #442):** the doctor says "extension connected" from `daemon.status`, compares the daemon's build with the one on
 disk, and, as a heuristic named as such, "the extension may be older than the build — reload it" when
 `extension\dist\sw.js` is newer than the last `extension resync` line in the daemon's log. The doctor never spawns or
 hands over a daemon. The phase doc's Outcome and R4.1 are amended to this wording. **Why:** nothing on the wire reports

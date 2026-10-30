@@ -3,7 +3,7 @@
 > node scripts/bridge/update.mjs --no-reload
 
 == Pull
-Updating 0a5ea8f..8f50b9e
+Updating 6d06594..63cfa52
 Fast-forward
  .../S3-builder-evidence.txt                        |  6 +++
  .../S3-builder.md                                  | 15 ++++++

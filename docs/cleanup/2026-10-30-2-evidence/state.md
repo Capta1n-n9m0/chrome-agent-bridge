@@ -12,7 +12,7 @@ git log. The 6089 count and every other number in the state block are true; the 
 
 2. **README.md:90: "Step 13's build is not pushed."**
    Contradicts CLAUDE.md:16 ("Step 13 was found on origin at Step 14's start") and `git log origin/main..HEAD`, which lists
-   exactly 8 commits, 6e22e3b..8716fc7, all Step 14; 49e1908 (Step 13 close) is on origin.
+   exactly 8 commits, b9ac1bf..9d2313d, all Step 14; 49e1908 (Step 13 close) is on origin.
    Fix: delete the sentence or write "Step 13 is pushed." Mechanical.
 
 3. **README.md:92: "Step 14 (Phase G, your own devices; in progress)."**
@@ -22,7 +22,7 @@ git log. The 6089 count and every other number in the state block are true; the 
 
 4. **CLAUDE.md:112 "6089 passed" (doc-check notice): confirmed correct, no change.**
    Sources: `S2b-verifier2.md:15` "npm test: 6089 passed, 255 files, exit 0"; `S3-verifier.md:28` main tree "255 files,
-   6089 tests, exit 0, the same as at 0a5ea8f"; `S5-verifier.md:30` clone "6080 passed, 9 failed (6089) in 255 files" (the 9
+   6089 tests, exit 0, the same as at 6d06594"; `S5-verifier.md:30` clone "6080 passed, 9 failed (6089) in 255 files" (the 9
    known CRLF reds, a Follow-up). No code changed after S3 (S4, S5, close-out are docs). The doc-check notice is only
    the reminder that the number needs a source; the records above are it. No fix. Optional (needs the user): none.
 
@@ -41,5 +41,5 @@ git log. The 6089 count and every other number in the state block are true; the 
    - No local path or user name found in CLAUDE.md, README.md, docs/setup.md, progress-and-roadmap.md, the phase doc,
      next-session-prompt.md or the package CLAUDE.md files (grep for `C:\Users` and the user name: no hits).
    - CLAUDE.md Commands lists `setup`, `doctor`, `bridge-update`; the Step 14 gotcha is in recipes/CLAUDE.md:202.
-   - CLAUDE.md:15-24 note: the Stage 0 commit 6e22e3b still holds one absolute-path evidence line; the squash before the
+   - CLAUDE.md:15-24 note: the Stage 0 commit b9ac1bf still holds one absolute-path evidence line; the squash before the
      push is the user's call (needs the user; already recorded there, so listed here only as an open item for the push).

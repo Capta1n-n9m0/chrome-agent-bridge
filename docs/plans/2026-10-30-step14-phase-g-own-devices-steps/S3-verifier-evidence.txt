@@ -25,8 +25,8 @@ cmd /c rmdir node_modules\@bridge\sdk (PowerShell) -> exit 0; junction gone: Tru
 second folder <scratch>\s3-verify-b: npm install <repo>\sdk; npm uninstall @bridge/sdk -> exit 0; junction gone: True; reparse points left: 0; <repo>\sdk files: 56
 both consumer folders: reparse points 0, then deleted; <repo>\sdk files: 56
 
-## Main tree (HEAD 0a5ea8f + uncommitted examples/ and S3 docs)
+## Main tree (HEAD 6d06594 + uncommitted examples/ and S3 docs)
 npm run typecheck   -> exit 0 (shared, daemon, sdk, mcp, extension, scripts)
-npm test            -> Test Files 255 passed (255); Tests 6089 passed (6089); exit 0   (= the 0a5ea8f count, journal 10:50Z/10:57Z)
+npm test            -> Test Files 255 passed (255); Tests 6089 passed (6089); exit 0   (= the 6d06594 count, journal 10:50Z/10:57Z)
 vitest include "**/test/**/*.test.ts"; examples/ has no test/ dir. No root tsconfig; no package/recipes/scripts tsconfig includes examples/.
 grep for a user name or local path in S3-doc-section.md and examples/list-tabs.ts -> no match

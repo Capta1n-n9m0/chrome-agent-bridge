@@ -9,7 +9,7 @@ Read: the phase doc (§ S2, I2.2–I2.4, R4.1, STOP rules), decisions #427–#43
 `<scratch>\s2b-v\A` and `B`, which have their own `node_modules`; nothing was deleted across a junction (#220). Nothing touched port 9234, `~\.claude.json`,
 Chrome, the extension or `reload-extension.ps1`. Evidence: `S2b-verifier2-counts.txt`, `S2b-verifier2-runs.txt`.
 
-## Counts (main tree, HEAD 329b518 + S2b uncommitted)
+## Counts (main tree, HEAD 51a0ad8 + S2b uncommitted)
 
 - `npm run typecheck`: exit 0 (the chain ends with `tsc -p scripts/tsconfig.json`).
 - `npm test`: **6089 passed, 255 files**, exit 0. The first verifier had 6083 / 255, so this is +6 (the fixer's five doctor tests and one update test).

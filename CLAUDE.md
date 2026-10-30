@@ -11,19 +11,18 @@ lets an AI agent (Claude) or a script drive the user's **real, logged-in Chrome 
 user-data-dir, breaking CDP-against-your-real-profile; this restores it from *inside* the profile via an
 extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chrome."
 
-## Current state (2026-10-30, Step 14 built; the gate waits for the user)
+## Current state (2026-10-30, Step 14 closed and pushed; U.1 waits for the user)
 
-- **Shipped:** Steps 1–13, public on GitHub (MIT), pushed (Step 13 was found on origin at Step 14's start). **Step 14
-  (Phase G, minimal) is built, not pushed** (`docs/plans/2026-10-30-step14-phase-g-own-devices.md` § As built):
+- **Shipped:** Steps 1–14, public on GitHub (MIT), pushed. **Step 14 (Phase G, minimal) closed on the user's ruling
+  (#442)** (`docs/plans/2026-10-30-step14-phase-g-own-devices.md` § As built):
   `npm run setup` / `doctor` / `bridge-update` (`scripts/bridge/`), scripts from any folder (`examples/list-tabs.ts`, a
   `file:` dependency, #430), the failure report's `~` screenshot path, "Install on a new device" first in
   `docs/setup.md`. **25 tools, 27 codes (26 on the wire), 28 router methods** (no product change beyond the `~` line).
 - **Exit checks:** every one met (Z.1, P1.1, I2.1–I2.4, S3.1, R4.1, D5.1); the rehearsal ran on a scratch clone with a
   scratch `CLAUDE_CONFIG_DIR` (`S4-rehearsal.md`); the doctor printed 7 of 7 OK against the running bridge.
-- **The gate waits for the user:** #432 (the doctor reads the extension's build as a heuristic, no protocol change) and
-  G14-1 (the push; the other devices get the code from GitHub). Then U.1, the user's own install on another device;
-  its findings become a small follow-up. The Stage 0 commit 6e22e3b holds one evidence line with the checkout's
-  absolute path (redacted in b2c45b7); squashing it before the push is the user's call.
+- **Next: U.1**, the user's own install on another device (from GitHub); its findings and the Step 14 follow-ups
+  become a small wave. #442 kept the doctor's build heuristic (#432) and removed a local-path line from unpushed
+  history before the push.
 - **Committed docs** carry no local path and no user name (#374; `docs/docs-writing-guide.md`); evidence files write
   `<repo>`, `<scratch>`, `~`.
 - **How agents run (#289, #320):** Opus builds contract and safety code and runs every verifier; Sonnet does recipes,

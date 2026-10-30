@@ -29,8 +29,8 @@ against `step-agent` "What a stage leaves". Commit trailers on all ten commits s
 
 3. **Kickoff says "Deviations from `docs/agent-rules.md`: none", but the run used a form the rules do not describe.**
    - Evidence: kickoff §3 "Deviations … none" and "Form: two levels"; phase doc 0.2 "Two levels, not three: the session
-     agent runs each stage with one builder and one verifier"; journal: "S1 committed b2c45b7 by the session agent: the
-     Sonnet committer stopped on the user's path in evidence"; "S2a committed 329b518 by the session agent", then S2b, S3,
+     agent runs each stage with one builder and one verifier"; journal: "S1 committed 32ab7e2 by the session agent: the
+     Sonnet committer stopped on the user's path in evidence"; "S2a committed 51a0ad8 by the session agent", then S2b, S3,
      S4, S5 the same. `agent-rules.md` §10: the stage's committer is "a fresh agent the step agent starts after the
      verifier's verdict (§10); Sonnet" (§7); `long-run` §1 gives the session agent "markdown and bounded read-only
      checks" and no committing; `long-run` §2 says three levels by default.
@@ -74,8 +74,8 @@ against `step-agent` "What a stage leaves". Commit trailers on all ten commits s
      the user name and `C:\Users` returns only this fixture line). The path form is fine for `docs/docs-writing-guide.md`
      (a test input, not a local path). No action; recorded so the lead does not re-raise it.
 
-8. **Carried from the journal, for the gate (not a rule drift): commit 6e22e3b still holds one evidence line with the
-   checkout's absolute path.** Already in `CLAUDE.md` Current state ("redacted in b2c45b7; squashing it before the push
+8. **Carried from the journal, for the gate (not a rule drift): commit b9ac1bf still holds one evidence line with the
+   checkout's absolute path.** Already in `CLAUDE.md` Current state ("redacted in 32ab7e2; squashing it before the push
    is the user's call"). Listed here only because `docs/docs-writing-guide.md` and #374 say committed docs carry no local
    path: it is a standing user decision, needs the user (squash or accept). No new finding.
 

@@ -62,17 +62,17 @@ archived is not a finding.
   Stage 0". The same gap was raised last pass for Step 13 (P6, finding 6) and is still unapplied (finding 6 below).
 - **Kind:** mechanical.
 
-### 4. The Open decisions line for #432 has no options or recommendation; G14-1 and the 6e22e3b squash are not listed
+### 4. The Open decisions line for #432 has no options or recommendation; G14-1 and the b9ac1bf squash are not listed
 - **Location:** `docs/decisions.md:12-13`.
 - **What is wrong:** the writing guide: "A decision waiting for the user is listed under **Open decisions** … with the
   options and a recommendation". The line reads only "Stage 0: the doctor reads the extension's build as a heuristic;
   no protocol change (#432) — for the user's review at Step 14's gate." The other items waiting for the user are named
   elsewhere: phase doc `:193` "Open for the user: #432 …, G14-1 (the push)"; root `CLAUDE.md:25-26` "The Stage 0
-  commit 6e22e3b holds one evidence line with the checkout's absolute path …; squashing it before the push is the
+  commit b9ac1bf holds one evidence line with the checkout's absolute path …; squashing it before the push is the
   user's call." The squash appears in neither Open decisions nor the phase doc's "Open for the user" line (the As built
   Incidents bullet only says the line "still holds … in history").
 - **Suggested fix:** #432's line: "options: (a) keep the heuristic (recommended; no contract change) or (b) a build id
-  in the extension's hello and `daemon.status`". Add one line "Before G14-1: squash 6e22e3b's absolute-path evidence
+  in the extension's hello and `daemon.status`". Add one line "Before G14-1: squash b9ac1bf's absolute-path evidence
   line out of history, or push as is (root `CLAUDE.md` Current state)", and the S5 clone URL (finding 2). Add the
   squash to the phase doc's "Open for the user" line too.
 - **Kind:** mechanical for the wording; the items themselves are the user's.

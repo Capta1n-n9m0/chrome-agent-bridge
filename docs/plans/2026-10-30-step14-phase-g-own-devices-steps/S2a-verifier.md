@@ -15,7 +15,7 @@ path found; #427, #428 and #429 are applied as decided; every new test fails und
 
 ## 2. Outputs (re-derived)
 
-Scratch worktree at HEAD `6e22e3b`, S2a's five files copied in, its own `npm ci --no-audit --no-fund` (exit 0, 205
+Scratch worktree at HEAD `b9ac1bf`, S2a's five files copied in, its own `npm ci --no-audit --no-fund` (exit 0, 205
 packages; `node_modules/@bridge/*` junctions point into the worktree itself, never the main tree, #220).
 
 | Command (in the worktree) | Result | Evidence |

@@ -15,7 +15,7 @@ evidence, none about the commands' behaviour.
 |---|---|---|
 | **I2.1** install on a scratch clone: exit 0, next steps printed; a second run changes nothing | **met** | Record rows 2-3 and `S4-rehearsal-setup1/2.txt`; re-measured: a further `npm run setup` in the clone under the asserted scratch `CLAUDE_CONFIG_DIR`, no TTY, exit 0; 2116 entries before and after, 0 diffs; `bridge.token` sha256 same; every file of the scratch config dir (2) same by size, mtime and sha256; output identical to the runner's raw run-2 output (`S4-verifier-runs.txt` §3) |
 | **I2.2** no capture holds the token | **met** | Equality scan, counts only: real token 0 and clone token 0 hits in the 11 S4 files + `journal.md` (12), in the runner's 9 raw scratch captures, and in all 113 files of the wider set (every file in the steps dir, the scratch config, `~/.chrome-agent-bridge/daemon.log`, my raw re-run captures). The two tokens differ. User's name 0 and absolute home paths 0 in every S4 file and in my two evidence files (`S4-verifier-scan.txt`) |
-| **I2.4** update on the scratch clone: exit 0 | **met** | Record rows 5-6, `S4-rehearsal-update1/2.txt`: a real fast-forward `0a5ea8f..8f50b9e` (11 files) with `--no-reload`, then "Already up to date"; both exit 0. Corroborated independently: the clone's listing now differs from the runner's after-run-2 listing in exactly those 11 files, mtime only, written at 11:09:41Z (`S4-verifier-runs.txt` §4). Not re-run (the brief names no update run) |
+| **I2.4** update on the scratch clone: exit 0 | **met** | Record rows 5-6, `S4-rehearsal-update1/2.txt`: a real fast-forward `6d06594..63cfa52` (11 files) with `--no-reload`, then "Already up to date"; both exit 0. Corroborated independently: the clone's listing now differs from the runner's after-run-2 listing in exactly those 11 files, mtime only, written at 11:09:41Z (`S4-verifier-runs.txt` §4). Not re-run (the brief names no update run) |
 | **R4.1** doctor against the user's running bridge: every part green | **met** | Re-run in `<repo>`, `CLAUDE_CONFIG_DIR` unset: exit 0, 7 of 7 `OK` incl. "Extension: connected" and the #432 heuristic line; byte-identical (CR stripped) to `S4-rehearsal-doctor-main1.txt` |
 
 Also re-run: `npm run doctor` in the clone under the asserted scratch config: exit 1, identical to
@@ -39,7 +39,7 @@ listener's PID was the same before and after (no spawn, no handover).
   config, and its `mcpServers` key hashes the same as the runner's baseline. See MINOR 1 for the whole-file hash.
 - **STOP conditions (check 6):** none missed. No token in any file; `claude mcp list` under the scratch config showed
   no server; no reload, no Chrome contact, no daemon spawn or handover (one 9234 listener, same PID across my runs);
-  `<repo>` HEAD still `8f50b9e`, its status only the S4 files and the session agent's journal line; no process left.
+  `<repo>` HEAD still `63cfa52`, its status only the S4 files and the session agent's journal line; no process left.
 
 ## 4. Findings
 
@@ -82,5 +82,5 @@ None.
 
 ## 7. Handoff
 
-No process left running. The clone is still at `8f50b9e` with its own token and junctions (#220); the scratch config
+No process left running. The clone is still at `63cfa52` with its own token and junctions (#220); the scratch config
 unchanged. Raw (unsanitized) re-run captures are in `<scratch>\..\s4v\` (not for commit).

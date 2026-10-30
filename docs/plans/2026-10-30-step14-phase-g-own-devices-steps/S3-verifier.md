@@ -25,7 +25,7 @@ Audited: `S3-builder.md`, `examples/list-tabs.ts`, `S3-doc-section.md`.
    removed it, `<repo>\sdk` kept its 56 files; `npm uninstall @bridge/sdk` (tested in a second folder) also removes it
    and leaves no reparse point. Both folders then deleted; `<repo>\sdk` still 56 files.
 6. **No local path or user name** in the section or the example (grep, no match).
-7. **The main tree:** `npm run typecheck` exit 0; `npm test` 255 files, 6089 tests, exit 0, the same as at 0a5ea8f
+7. **The main tree:** `npm run typecheck` exit 0; `npm test` 255 files, 6089 tests, exit 0, the same as at 6d06594
    (journal 10:50Z, 10:57Z). `examples/` sits outside vitest's `**/test/**/*.test.ts` and outside every tsconfig.
 
 ## Findings

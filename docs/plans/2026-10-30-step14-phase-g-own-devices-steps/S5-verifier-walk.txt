@@ -1,4 +1,4 @@
-S5 verifier walk: Windows PowerShell 5.1.26100; a new clone of <repo> at HEAD 81882c5 in <scratch>\s5\clone; CLAUDE_CONFIG_DIR=<scratch>\s5\claude-config (new, empty), asserted before each step; BRIDGE_TOKEN/BRIDGE_PORT unset; stdin not a TTY. Token scan: 11 raw captures + the scratch config, 0 contain the clone's token (compared by value in node, never printed).
+S5 verifier walk: Windows PowerShell 5.1.26100; a new clone of <repo> at HEAD 625e315 in <scratch>\s5\clone; CLAUDE_CONFIG_DIR=<scratch>\s5\claude-config (new, empty), asserted before each step; BRIDGE_TOKEN/BRIDGE_PORT unset; stdin not a TTY. Token scan: 11 raw captures + the scratch config, 0 contain the clone's token (compared by value in node, never printed).
 
 ### 00-mcp-list-before
 CLAUDE_CONFIG_DIR asserted = scratch config
@@ -13,7 +13,7 @@ EXIT 0
 
 ### 02-head
 CLAUDE_CONFIG_DIR asserted = scratch config
-81882c5
+625e315
 EXIT 0
 
 ### 03-setup-dryrun

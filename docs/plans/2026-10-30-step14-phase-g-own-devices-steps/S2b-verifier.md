@@ -10,7 +10,7 @@ mutation ran in scratch clones (`<scratch>\A`, `<scratch>\B`, own `npm ci`; thei
 point into each clone, so a delete must remove them first, #220). Evidence: `S2b-verifier-counts.txt`,
 `S2b-verifier-runs.txt`.
 
-## Counts (re-derived, main tree, S2b uncommitted on HEAD 329b518)
+## Counts (re-derived, main tree, S2b uncommitted on HEAD 51a0ad8)
 
 - `npm run typecheck`: exit 0 (the root chain now ends with `tsc -p scripts/tsconfig.json`, which covers `bridge/*.ts`).
 - `npm test`: **6083 passed, 255 files**, exit 0. Builder's baseline 6055 / 253 + 28 tests in 2 new files agrees.

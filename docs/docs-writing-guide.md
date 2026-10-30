@@ -66,7 +66,9 @@ rewritten: closed phase docs, steps dirs, as-built files, `docs/decisions-archiv
    content in docs, fixtures or evidence.
 9. **No local path or user name in new docs.** Committed docs do not carry the local absolute path or the user's name:
    write `<repo>`, `~` or `<user>`. Files already committed and git history are left as they are; `LICENSE` keeps the
-   name (decisions.md · 2026-10-29 · The user rules Step 12's gate; Step 12 closes (#374)).
+   name (decisions.md · 2026-10-29 · The user rules Step 12's gate; Step 12 closes (#374)). The clone command keeps
+   the public GitHub URL, since it must work as pasted (decisions.md · 2026-10-30 · The user rules Step 14's gate;
+   Step 14 closes (#442)).
 
 ## Decisions
 

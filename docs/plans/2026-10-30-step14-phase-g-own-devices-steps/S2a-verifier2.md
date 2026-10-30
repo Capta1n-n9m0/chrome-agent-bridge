@@ -19,7 +19,7 @@ scratch `CLAUDE_CONFIG_DIR`; the user's `~/.claude.json` was not touched (mtime 
 | Command | Result | Evidence |
 |---|---|---|
 | `npm run typecheck` (main tree) | exit 0; the chain ends with `tsc -p scripts/tsconfig.json` | `S2a-verifier2-typecheck.txt` |
-| `npx vitest run` (main tree) | **6055 passed, 253 files**, exit 0; `scripts/test/s14-setup.test.ts` 17 tests. The only uncommitted test file is that one, so HEAD (`b2c45b7`, S1 committed) = **6038 / 252**; +17 / +1 matches. | `S2a-verifier2-test.txt` |
+| `npx vitest run` (main tree) | **6055 passed, 253 files**, exit 0; `scripts/test/s14-setup.test.ts` 17 tests. The only uncommitted test file is that one, so HEAD (`32ab7e2`, S1 committed) = **6038 / 252**; +17 / +1 matches. | `S2a-verifier2-test.txt` |
 | 14 mutations of a copy of `lib.mjs` with the copied test | 13 caught (1 test red each), 1 survives: M13 (the explicit missing-output check dropped) is an equivalent mutant (`Math.min` reads `null` as 0, so the build still runs), as the fixer said | `S2a-verifier2-mutations.txt` |
 | Copies of `setup.mjs` + `lib.mjs` run **non-dry** in a fake repo under `<s>` (dummy sources/outputs/token, fake `claude.cmd` shims, `CLAUDE_CONFIG_DIR=<s>/cfg`, stdin `/dev/null`), 8 runs | see F1, F2 below | `S2a-verifier2-fakerun.txt` |
 | `CLAUDE_CONFIG_DIR=<s>/cfg-main npm run setup -- --dry-run </dev/null` (main tree) | exit 0; `npm ci` skipped, `npm run build skipped (dist/ untouched)`, token kept, `would run: claude mcp add -s user …`, steps 1–6; `<s>/cfg-main` still empty | `S2a-verifier2-dryrun.txt` |

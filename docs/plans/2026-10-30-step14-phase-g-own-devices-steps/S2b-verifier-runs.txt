@@ -1,6 +1,6 @@
 # S2b verifier — runs (isolated: CLAUDE_CONFIG_DIR and the home folder are scratch folders, asserted before each block; port 9299; dummy token in the scratch clone)
 
-## Update on scratch clone B (origin A, both scratch clones of <repo> at 329b518 + the S2b files as a scratch commit)
+## Update on scratch clone B (origin A, both scratch clones of <repo> at 51a0ad8 + the S2b files as a scratch commit)
 ### U1: one commit behind, no node_modules, --no-reload
 Updating f1d1115..cebfe7b
 Fast-forward

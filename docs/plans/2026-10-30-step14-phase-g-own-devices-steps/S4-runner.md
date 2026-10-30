@@ -4,7 +4,7 @@ Model / effort: Sonnet, medium. Date: 2026-10-30.
 
 1. **Verdict:** DONE. I2.1, I2.2, I2.4, R4.1 all PASS; no STOP rule fired.
 2. **Outputs:** `S4-rehearsal.md` (record, pass rules written first), nine `S4-rehearsal-*.txt` captures (sanitized: `<repo>`,
-   `<scratch>`, `~`). Clone left at `<scratch>\clone` (scratch = session scratchpad `s4`), at `8f50b9e`, own token, scratch
+   `<scratch>`, `~`). Clone left at `<scratch>\clone` (scratch = session scratchpad `s4`), at `63cfa52`, own token, scratch
    config at `<scratch>\claude-config`.
    - Setup run 1 exit 0, next steps printed; run 2 exit 0, 0 listing diffs over 2116 entries, token and scratch config sha256 same.
    - Update `--no-reload` after `git reset --hard HEAD~1` in the clone: real fast-forward, exit 0; second run exit 0.

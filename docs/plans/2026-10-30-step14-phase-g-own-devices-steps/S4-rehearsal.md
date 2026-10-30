@@ -26,12 +26,12 @@ skipped). Node v25.2.1, npm 11.6.2.
 
 | # | Step | Result | Capture |
 |---|---|---|---|
-| 0 | `git clone <repo> <scratch>\clone` at HEAD (`8f50b9e`); sha256 + mtime + `mcpServers`-key hash of the real `~/.claude.json` recorded (hash only) | clone ok | (this file) |
+| 0 | `git clone <repo> <scratch>\clone` at HEAD (`63cfa52`); sha256 + mtime + `mcpServers`-key hash of the real `~/.claude.json` recorded (hash only) | clone ok | (this file) |
 | 1 | `CLAUDE_CONFIG_DIR=<scratch>\claude-config` set and asserted in the same shell; `claude mcp list` | exit 0: "No MCP servers configured." Isolation proven. | `S4-rehearsal-mcp-list.txt` |
 | 2 | `npm run setup` (run 1, real) | **exit 0**. Prerequisites 4 OK; `npm ci --no-audit --no-fund` added 205 packages in 10 s; build ran; "Created bridge.token (random, 256 bits; not shown)"; `claude mcp add -s user` wrote only `<scratch>\claude-config\.claude.json`; "No terminal to ask in: the token was not copied"; the 6 next steps printed. | `S4-rehearsal-setup1.txt` |
 | 3 | listing (2116 entries: tracked files + `daemon/mcp/extension dist` + `bridge.token` + `node_modules/.package-lock.json`, size + mtime ticks), then `npm run setup` (run 2), then the listing again | **exit 0**. Run 2 said: npm ci skipped, build skipped, "bridge.token exists: kept", "already points at this checkout: left as it is", next steps printed. Listing diffs: **0**. `bridge.token` sha256: **same**. Scratch config file sha256: **same**. | `S4-rehearsal-setup2.txt`, `S4-rehearsal-listing-before-run2.txt`, `S4-rehearsal-listing-after-run2.txt` |
 | 4 | `npm run doctor` in the clone | exit 1 (not a pass rule). OK: Node, Build, Token file, MCP entry (user scope, this checkout). FAIL Daemon: "running, but it refused the token - it was started with another token" (the expected 4001 refusal of the clone's own token by the user's daemon; nothing handed over). HINT Extension: not checked. | `S4-rehearsal-doctor-clone.txt` |
-| 5 | in the clone only: `git reset --hard HEAD~1` (to `0a5ea8f`), then `npm run bridge-update -- --no-reload` | **exit 0**. "Updating 0a5ea8f..8f50b9e, Fast-forward" (11 files: S3 docs + `examples/list-tabs.ts`), "Pulled the new commits."; npm ci and build skipped (no source change); "--no-reload: the extension was not reloaded"; /mcp hint. Clone back at `8f50b9e`. | `S4-rehearsal-update1.txt` |
+| 5 | in the clone only: `git reset --hard HEAD~1` (to `6d06594`), then `npm run bridge-update -- --no-reload` | **exit 0**. "Updating 6d06594..63cfa52, Fast-forward" (11 files: S3 docs + `examples/list-tabs.ts`), "Pulled the new commits."; npm ci and build skipped (no source change); "--no-reload: the extension was not reloaded"; /mcp hint. Clone back at `63cfa52`. | `S4-rehearsal-update1.txt` |
 | 6 | `npm run bridge-update -- --no-reload` again | **exit 0**. "Already up to date." (printed twice), the same skips. | `S4-rehearsal-update2.txt` |
 | 7 | **R4.1** `npm run doctor` in `<repo>` (real config, `CLAUDE_CONFIG_DIR` unset) | **exit 0**. All 7 lines OK: Node, Build, Token file, MCP entry (user scope, this checkout), Daemon (running the build on disk), Extension (connected), Extension build (heuristic: "resynced after the last build"). "No part failed." No reload was needed or run. | `S4-rehearsal-doctor-main1.txt` |
 
@@ -61,7 +61,7 @@ skipped). Node v25.2.1, npm 11.6.2.
 
 ## Handoff
 
-- The clone is left at `<scratch>\clone` (`<scratch>` = the session scratchpad's `s4` folder), at `8f50b9e`, with its
+- The clone is left at `<scratch>\clone` (`<scratch>` = the session scratchpad's `s4` folder), at `63cfa52`, with its
   own `node_modules\@bridge\*` junctions, its own `bridge.token`, and the scratch Claude config at
   `<scratch>\claude-config` holding one `chrome-agent-bridge` entry pointing at the clone. Never recursive-delete across
   the junctions (#220).
