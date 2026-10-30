@@ -192,6 +192,21 @@ When a step closes, its entries move to `docs/decisions-archive/` with their num
 The current step's entries (Step 13, numbered after #374), newest first. Step 12's (#321–#374) are in
 `decisions-archive/step12.md`, Step 11b's in `decisions-archive/step11b.md`.
 
+### 2026-10-30 · liveC20's fix round: five fixer passes between attempts 1 and 2, counted as five; attempt 2 kept, flagged (#419)
+**Decided:** S5-liveC20b ran five fixer passes (1, 1b, 2, 3, 4), each with its own Opus verifier, all between attempt 1
+and attempt 2, plus two diagnostic reads (one was briefed). The step agent counted one round ("a fix between two
+attempts"); agent-rules §7 also counts "a fix after a verifier's FAIL" as a round, so Claude counts it the strict way:
+five passes against a cap of three, with no Opus fourth-round fixer — a breach of #320/#367, recorded here. Attempt 2
+(`1a9032e`, HEAD `e614e0c`, exit 0, no STOP, verifier2 PASS-with-notes) is **kept as the slice's record**, not re-run
+and not re-judged: R20-0C PASS, R20-DEVT-UNDOCK PASS, R20-DEVT-EARLY PASS (both legs), R20-UP-DEVT, R20-KEEP-4 and
+R20-SWEEP-HELD NOT RUN (no condition refused; finding "both conditions answer ok"), R20-LOGS PASS, R20-RESTORE FAIL by
+the literal rule (`wave-windows-open=1`, the options window; printed PASS because the slice-C judge never checks the
+count). **Why:** the cap guards against tuning until a result passes; here every pass fixed the instrument (the reader
+found two nested buttons where it required one; the dock change pressed a Toggle-only button), no expected text or
+pass rule changed, and each pass was verified before the next. Discarding a measurement the rules did not shape would
+cost #369's only live reading. **Instead of:** treating the DEVT rows as NOT MEASURED for the breach. **For the user
+at the gate:** accept attempt 2 (recommended) or rule the DEVT rows NOT MEASURED. **By:** Claude
+
 ### 2026-10-30 · liveC20: the dock reader is measured and fixed, then attempt 2 (#418)
 **Decided:** liveC20 attempt 1 (`3f19f28`, HEAD `777400d`, exit 0, verifier PASS-with-notes) stands as recorded: R20-0C
 PASS; the five DevTools rows NOT RUN ("dock side unreadable"); R20-RESTORE NOT MEASURED in #416's form; R20-LOGS PASS;
