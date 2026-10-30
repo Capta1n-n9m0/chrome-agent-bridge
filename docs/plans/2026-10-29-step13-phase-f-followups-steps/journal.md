@@ -88,3 +88,5 @@
 - 2026-10-30T05:16:35Z · S6 · step agent · ended DONE · `1b4483d` (setup.md, roadmap, README; #369 reword withheld for the user) · verifier PASS-with-notes (1 of 3) · 6030 tests / 251 files · proposals `S6-claude-md-proposals.md`.
 - 2026-10-30T05:16:35Z · close-out (session agent): phase doc S6 as built + Gate checklist (phase NOT closed: R5.4, R5.5 wait for #417/#419); Open decisions (#417, #419, R20-ARGS-ORDER); root CLAUDE.md Current state + test count.
 - 2026-10-30T05:16:35Z · closeout-claudemd · step agent · Opus · medium · started (apply S6-claude-md-proposals (b)–(e),(g) to package CLAUDE.md files; then the full cleanup pass).
+- 2026-10-30T05:32:11Z · closeout-claudemd · step agent · ended DONE · `7ff7036` (seven package CLAUDE.md files, spec §10 note) · verifier PASS-with-notes (1 of 3) · S4's N3 not applied (the list lives in a test file, out of lane).
+- 2026-10-30T05:32:11Z · cleanup-pass · lead cleaner · Opus · medium · started (full pass; report docs/cleanup/2026-10-30.md).
