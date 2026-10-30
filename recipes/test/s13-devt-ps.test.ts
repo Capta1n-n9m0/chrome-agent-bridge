@@ -13,7 +13,7 @@ const SCRIPT = `
 $ErrorActionPreference = 'Stop'
 . '${REPO}/recipes/s13-devt.ps1'
 $global:D = 99; $global:Log = @(); $global:State = 'bottom'; $global:S11Own = @{ '1' = $true }; $global:S9WinIds = @{ '1' = 1 }; $global:S12Dev = $null; $global:Dead = @{}; $global:Url = 'http://localhost:8081/e2e-playground.html?s12=con'
-$global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false; $global:PressFail = $false
+$global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false; $global:PressFail = $false; $global:TwoButtons = $false; $global:ThreeItems = $false; $global:TwoPressed = $false; $global:CustFail = $false
 function Stop9([string]$m) { $global:Log += 'STOP' }
 function Assert-S11Own([long]$h, [string]$w) { if (-not $global:S11Own.ContainsKey([string]$h)) { throw 'not own' } }
 function Test-S13Alive([long]$h) { -not $global:Dead.ContainsKey([string]$h) -and -not ([string]$h -eq '50' -and $global:State -ne 'undock') }
@@ -38,14 +38,15 @@ function Get-S13UiaItems([long]$h) {
   if ($h -eq 1 -and $global:State -eq 'undock') { return }
   if ($h -eq 50 -and $global:State -ne 'undock') { return }
   if (-not $global:NoButton) { [pscustomobject]@{ name = 'Customize and control DevTools'; type = 'Button'; el = 'customize' } }
-  foreach ($p in @(@('Undock into separate window', 'undock'), @('Dock to left', 'left'), @('Dock to bottom (Ctrl + Shift + D)', 'bottom'), @('Dock to right', 'right'))) { [pscustomobject]@{ name = $p[0]; type = 'Button'; el = "dock:$($p[1])" } }
+  if ($global:TwoButtons) { [pscustomobject]@{ name = 'Customize and control DevTools'; type = 'Button'; el = 'customize' } }
+  foreach ($p in @(@('Undock into separate window', 'undock'), @('Dock to left', 'left'), @('Dock to bottom (Ctrl + Shift + D)', 'bottom'), @('Dock to right', 'right'))) { if ($global:ThreeItems -and $p[1] -eq 'right') { continue }; [pscustomobject]@{ name = $p[0]; type = 'Button'; el = "dock:$($p[1])" } }
   [pscustomobject]@{ name = 'Dock side'; type = 'Text'; el = 'label' }
 }
-function Get-S13Pressed($el) { if ($global:NoPressed) { return $null }; "$el" -eq "dock:$global:State" }
-function Invoke-S13Item($el) { $global:Log += "inv:$el"; if ("$el" -like 'dock:*' -and $global:PressFail) { return $false }; if ("$el" -like 'dock:*') { $global:State = "$el".Substring(5) }; $true }
+function Get-S13Pressed($el) { if ($global:NoPressed) { return $null }; if ($global:TwoPressed -and "$el" -eq 'dock:left') { return $true }; "$el" -eq "dock:$global:State" }
+function Invoke-S13Item($el) { $global:Log += "inv:$el"; if ($global:CustFail -and "$el" -eq 'customize') { return $false }; if ("$el" -like 'dock:*' -and $global:PressFail) { return $false }; if ("$el" -like 'dock:*') { $global:State = "$el".Substring(5) }; $true }
 function T([string]$n, [scriptblock]$b) {
   Write-Host "BEGIN $n"; $global:Log = @(); $global:State = 'bottom'; $global:S11Own = @{ '1' = $true }; $global:S9WinIds = @{ '1' = 1 }; $global:S12Dev = $null; $global:Dead = @{}; $global:Url = 'http://localhost:8081/e2e-playground.html?s12=con'
-  $global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false; $global:PressFail = $false
+  $global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false; $global:PressFail = $false; $global:TwoButtons = $false; $global:ThreeItems = $false; $global:TwoPressed = $false; $global:CustFail = $false
   try { Write-Host "RET $(@(& $b)[-1])" } catch { Write-Host "THREW $_" }
   Write-Host "LOG $($global:Log -join ',')"
 }
@@ -109,6 +110,29 @@ T readNoPane { $global:Pane = $false; Read-S13DockSide 1 8081 }
 T readNoButton { $global:NoButton = $true; Read-S13DockSide 1 8081 }
 T readNoPressed { $global:NoPressed = $true; Read-S13DockSide 1 8081 }
 T readPort { Read-S13DockSide 1 8083 }
+function Dg { $d = $global:S13DockDiag; "$($d.windows) $($d.pane) $($d.customize) $($d.invoked) $($d.items) $($d.kinds) $($d.pr) $($d.pressed)" }
+T diagOk { [void](Read-S13DockSide 1 8081); Dg }
+T diagWin { $global:State = 'undock'; [void](Read-S13DockSide 1 8081); Dg }
+T diagNoPane { $global:Pane = $false; [void](Read-S13DockSide 1 8081); Dg }
+T diagNoButton { $global:NoButton = $true; [void](Read-S13DockSide 1 8081); Dg }
+T diagTwoButtons { $global:TwoButtons = $true; [void](Read-S13DockSide 1 8081); Dg }
+T diagInvFail { $global:CustFail = $true; [void](Read-S13DockSide 1 8081); Dg }
+T diagThree { $global:ThreeItems = $true; [void](Read-S13DockSide 1 8081); "$(Read-S13DockSide 1 8081) $(Dg)" }
+T diagNoPressed { $global:NoPressed = $true; [void](Read-S13DockSide 1 8081); Dg }
+T diagTwoPressed { $global:TwoPressed = $true; $a = Read-S13DockSide 1 8081; "$a $(Dg)" }
+T diagReset { [void](Read-S13DockSide 1 8081); $global:Pane = $false; [void](Read-S13DockSide 1 8081); Dg }
+T diagSkip { (@(@('Profile 1', ''), @('x', 'AvatarButton'), @('Your account', ''), @('Dock side', 'dock')) | ForEach-Object { if (Test-S13DiagSkip $_[0] $_[1]) { 1 } else { 0 } }) -join '' }
+T diagKw { (@('Customize and control DevTools', 'Dock to left', 'More options', 'File menu', 'Elements', 'Reload') | ForEach-Object { if (Test-S13DiagKeyword $_) { 1 } else { 0 } }) -join '' }
+T diagText { "$((Format-S13DiagText ('a' * 70)).Length) [$(Format-S13DiagText ('x|y' + [char]10 + 'z'))] [$(Format-S13DiagText $null)]" }
+T diagSkipClass { (@('BookmarkButton', 'ToolbarActionViewButton', 'ExtensionsToolbarContainer', 'AvatarToolbarButton', 'TabHoverCardBubbleView', 'Tab', 'OmniboxViewViews', 'LocationBarView', 'SidePanel', 'DownloadBubble', 'InfoBarView', 'BrowserView', 'Button', '') | ForEach-Object { if (Test-S13DiagSkip 'x' 'y' $_) { 1 } else { 0 } }) -join '' }
+T diagFixed { (@('Customize and control DevTools. More', 'Dock side', 'Undock into separate window', 'Dock to bottom', 'More tools', 'My bookmark', 'Docker', '') | ForEach-Object { if (Test-S13FixedName $_) { 1 } else { 0 } }) -join '' }
+T diagStateName { (@('Dock to left', 'Undock into separate window', 'Customize and control DevTools', 'My bookmark', 'Reload') | ForEach-Object { if (Test-S13DiagStateName $_) { 1 } else { 0 } }) -join '' }
+T diagLegacy { "$(Format-S13DiagLegacy 24) $(Format-S13DiagLegacy 2) $(Format-S13DiagLegacy 0) $(Format-S13DiagLegacy 'n/a') $(Format-S13DiagLegacy $null)" }
+T diagPopup { "$(Test-S13PopupMenu 'Menu' 'x') $(Test-S13PopupMenu 'Window' '#32768') $(Test-S13PopupMenu 'Window' 'MenuHostWindow') $(Test-S13PopupMenu 'Window' 'Chrome_WidgetWin_1') $(Test-S13PopupMenu 'Pane' '')" }
+T diagNewWin { "$(Format-S13NewWinSkip 'Window' 'Chrome_WidgetWin_1') | $(Format-S13NewWinSkip 'Pane' 'My Profile Title') | $(Format-S13NewWinSkip 'Pane' '')" }
+T pollFound { $global:PollN = 0; $r = Invoke-S13Poll { param($t, $ms) $global:PollN = $t; $t -eq 3 } 6000 300 { param($m) }; "$($r.found) $($r.tries) $global:PollN" }
+T pollNever { $r = Invoke-S13Poll { param($t, $ms) $false } 900 300 { param($m) }; "$($r.found) $($r.tries)" }
+T diagCounts { Format-S13DiagCounts 'at-700ms' (New-S13DockDiag 0 'yes' 1 'yes' @((Itm 'left' $true), (Itm 'right' $false), (Itm 'right' $null))) }
 T setSame { $r = Set-S13DockSide 1 8081 'bottom'; "$($r.done) $($r.changed) $($r.now)" }
 T setUnread { $global:NoPressed = $true; $r = Set-S13DockSide 1 8081 'left'; "$($r.done) $($r.changed) $($r.now)" }
 T setLeft { $r = Set-S13DockSide 1 8081 'left'; "$($r.done) $($r.changed) $($r.now)" }
@@ -244,6 +268,38 @@ it("opening goes through Run 19's menu opener on a wave window showing an 8081 f
 		expect(ret("setPressFailOwn")).toBe("False False undock");
 		expect(log("setPressFailOwn")).toBe("inv:customize,inv:dock:bottom");
 		expect(log("setPressFailOwn")).not.toMatch(/esc/);
+	});
+	it("the dock read leaves a counts-only diagnostic: the failing UIA step shows in it (no pane, no button, the button twice, the invoke failing, 3 of 4 items, pressed unreadable, two pressed, one pressed), and a window leaves the rest n/a", () => {
+		expect(ret("diagOk")).toBe("0 yes 1 yes 4 u1l1b1r1 4 1");
+		expect(ret("diagWin")).toBe("1 n/a n/a n/a 0 u0l0b0r0 0 0");
+		expect(ret("diagNoPane")).toBe("0 no n/a n/a 0 u0l0b0r0 0 0");
+		expect(ret("diagNoButton")).toBe("0 yes 0 n/a 0 u0l0b0r0 0 0");
+		expect(ret("diagTwoButtons")).toBe("0 yes 2 n/a 0 u0l0b0r0 0 0");
+		expect(ret("diagInvFail")).toBe("0 yes 1 no 0 u0l0b0r0 0 0");
+		expect(ret("diagThree")).toBe("unread 0 yes 1 yes 3 u1l1b1r0 3 1");
+		expect(ret("diagNoPressed")).toBe("0 yes 1 yes 4 u1l1b1r1 0 0");
+		expect(ret("diagTwoPressed")).toBe("unread 0 yes 1 yes 4 u1l1b1r1 4 2");
+		expect(ret("diagReset")).toBe("0 no n/a n/a 0 u0l0b0r0 0 0");
+	});
+	it("the return value of the dock read and its key log are unchanged by the diagnostic (a plain side word)", () => {
+		expect(ret("diagOk")).not.toMatch(/^(bottom|right|left|undock|unread)/);
+		expect(ret("readDocked")).toBe("bottom");
+		expect(log("readDockedLog")).toBe("inv:customize,esc1");
+	});
+	it("the live diagnostic's pure parts: the profile, account and avatar elements are skipped, the keyword filter, the 60-character cut with no pipe or newline, and the counts line", () => {
+		expect(ret("diagSkip")).toBe("1110");
+		expect(ret("diagKw")).toBe("111100");
+		expect(ret("diagText")).toBe("60 [x y z] []");
+		// #418 verifier F1-F4
+		expect(ret("diagSkipClass")).toBe("11111111111100");
+		expect(ret("diagFixed")).toBe("11111000");
+		expect(ret("diagStateName")).toBe("11100");
+		expect(ret("diagLegacy")).toBe("Leg=24(pressed,checked) Leg=2(selected) Leg=0() Leg=n/a Leg=n/a");
+		expect(ret("diagPopup")).toBe("True True True False False");
+		expect(ret("diagNewWin")).toBe("NEWWIN skipped type=Window class=Chrome_WidgetWin_1 | NEWWIN skipped type=Pane class=- | NEWWIN skipped type=Pane class=-");
+		expect(ret("pollFound")).toBe("True 3 3");
+		expect(ret("pollNever")).toBe("False 4");
+		expect(ret("diagCounts")).toBe("COUNTS at-700ms windows=0 pane=yes customize=1 invoked=yes items=3 kinds=u0l1b0r2 pressed-readable=2 pressed=1");
 	});
 	it("the file is ASCII, defines only S13-named functions, prints nothing (no Write-Host, Say9 or Show-S16) and reads no window text but through the one title wrapper", () => {
 		const src = readFileSync(resolve(REPO, "recipes", "s13-devt.ps1"), "utf8");

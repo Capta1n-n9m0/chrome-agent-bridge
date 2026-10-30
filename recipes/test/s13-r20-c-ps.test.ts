@@ -58,7 +58,7 @@ function T([string]$n, [scriptblock]$b) {
 }
 `;
 const BODY = `
-T reg { Write-Host "MISSING $(@(Get-R20CMissingBlocks 'liveC20').Count)"; [void]$global:R19Blocks.Remove('flag'); Write-Host "MISS2 $(@(Get-R20CMissingBlocks 'liveC20') -join ',')"; Write-Host "ORDER $((Get-R19Order 'liveC20') -join ',')" }
+T reg { Write-Host "MISSING $(@(Get-R20CMissingBlocks 'liveC20').Count)"; [void]$global:R19Blocks.Remove('flag'); Write-Host "MISS2 $(@(Get-R20CMissingBlocks 'liveC20') -join ',')"; Write-Host "ORDER $((Get-R19Order 'liveC20') -join ',')"; Write-Host "DDORDER $((Get-R19Order 'dockdiag') -join ',')"; Write-Host "DDMISSING $(@(Get-R20CMissingBlocks 'dockdiag').Count)" }
 T pure {
   Write-Host "W $((Get-R20CLegWords @('2026-10-30T10:00:00.000Z LEG R20-DEVT-EARLY undocked PASS', 'LEG R20-DEVT-EARLY docked RECORD devtools-control-unreadable', 'LEG R20-DEVT-UNDOCK undock FAIL', 'LEG R20-DEVT-EARLY x NOT MEASURED the tab was attached before the open', 'ROW R20-DEVT-EARLY PASS') 'R20-DEVT-EARLY') -join ',')"
   Write-Host "R $((Get-R20CRefusing @('CHECK R20-DEVT-UNDOCK finding=devtools-refuses leg=undock', 'noise CHECK R20-DEVT-EARLY finding=devtools-refuses leg=docked', 'CHECK R20-UP-DEVT finding=devtools-refuses leg=x')) -join ',')"
@@ -201,6 +201,26 @@ T serveMissing {
   try { [void](Get-R20CServeDefs $d) } catch { Write-Host "MISSING $_" }
 }
 T logs { function global:Invoke-R20Logs { Write-Host 'LOGS' }; & $global:R19Blocks['r20-logs'] }
+$global:DiagFull = [pscustomobject]@{ windows = 0; pane = 'yes'; customize = 1; invoked = 'yes'; items = 4; kinds = 'u1l1b1r1'; pr = 4; pressed = 1 }
+function global:Read-S13DockSide($h, $p) { Write-Host 'READSIDE'; $global:S13DockDiag = $global:DiagFull; $global:Sides[0] }
+T diagZero {
+  $global:Sides = @('right'); function global:Invoke-R20Zero($z, $row) { }; & $global:R19Blocks['r20-0c']
+}
+T diagZeroStale {   # the open failed, so no read ran: the stale diagnostic of an earlier read must not be printed
+  $global:S13DockDiag = $global:DiagFull; $global:Opened = $false; $global:NodeRc['s13-r20-c gate-dock'] = 3; function global:Invoke-R20Zero($z, $row) { }; & $global:R19Blocks['r20-0c']
+}
+T diagRestore {
+  $global:R20DockFound = 'left'; $global:Sides = @('left'); function global:Invoke-R20RestoreCheck { }; function global:Get-R19DlgWindows { @() }; & $global:R19Blocks['r20-restore']
+}
+T restoreLeft1 { $global:R20DockFound = 'left'; $global:Remaining = 1; try { Restore-R20CDock } catch { Write-Host "THREWR $_" } }
+T restoreLeft2 { $global:R20DockFound = 'unread'; $global:Sides = @('unread'); $global:Remaining = 1; try { Restore-R20CDock } catch { Write-Host "THREWR $_" } }
+T restoreCloseThrows { $global:R20DockFound = 'left'; $global:CloseThrows = $true; try { Restore-R20CDock } catch { Write-Host "THREWR $_" } }
+T restoreSetThrows { $global:R20DockFound = 'left'; $global:Remaining = 1; function global:Set-S13DockSide($h, $p, $s) { throw 'boom' }; try { Restore-R20CDock } catch { Write-Host "THREWR $_" } }
+T ddOk { function global:Get-S13DockDiag($h, $p, $f) { Write-Host "DIAG $h $p $([IO.Path]::GetFileName($f))" }; & $global:R19Blocks['dockdiag'] }
+T ddLeft { $global:Remaining = 2; function global:Get-S13DockDiag($h, $p, $f) { Write-Host 'DIAG' }; try { & $global:R19Blocks['dockdiag'] } catch { Write-Host "THREWD $_" } }
+T ddNoOpen { $global:Opened = $false; function global:Get-S13DockDiag($h, $p, $f) { Write-Host 'DIAG' }; & $global:R19Blocks['dockdiag'] }
+T ddThrow { function global:Get-S13DockDiag($h, $p, $f) { throw 'diagfail' }; try { & $global:R19Blocks['dockdiag'] } catch { Write-Host "THREWD $_" } }
+T ddUnread { $global:CloseThrows = $true; function global:Get-S13DockDiag($h, $p, $f) { Write-Host 'DIAG' }; try { & $global:R19Blocks['dockdiag'] } catch { Write-Host "THREWD $_" } }
 foreach ($rs in @(${SLICE_C_STOPS.map((r) => `'${r}'`).join(", ")})) {
   $r = $rs; T "stop-$r" { $R19Order['liveC20'] = @('x'); $global:R19Blocks = @{ x = { Stop-R19 $r 'why' }.GetNewClosure() }; Invoke-R19Slice 'liveC20' }.GetNewClosure()
 }
@@ -225,7 +245,7 @@ describe("the liveC20 entry script's text", () => {
 		for (const f of ["s13-r20.ps1", "s13-devt.ps1", "s13-r20-c-defs.ps1"]) expect(e).toMatch(new RegExp(`^\\. "\\$PSScriptRoot\\\\${f.replace(/\./g, "\\.")}"`, "m"));
 		expect(at("\nRegister-R20Blocks")).toBeLessThan(at("\nRegister-R20CBlocks"));
 		expect(at("-eq 'plan'")).toBeLessThan(at("Get-R18Defs (Join-Path"));
-		expect(e).toContain("ValidateSet('liveC20', 'plan', 'teardown')");
+		expect(e).toContain("ValidateSet('liveC20', 'plan', 'teardown', 'dockdiag')");
 		expect(e).toContain("Get-R20CMissingBlocks 'liveC20'");
 		expect(e).not.toMatch(/8082|8083|s13-win|s13-r20-b4/);
 		expect(e).not.toMatch(/^\. .*s13-r20-b-defs/m);   // slice B's file is never dot-sourced (it overrides Format-S9Title and resets R19Xk)
@@ -365,6 +385,39 @@ describe.skipIf(!hasPs)("s13-r20-c-defs.ps1 under PowerShell with stubbed helper
 		expect(o.flagKeep).toContain("KEEPROW True");
 		expect(has("flagRestoreFound", "SETSIDE left")).toBe(true); expect(o.flagRestoreFound).toContain("FR True");
 		expect(has("restoreOk", "--changed yes")).toBe(true);
+	});
+	it("#418 F3: one dock-read CHECK line follows R20-0C's read (before its DOCK line) and R20-RESTORE's read-back (before its DOCK line); with no read it is all n/a, never a stale count", () => {
+		const L = "NODE s13-r20-c dock-read --row ROW --windows 0 --pane yes --customize 1 --invoked yes --items 4 --kinds u1l1b1r1 --pressed-readable 4 --pressed 1";
+		const z = nodes("diagZero"), r = nodes("diagRestore");
+		expect(z.indexOf(L.slice(5).replace("ROW", "R20-0C"))).toBeGreaterThan(-1);
+		expect(z.indexOf(L.slice(5).replace("ROW", "R20-0C"))).toBeLessThan(z.findIndex((l) => l.startsWith("s13-r20 dock --row R20-0C")));
+		expect(r.indexOf(L.slice(5).replace("ROW", "R20-RESTORE"))).toBeGreaterThan(-1);
+		expect(r.indexOf(L.slice(5).replace("ROW", "R20-RESTORE"))).toBeLessThan(r.findIndex((l) => l.startsWith("s13-r20 dock --row R20-RESTORE")));
+		expect(nodes("diagZeroStale")).toContain("s13-r20-c dock-read --row R20-0C --windows n/a --pane n/a --customize n/a --invoked n/a --items n/a --kinds n/a --pressed-readable n/a --pressed n/a");
+	});
+	it("#418 F2: a close in R20-RESTORE that leaves DevTools open or cannot be read is the STOP devtools-left-open (after the first close no second open; after the read-back the dock record is kept first); an error of the change itself wins", () => {
+		expect(has("restoreLeft1", "REASON [devtools-left-open]")).toBe(true); expect(o.restoreLeft1!.filter((l) => l.startsWith("OPEN"))).toEqual(["OPEN []"]);
+		expect(has("restoreLeft1", "NODE s13-r20 dock")).toBe(false);
+		expect(has("restoreLeft2", "REASON [devtools-left-open]")).toBe(true); expect(nodes("restoreLeft2").some((l) => l.startsWith("s13-r20 dock --row R20-RESTORE --side unread --found unread --changed no"))).toBe(true);
+		expect(has("restoreCloseThrows", "REASON [devtools-left-open]")).toBe(true);
+		expect(has("restoreSetThrows", "THREWR boom")).toBe(true); expect(has("restoreSetThrows", "REASON []")).toBe(true);
+		expect(has("restoreOk", "REASON []")).toBe(true);
+		// F5 (verifier): a left-open pane is named in its own CHECK line even when another STOP or a throw wins
+		for (const k of ["restoreSetThrows", "restoreLeft2", "restoreLeft1"]) expect(has(k, "CHECK R20-RESTORE devtools-left-open=yes")).toBe(true);
+		expect(has("restoreOk", "CHECK R20-RESTORE devtools-left-open=yes")).toBe(false);
+	});
+	it("#418: -Block dockdiag has its own order (preflight, servers, window, dockdiag: no files, reload, console, actor or r20-0c, so no safety change), opens DevTools plain, runs the diagnostic into S11_OUT, closes, prints remaining, changes no dock side", () => {
+		expect(o.reg).toContain("DDORDER preflight,servers,window,dockdiag"); expect(o.reg).toContain("DDMISSING 0");
+		const d = o.ddOk!;
+		expect(d.filter((l) => /^(FRONT|OPEN|DIAG|CLOSE|READSIDE|SETSIDE)/.test(l))).toEqual(["FRONT 7 DOCKDIAG", "OPEN []", "DIAG 7 8081 dockdiag-evidence.txt", "CLOSE"]);
+		expect(d).toContain("CHECK dockdiag remaining=0");
+		expect(o.ddNoOpen).toContain("CHECK dockdiag opened=no"); expect(o.ddNoOpen).not.toContain("DIAG");
+		expect(has("ddLeft", "CHECK dockdiag remaining=2")).toBe(true); expect(has("ddLeft", "REASON [devtools-left-open]")).toBe(true);
+		expect(has("ddThrow", "CLOSE")).toBe(true); expect(has("ddThrow", "CHECK dockdiag remaining=0")).toBe(true); expect(has("ddThrow", "THREWD diagfail")).toBe(true);
+		expect(has("ddUnread", "CHECK dockdiag remaining=unread")).toBe(true); expect(has("ddUnread", "REASON [devtools-left-open]")).toBe(true);
+		const e = read("s13-r20-c.ps1");
+		expect(e).toContain("Get-R20CMissingBlocks 'dockdiag'");
+		for (const f of ["s13-devt.ps1"]) expect(read(f)).toMatch(/^[\x20-\x7e\r\n\t]*$/);
 	});
 	it("DIALOGS C counts EVERY DevTools window but the capture (a human's on another page too), not Close-S13DevTools's narrower remaining; one left is the STOP devtools-left-open, a native dialog dialog-left-open", () => {
 		expect(o.dialogs).toEqual(expect.arrayContaining(["N0 0", "N1 1", "NODE s12-r19-c dialogs --slice C --native 0 --devtools 0 --windows 0", "NODE s12-r19-c dialogs --slice C --native 0 --devtools 1 --windows 0", "THREWD stop devtools-left-open [devtools-left-open]", "THREWD2 stop dialog-left-open [dialog-left-open]"]));

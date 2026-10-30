@@ -107,15 +107,36 @@ function Get-S13Scope([long]$Hwnd, [int]$Port) {
   if (@($s13w | Where-Object { -not (Test-S11Own $_.h) }).Count -gt 0) { return @() }
   @($s13w | ForEach-Object { $_.h })
 }
+# The Dock side buttons among a window's named UIA items as { kind; pressed; el } (pressed $true, $false or $null when unreadable).
+function Get-S13DockItems($Items) {
+  @($Items | Where-Object { $_.type -in 'Button', 'MenuItem', 'RadioButton' -and (ConvertTo-S13DockKind $_.name) } | ForEach-Object { [pscustomobject]@{ kind = (ConvertTo-S13DockKind $_.name); pressed = (Get-S13Pressed $_.el); el = $_.el } })
+}
+# The counts-only diagnostic of the last dock read (F3, #418): never a name, title, URL or user text. kinds = how many items of each kind (u undock, l left, b bottom, r right).
+function New-S13DockDiag($Windows = 'n/a', [string]$Pane = 'n/a', $Customize = 'n/a', [string]$Invoked = 'n/a', $Items = $null) {
+  $s13d = [pscustomobject]@{ windows = $Windows; pane = $Pane; customize = $Customize; invoked = $Invoked; items = 0; kinds = 'u0l0b0r0'; pr = 0; pressed = 0 }
+  if ($null -ne $Items) { Set-S13DiagItems $s13d @($Items) }
+  $s13d
+}
+function Set-S13DiagItems($Diag, $Items) {
+  $s13i = @($Items); $s13c = @{}
+  foreach ($s13k in 'undock', 'left', 'bottom', 'right') { $s13c[$s13k] = @($s13i | Where-Object { $_.kind -eq $s13k }).Count }
+  $Diag.items = $s13i.Count; $Diag.kinds = "u$($s13c['undock'])l$($s13c['left'])b$($s13c['bottom'])r$($s13c['right'])"
+  $Diag.pr = @($s13i | Where-Object { $null -ne $_.pressed }).Count; $Diag.pressed = @($s13i | Where-Object { $_.pressed -eq $true }).Count
+}
+function Set-S13DiagField([string]$Name, $Value) { if ($global:S13DockDiag) { $global:S13DockDiag.$Name = $Value } }
 # Opens the Customize menu in the first scope window that has its button, then returns { hwnd; items } with the Dock side buttons as { kind; pressed; el }. $null when the button is not found once or does not open.
 function Open-S13Customize([long[]]$Scope) {
   foreach ($s13h in $Scope) {
     $s13a = @(Get-S13UiaItems $s13h)
     $s13b = @($s13a | Where-Object { $_.type -eq 'Button' -and $_.name -like 'Customize and control DevTools*' })
+    Set-S13DiagField 'customize' $s13b.Count
     if ($s13b.Count -ne 1) { continue }
-    if (-not (Invoke-S13Item $s13b[0].el)) { return $null }
+    $s13v = [bool](Invoke-S13Item $s13b[0].el)
+    Set-S13DiagField 'invoked' $(if ($s13v) { 'yes' } else { 'no' })
+    if (-not $s13v) { return $null }
     Start-Sleep -Milliseconds 700
-    $s13i = @(Get-S13UiaItems $s13h | Where-Object { $_.type -in 'Button', 'MenuItem', 'RadioButton' -and (ConvertTo-S13DockKind $_.name) } | ForEach-Object { [pscustomobject]@{ kind = (ConvertTo-S13DockKind $_.name); pressed = (Get-S13Pressed $_.el); el = $_.el } })
+    $s13i = @(Get-S13DockItems @(Get-S13UiaItems $s13h))
+    if ($global:S13DockDiag) { Set-S13DiagItems $global:S13DockDiag $s13i }
     return [pscustomobject]@{ hwnd = $s13h; items = $s13i }
   }
   $null
@@ -125,9 +146,13 @@ function Close-S13Customize([long]$Hwnd, $Menu) { if ($Menu -and $Menu.hwnd -eq 
 # R20-0C / R20-RESTORE's read: one of bottom|right|left|undock|unread. Call it with DevTools open on the tab in X, never on the capture window. Reads the window list first; reads the menu only for a docked pane.
 function Read-S13DockSide([long]$Hwnd, [int]$Port) {
   Assert-S13Window $Hwnd $Port 'dock read'
+  $global:S13DockDiag = New-S13DockDiag
   $s13n = @(Get-S13Titles | Where-Object { Test-S13DevtTitle $_.title $Port }).Count
+  Set-S13DiagField 'windows' $s13n
   if ($s13n -ge 1) { return (ConvertTo-S13DockSide @() $s13n) }
-  if (-not (Test-S13Pane $Hwnd)) { return 'unread' }
+  $s13pn = [bool](Test-S13Pane $Hwnd)
+  Set-S13DiagField 'pane' $(if ($s13pn) { 'yes' } else { 'no' })
+  if (-not $s13pn) { return 'unread' }
   $s13m = Open-S13Customize @($Hwnd)
   if (-not $s13m) { return 'unread' }
   $s13s = ConvertTo-S13DockSide $s13m.items 0
@@ -162,6 +187,128 @@ function Open-S13DevTools([long]$Hwnd, [int]$Port, [string]$Side = '') {
   if ($Side -eq '') { return [pscustomobject]@{ opened = $true; side = ''; done = $true; now = '' } }
   $s13r = Set-S13DockSide $Hwnd $Port $Side
   [pscustomobject]@{ opened = $true; side = $Side; done = [bool]$s13r.done; now = $s13r.now }
+}
+
+# ---- the live dock diagnostic (#418): ONE read of the real DevTools UIA structure in window X, counts and element descriptors only ----------------------------
+# Writes an evidence file (the caller passes a path outside the repo). Never the document URL, a window title, a tab title, the omnibox value or a Value pattern; an element whose name or id suggests the
+# profile, account or avatar is skipped, and so are Document, TabItem, Window and TitleBar elements (their names are page or tab titles). At most one button is invoked, never a Dock side button.
+# F2 (#418 verifier): also skipped by the class name of Chrome's own views (bookmarks, extension buttons, avatar, tab hover card, omnibox, side panel, downloads, infobars).
+function Test-S13DiagSkip([string]$Name, [string]$Id, [string]$Class = '') { (("$Name $Id") -match '(?i)profile|account|avatar') -or ("$Class" -match '(?i)BookmarkButton|BookmarkBar|ToolbarActionView|Extensions|Avatar|Profile|TabHoverCard|^Tab|Omnibox|LocationBar|SidePanel|Download|Infobar|BrowserView') }
+# The help field is written only for a fixed DevTools name (it can hold a URL on a bookmark button).
+function Test-S13FixedName([string]$Name) { "$Name" -match '^(Customize and control DevTools|Dock side|Undock|Dock to |More options|More tools|Settings|Close)' }
+# F4: pressed-state extras only for a Dock side kind or the Customize button.
+function Test-S13DiagStateName([string]$Name) { [bool](ConvertTo-S13DockKind $Name) -or ("$Name" -like 'Customize and control DevTools*') }
+function Format-S13DiagLegacy($State) { $s13n = 0; if (-not [int]::TryParse("$State", [ref]$s13n)) { return 'Leg=n/a' }; $s13w = @(); if ($s13n -band 2) { $s13w += 'selected' }; if ($s13n -band 8) { $s13w += 'pressed' }; if ($s13n -band 16) { $s13w += 'checked' }; "Leg=$s13n($($s13w -join ','))" }
+# F3: a new top-level window is read only when it looks like a popup menu; else its type and (fixed Chrome) class only.
+function Test-S13PopupMenu([string]$Type, [string]$Class) { $Type -eq 'Menu' -or "$Class" -match '^(#32768|MenuHost)' }
+function Format-S13NewWinSkip([string]$Type, [string]$Class) { $s13c = if ("$Class" -match '^(Chrome_WidgetWin_\d+|Chrome_RenderWidgetHostHWND|#32768|NativeHWNDHost|MenuHost\w*)$') { $Class } else { '-' }; "NEWWIN skipped type=$Type class=$s13c" }
+# F1: a probe retried every $StepMs up to $MaxMs; returns { found; tries; ms }. $Probe gets (try, ms) and returns $true when satisfied.
+function Invoke-S13Poll([scriptblock]$Probe, [int]$MaxMs = 6000, [int]$StepMs = 300, [scriptblock]$Sleep = { param($m) Start-Sleep -Milliseconds $m }) {
+  $s13sw = [Diagnostics.Stopwatch]::StartNew(); $s13n = [Math]::Max(1, [int]($MaxMs / $StepMs))
+  for ($s13t = 1; $s13t -le $s13n + 1; $s13t++) { if (& $Probe $s13t $s13sw.ElapsedMilliseconds) { return [pscustomobject]@{ found = $true; tries = $s13t; ms = $s13sw.ElapsedMilliseconds } }; if ($s13t -le $s13n) { & $Sleep $StepMs } }
+  [pscustomobject]@{ found = $false; tries = $s13n + 1; ms = $s13sw.ElapsedMilliseconds }
+}
+function Test-S13DiagKeyword([string]$Name) { $Name -match '(?i)customize|control|devtools|dock|undock|side|more options|menu' }
+function Format-S13DiagText([string]$Text, [int]$Max = 60) { $s13t = ("$Text" -replace '[\r\n|]', ' '); if ($s13t.Length -gt $Max) { $s13t.Substring(0, $Max) } else { $s13t } }
+function Format-S13DiagCounts([string]$Tag, $D) { "COUNTS $Tag windows=$($D.windows) pane=$($D.pane) customize=$($D.customize) invoked=$($D.invoked) items=$($D.items) kinds=$($D.kinds) pressed-readable=$($D.pr) pressed=$($D.pressed)" }
+function Add-S13DiagLine([string]$File, [string]$Text) { [IO.File]::AppendAllText($File, ($Text + "`r`n"), (New-Object Text.UTF8Encoding $false)) }
+# Every UIA descendant of an element as { el; type; name; id }, named or not.
+function Get-S13DiagAll($Root) {
+  foreach ($s13e in @($Root.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition))) {
+    try { [pscustomobject]@{ el = $s13e; type = ([string]$s13e.Current.ControlType.ProgrammaticName -replace '^ControlType\.', ''); name = [string]$s13e.Current.Name; id = [string]$s13e.Current.AutomationId } } catch { }
+  }
+}
+# One descriptor line: type|name|id|class|patterns (Invoke, Toggle state, Sel IsSelected, Exp state)|help; $null for a skipped element.
+function Get-S13DiagDesc($It) {
+  try {
+    $s13el = $It.el; $s13cls = [string]$s13el.Current.ClassName
+    if ($It.type -in 'Document', 'TabItem', 'Window', 'TitleBar' -or (Test-S13DiagSkip $It.name $It.id $s13cls)) { return $null }
+    $s13pt = @(); $s13p = $null
+    if ($s13el.TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern, [ref]$s13p)) { $s13pt += 'Invoke' }
+    $s13p = $null; if ($s13el.TryGetCurrentPattern([Windows.Automation.TogglePattern]::Pattern, [ref]$s13p)) { $s13pt += "Toggle=$($s13p.Current.ToggleState)" }
+    $s13p = $null; if ($s13el.TryGetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern, [ref]$s13p)) { $s13pt += "Sel=$($s13p.Current.IsSelected)" }
+    $s13p = $null; if ($s13el.TryGetCurrentPattern([Windows.Automation.ExpandCollapsePattern]::Pattern, [ref]$s13p)) { $s13pt += "Exp=$($s13p.Current.ExpandCollapseState)" }
+    if (Test-S13DiagStateName $It.name) {
+      foreach ($s13pr in @(@('Leg', 30096), @('AriaRole', 30101), @('AriaProps', 30102))) {
+        $s13pv = 'n/a'; try { $s13pv = $s13el.GetCurrentPropertyValue([Windows.Automation.AutomationProperty]::LookupById([int]$s13pr[1])) } catch { }
+        $s13pt += $(if ($s13pr[0] -eq 'Leg') { Format-S13DiagLegacy $s13pv } elseif ($s13pr[0] -eq 'AriaRole') { "AriaRole=$(Format-S13DiagText ([string]$s13pv) 20)" } else { "AriaProps=$(Format-S13DiagText ([string]$s13pv) 80)" })
+      }
+    }
+    $s13help = if (Test-S13FixedName $It.name) { Format-S13DiagText ([string]$s13el.Current.HelpText) } else { '-' }
+    "$($It.type)|$(Format-S13DiagText $It.name)|$(Format-S13DiagText $It.id 40)|$(Format-S13DiagText $s13cls 40)|$($s13pt -join ',')|$s13help"
+  } catch { $null }
+}
+function Test-S13InRect($El, $Rects) {
+  try { $s13r = $El.Current.BoundingRectangle; if ($s13r.IsEmpty) { return $false }; $s13x = $s13r.X + $s13r.Width / 2; $s13y = $s13r.Y + $s13r.Height / 2; @($Rects | Where-Object { $_.Contains([double]$s13x, [double]$s13y) }).Count -gt 0 } catch { $false }
+}
+function Get-S13TopWindows([int]$ProcId) {
+  @([Windows.Automation.AutomationElement]::RootElement.FindAll([Windows.Automation.TreeScope]::Children, [Windows.Automation.Condition]::TrueCondition) | Where-Object { try { $_.Current.ProcessId -eq $ProcId } catch { $false } })
+}
+function Get-S13RunId($El) { try { $El.GetRuntimeId() -join '.' } catch { '' } }
+# The counts of the Customize read in X as Read-S13DockSide would take them (no key sent, no invoke).
+function Get-S13DiagCounts([long]$Hwnd, [string]$Pane, [string]$Invoked) {
+  $s13a = @(Get-S13UiaItems $Hwnd)
+  New-S13DockDiag 0 $Pane @($s13a | Where-Object { $_.type -eq 'Button' -and $_.name -like 'Customize and control DevTools*' }).Count $Invoked @(Get-S13DockItems $s13a)
+}
+function Write-S13DiagKeywords([string]$File, [string]$Tag, $All, $Rects) {
+  $s13n = 0
+  foreach ($s13it in $All) { if ((Test-S13DiagKeyword $s13it.name) -and $s13n -lt 60 -and (Test-S13InRect $s13it.el $Rects)) { $s13l = Get-S13DiagDesc $s13it; if ($s13l) { Add-S13DiagLine $File "KEY $Tag $s13l"; $s13n++ } } }
+  Add-S13DiagLine $File "KEY $Tag lines=$s13n"
+}
+function Get-S13DockDiag([long]$Hwnd, [int]$Port, [string]$OutFile) {
+  Assert-S13Window $Hwnd $Port 'dock diagnostic'
+  $s13pane = [bool](Test-S13Pane $Hwnd); $s13pw = if ($s13pane) { 'yes' } else { 'no' }
+  $s13pid = Get-S13WinPid $Hwnd
+  $s13before = @(Get-S13TopWindows $s13pid | ForEach-Object { Get-S13RunId $_ })
+  $s13all = @(Get-S13DiagAll ($S9UIA::FromHandle([IntPtr]$Hwnd)))
+  Add-S13DiagLine $OutFile "DOCKDIAG pane=$s13pw elements=$($s13all.Count) top-before=$($s13before.Count)"
+  # F1: the Customize button is looked for every 300 ms up to 6 s (the DevTools tree is built late); each try writes counts and ms only.
+  $s13st = @{ all = $s13all }
+  $s13pl = Invoke-S13Poll { param($t, $ms) if ($t -gt 1) { $s13st.all = @(Get-S13DiagAll ($S9UIA::FromHandle([IntPtr]$Hwnd))) }; $s13mm = @($s13st.all | Where-Object { $_.type -eq 'Button' -and $_.name -like 'Customize and control DevTools*' }).Count; Add-S13DiagLine $OutFile "DOCKDIAG button-poll try=$t ms=$ms elements=$($s13st.all.Count) matches=$s13mm"; $s13mm -eq 1 }
+  Add-S13DiagLine $OutFile "DOCKDIAG button-poll found=$(if ($s13pl.found) { 'yes' } else { 'no' }) tries=$($s13pl.tries) ms=$($s13pl.ms)"
+  $s13all = @($s13st.all)
+  # F2: KEY lines and the keyword search stay inside the DevTools document (a Document named DevTools*; else every Document rectangle), never the page's.
+  $s13docs = @($s13all | Where-Object { $_.type -eq 'Document' })
+  $s13dd = @($s13docs | Where-Object { $_.name -like 'DevTools*' }); $s13rsrc = if ($s13dd.Count) { 'devtools-doc' } else { 'all-docs' }; if (-not $s13dd.Count) { $s13dd = $s13docs }
+  $s13rects = @($s13dd | ForEach-Object { try { $_.el.Current.BoundingRectangle } catch { } } | Where-Object { $_ -and -not $_.IsEmpty })
+  Add-S13DiagLine $OutFile "DOCKDIAG key-region=$s13rsrc documents=$($s13docs.Count) rects=$($s13rects.Count)"
+  Write-S13DiagKeywords $OutFile 'before' $s13all $s13rects
+  $s13a = @($s13all | Where-Object { $_.name })
+  $s13cand = @($s13a | Where-Object { $_.type -eq 'Button' -and $_.name -like 'Customize and control DevTools*' }); $s13cur = $s13cand.Count; $s13how = 'current'
+  if ($s13cur -ne 1) { $s13how = 'keyword'; $s13cand = @($s13a | Where-Object { $_.type -eq 'Button' -and $_.name -match '(?i)customize|more options' -and -not (Test-S13DiagSkip $_.name $_.id) -and (Test-S13InRect $_.el $s13rects) }) }
+  Add-S13DiagLine $OutFile "DOCKDIAG current-name-matches=$s13cur used=$s13how candidates=$($s13cand.Count) document-rects=$($s13rects.Count)"
+  $s13inv = 'n/a'; $s13c1 = $null; $s13c2 = $null; $s13new = 0
+  if ($s13cand.Count -eq 1) {
+    Add-S13DiagLine $OutFile "DOCKDIAG button $(Get-S13DiagDesc $s13cand[0])"
+    $s13before = @(Get-S13TopWindows $s13pid | ForEach-Object { Get-S13RunId $_ })   # F3: only windows that appear after the invoke
+    $s13inv = if (Invoke-S13Item $s13cand[0].el) { 'yes' } else { 'no' }
+    $s13sw = [Diagnostics.Stopwatch]::StartNew()
+    if ($s13inv -eq 'yes') { try {
+      Start-Sleep -Milliseconds 700; $s13c1 = Get-S13DiagCounts $Hwnd $s13pw $s13inv; Add-S13DiagLine $OutFile (Format-S13DiagCounts "at-$($s13sw.ElapsedMilliseconds)ms" $s13c1)
+      if ($s13c1.items -eq 0) {   # F1: the Dock side items are looked for every 300 ms up to 3.6 s more; counts and ms only
+        $s13ip = Invoke-S13Poll { param($t, $ms) @(Get-S13DockItems @(Get-S13UiaItems $Hwnd)).Count -gt 0 } 3600 300
+        Add-S13DiagLine $OutFile "DOCKDIAG items-poll found=$(if ($s13ip.found) { 'yes' } else { 'no' }) tries=$($s13ip.tries) at=$($s13sw.ElapsedMilliseconds)ms"
+      }
+      if ($s13sw.ElapsedMilliseconds -lt 2500) { Start-Sleep -Milliseconds (2500 - [int]$s13sw.ElapsedMilliseconds) }
+      $s13c2 = Get-S13DiagCounts $Hwnd $s13pw $s13inv; Add-S13DiagLine $OutFile (Format-S13DiagCounts "at-$($s13sw.ElapsedMilliseconds)ms" $s13c2)
+      $s13after = @(Get-S13DiagAll ($S9UIA::FromHandle([IntPtr]$Hwnd)))
+      Write-S13DiagKeywords $OutFile 'after' $s13after $s13rects
+      $s13budget = 80
+      foreach ($s13m in @($s13after | Where-Object { $_.type -eq 'Menu' })) {
+        foreach ($s13d in @(Get-S13DiagAll $s13m.el)) { $s13l = Get-S13DiagDesc $s13d; if ($s13l -and $s13budget -gt 0) { Add-S13DiagLine $OutFile "MENU $s13l"; $s13budget-- } }
+      }
+      foreach ($s13w in @(Get-S13TopWindows $s13pid | Where-Object { $s13before -notcontains (Get-S13RunId $_) })) {
+        $s13new++
+        $s13wt = ''; $s13wc = ''; try { $s13wt = [string]$s13w.Current.ControlType.ProgrammaticName -replace '^ControlType\.', ''; $s13wc = [string]$s13w.Current.ClassName } catch { }
+        if (-not (Test-S13PopupMenu $s13wt $s13wc)) { Add-S13DiagLine $OutFile (Format-S13NewWinSkip $s13wt $s13wc); continue }   # F3: never a window title, never a non-menu window's tree
+        $s13wd = @(Get-S13DiagAll $s13w)
+        if ($s13wd.Count -gt 150) { Add-S13DiagLine $OutFile "NEWWIN skipped-large descendants=$($s13wd.Count)"; continue }
+        foreach ($s13d in $s13wd) { $s13l = Get-S13DiagDesc $s13d; if ($s13l -and $s13budget -gt 0) { Add-S13DiagLine $OutFile "NEWWIN $s13l"; $s13budget-- } }
+      }
+      Add-S13DiagLine $OutFile "DOCKDIAG new-top-windows=$s13new menu-lines-left=$s13budget"
+    } finally { Send-S12Escape $Hwnd } }   # the menu this opened, closed by an Escape into X only
+  } else { Add-S13DiagLine $OutFile 'DOCKDIAG no unique Customize or More options button inside the pane: nothing invoked' }
+  [pscustomobject]@{ pane = $s13pw; used = $s13how; invoked = $s13inv; counts700 = $s13c1; counts2500 = $s13c2; newwin = $s13new }
 }
 
 # ---- (c) the bridge-independent control ------------------------------------------------------------------------------------------------------------

@@ -7,7 +7,8 @@ import { IDLE_MIN_MS_19 } from "../s12-forms.js";
 import { K17 } from "../s11b-rules.js";
 import type { PageObs } from "../s11-rules.js";
 import { KEEPER_IDLE_MS } from "../../extension/src/debugger-keeper.js";
-import { LEG_ORDER, MARKER, NO_REFUSAL_FINDING, condFor, pickRefusing, ROWS_C, EARLIER_NM_IDLE, EARLIER_NM_VALUE, afterGate, cmds, condGate, condOf, earlierVerdict, devtLegResult, gateCond, gateDock, keep4Gate, keep4Legs, notRunLine, parseCount, parseCtl, parseOpen, rowOfLegs, sweepVerdict, upDevtLegs, type CtlRead, type LegIn } from "../s13-r20-c.js";
+import { aggregateRows20 } from "../s13-r20.js";
+import { LEG_ORDER, MARKER, NO_REFUSAL_FINDING, condFor, pickRefusing, ROWS_C, EARLIER_NM_IDLE, EARLIER_NM_VALUE, afterGate, cmds, condGate, condOf, dockReadLine, earlierVerdict, devtLegResult, gateCond, gateDock, keep4Gate, keep4Legs, notRunLine, parseCount, parseCtl, parseOpen, rowOfLegs, sweepVerdict, upDevtLegs, type CtlRead, type LegIn } from "../s13-r20-c.js";
 const K = K17["K-devt"];
 const refusal = { code: K.code, message: K.message };
 const NO: CtlRead = { windows: 0, title: "none", attached: "no", targets: 7 };
@@ -222,5 +223,28 @@ describe("the conditional rows re-create the refusing leg's condition (--cond)",
     expect(p1.indexOf("earlierAttach(t, R, \"control-pre\")")).toBeGreaterThan(-1);
     expect(p1.indexOf("earlierAttach(")).toBeLessThan(p1.indexOf("sig(id(\"ctl0\"))"));
     expect(ea).toContain('t.evaluate("1 + 1")'); expect(ea).toContain("await idle(row)"); expect(ea).toContain("earlierVerdict(");
+  });
+});
+describe("dock-read: the counts-only diagnostic line of the dock read (#418 F3)", () => {
+  const full = { row: "R20-0C", windows: "0", pane: "yes", customize: "1", invoked: "yes", items: "4", kinds: "u1l1b1r1", "pressed-readable": "4", pressed: "1" };
+  it("prints one fixed-word CHECK line for R20-0C and for R20-RESTORE, and exits 0", () => {
+    expect(dockReadLine(full)).toEqual({ lines: ["CHECK dock-read row=R20-0C windows=0 pane=yes customize=1 invoked=yes items=4 kinds=u1l1b1r1 pressed-readable=4 pressed=1"], exit: 0 });
+    expect(dockReadLine({ ...full, row: "R20-RESTORE", windows: "n/a", pane: "n/a", customize: "n/a", invoked: "n/a", items: "0", kinds: "u0l0b0r0", "pressed-readable": "0", pressed: "0" }).lines[0]).toBe("CHECK dock-read row=R20-RESTORE windows=n/a pane=n/a customize=n/a invoked=n/a items=0 kinds=u0l0b0r0 pressed-readable=0 pressed=0");
+  });
+  it("prints n/a for any value that is no count or fixed word, so no text can reach the record; an unknown row is a STOP line", () => {
+    const l = dockReadLine({ ...full, windows: "My Window Title", pane: "maybe", customize: "1234", invoked: "C:/x", items: "-1", kinds: "u1l1", "pressed-readable": "", pressed: "x y" }).lines[0]!;
+    expect(l).toBe("CHECK dock-read row=R20-0C windows=n/a pane=n/a customize=n/a invoked=n/a items=n/a kinds=n/a pressed-readable=n/a pressed=n/a");
+    expect(dockReadLine({ ...full, row: "R20-DEVT-UNDOCK" })).toEqual({ lines: ["STOP: dock-read needs --row R20-0C or R20-RESTORE"], exit: 2 });
+  });
+  it("is a CHECK line, never a ROW: it adds nothing to CHECK rows20's count", () => {
+    const row = "ROW R20-0C PASS slice=C", chk = dockReadLine(full).lines[0]!;
+    expect(aggregateRows20([row, chk]).n).toBe(aggregateRows20([row]).n);
+    expect(chk.startsWith("CHECK ")).toBe(true);
+  });
+  it("is reachable as the subcommand dock-read of the actor", async () => {
+    const out: string[] = []; const spy = vi.spyOn(console, "log").mockImplementation((m: unknown) => { out.push(String(m)); });
+    const rc = await cmds["dock-read"]!(["--row", "R20-0C", "--windows", "1", "--pane", "n/a", "--customize", "n/a", "--invoked", "n/a", "--items", "0", "--kinds", "u0l0b0r0", "--pressed-readable", "0", "--pressed", "0"]);
+    spy.mockRestore();
+    expect(rc).toBe(0); expect(out).toEqual(["CHECK dock-read row=R20-0C windows=1 pane=n/a customize=n/a invoked=n/a items=0 kinds=u0l0b0r0 pressed-readable=0 pressed=0"]);
   });
 });

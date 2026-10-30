@@ -226,6 +226,14 @@ export function gateCond(findings: string, devtLegs = ""): { lines: string[]; ex
   if (c.run && pick) { const f = condFor(pick.under); return { lines: [`CHECK gate-cond run=yes refusing-legs=${legs.length}`, `CHECK gate-cond under=${pick.under} leg=${f.leg} cond=${f.cond} not-rerun=${pick.others.join(",") || "none"}`], exit: 0 }; }
   return c.run ? { lines: [`CHECK gate-cond run=yes refusing-legs=${legs.length}`], exit: 0 } : { lines: [...ROWS_C.slice(2).map((r) => notRunLine(r, c.line!)), noRefusal(devtLegs)], exit: 3 };
 }
+/** `dock-read --row R20-0C|R20-RESTORE --windows <n|n/a> --pane yes|no|n/a --customize <n|n/a> --invoked yes|no|n/a --items <n|n/a> --kinds u<n>l<n>b<n>r<n> --pressed-readable <n|n/a> --pressed <n|n/a>` (#418 F3): ONE counts-only
+ *  diagnostic CHECK line of the dock read, never a verdict, a gate or a ROW (CHECK rows20 counts ROW lines only). Every value is a count or a fixed word: anything else prints `n/a`, never the text it came in. */
+const CNT = /^(\d{1,3}|n\/a)$/, YNA = /^(yes|no|n\/a)$/, KINDS = /^u\d{1,2}l\d{1,2}b\d{1,2}r\d{1,2}$/;
+export function dockReadLine(o: Record<string, string>): { lines: string[]; exit: 0 | 2 } {
+  if (o.row !== "R20-0C" && o.row !== "R20-RESTORE") return { lines: ["STOP: dock-read needs --row R20-0C or R20-RESTORE"], exit: 2 };
+  const v = (k: string, re: RegExp): string => (re.test(o[k] ?? "") ? o[k]! : "n/a");
+  return { lines: [`CHECK dock-read row=${o.row} windows=${v("windows", CNT)} pane=${v("pane", YNA)} customize=${v("customize", CNT)} invoked=${v("invoked", YNA)} items=${v("items", CNT)} kinds=${v("kinds", KINDS)} pressed-readable=${v("pressed-readable", CNT)} pressed=${v("pressed", CNT)}`], exit: 0 };
+}
 export const gateCmd = (f: (v: string, w: string) => { lines: string[]; exit: 0 | 3 }, key: string) => async (a: string[]): Promise<number> => {
   const o: Record<string, string> = {}; for (let i = 0; i < a.length; i += 2) o[a[i]!.replace(/^--/, "")] = a[i + 1] ?? "";
   const r = f(o[key] ?? "", o.legs ?? ""); r.lines.forEach(say); return r.exit;
@@ -242,6 +250,7 @@ export const cmds: Record<string, (argv: string[]) => Promise<number>> = {
   }),
   "up-devt": (a) => run("devtc20", a, upDevt), "keep-4": (a) => run("devtc20", a, keep4), "sweep-held": (a) => run("devtc20", a, sweepHeld),
   "gate-dock": gateCmd(gateDock, "dock"), "gate-cond": gateCmd(gateCond, "findings"),
+  "dock-read": async (a) => { const o: Record<string, string> = {}; for (let i = 0; i < a.length; i += 2) o[a[i]!.replace(/^--/, "")] = a[i + 1] ?? ""; const r = dockReadLine(o); r.lines.forEach(say); return r.exit; },
 };
 export async function main(argv: string[]): Promise<number> {
   const [sub = "", ...rest] = argv;

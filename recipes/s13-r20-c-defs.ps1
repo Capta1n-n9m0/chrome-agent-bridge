@@ -5,6 +5,7 @@
 # Every actor row is answered through ONE `serve` step (#412: 120 s idle, 600 s per row; a throw is the STOP throw-after-state). DevTools is opened only in X on a fixture page, closed by the wave after each row.
 $global:R20DockFound = ''; $global:R20CGate = ''; $global:R20CRoot = $false; $global:R20CWords = @(); $global:R20CRefuse = @(); $global:R20CPick = $null; $global:R20CCondSet = $false; $global:R20CFlagDone = $false; $global:R20CDockChanged = $false
 # The legs' tab markers: tied to MARKER in recipes/s13-r20-c.ts by a test.
+$R19Order['dockdiag'] = @('preflight', 'servers', 'window', 'dockdiag')   # #418: the diagnostic of the dock read needs window X and the fixture server only: no files, no reload (the safety state is never changed), no capture window, no actor
 $R20CMark = @{ undock = 's12x=r20u1'; early_undocked = 's12x=r20eu1'; early_docked = 's12x=r20ed1'; up = 's12x=r20cup'; keep = 's12x=r20ck4'; sweep = 's12x=r20csw' }
 # ---- pure parts (tested with stubs: recipes/test/s13-r20-c-ps.test.ts) -----------------------------------------------------------------------------------
 function ConvertTo-R20CLegWord([string]$Verdict) { if ($Verdict -eq 'PASS') { 'PASS' } elseif ($Verdict -like 'RECORD*') { 'RECORD' } elseif ($Verdict -like 'NOT MEASURED*') { 'NM' } else { 'FAIL' } }
@@ -62,12 +63,19 @@ function Invoke-R20CRow([string]$Id, [string[]]$Cmd, $Handlers, [scriptblock]$Pr
   $r20sp = @(@{ k = 'serve'; h = $Handlers; s = 600 })
   Invoke-R20CGuarded $Id { if ($Pre) { & $Pre }; Invoke-R19Row $Id $Cmd -StepList $r20sp -Actor 's13-r20-c' -BudgetS 600 }.GetNewClosure()
 }
+# #418 F3: ONE fixed-word CHECK line with the counts of the last dock read (Read-S13DockSide leaves them in $global:S13DockDiag; none left = n/a). A diagnostic, never a verdict or a row.
+function Write-R20CDockRead([string]$Row) {
+  $r20d = $global:S13DockDiag; $r20v = { param($n) if ($r20d -and "$($r20d.$n)" -ne '') { "$($r20d.$n)" } else { 'n/a' } }
+  [void](Invoke-R19Node 's13-r20-c' @('dock-read', '--row', $Row, '--windows', (& $r20v 'windows'), '--pane', (& $r20v 'pane'), '--customize', (& $r20v 'customize'), '--invoked', (& $r20v 'invoked'), '--items', (& $r20v 'items'), '--kinds', (& $r20v 'kinds'), '--pressed-readable', (& $r20v 'pr'), '--pressed', (& $r20v 'pressed')))
+}
 # ---- R20-0C, FLAG --------------------------------------------------------------------------------------------------------------------------------------
 # R20-0C is R20-0's proof under its own row id; its ROW line comes first (Invoke-R20Zero ends with it), then DOCK, then the gate. A DOCK side that cannot be read is no failure of the proof: it gates the five rows below (gate-dock).
 function Invoke-R20CZero {
   Invoke-R20Zero $R17bZero 'R20-0C'
   $r20read = @{ side = 'unread' }   # a reference the closure fills
+  $global:S13DockDiag = $null
   Invoke-R20CGuarded 'R20-0C' { $r20o = Open-S13DevTools (Get-R20CX) 8081; if ($r20o.opened) { $r20read.side = Read-S13DockSide (Get-R20CX) 8081 } }.GetNewClosure()
+  Write-R20CDockRead 'R20-0C'
   $global:R20DockFound = "$($r20read.side)"
   [void](Invoke-R19Node 's13-r20' @('dock', '--row', 'R20-0C', '--side', $global:R20DockFound))
   $r20rc = [int](@(Invoke-R19Node 's13-r20-c' @('gate-dock', '--dock', $global:R20DockFound))[-1])
@@ -165,12 +173,18 @@ function Write-R20CDialogs {
 # The dock side back as found, in a tab's DevTools in X (C1 verifier1 F4): Open -> Set to R20-0C's side -> Close -> Open plain -> read back (this is DOCK R20-RESTORE) -> Close. A different or unread side is the
 # STOP not-restored (dockRestoreVerdict, in the node line), and the record names the found side. A found side of unread (R20-0C could not read it, or never ran) skips the change and still reads back.
 # #416: it is then NOT MEASURED ("found side unread, nothing changed", exit 0, the slice goes on) only when $global:R20CDockChanged is $false; the flag is set BEFORE every call that can change the side (Open-R20CDevt with a side, KEEP-4's pre-open, this function's own Set), so a throw mid-change still counts. Else it stays the STOP.
+# F2 (#418): a close that leaves DevTools open (remaining above 0) or cannot be read is the STOP devtools-left-open, as Invoke-R20CGuarded has it; an error of the change itself wins over it (the throw passes through the finally).
+function Close-R20CChecked([long]$X) { $r20left = $true; try { $r20left = ((Close-S13DevTools $X 8081).remaining -gt 0) } catch { }; $r20left }
 function Restore-R20CDock {
-  $r20x = Get-R20CX; $r20found = if ($global:R20DockFound) { $global:R20DockFound } else { 'unread' }; $r20rb = 'unread'
+  $r20x = Get-R20CX; $r20found = if ($global:R20DockFound) { $global:R20DockFound } else { 'unread' }; $r20rb = 'unread'; $r20left = $false
   [void](Set-S11Front $r20x 'R20-RESTORE')
-  if ($r20found -ne 'unread') { try { $r20o = Open-S13DevTools $r20x 8081; if ($r20o.opened) { $global:R20CDockChanged = $true; [void](Set-S13DockSide $r20x 8081 $r20found) } } finally { [void](Close-S13DevTools $r20x 8081) } }
-  try { $r20o2 = Open-S13DevTools $r20x 8081; if ($r20o2.opened) { $r20rb = Read-S13DockSide $r20x 8081 } } finally { [void](Close-S13DevTools $r20x 8081) }
+  if ($r20found -ne 'unread') { try { $r20o = Open-S13DevTools $r20x 8081; if ($r20o.opened) { $global:R20CDockChanged = $true; [void](Set-S13DockSide $r20x 8081 $r20found) } } finally { if (Close-R20CChecked $r20x) { $r20left = $true; Say9 'CHECK R20-RESTORE devtools-left-open=yes' } } }
+  if ($r20left) { Stop-R19 'devtools-left-open' 'R20-RESTORE: DevTools was left open after the dock change' }
+  $global:S13DockDiag = $null
+  try { $r20o2 = Open-S13DevTools $r20x 8081; if ($r20o2.opened) { $r20rb = Read-S13DockSide $r20x 8081 } } finally { if (Close-R20CChecked $r20x) { $r20left = $true; Say9 'CHECK R20-RESTORE devtools-left-open=yes' } }
+  Write-R20CDockRead 'R20-RESTORE'
   if ([int](Invoke-R19Node 's13-r20' @('dock', '--row', 'R20-RESTORE', '--side', $r20rb, '--found', $r20found, '--changed', $(if ($global:R20CDockChanged) { 'yes' } else { 'no' }))) -eq 2) { Stop-R19 'not-restored' 'the DevTools dock side read back differs from R20-0C''s (the record names the found side)' }
+  if ($r20left) { Stop-R19 'devtools-left-open' 'R20-RESTORE: DevTools was left open after the read-back' }
 }
 function Invoke-R20CRestore {
   Invoke-R19RowBlock 'R20-RESTORE' {
@@ -180,6 +194,18 @@ function Invoke-R20CRestore {
     Invoke-R20RestoreCheck
     Write-R20CDialogs
   }
+}
+# #418: the one live diagnostic read of the DevTools UIA structure in window X (-Block dockdiag). Opens DevTools plain (no side), reads, closes; it changes no dock side and invokes no Dock side button. The evidence file is in S11_OUT.
+function Invoke-R20CDockDiag {
+  $r20x = Get-R20CX; [void](Set-S11Front $r20x 'DOCKDIAG'); $r20err = $null
+  try {
+    $r20o = Open-S13DevTools $r20x 8081
+    if ($r20o.opened) { Start-Sleep -Milliseconds 1500; [void](Get-S13DockDiag $r20x 8081 (Join-Path $env:S11_OUT 'dockdiag-evidence.txt')) } else { Say9 'CHECK dockdiag opened=no' }
+  } catch { $r20err = $_ }
+  $r20rem = 'unread'; try { $r20rem = [int](Close-S13DevTools $r20x 8081).remaining } catch { }
+  Say9 "CHECK dockdiag remaining=$r20rem"
+  if ($r20err) { throw $r20err }
+  if ($r20rem -ne 0) { Stop-R19 'devtools-left-open' 'DOCKDIAG: DevTools was left open' }
 }
 function Get-R20CMissingBlocks([string]$Slice) { Get-R19Order $Slice | Where-Object { -not $global:R19Blocks.ContainsKey($_) } }   # callers wrap it in @()
 function Register-R20CBlocks {
@@ -193,6 +219,7 @@ function Register-R20CBlocks {
   $global:R19Blocks['r20-sweep-held'] = { if (Test-R20CCond) { Invoke-R20CSweep } }
   $global:R19Blocks['r20-restore'] = { Invoke-R20CRestore }
   $global:R19Blocks['r20-logs'] = { Invoke-R20Logs }
+  $global:R19Blocks['dockdiag'] = { Invoke-R20CDockDiag }
 }
 # ---- the serve step (C3 fixer 1, F1) --------------------------------------------------------------------------------------------------------------------------
 # Every actor row of this slice answers through a `serve` step, which Run 19's Invoke-R19StepB (s13-r20.ps1) sends to Invoke-R20Serve and Test-R20NodeAlive. They are defined only in slice B's file, which this slice must not

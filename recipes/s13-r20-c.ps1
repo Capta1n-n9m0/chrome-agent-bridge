@@ -3,7 +3,7 @@
 # blocks, and slice B's two serve-step functions, with PowerShell's own parser (as recipes/s12-r19.ps1 does) BEFORE Register-R20Blocks installs its tree-kill override over Run 17's Stop-S16Pid (#405, #408), dot-sources recipes/s13-r20.ps1 (the Run 20
 # blocks and drivers), recipes/s13-devt.ps1 (the DevTools helpers) and recipes/s13-r20-c-defs.ps1 (slice C's rows) AT THIS SCRIPT'S TOP LEVEL, registers the blocks and runs the slice. The actor is recipes/s13-r20-c.ts.
 #
-#   S11_OUT=<dir> powershell.exe -NoProfile -ExecutionPolicy Bypass -File recipes/s13-r20-c.ps1 -Block liveC20 | plan | teardown [-Att <n>]   (Git Bash)
+#   S11_OUT=<dir> powershell.exe -NoProfile -ExecutionPolicy Bypass -File recipes/s13-r20-c.ps1 -Block liveC20 | plan | teardown | dockdiag [-Att <n>]   (Git Bash)
 #
 # Exit: 0 done, 2 STOP (the safety state is restored first, #193; every STOP line is followed by its RETURN line), 3 not run. After a STOP or at the end of a slice, run -Block teardown.
 # EXCEPTION: after a STOP that names a failed restore (restored=no, "the wave is over"): never run -Block teardown or re-run; return to the user.
@@ -11,7 +11,7 @@
 # S11_OUT names the wave's out folder (outside the repo); an attempt after the first needs a fresh one (a capture path that holds text is a STOP) and its own -Att (a record file that holds text is a STOP).
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet('liveC20', 'plan', 'teardown')]
+  [ValidateSet('liveC20', 'plan', 'teardown', 'dockdiag')]
   [string]$Block,
   [int]$Att = 1
 )
@@ -68,6 +68,6 @@ if (-not $R17bZero -or -not (Get-Command Invoke-S12Opt -ErrorAction Ignore)) { W
 $global:R19Blocks = @{}
 Register-R20Blocks
 Register-R20CBlocks
-$r20Miss = @(Get-R20CMissingBlocks 'liveC20')
+$r20Miss = @(Get-R20CMissingBlocks 'liveC20') + @(if ($Block -eq 'dockdiag') { Get-R20CMissingBlocks 'dockdiag' })
 if ($r20Miss.Count) { Write-Host "STOP: no block is registered for $($r20Miss -join ', ')"; exit 2 }   # an unregistered name would print NOT RUN and go on
 exit ([int](@(Invoke-R19Main $Block)[-1]))
