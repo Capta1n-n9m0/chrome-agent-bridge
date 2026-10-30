@@ -13,7 +13,7 @@ const SCRIPT = `
 $ErrorActionPreference = 'Stop'
 . '${REPO}/recipes/s13-devt.ps1'
 $global:D = 99; $global:Log = @(); $global:State = 'bottom'; $global:S11Own = @{ '1' = $true }; $global:S9WinIds = @{ '1' = 1 }; $global:S12Dev = $null; $global:Dead = @{}; $global:Url = 'http://localhost:8081/e2e-playground.html?s12=con'
-$global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false; $global:PressFail = $false; $global:TwoButtons = $false; $global:ThreeItems = $false; $global:TwoPressed = $false; $global:CustFail = $false
+$global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false; $global:PressFail = $false; $global:TwoButtons = $false; $global:ThreeItems = $false; $global:TwoPressed = $false; $global:CustFail = $false; $global:Pair = $false; $global:Pair2 = $false; $global:OpenOn = 1; $global:MenuOpen = $false
 function Stop9([string]$m) { $global:Log += 'STOP' }
 function Assert-S11Own([long]$h, [string]$w) { if (-not $global:S11Own.ContainsKey([string]$h)) { throw 'not own' } }
 function Test-S13Alive([long]$h) { -not $global:Dead.ContainsKey([string]$h) -and -not ([string]$h -eq '50' -and $global:State -ne 'undock') }
@@ -22,7 +22,7 @@ function Test-S9Live($h) { (Test-S13Alive $h) -and $global:S9WinIds.ContainsKey(
 function Test-S11Own([long]$h) { $global:S11Own.ContainsKey([string]$h) -and (Test-S9Live $h) }
 function Get-S9DocUrl([long]$h) { $global:Url }
 function Open-S12DevToolsMenu([long]$h) { $global:Log += 'open'; if ($global:Opener) { $global:State = 'bottom' }; $global:Opener }
-function Send-S12Escape([long]$h) { $global:Log += "esc$h" }
+function Send-S12Escape([long]$h) { $global:Log += "esc$h"; $global:MenuOpen = $false }
 function Send-S12Key([long]$h, [string]$k) { $global:Log += "key$k$h"; $global:State = 'closed' }
 function Close-S9Window([long]$h) { $global:Log += "close$h"; $global:Dead[[string]$h] = $true; if ($h -eq 50) { $global:State = 'closed' } }
 function Test-S13Pane([long]$h) { if ($null -ne $global:Pane) { $global:Pane } else { $global:State -notin 'undock', 'closed' } }
@@ -37,16 +37,22 @@ function Get-S13UiaItems([long]$h) {
   if ($global:State -eq 'closed') { return }
   if ($h -eq 1 -and $global:State -eq 'undock') { return }
   if ($h -eq 50 -and $global:State -ne 'undock') { return }
-  if (-not $global:NoButton) { [pscustomobject]@{ name = 'Customize and control DevTools'; type = 'Button'; el = 'customize' } }
+  if (-not $global:NoButton -and -not $global:Pair) { [pscustomobject]@{ name = 'Customize and control DevTools'; type = 'Button'; el = 'customize' } }
+  if ($global:Pair) {
+    $p = @([pscustomobject]@{ name = 'Customize and control DevTools'; type = 'Button'; el = 'customize'; cls = 'toolbar-button main-menu' }, [pscustomobject]@{ name = 'Customize and control DevTools'; type = 'Button'; el = 'inner'; cls = ' icon only-icon ' })
+    if ($global:Pair2) { [array]::Reverse($p) }
+    $p
+  }
   if ($global:TwoButtons) { [pscustomobject]@{ name = 'Customize and control DevTools'; type = 'Button'; el = 'customize' } }
+  if ($global:Pair -and -not $global:MenuOpen) { return }
   foreach ($p in @(@('Undock into separate window', 'undock'), @('Dock to left', 'left'), @('Dock to bottom (Ctrl + Shift + D)', 'bottom'), @('Dock to right', 'right'))) { if ($global:ThreeItems -and $p[1] -eq 'right') { continue }; [pscustomobject]@{ name = $p[0]; type = 'Button'; el = "dock:$($p[1])" } }
   [pscustomobject]@{ name = 'Dock side'; type = 'Text'; el = 'label' }
 }
 function Get-S13Pressed($el) { if ($global:NoPressed) { return $null }; if ($global:TwoPressed -and "$el" -eq 'dock:left') { return $true }; "$el" -eq "dock:$global:State" }
-function Invoke-S13Item($el) { $global:Log += "inv:$el"; if ($global:CustFail -and "$el" -eq 'customize') { return $false }; if ("$el" -like 'dock:*' -and $global:PressFail) { return $false }; if ("$el" -like 'dock:*') { $global:State = "$el".Substring(5) }; $true }
+function Invoke-S13Item($el) { $global:Log += "inv:$el"; if ($global:Pair) { $global:MenuOpen = ("$el" -eq 'customize' -and $global:OpenOn -eq 1) -or ("$el" -eq 'inner' -and $global:OpenOn -eq 2) }; if ($global:CustFail -and "$el" -eq 'customize') { return $false }; if ("$el" -like 'dock:*' -and $global:PressFail) { return $false }; if ("$el" -like 'dock:*') { $global:State = "$el".Substring(5) }; $true }
 function T([string]$n, [scriptblock]$b) {
   Write-Host "BEGIN $n"; $global:Log = @(); $global:State = 'bottom'; $global:S11Own = @{ '1' = $true }; $global:S9WinIds = @{ '1' = 1 }; $global:S12Dev = $null; $global:Dead = @{}; $global:Url = 'http://localhost:8081/e2e-playground.html?s12=con'
-  $global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false; $global:PressFail = $false; $global:TwoButtons = $false; $global:ThreeItems = $false; $global:TwoPressed = $false; $global:CustFail = $false
+  $global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false; $global:PressFail = $false; $global:TwoButtons = $false; $global:ThreeItems = $false; $global:TwoPressed = $false; $global:CustFail = $false; $global:Pair = $false; $global:Pair2 = $false; $global:OpenOn = 1; $global:MenuOpen = $false
   try { Write-Host "RET $(@(& $b)[-1])" } catch { Write-Host "THREW $_" }
   Write-Host "LOG $($global:Log -join ',')"
 }
@@ -133,6 +139,21 @@ T diagNewWin { "$(Format-S13NewWinSkip 'Window' 'Chrome_WidgetWin_1') | $(Format
 T pollFound { $global:PollN = 0; $r = Invoke-S13Poll { param($t, $ms) $global:PollN = $t; $t -eq 3 } 6000 300 { param($m) }; "$($r.found) $($r.tries) $global:PollN" }
 T pollNever { $r = Invoke-S13Poll { param($t, $ms) $false } 900 300 { param($m) }; "$($r.found) $($r.tries)" }
 T diagCounts { Format-S13DiagCounts 'at-700ms' (New-S13DockDiag 0 'yes' 1 'yes' @((Itm 'left' $true), (Itm 'right' $false), (Itm 'right' $null))) }
+function Cm($cls, $n = 'Customize and control DevTools') { [pscustomobject]@{ name = $n; type = 'Button'; el = "e-$cls"; cls = $cls } }
+function Ch($m) { (@(Get-S13CustomizeTries $m) | ForEach-Object { $_.cls.Trim() }) -join '/' }
+T chooseOne { Ch @(Cm 'x') }
+T choosePair { Ch @((Cm 'toolbar-button main-menu'), (Cm ' icon only-icon ')) }
+T choosePairRev { Ch @((Cm ' icon only-icon '), (Cm 'toolbar-button main-menu')) }
+T chooseNoMenu { "[$(Ch @((Cm 'a'), (Cm 'b')))]" }
+T chooseBothMenu { "[$(Ch @((Cm 'main-menu'), (Cm 'main-menu x')))]" }
+T chooseThree { "[$(Ch @((Cm 'main-menu'), (Cm 'a'), (Cm 'b')))]" }
+T chooseZero { "[$(Ch @())]" }
+T tryFirst { $global:Pair = $true; $r = Read-S13DockSide 1 8081; "$r $(Dg) try=$($global:S13DockDiag.trynum)" }
+T trySecond { $global:Pair = $true; $global:OpenOn = 2; $r = Read-S13DockSide 1 8081; "$r try=$($global:S13DockDiag.trynum)" }
+T trySecondRev { $global:Pair = $true; $global:Pair2 = $true; $global:OpenOn = 2; $r = Read-S13DockSide 1 8081; "$r try=$($global:S13DockDiag.trynum)" }
+T tryNone { $global:Pair = $true; $global:OpenOn = 0; $r = Read-S13DockSide 1 8081; "$r try=$($global:S13DockDiag.trynum)" }
+T tryNoChoice { $global:TwoButtons = $true; $r = Read-S13DockSide 1 8081; "$r try=$($global:S13DockDiag.trynum)" }
+T trySet { $global:Pair = $true; $global:OpenOn = 2; $global:State = 'bottom'; $r = Set-S13DockSide 1 8081 'left'; "$($r.done) $($r.changed) $($r.now)" }
 T setSame { $r = Set-S13DockSide 1 8081 'bottom'; "$($r.done) $($r.changed) $($r.now)" }
 T setUnread { $global:NoPressed = $true; $r = Set-S13DockSide 1 8081 'left'; "$($r.done) $($r.changed) $($r.now)" }
 T setLeft { $r = Set-S13DockSide 1 8081 'left'; "$($r.done) $($r.changed) $($r.now)" }
@@ -268,6 +289,23 @@ it("opening goes through Run 19's menu opener on a wave window showing an 8081 f
 		expect(ret("setPressFailOwn")).toBe("False False undock");
 		expect(log("setPressFailOwn")).toBe("inv:customize,inv:dock:bottom");
 		expect(log("setPressFailOwn")).not.toMatch(/esc/);
+	});
+	it("#418 F4 chooser: one match is the try; the measured nested pair gives the menu opener (main-menu) first and the Invoke element second in either order; two without it, two with it both, three or zero give none", () => {
+		expect([ret("chooseOne"), ret("choosePair"), ret("choosePairRev")]).toEqual(["x", "toolbar-button main-menu/icon only-icon", "toolbar-button main-menu/icon only-icon"]);
+		expect([ret("chooseNoMenu"), ret("chooseBothMenu"), ret("chooseThree"), ret("chooseZero")]).toEqual(["[]", "[]", "[]", "[]"]);
+	});
+	it("#418 F4 tries: try 1 opens; try 1 fails then try 2 opens (an Escape between); both fail = unread with an Escape after each; no choice invokes nothing; Set-S13DockSide still opens once and presses the side", () => {
+		expect(ret("tryFirst")).toBe("bottom 0 yes 2 yes 4 u1l1b1r1 4 1 try=1");
+		expect(log("tryFirst")).toBe("inv:customize,esc1");
+		expect(ret("trySecond")).toBe("bottom try=2");
+		expect(log("trySecond")).toBe("inv:customize,esc1,inv:inner,esc1");
+		expect(ret("trySecondRev")).toBe("bottom try=2");
+		expect(ret("tryNone")).toBe("unread try=none");
+		expect(log("tryNone")).toBe("inv:customize,esc1,inv:inner,esc1");
+		expect(ret("tryNoChoice")).toBe("unread try=none");
+		expect(log("tryNoChoice")).toBe("");
+		expect(ret("trySet")).toBe("True True left");
+		expect(log("trySet")).toMatch(/^inv:customize,esc1,inv:inner,esc1,inv:customize,esc1,inv:inner,inv:dock:left,/);
 	});
 	it("the dock read leaves a counts-only diagnostic: the failing UIA step shows in it (no pane, no button, the button twice, the invoke failing, 3 of 4 items, pressed unreadable, two pressed, one pressed), and a window leaves the rest n/a", () => {
 		expect(ret("diagOk")).toBe("0 yes 1 yes 4 u1l1b1r1 4 1");

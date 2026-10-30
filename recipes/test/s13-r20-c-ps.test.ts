@@ -201,7 +201,7 @@ T serveMissing {
   try { [void](Get-R20CServeDefs $d) } catch { Write-Host "MISSING $_" }
 }
 T logs { function global:Invoke-R20Logs { Write-Host 'LOGS' }; & $global:R19Blocks['r20-logs'] }
-$global:DiagFull = [pscustomobject]@{ windows = 0; pane = 'yes'; customize = 1; invoked = 'yes'; items = 4; kinds = 'u1l1b1r1'; pr = 4; pressed = 1 }
+$global:DiagFull = [pscustomobject]@{ windows = 0; pane = 'yes'; customize = 1; invoked = 'yes'; items = 4; kinds = 'u1l1b1r1'; pr = 4; pressed = 1; trynum = '1' }
 function global:Read-S13DockSide($h, $p) { Write-Host 'READSIDE'; $global:S13DockDiag = $global:DiagFull; $global:Sides[0] }
 T diagZero {
   $global:Sides = @('right'); function global:Invoke-R20Zero($z, $row) { }; & $global:R19Blocks['r20-0c']
@@ -387,13 +387,13 @@ describe.skipIf(!hasPs)("s13-r20-c-defs.ps1 under PowerShell with stubbed helper
 		expect(has("restoreOk", "--changed yes")).toBe(true);
 	});
 	it("#418 F3: one dock-read CHECK line follows R20-0C's read (before its DOCK line) and R20-RESTORE's read-back (before its DOCK line); with no read it is all n/a, never a stale count", () => {
-		const L = "NODE s13-r20-c dock-read --row ROW --windows 0 --pane yes --customize 1 --invoked yes --items 4 --kinds u1l1b1r1 --pressed-readable 4 --pressed 1";
+		const L = "NODE s13-r20-c dock-read --row ROW --windows 0 --pane yes --customize 1 --invoked yes --items 4 --kinds u1l1b1r1 --pressed-readable 4 --pressed 1 --try 1";
 		const z = nodes("diagZero"), r = nodes("diagRestore");
 		expect(z.indexOf(L.slice(5).replace("ROW", "R20-0C"))).toBeGreaterThan(-1);
 		expect(z.indexOf(L.slice(5).replace("ROW", "R20-0C"))).toBeLessThan(z.findIndex((l) => l.startsWith("s13-r20 dock --row R20-0C")));
 		expect(r.indexOf(L.slice(5).replace("ROW", "R20-RESTORE"))).toBeGreaterThan(-1);
 		expect(r.indexOf(L.slice(5).replace("ROW", "R20-RESTORE"))).toBeLessThan(r.findIndex((l) => l.startsWith("s13-r20 dock --row R20-RESTORE")));
-		expect(nodes("diagZeroStale")).toContain("s13-r20-c dock-read --row R20-0C --windows n/a --pane n/a --customize n/a --invoked n/a --items n/a --kinds n/a --pressed-readable n/a --pressed n/a");
+		expect(nodes("diagZeroStale")).toContain("s13-r20-c dock-read --row R20-0C --windows n/a --pane n/a --customize n/a --invoked n/a --items n/a --kinds n/a --pressed-readable n/a --pressed n/a --try n/a");
 	});
 	it("#418 F2: a close in R20-RESTORE that leaves DevTools open or cannot be read is the STOP devtools-left-open (after the first close no second open; after the read-back the dock record is kept first); an error of the change itself wins", () => {
 		expect(has("restoreLeft1", "REASON [devtools-left-open]")).toBe(true); expect(o.restoreLeft1!.filter((l) => l.startsWith("OPEN"))).toEqual(["OPEN []"]);
@@ -409,7 +409,9 @@ describe.skipIf(!hasPs)("s13-r20-c-defs.ps1 under PowerShell with stubbed helper
 	it("#418: -Block dockdiag has its own order (preflight, servers, window, dockdiag: no files, reload, console, actor or r20-0c, so no safety change), opens DevTools plain, runs the diagnostic into S11_OUT, closes, prints remaining, changes no dock side", () => {
 		expect(o.reg).toContain("DDORDER preflight,servers,window,dockdiag"); expect(o.reg).toContain("DDMISSING 0");
 		const d = o.ddOk!;
-		expect(d.filter((l) => /^(FRONT|OPEN|DIAG|CLOSE|READSIDE|SETSIDE)/.test(l))).toEqual(["FRONT 7 DOCKDIAG", "OPEN []", "DIAG 7 8081 dockdiag-evidence.txt", "CLOSE"]);
+		expect(d.filter((l) => /^(FRONT|OPEN|DIAG|CLOSE|READSIDE|SETSIDE)/.test(l))).toEqual(["FRONT 7 DOCKDIAG", "OPEN []", "DIAG 7 8081 dockdiag-evidence.txt", "READSIDE", "CLOSE"]);
+		expect(d.indexOf("NODE s13-r20-c dock-read --row DOCKDIAG --windows 0 --pane yes --customize 1 --invoked yes --items 4 --kinds u1l1b1r1 --pressed-readable 4 --pressed 1 --try 1")).toBeGreaterThan(d.indexOf("READSIDE"));
+		expect(d.some((l) => l.startsWith("NODE s13-r20-c dock-side --side "))).toBe(true);
 		expect(d).toContain("CHECK dockdiag remaining=0");
 		expect(o.ddNoOpen).toContain("CHECK dockdiag opened=no"); expect(o.ddNoOpen).not.toContain("DIAG");
 		expect(has("ddLeft", "CHECK dockdiag remaining=2")).toBe(true); expect(has("ddLeft", "REASON [devtools-left-open]")).toBe(true);

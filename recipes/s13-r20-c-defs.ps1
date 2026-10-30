@@ -66,7 +66,7 @@ function Invoke-R20CRow([string]$Id, [string[]]$Cmd, $Handlers, [scriptblock]$Pr
 # #418 F3: ONE fixed-word CHECK line with the counts of the last dock read (Read-S13DockSide leaves them in $global:S13DockDiag; none left = n/a). A diagnostic, never a verdict or a row.
 function Write-R20CDockRead([string]$Row) {
   $r20d = $global:S13DockDiag; $r20v = { param($n) if ($r20d -and "$($r20d.$n)" -ne '') { "$($r20d.$n)" } else { 'n/a' } }
-  [void](Invoke-R19Node 's13-r20-c' @('dock-read', '--row', $Row, '--windows', (& $r20v 'windows'), '--pane', (& $r20v 'pane'), '--customize', (& $r20v 'customize'), '--invoked', (& $r20v 'invoked'), '--items', (& $r20v 'items'), '--kinds', (& $r20v 'kinds'), '--pressed-readable', (& $r20v 'pr'), '--pressed', (& $r20v 'pressed')))
+  [void](Invoke-R19Node 's13-r20-c' @('dock-read', '--row', $Row, '--windows', (& $r20v 'windows'), '--pane', (& $r20v 'pane'), '--customize', (& $r20v 'customize'), '--invoked', (& $r20v 'invoked'), '--items', (& $r20v 'items'), '--kinds', (& $r20v 'kinds'), '--pressed-readable', (& $r20v 'pr'), '--pressed', (& $r20v 'pressed'), '--try', (& $r20v 'trynum')))
 }
 # ---- R20-0C, FLAG --------------------------------------------------------------------------------------------------------------------------------------
 # R20-0C is R20-0's proof under its own row id; its ROW line comes first (Invoke-R20Zero ends with it), then DOCK, then the gate. A DOCK side that cannot be read is no failure of the proof: it gates the five rows below (gate-dock).
@@ -200,7 +200,9 @@ function Invoke-R20CDockDiag {
   $r20x = Get-R20CX; [void](Set-S11Front $r20x 'DOCKDIAG'); $r20err = $null
   try {
     $r20o = Open-S13DevTools $r20x 8081
-    if ($r20o.opened) { Start-Sleep -Milliseconds 1500; [void](Get-S13DockDiag $r20x 8081 (Join-Path $env:S11_OUT 'dockdiag-evidence.txt')) } else { Say9 'CHECK dockdiag opened=no' }
+    if ($r20o.opened) { Start-Sleep -Milliseconds 1500; [void](Get-S13DockDiag $r20x 8081 (Join-Path $env:S11_OUT 'dockdiag-evidence.txt'))
+      $global:S13DockDiag = $null; $r20side = Read-S13DockSide $r20x 8081   # the real reader once, after the instrument's Escape; it presses no Dock side button
+      Write-R20CDockRead 'DOCKDIAG'; [void](Invoke-R19Node 's13-r20-c' @('dock-side', '--side', "$r20side")) } else { Say9 'CHECK dockdiag opened=no' }
   } catch { $r20err = $_ }
   $r20rem = 'unread'; try { $r20rem = [int](Close-S13DevTools $r20x 8081).remaining } catch { }
   Say9 "CHECK dockdiag remaining=$r20rem"
