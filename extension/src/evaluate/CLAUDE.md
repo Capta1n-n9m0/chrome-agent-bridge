@@ -26,6 +26,11 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply. `extension/CLAUDE.md`
 - **`returnByValue` sorts object keys in the returned `value`**; `description` keeps the page's order. Measured in Stage 0
   on today's evaluate (`({z:1,a:2,n:null})` → `{"a":2,"n":null,"z":1}`, `…step12…-steps/Stage0-measurer1.md` §B) and live
   (R19-ARGS-1 FAIL, SDK `value-equal=4` while the page received all 5 values exactly; Run 19, 2026-10-29, #373). It
-  predates Step 12 and is not an `args` defect: compare a returned value as parsed JSON or by key, never by key order.
+  predates Step 12 and is not an `args` defect. Since Step 13 S2 the serialiser's envelope crosses as one JSON string
+  written by a closure-free wrapper (`SERIALIZER_JSON_SRC`) and parsed in the extension, so `value` keeps the page's order
+  (`extension/test/s13-envelope.test.ts`, `extension/test/s12-args-cdp.test.ts`; R20-0 `keys=page`, 2026-10-30); the fake
+  CDP (`extension/test/s12-engine-cdp.ts`) sorts keys like Chrome. Limits left (`docs/plans/2026-10-29-step13-phase-f-followups-steps/S2.md`): a page that replaces
+  `Object.keys` can still bend `value`; no test of a non-function enumerable property on `Object.prototype`; a page
+  `toJSON` still shapes `description` (#397).
 
 The `saveTo` store (`extension/src/evaluate-save-store.ts`) is in `extension/CLAUDE.md`; the SDK's file finish is in `sdk/CLAUDE.md`.

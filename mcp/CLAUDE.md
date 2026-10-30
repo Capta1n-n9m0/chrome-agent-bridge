@@ -17,7 +17,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `(hidden: the bridge is off)` / `(hidden: blocked site)`; Step 10: `focusTab {tab}` before a trusted
   `browser_click`/`browser_type`/`browser_press_key` (#106, #214), `capped`/`CAP_WARNING_LINE` on the six action
   tools (#216), `browser_evaluate {saveTo, overwrite?}` → `Saved <path>` / `<bytes> bytes · <kind> · sha256 <hex>`
-  (#127, #218); the returned `value` has sorted object keys, which Step 13 fixes: `extension/src/evaluate/CLAUDE.md`, #374); its tool names and input schemas are pinned through a real `tools/list` by
+  (#127, #218); the returned `value` keeps the page's key order since Step 13 S2: `extension/test/s13-envelope.test.ts`, R20-ARGS-ORDER SDK leg 5 of 5 equal, printed verdict RECORD); its tool names and input schemas are pinned through a real `tools/list` by
   `mcp/test/s2-focus-first.test.ts` (+ `tool-schemas.ts`) against `mcp/test/fixtures/tool-schemas-f45e3bf.json`, re-baselined only by a recorded decision (#214).
 
 ## Runtime gotchas
@@ -59,10 +59,11 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   bare message. A wave that looks for the extension's text, or for a code on line 1, misreads the MCP (Run 19, 2026-10-29:
   R19-ARGS-3 FAIL on the sheet's expected text, R19-CON-4, -ARGS-OLD and -VERSION NOT DISCRIMINATING; `mcp/test/safety.test.ts`,
   `mcp/test/s12-args-cross.test.ts`; `…step12…-steps/S7-run-record.md` §4 item 8; #373).
-- **`browser_console_messages` output is capped at 20 000 characters and keeps the oldest lines**, then one marker
-  `… [truncated: N more lines, the newest — narrow with level/limit]` (`formatConsole`, `sdk/src/format/`; measured
-  `body-chars=18278 marker=yes first-index=1`, R19-CON-CAP PASS, 2026-10-29; `sdk/test/s12-console-cap.test.ts`). Which end
-  to keep is open for the user (#355). Its description says "frames are not read", but a same-site frame's messages are
-  read (R19-CON-FRAME, `extension/src/CLAUDE.md`).
+- **`browser_console_messages` output is capped at 20 000 characters and keeps the newest whole lines**, printed oldest
+  first under one marker line, `… [truncated: <n> older lines cut — narrow with level/limit]` (`formatConsole`,
+  `sdk/src/format/console-messages.ts`; measured `body-chars=18278 marker=yes first-index=192 last-index=200`, R20-CON-CAP
+  PASS, 2026-10-30; `sdk/test/s12-console-cap.test.ts`; #398). The description says only that a frame in another site's
+  process is not read, and that an object logged before the call shows its class name only (R20-CON-DESC PASS;
+  `mcp/test/s12-console-cross.test.ts`).
 
 The `ws` package stays out of the daemon and MCP bundles (`mcp/build.mjs`): that rule is in `daemon/CLAUDE.md`, beside `daemon/build.mjs`.

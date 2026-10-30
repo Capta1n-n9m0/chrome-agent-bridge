@@ -1013,6 +1013,9 @@ The block itself is left as written.*
     tab's `tabCreated` can name different openers. No daemon, SDK or MCP path reads the row's `openerTabId`.*
   - *A limit: if the service worker restarts inside the 250 ms hold, the held `tabCreated` is lost, not only its grant.
     The daemon then learns of the tab from its next `listTabs` reply, which mints a handle leased to nobody.*
+  - *Note 2026-10-30 (Step 13 closeout): in the bullet on `listTabs` rows above, "reads" means "acts on". The daemon's
+    `listTabs` intercept relays each row's `openerTabId` unchanged to the client (`daemon/src/intercept.ts`, `listTabs`, the
+    `{ ...t, tab: handle }` rows); no daemon, SDK or MCP path acts on it.*
 - *Note 2026-10-29 (Step 13 S4; phase doc `docs/plans/2026-10-29-step13-phase-f-followups.md` 0.6 with its Stage 0
   note; decisions.md · 2026-10-29 · Stage 0: the second-chooser refusal keeps `DEBUGGER_DEVTOOLS` with its own fixed
   text (#389)). The S5a bullet above that reads "with the text an overlapping debugger use answers today (#335)" no

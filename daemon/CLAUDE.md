@@ -75,12 +75,14 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
 - **`leaseGranted.url` starts empty for a popup** — `tabs.onCreated` fires before a `target=_blank`
   tab's url is set (Run 8 LEASE-3: `""`). The daemon polls `listTabs` (100 ms, ≤ 2 s) before sending
   the event; Run 9 R9-LEASE-3 got the url after 45 ms, and another client was refused (`TAB_HELD`) 44
-  ms after the click, before the event (the grant is immediate). A popup of a **background** opener gets
-  no lease at all: Chrome names another tab as its opener, so the daemon's opener rule finds no holder and
-  sends no `leaseGranted` (Run 14 R14-POP-1 FAIL, explained by Run 15 R15-POP-2 (b); with the opener in front
-  it was granted after 150 ms, R15-POP-2 (a); decisions.md · 2026-10-25 · S7: Run 15 stands as recorded; its
-  follow-ups (#226) item 3, #211 closed). A lease for such a popup would be a design change to the opener rule,
-  the user's call (#226's Revisit-if).
+  ms after the click, before the event (the grant is immediate). Since Step 13 S1 the extension joins
+  `tabCreated` with `webNavigation.onCreatedNavigationTarget` within 250 ms and sends `openerTabId` = the navigation
+  source, or none (`extension/src/opener-join.ts`, `extension/test/opener-join.test.ts`); the daemon's opener rule is
+  unchanged. A background opener's popup is leased to the opener's owner (R20-POP-BG-3 PASS, 3 of 3, `in-ms=110`,
+  2026-10-30); a popup with no bridge caller is not measured (R20-POP-OTHER-3 NOT MEASURED). Chrome's own `openerTabId`
+  names the active tab for a background opener (25 of 30, Stage 0), so the extension never falls back to it. Before S1
+  such a popup got no lease (Run 14 R14-POP-1 FAIL, Run 15 R15-POP-2 (b)); with the opener in front it was granted after
+  150 ms (R15-POP-2 (a); decisions.md · 2026-10-25 · S7: Run 15 stands as recorded; its follow-ups (#226)).
 - **Every tab call names its tab since Step 8 S2b.** The daemon refuses a tab method without `tab`
   (`BAD_PARAMS "tab is required"`, or `VERSION` from a no-proto extension), an unlisted untargeted method
   likewise, any `id` on `closeTab`/`focusTab`, and `selectTab` (`UNKNOWN_METHOD`, before resolution);
@@ -113,7 +115,9 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
 - **A trusted input holds the visibility lock across its focus** (Step 12 S6-G2, #338, #354): a `click`/`type`/`pressKey`
   with `trusted: true` and no `focusEmulation` takes the lock, forwards `focusTab`, re-checks the caller and the lease,
   forwards the input, replies, then holds the lock `TRUSTED_SETTLE_MS` (500 ms) more (`methods.ts` `trustedFocus`,
-  `intercept.ts` `trustedInput`; `daemon/test/s6-trusted-focus.test.ts`; `takesLock` unchanged). Live, 2026-10-29: R19-G2-2
+  `intercept.ts` `trustedInput`; `daemon/test/s6-trusted-focus.test.ts`; `takesLock` unchanged). The settle pause releases the lock with
+  `.then(release, release)`, so a rejecting sleep still frees it (#390; same test file, the "rejecting settle sleep"
+  case, Step 13 S4). Live, 2026-10-29: R19-G2-2
   PASS (5 of 5 typed strings intact under a competing capture); R19-G2-1 FAIL, the other client's screenshot got
   `TIMEOUT` at about 35 s while the hold was seen (`holder-after-reply-ms=477`), cause not established (a covered-window
   capture hang fits but is not shown; #373).

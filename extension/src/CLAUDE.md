@@ -45,20 +45,27 @@
   `__name` (S3 verifier 2 NIT A; same cause as tsx in `recipes/CLAUDE.md`). Extension tests are not type-checked
   (tsconfig covers `src`; S2.md §6).
 - **The chooser upload (`uploadFiles {chooser: true}`, Step 12 S5):** the disabled-input refusal is reached only after a
-  chooser opens, and a page button that calls `click()` on a disabled input opens none (HTML spec), so a live row cannot
-  reach it there (R19-CHOOSE-REFUSE leg `dis` NOT DISCRIMINATING, #370); it is unit-tested in `extension/test/s5a-chooser.test.ts`.
-  Two chooser calls in a row with the same file left the page's `change` count at 1 (R19-CHOOSE-KEPT FAIL, cause not
-  established; Run 19, 2026-10-29, #373).
+  chooser opens, and a page button that calls `click()` on a disabled input opens none (HTML spec), so a page like that
+  cannot reach it (R19-CHOOSE-REFUSE leg `dis` NOT DISCRIMINATING, #370); it is unit-tested in
+  `extension/test/s5a-chooser.test.ts`. Run 20 reached it live on a page whose own control flips the input to disabled
+  after the chooser opens (R20-CHOOSE-REFUSE-DIS PASS, `BAD_PARAMS`, 2026-10-30). Two chooser calls in a row with the same
+  file left the page's `change` count at 1 (R19-CHOOSE-KEPT FAIL, 2026-10-29, #373); an identical second selection fires
+  no `input` or `change`, and `cancel` fires (R20-CHOOSE-KEPT RECORD,
+  2026-10-30). A second chooser upload on a tab whose first has not ended answers `DEBUGGER_DEVTOOLS` with the fixed
+  `CHOOSER_BUSY_MESSAGE` (`handlers/upload.ts`; `extension/test/s5a-chooser.test.ts`; R20-CHOOSE-TWICE PASS,
+  `names-devtools=no`); every other `DEBUGGER_DEVTOOLS` text is unchanged, and the MCP prints it bare with `isError`
+  (`mcp/test/s13-chooser-busy.test.ts`).
 
 ## Console read and the kept session (Step 12)
 
 - **Replayed console args carry no `preview`** (`console-messages.ts`, `remoteText`): an object logged before the read
   comes back as its class name (`Object`), and an Error inside it loses its message; nothing leaks (`url=0 stack=0`).
   Measured: Stage 0's replayed args against live ones (`…step12…-steps/stage0-m1-C.txt`); R19-CON-NOTEA FAIL (Run 19,
-  2026-10-29, #373). A shortened preview drops its entry, fail closed (#344); do not rebuild text from a page call.
+  2026-10-29, #373). Step 13 made this the documented limit, not a defect (#387; R20-CON-NOTEA PASS, 2026-10-30; the
+  tool's description says it). A shortened preview drops its entry, fail closed (#344); do not rebuild text from a page call.
 - **A same-site frame's console messages are read; a cross-site frame in another process is not** (R19-CON-FRAME PASS:
-  13 entries without the block pattern, 2 with it, 2 for the out-of-process frame; 2026-10-29). The MCP tool's
-  description still says only "frames are not read" (`mcp/CLAUDE.md`).
+  13 entries without the block pattern, 2 with it, 2 for the out-of-process frame; 2026-10-29). The tool's description
+  and `Tab.consoleMessages`' JSDoc say so (Step 13 S3b; R20-CON-DESC PASS, 2026-10-30).
 - **A second `Runtime.enable` in a kept session replays every message again** (#352: 5 of 5 after S4b; R19-CON-KEPT PASS,
   `first=11 second=11 equal=yes`), so the read is the same whether the session was kept or new.
 - **The kept session** (`debugger-keeper.ts`, `extension/test/debugger-keeper.test.ts`; #335): idle detach

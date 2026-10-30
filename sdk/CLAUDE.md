@@ -117,8 +117,9 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   extension's folder rule could judge the wrong location. Not measured: an unreadable file (`EACCES`) and a folder on
   a `subst` or mapped drive. Since Step 11b S0F-b the extension also refuses a missing file before the attach
   (`BAD_PARAMS`, `extension/src/CLAUDE.md` Uploads; #288), so a raw `uploadFiles` no longer answers `ok` for one (UP-RAW, #284).
-- **`evaluate`'s returned `value` has its object keys sorted** (Chrome's `returnByValue`; R19-ARGS-1, 2026-10-29, #373):
-  compare by key or as parsed JSON. Step 13 fixes the sorted keys (#374). The measurement is in `extension/src/evaluate/CLAUDE.md`.
-- `Tab.consoleMessages` reads same-site frames too: `extension/src/CLAUDE.md` (R19-CON-FRAME).
+- **`evaluate`'s returned `value` keeps the page's key order since Step 13 S2** (R20-ARGS-ORDER SDK leg `value-equal=5`,
+  2026-10-30; the row prints RECORD). Chrome's `returnByValue` sorts keys (R19-ARGS-1 FAIL, 2026-10-29, #373); the
+  measurement and the fix are in `extension/src/evaluate/CLAUDE.md`.
+- `Tab.consoleMessages` reads same-site frames too, and its JSDoc says so since S3b: `extension/src/CLAUDE.md` (R19-CON-FRAME).
 
 The daemon's own lifecycle (outliving its session, the bind being the lock) is in `daemon/CLAUDE.md`; the `saveTo` store is in `extension/CLAUDE.md`; the MCP's trusted tools focus first too (`mcp/CLAUDE.md`).

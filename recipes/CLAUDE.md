@@ -88,6 +88,12 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   (RELOAD-AUTO F1–F6.) Since Step 8 S2b a reload's hello waits up to 2 s for the session marker, so the `extension resync` line can come later than the press and the script still finds it (the timings and the decision: `daemon/CLAUDE.md`, the session-marker bullet).
 - **UIA `TabItem` is not a tab count**: a page element with `role="tab"` is a `TabItem` too (empty
   ClassName); the tab strip's tabs have ClassName `Tab` (BG-FLAGS finding 3).
+- **Chrome's DevTools toolbar buttons are nested pairs of one name; the dock-side menu is a Group plus a Button.**
+  Each toolbar button is an outer `toolbar-button` and an inner icon with the same name, so a reader that needs exactly
+  one element of that name finds two. For the main menu the outer offers ExpandCollapse and the inner offers Invoke. The
+  menu opens in the window's own UIA tree, with no new window. Each Dock side item is a Group with Invoke plus a Button
+  with Toggle; the pressed side reads Toggle=On, and invoking the Group undocks and docks. Measured 2026-10-30, Chrome 156,
+  DevTools docked in a wave window (`S5-liveC20b.md` §6 item 1; `recipes/s13-devt.ps1`).
 - **The driver's shell runs inside a job object** (limit flags `0x800`, breakaway allowed), and a
   process started with plain `Start-Process` inherits the job and the session's environment
   (BG-FLAGS finding 5). Anything that must outlive the driver (Chrome, a daemon) needs breakaway and

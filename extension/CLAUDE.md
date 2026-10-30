@@ -20,12 +20,17 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   `tabs.ts` (`targetTab` — `tabId` required since S2b — `humansTab`, `activateForCapture` + restore,
   `cdpCaptureRefusal`),
   `errors.ts` (`BridgeError`, `toWireError`, `splitCoded`), `tab-events.ts` (pure: tab events +
-  the last-url/title cache), `network-scope.ts` (pure: which tab a network call covers),
+  the last-url/title cache), `opener-join.ts` (Step 13 S1, pure, ids only, no log: holds a `tabCreated` that carries Chrome's `openerTabId`
+  up to `OPENER_JOIN_HOLD_MS` = 250 ms and joins it with `webNavigation.onCreatedNavigationTarget`'s `sourceTabId`; a held event
+  is released before that tab's `tabRemoved`/`tabReplaced`; an unjoined tab's `tabCreated` can be overtaken by other tabs'
+  events meanwhile, and no daemon path depends on the order; needs the `webNavigation` permission, granted by the user
+  (#374), no new install warning (#393); `extension/test/opener-join.test.ts`, `tab-events.test.ts`,
+  `manifest.test.ts`, and `s3a-dnr-wiring.test.ts` pinning 21 listeners with one `onCreatedNavigationTarget`), `network-scope.ts` (pure: which tab a network call covers),
   `inject.ts` (`ensureContent`/`callInPage` + `toSerializableArgs`/`unwrapResult`), `handlers/*`
-  (Step 8: `target.ts` — `ref` | `locator` → a ref before the action; `locate.ts`; `locator-wait.ts`
-  — the 100 ms `waitFor {locator}` poll), `content/{index,snapshot,refmap,actions,geometry,guard}.ts`
-  and Step 8's `content/a11y.ts` (the one walk, `roleOf`, the accessible name, the pruning gates —
-  shared by snapshot and locate), `content/locate.ts`, `content/nearest.ts` (candidate ranking),
+  (Step 8: `target.ts` turns a `ref` or `locator` into a ref before the action; `locate.ts`; `locator-wait.ts`, the
+  100 ms `waitFor {locator}` poll), `content/{index,snapshot,refmap,actions,geometry,guard}.ts`
+  and `content/a11y.ts` (the one walk, `roleOf`, the accessible name, the pruning gates, shared by snapshot and
+  locate), `content/locate.ts`, `content/nearest.ts` (candidate ranking),
   `content/marked.ts` (`refOfMarked`), `content/upload-target.ts` (Step 11: `uploadInputOf`, the one-off mark), `debugger.ts` (`withDebugger`, through Step 12's
   `debugger-keeper.ts`: one kept session per tab, #335), `debugger-errors.ts`
   (pure: CDP failure → `{code, message}`), `keys.ts` (pure: key name → CDP key params),
@@ -41,24 +46,23 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   `handlers/evaluate-save.ts` (the three `evaluateSave*` handlers; the CDP-leg slices in `debugger.ts`);
   `content/locate.ts` computes `pastSnapshotCap` and `handlers/{target,locate,actions}.ts` carry it (#216).
   Step 9 (Phase E safety): pure, unit-tested, with no log call — `safety.ts` (the gate
-  `safetyDecision`, the method table `METHOD_CLASSES` over all 28 router methods (Step 12 S3a added `consoleMessages`, class `evaluate`, #334,
-  served by `handlers/console.ts` over `console-messages.ts`; Step 11 S2 added `uploadFiles`, class `upload`; Step 10 S4 added
-  `evaluateSaveStart`/`evaluateSaveChunk`/`evaluateSaveEnd`, class `evaluate`) — `methodClass` throws
-  on an unknown name — the refusal messages (since Step 10 S4b `JS_DISABLED_MESSAGE`, with
-  `DISARMED_EVALUATE_MESSAGE` kept as its alias, #219), `listTabs`/event redaction, the network predicate),
+  `safetyDecision`, the method table `METHOD_CLASSES` over all 28 router methods (S3a of Step 12 added `consoleMessages`,
+  class `evaluate`, #334, served by `handlers/console.ts` over `console-messages.ts`; Step 11 S2 added `uploadFiles`, class
+  `upload`; Step 10 S4 added `evaluateSaveStart`/`evaluateSaveChunk`/`evaluateSaveEnd`, class `evaluate`), `methodClass`
+  throws on an unknown name, the refusal messages (`JS_DISABLED_MESSAGE` since Step 10 S4b, `DISARMED_EVALUATE_MESSAGE` its alias, #219), `listTabs`/event redaction, the network predicate),
   `safety-match.ts` (the block-list grammar and matcher, dot boundary only; #135, #156), `safety-state.ts`
-  (`SAFETY_KEYS` in `storage.local`, the per-call read that fails closed, `SafetyStore.toggle()` →
-  `"disarmed" | "armed" | "ignored" | "write-failed"`, the 1 s re-arm guard, `readStoredArmed`, the
-  `safetyState` reporter), `safety-call.ts` (one call's gate at receipt, before each first side effect,
+  (`SAFETY_KEYS`, the per-call read that fails closed, `SafetyStore.toggle()` → `"disarmed" | "armed" | "ignored" | "write-failed"`, the 1 s re-arm guard, `readStoredArmed`,
+  the `safetyState` reporter), `safety-call.ts` (one call's gate at receipt, before each first side effect,
   and the post-check), `safety-debugger.ts` (the session registry `detachAll` at disarm),
   `safety-network.ts` (the ingest filter), `safety-dnr.ts` (Step 11b S1: the block list as DNR session rules, tab
-  and download scopes, pure; permission `declarativeNetRequestWithHostAccess`), `safety-dnr-keeper.ts` (S2: per-call rule ids, install/release on every path, the
-  rebuild — since S3b only on a block-list edit or an unreadable state, #302 — the start-up clear, fail closed),
+  and download scopes, pure; permission `declarativeNetRequestWithHostAccess`),
+  `safety-dnr-keeper.ts` (S2: per-call rule ids, install/release on every path, the
+  rebuild only on a block-list edit or an unreadable state since S3b, #302; the start-up clear; fail closed),
   `safety-hop.ts` (S3b: recognises a download's blocked hop from `onErrorOccurred` before `ingest`, keeps no URL),
   `handlers/history.ts` (`back`/`forward`: while the call holds rules, wait for the load it starts, at most 10 s, #302),
   `newtab-open.ts` (S6: `newTab` with a URL opens `about:blank`, holds the rules, settles the blank load, then
   navigates; removes the blank tab if the hold or navigation throws; pure, injected, #311),
-  `upload-exists.ts` (Step 11b S0F-b: the pre-attach file check, its pure parts tested), `upload-paths.ts` (Step 11: the upload-folder matcher and, since S0F-a, the home-folder predicate, pure, no log;
+  `upload-exists.ts` (Step 11b S0F-b: the pre-attach file check), `upload-paths.ts` (Step 11: the upload-folder matcher and, since S0F-a, the home-folder predicate; pure, no log;
   #236, #249, #258), `upload-files.ts` (Step 11: the upload's CDP steps in one session — finder in a
   `Page.createIsolatedWorld` world, `DOM.setFileInputFiles`, the unmark; the shipped strings are closure-free and
   tested), `handlers/upload.ts` (the `uploadFiles` handler: the file-access check before the attach, #245 (b)),
@@ -68,10 +72,9 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   `extension/options.html` are page glue (DOM + `chrome.storage.local`, the Safety, Blocked sites and Upload folders
   boxes), not unit-tested, read statically by `safety-writers.test.ts`. Guards: `log-scan.test.ts`
   (+ `log-allowlist.ts`, 54 log sites), `log-sentinel.test.ts`, `safety-writers.test.ts`, `manifest.test.ts`.
-  Older files: handlers are listed by method in `sw.ts`: `handlers/{actions,evaluate,navigate,perceive}.ts` (the DOM
-  actions, evaluate, navigate, snapshot and screenshot methods), `evaluate/wrap.ts` (the `return` heuristic for
-  `replMode`), and `content/{actions,geometry,index,refmap}.ts` (the page-side actions, frame-aware element centres, the
-  `window.__agentBridge` entry, the `RefMap`).
+  Older files: handlers are listed by method in `sw.ts` (`handlers/{actions,evaluate,navigate,perceive}.ts`);
+  `evaluate/wrap.ts` is the `return` heuristic for `replMode`; `content/{actions,geometry,index,refmap}.ts` hold the
+  page-side actions, frame-aware element centres, the `window.__agentBridge` entry and the `RefMap`.
 
 ## Runtime gotchas
 
@@ -149,10 +152,9 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
 - **`storage.session` is emptied by an extension reload and by Chrome exiting**, and has a 10 MB
   quota — the flush is debounced, writes only `takeDirty()` tabs, and on a rejected `set` calls
   `evictOldest(0.5)` and retries once (writing the union of both dirty sets). The 25 s keepalive
-  alarm means the worker rarely idles out, so the write-through is really insurance against a forced
-  stop or a crash.
-- **Build fact: esbuild keeps comments placed inside array literals** in the bundle (S0 bundle diff, S0.md
-  §6 item 3) — keep comments out of literals where a bounded bundle diff is checked.
+  alarm rarely lets the worker idle out, so the write-through insures against a forced stop or a crash.
+- **esbuild keeps comments placed inside array literals** in the bundle (S0.md §6 item 3): keep them out of literals
+  where a bounded bundle diff is checked.
 
 The session marker's 2 s bound and the handle retirement on a Chrome restart are in `daemon/CLAUDE.md`.
 
