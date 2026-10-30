@@ -165,7 +165,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `Extensions.loadUnpacked` (file access already on); `chrome.runtime.reload()` or a file-access toggle leaves it
   disabled until `management.setEnabled`. Close it by CDP `Browser.close`, never by killing `chrome.exe`
   (`…step11b…-steps/Stage0-measurer.md`, `Stage0.md` §7).
-- **A scratch worktree checks `.ps1` files out with CRLF**, and 9 tests of `recipes/test/s11-r16-runner.test.ts` fail
+- **A scratch worktree or a fresh clone (Step 14 S4) checks `.ps1` files out with CRLF**, and 9 tests of `recipes/test/s11-r16-runner.test.ts` fail
   there while the main tree passes (Step 11b S0F-a and S1, seen by two verifiers). Compare a worktree's red there
   against the main tree before calling it a regression.
 - **Run 17's helper facts** (`…step11b…-steps/S4-live.md` §6): `s9.ts` prints `ROW`/`CHECK` lines after an ISO time
@@ -204,4 +204,4 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `.claude.json`: an `add` under a scratch value wrote only there. Claude Code rewrites `~/.claude.json` on its own, so a
   guard hashes its `mcpServers` key, not the whole file. `reload-extension.ps1` run from a scratch clone opens and
   closes its own window, finds no card for that clone's `extension\` and exits 2: rehearsals pass `--no-reload`. A fresh
-  clone's `npm test` has 9 reds in `recipes/test/s11-r16-runner.test.ts` (CRLF `.ps1` checkouts).
+  clone's 9 CRLF reds: the scratch-worktree bullet above.

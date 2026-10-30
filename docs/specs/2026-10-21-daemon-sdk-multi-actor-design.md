@@ -473,6 +473,9 @@ The MCP renders `report()` plus a PNG image block; a report with an image is a n
 because Claude Code drops images from error results (decisions.md · 2026-10-23 · An MCP failure report
 with a screenshot is returned as a non-error result (#100)).*
 
+*Updated 2026-10-30 (Step 14 S1):* *`report()`'s `Screenshot:` line prints a path under the home folder as
+`~\…`; `screenshotPath` itself stays absolute (#417 (c)).*
+
 ### 8.3 MCP cursor semantics
 
 - Actor name `claude-code #<pid>`; one MCP process per Claude Code session, as today.

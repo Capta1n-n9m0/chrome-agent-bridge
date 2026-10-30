@@ -87,13 +87,13 @@ characters it keeps the newest lines and says how many older lines it cut (R20-C
 (R20-CHOOSE-TWICE: PASS; `mcp/test/s13-chooser-busy.test.ts`). Run 20 (2026-10-29/30, fixture pages), as the user ruled it
 (#420): 24 passed, 4 failed (three popup rows on two sheet clauses, #406; a covered-window screenshot timeout, R20-G2-1),
 1 not measured, 3 not run, 2 records
-(`docs/plans/2026-10-29-step13-phase-f-followups-steps/S5-run-record.md`). Step 13's build is not pushed.
+(`docs/plans/2026-10-29-step13-phase-f-followups-steps/S5-run-record.md`). Step 13 is pushed (found on origin at Step 14's start). *Corrected 2026-10-30: was "Step 13's build is not pushed".*
 
-**Step 14 (Phase G, your own devices; in progress).** `npm run setup` installs the bridge on a new Windows device,
+**Step 14 (Phase G, your own devices; built 2026-10-30, not pushed; the gate waits for the user: #432 and the push).** `npm run setup` installs the bridge on a new Windows device,
 `npm run doctor` checks every part, `npm run bridge-update` updates it, and a script in any folder imports the SDK
 ([`docs/setup.md`](docs/setup.md#install-on-a-new-device)). The failure report prints a home-folder screenshot path as `~`.
 
-6030 unit tests green in 251 files (`npm test` 2026-10-30, HEAD `f6bafc5`). *Superseded 2026-10-30: was "5596 unit tests green in 235 files (`npm test` 2026-10-29, Step 12 S8)", because Step 13 landed.* The Step 6 daemon split was E2E-tested in
+6089 unit tests green in 255 files (`npm test` 2026-10-30, Step 14). *Superseded 2026-10-30: was "6030 unit tests green in 251 files (`npm test` 2026-10-30, HEAD `f6bafc5`)", because Step 14's tests landed.* The Step 6 daemon split was E2E-tested in
 wave W1 (2026-10-22), Step 7's multi-actor tabs in Runs 8–10 (2026-10-22/23), Step 8 in Runs 11–12
 (2026-10-23/24), Step 9's safety controls in Run 13 (2026-10-24; 24 rows passed, 7 failed — none
 shown to be a product defect; ratified by the user, #202), Step 10 in Runs 14–15 (2026-10-25; Run 15:

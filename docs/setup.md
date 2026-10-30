@@ -57,7 +57,9 @@ default, not measured on the machine this guide was written on. Do not change th
    npm run doctor
    ```
 
-   It prints one line per part: Node.js, Build, Token file, MCP entry, Daemon, Extension, and Extension build. A
+   It prints one line per part: Node.js, Build, Token file, MCP entry, Daemon, Extension, and Extension build, plus a
+   line for an MCP entry's own token, a local-scope entry, or `BRIDGE_TOKEN` / `BRIDGE_PORT` set in this shell when there
+   is one; it stops after Extension when the extension is not connected. A
    healthy install prints `OK` on every line and `No part failed.` (exit 0). A `FAIL` line names what is wrong and its
    fix, and makes the exit code 1. A `HINT` line is not a failure: for example, "Extension: not checked" when no
    daemon answered yet; start Claude Code or a script, then run the doctor again. Without Claude Code, the MCP
@@ -573,7 +575,8 @@ renders them as the MCP prints them (`sdk/test/s12-console-format.test.ts`).
 snapshot just after the failure), `screenshotPath` (a PNG under `BRIDGE_FAILURES_DIR`, else
 `~/.chrome-agent-bridge/failures/<time>-<handle>.png`), `network` (the tab's last 20 requests), and
 `attachErrors` for any part it could not get within 5 s. `error.report()` renders them in at most 60
-lines: message, candidates, a window of the snapshot, the screenshot path, the failed requests. Other
+lines: message, candidates, a window of the snapshot, the screenshot path (printed with the home folder as `~`;
+`screenshotPath` itself stays absolute, #417 (c), Step 14 S1), the failed requests. Other
 codes (`TAB_HELD`, `NOT_CONNECTED`, …) carry none of this. Three things to know:
 - The screenshot is a default-mode capture: it takes the visibility lock like any screenshot, and
   **the failed tab comes to the front of its window for about 1.3–1.6 s** if it was in the background

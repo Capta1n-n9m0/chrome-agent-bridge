@@ -22,7 +22,8 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `report.ts`), `report.ts` (the `@bridge/sdk/report`
   subpath: `attachContext` for the MCP), `policy.ts` (`TRUSTED_INPUT_POLICY = "focusFirst"`),
   `transport.ts` (the `ws` socket), `spawn.ts`,
-  `paths.ts` (daemon path, `BRIDGE_DAEMON`), `token.ts` (`resolveToken`, also used by the daemon),
+  `paths.ts` (daemon path, `BRIDGE_DAEMON`), `token.ts` (`resolveToken`, also used by the daemon and by scripts outside
+  the repo through a `file:` dependency, `examples/list-tabs.ts`, #430),
   `download.ts` (`browser_download`'s client half: target path, chunked pull, atomic write, sha256),
   `upload.ts` (Step 11: `prepareUpload` — each path absolute, an existing readable regular file, else `BAD_PARAMS`
   naming the entry's index, never the path; sends `fs.promises.realpath`; size and sha256 from one read; also on the
@@ -61,7 +62,9 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   LOCATOR_AMBIGUOUS REF_STALE OFFSCREEN PAGE_ERROR NAV_FAILED TIMEOUT` a `Tab` call (and the MCP on a `T<n>`
   handle) reads the tab once more — `snapshot`, a default-mode `screenshot`, the last 20 network
   entries — in one 5 s budget, sets them on the same `BridgeError` (`snapshot`, `screenshotPath`,
-  `network`, `attachErrors`, `report()` ≤ 60 lines) and never throws from it (`sdk/src/error.ts`). The
+  `network`, `attachErrors`, `report()` ≤ 60 lines) and never throws from it (`sdk/src/error.ts`). `report()`'s
+  `Screenshot:` line shows the home folder as `~` (`homeAsTilde`, display only: `screenshotPath` stays absolute; a
+  Windows home folds ASCII letters only; a throwing `homedir` keeps the report; `sdk/test/s14-home-path.test.ts`). The
   screenshot is an ordinary capture under the FIFO lock (another actor's lock → `LOCK_TIMEOUT` or the
   5 s cut in `attachErrors`) and **switches the window to the failed background tab**: probe tab
   `visible` +20 ms, the human's tab hidden 1331 ms, call 1344 ms, PNG showing the failed tab (Run 12

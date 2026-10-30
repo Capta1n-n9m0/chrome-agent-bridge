@@ -107,7 +107,7 @@ No row sheet, no fixture wave.
 
 ### S5 — Docs (1 h, last; risk: low)
 "Install on a new device" first in `docs/setup.md` (or a new `docs/install.md` it links), the upgrade history moved
-down; `README.md` quick start; root `CLAUDE.md` Commands.
+down; `README.md` quick start; root `CLAUDE.md` Commands. *(As built: the separate-file option was not taken; the section is in `docs/setup.md`, § As built S5. Note added 2026-10-30, cleanup pass 2.)*
 
 ## Exit checks (pre-registered)
 
@@ -155,7 +155,7 @@ All reports are in the steps dir; the journal there has one line per event. Ever
   `Screenshot:` line only, from the injected `homedir`; ASCII-only case folding (a home with `İ` kept its dot); a
   throwing `homedir` keeps the report. `err.screenshotPath` stays absolute.
 - **S2a setup** (329b518; PASS-with-notes, one fix round): `npm run setup` = `scripts/bridge/setup.mjs` on Node
-  built-ins; the build is skipped when `dist/` is newer than every input; exit 0 / 1 (a prerequisite missing) / 2 (the
+  built-ins; the build is skipped when `dist/` is newer than every input; exit 0 / 1 (a prerequisite missing, or `npm ci` or the build failed; *corrected 2026-10-30, cleanup pass 2*) / 2 (the
   MCP step failed); `--dry-run`, `--replace-mcp`. `npm run typecheck` now ends with `scripts/tsconfig.json`.
 - **S2b doctor and update** (0a5ea8f; PASS after one fix round): `npm run doctor` (tsx) probes the daemon with one
   hello and `daemon.status`, never `connect()`; OK / HINT / FAIL lines. `npm run bridge-update` (Node) pulls

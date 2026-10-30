@@ -30,6 +30,8 @@ Record outcomes in the [Results template](#results-template). A run "passes" whe
 2. **Build:** from the repo root — `npm install && npm run build`. Confirm
    `mcp/dist/index.js`, `daemon/dist/index.js` and `extension/dist/{sw,options,offscreen,content}.js`
    exist. (*Amended 2026-10-22, Step 6 D5: was `server/dist/index.js`.*)
+   *Note 2026-10-30 (Step 14): on Windows, `npm run setup` does items 2–4 (with `bridge.token`, as item 8) and
+   `npm run doctor` checks them; `docs/setup.md` → Install on a new device.*
 3. **Token:** choose a secret, e.g. `openssl rand -hex 16`. Call it `<TOKEN>`.
    *Note 2026-10-22 (Step 6 D6): for the Step 6 daemon wave (§4.12, §4.13), item 8 replaces this
    item — the token is generated into `bridge.token` at the repo root.*

@@ -12,7 +12,8 @@ npm run recipe -- recipes/<file>.ts [args]      # the same as: npx tsx recipes/<
 
 The SDK finds, starts or hands over the daemon itself; the token comes from `BRIDGE_TOKEN`, else
 `bridge.token` at the repo root, and no recipe reads or prints it. The fixture rows need
-`python -m http.server 8080 --directory test-fixtures` (`docs/e2e-test-plan.md` §1 item 7).
+`python -m http.server 8080 --directory test-fixtures` (`docs/e2e-test-plan.md` §1 item 7). A script outside
+the repo imports the SDK by a `file:` dependency: `docs/setup.md` → Scripts from any folder (`examples/list-tabs.ts`).
 
 ## Scripts
 
