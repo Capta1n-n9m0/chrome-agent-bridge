@@ -10,7 +10,9 @@
     "test": "vitest run",
     "build": "npm run build --workspaces --if-present",
     "recipe": "tsx",
-    "setup": "node scripts/bridge/setup.mjs"
+    "setup": "node scripts/bridge/setup.mjs",
+    "doctor": "tsx scripts/bridge/doctor.ts",
+    "bridge-update": "node scripts/bridge/update.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
