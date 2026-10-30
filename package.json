@@ -6,10 +6,11 @@
   "type": "module",
   "workspaces": ["shared", "daemon", "sdk", "mcp", "extension"],
   "scripts": {
-    "typecheck": "tsc -p shared/tsconfig.json && tsc -p daemon/tsconfig.json && tsc -p sdk/tsconfig.json && tsc -p mcp/tsconfig.json && tsc -p extension/tsconfig.json",
+    "typecheck": "tsc -p shared/tsconfig.json && tsc -p daemon/tsconfig.json && tsc -p sdk/tsconfig.json && tsc -p mcp/tsconfig.json && tsc -p extension/tsconfig.json && tsc -p scripts/tsconfig.json",
     "test": "vitest run",
     "build": "npm run build --workspaces --if-present",
-    "recipe": "tsx"
+    "recipe": "tsx",
+    "setup": "node scripts/bridge/setup.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
