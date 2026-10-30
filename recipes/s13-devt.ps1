@@ -136,7 +136,7 @@ function Get-S13CustomizeTries($Matches) {
   @($s13mm[0]) + @($s13m | Where-Object { $_ -ne $s13mm[0] })
 }
 # Each try: invoke, poll up to 3.6 s for Dock side items; none appeared -> Escape into the window and the next try. Returns { hwnd; items; tryn } or $null; the diagnostic keeps which try opened it (1, 2 or none).
-function Invoke-S13OpenTries([long]$Hwnd, $Tries) {
+function Invoke-S13OpenTries([long]$Hwnd, $Tries, [long]$XHwnd = 0) {
   $s13n = 0
   foreach ($s13t in @($Tries)) {
     $s13n++
@@ -150,19 +150,19 @@ function Invoke-S13OpenTries([long]$Hwnd, $Tries) {
       if ($global:S13DockDiag) { Set-S13DiagItems $global:S13DockDiag $s13i }
       return [pscustomobject]@{ hwnd = $Hwnd; items = $s13i; tryn = $s13n }
     }
-    Close-S13Customize $Hwnd ([pscustomobject]@{ hwnd = $Hwnd })
+    if ($Hwnd -eq $XHwnd) { Close-S13Customize $Hwnd ([pscustomobject]@{ hwnd = $Hwnd }) }   # N1: the between-tries Escape goes into X only; a menu in the wave's own DevTools window dies with it
   }
   Set-S13DiagField 'trynum' 'none'
   $null
 }
 # Opens the Customize menu in the first scope window that has its button, then returns { hwnd; items } with the Dock side buttons as { kind; pressed; el }. $null when the button is not chosen or no try opens it.
-function Open-S13Customize([long[]]$Scope) {
+function Open-S13Customize([long[]]$Scope, [long]$XHwnd = 0) {
   foreach ($s13h in $Scope) {
     $s13b = @(@(Get-S13UiaItems $s13h) | Where-Object { $_.type -eq 'Button' -and $_.name -like 'Customize and control DevTools*' })
     Set-S13DiagField 'customize' $s13b.Count
     $s13tr = @(Get-S13CustomizeTries $s13b)
     if ($s13tr.Count -eq 0) { Set-S13DiagField 'trynum' 'none'; continue }
-    return (Invoke-S13OpenTries $s13h $s13tr)
+    return (Invoke-S13OpenTries $s13h $s13tr $XHwnd)
   }
   $null
 }
@@ -178,11 +178,30 @@ function Read-S13DockSide([long]$Hwnd, [int]$Port) {
   $s13pn = [bool](Test-S13Pane $Hwnd)
   Set-S13DiagField 'pane' $(if ($s13pn) { 'yes' } else { 'no' })
   if (-not $s13pn) { return 'unread' }
-  $s13m = Open-S13Customize @($Hwnd)
+  $s13m = Open-S13Customize @($Hwnd) $Hwnd
   if (-not $s13m) { return 'unread' }
   $s13s = ConvertTo-S13DockSide $s13m.items 0
   Close-S13Customize $Hwnd $s13m
   $s13s
+}
+# #418: Chrome 156 lists each Dock side kind twice (measured): a Group (Invoke only) and the nested Button (Toggle only, the one the reader judges). Press the one same-named Group that offers Invoke
+# inside the opened menu's window (none or two -> nothing pressed); with no Group at all, Toggle the matched Button only when it reads Off (never one that is On).
+function Test-S13Invokable($El) { $s13p = $null; try { [bool]$El.TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern, [ref]$s13p) } catch { $false } }
+function Invoke-S13Toggle($El) { try { $El.GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern).Toggle(); $true } catch { $false } }
+function Press-S13DockKind($Menu, [string]$Side, $Button) {
+  $s13g = @(@(Get-S13UiaItems $Menu.hwnd) | Where-Object { $_.type -eq 'Group' -and (ConvertTo-S13DockKind $_.name) -eq $Side })
+  if ($s13g.Count -eq 0) { return ($Button.pressed -eq $false -and [bool](Invoke-S13Toggle $Button.el)) }
+  $s13i = @($s13g | Where-Object { Test-S13Invokable $_.el })
+  ($s13i.Count -eq 1 -and [bool](Invoke-S13Item $s13i[0].el))
+}
+# M1 (verifier 4): after a dock press, a new DevTools window titled for the fixture port is registered as the wave's own, once each. Undock polls every 300 ms up to 5 s for it (the title can arrive late);
+# any other side keeps one short fixed settle and one check. Returns the handles registered.
+function Register-S13NewDevtWindows([long[]]$Before, [int]$Port, [string]$Side, [scriptblock]$Sleep = { param($m) Start-Sleep -Milliseconds $m }) {
+  $s13reg = @{}
+  $s13scan = { foreach ($s13t in @(Get-S13Titles)) { if ($Before -notcontains $s13t.h -and -not $s13reg.ContainsKey([string]$s13t.h) -and (Test-S13DevtTitle $s13t.title $Port)) { $s13reg[[string]$s13t.h] = $true; Register-S13Own $s13t.h } } }
+  if ($Side -eq 'undock') { $null = Invoke-S13Poll { param($t, $ms) & $s13scan; $s13reg.Count -gt 0 } 5000 300 $Sleep }
+  else { & $Sleep 1500; & $s13scan }
+  @($s13reg.Keys)
 }
 # (a, second half) Changes the dock side of the tab's DevTools in X by the Dock side button of the Customize menu. Returns { done; changed; now }: now is the side read back; done when it equals $Side.
 # An unreadable side first, or a missing button, changes nothing (done = false). A DevTools window the change creates is recorded as the wave's own so Close-S13DevTools may close it.
@@ -193,11 +212,10 @@ function Set-S13DockSide([long]$Hwnd, [int]$Port, [ValidateSet('bottom', 'right'
   if ($s13cur -eq $Side) { return [pscustomobject]@{ done = $true; changed = $false; now = $s13cur } }
   $s13before = @(Get-S13Titles | ForEach-Object { $_.h })
   $s13scope = @(Get-S13Scope $Hwnd $Port)
-  $s13m = if ($s13scope.Count) { Open-S13Customize $s13scope } else { $null }
+  $s13m = if ($s13scope.Count) { Open-S13Customize $s13scope $Hwnd } else { $null }
   $s13btn = @(if ($s13m) { $s13m.items | Where-Object { $_.kind -eq $Side } })   # @(if ...) keeps a single hit an array (a lone object has no Count in 5.1)
-  if ($s13btn.Count -ne 1 -or -not (Invoke-S13Item $s13btn[0].el)) { Close-S13Customize $Hwnd $s13m; return [pscustomobject]@{ done = $false; changed = $false; now = $s13cur } }
-  Start-Sleep -Milliseconds 1500
-  foreach ($s13t in @(Get-S13Titles)) { if ($s13before -notcontains $s13t.h -and (Test-S13DevtTitle $s13t.title $Port)) { Register-S13Own $s13t.h } }
+  if ($s13btn.Count -ne 1 -or -not (Press-S13DockKind $s13m $Side $s13btn[0])) { Close-S13Customize $Hwnd $s13m; return [pscustomobject]@{ done = $false; changed = $false; now = $s13cur } }
+  Register-S13NewDevtWindows $s13before $Port $Side
   # an own DevTools window (the scope, never X) that docked itself back into X is gone: drop only a handle that is no window any more
   foreach ($s13k in @($s13scope | Where-Object { [long]$_ -ne $Hwnd })) { if (-not (Test-S13Alive ([long]$s13k))) { $global:S11Own.Remove([string]$s13k); if ($global:S9WinIds) { $global:S9WinIds.Remove([string]$s13k) } } }
   $s13now = Read-S13DockSide $Hwnd $Port

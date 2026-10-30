@@ -13,7 +13,7 @@ const SCRIPT = `
 $ErrorActionPreference = 'Stop'
 . '${REPO}/recipes/s13-devt.ps1'
 $global:D = 99; $global:Log = @(); $global:State = 'bottom'; $global:S11Own = @{ '1' = $true }; $global:S9WinIds = @{ '1' = 1 }; $global:S12Dev = $null; $global:Dead = @{}; $global:Url = 'http://localhost:8081/e2e-playground.html?s12=con'
-$global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false; $global:PressFail = $false; $global:TwoButtons = $false; $global:ThreeItems = $false; $global:TwoPressed = $false; $global:CustFail = $false; $global:Pair = $false; $global:Pair2 = $false; $global:OpenOn = 1; $global:MenuOpen = $false
+$global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false; $global:PressFail = $false; $global:TwoButtons = $false; $global:ThreeItems = $false; $global:TwoPressed = $false; $global:CustFail = $false; $global:Pair = $false; $global:Pair2 = $false; $global:OpenOn = 1; $global:MenuOpen = $false; $global:Groups = 0; $global:GroupNoInv = $false; $global:LateAt = 0; $global:LateCalls = 0
 function Stop9([string]$m) { $global:Log += 'STOP' }
 function Assert-S11Own([long]$h, [string]$w) { if (-not $global:S11Own.ContainsKey([string]$h)) { throw 'not own' } }
 function Test-S13Alive([long]$h) { -not $global:Dead.ContainsKey([string]$h) -and -not ([string]$h -eq '50' -and $global:State -ne 'undock') }
@@ -29,6 +29,7 @@ function Test-S13Pane([long]$h) { if ($null -ne $global:Pane) { $global:Pane } e
 function Get-S13Titles {
   $l = @([pscustomobject]@{ h = 1; title = 'Fixture page' })
   if ($global:State -eq 'undock' -and -not $global:Dead.ContainsKey('50')) { $l += [pscustomobject]@{ h = 50; title = 'DevTools - localhost:8081/e2e-playground.html?s12=con' } }
+  if ($global:LateAt -gt 0) { $global:LateCalls++; if ($global:LateCalls -ge $global:LateAt) { $l += [pscustomobject]@{ h = 77; title = 'DevTools - localhost:8081/e2e-playground.html' } } }
   if ($global:Foreign) { $l += [pscustomobject]@{ h = 60; title = 'DevTools - localhost:8081/other.html' } }
   if ($global:ForeignOther) { $l += [pscustomobject]@{ h = 61; title = 'DevTools - example.com/x.html' } }
   $l
@@ -46,13 +47,16 @@ function Get-S13UiaItems([long]$h) {
   if ($global:TwoButtons) { [pscustomobject]@{ name = 'Customize and control DevTools'; type = 'Button'; el = 'customize' } }
   if ($global:Pair -and -not $global:MenuOpen) { return }
   foreach ($p in @(@('Undock into separate window', 'undock'), @('Dock to left', 'left'), @('Dock to bottom (Ctrl + Shift + D)', 'bottom'), @('Dock to right', 'right'))) { if ($global:ThreeItems -and $p[1] -eq 'right') { continue }; [pscustomobject]@{ name = $p[0]; type = 'Button'; el = "dock:$($p[1])" } }
+  foreach ($g in 1..$global:Groups) { if ($global:Groups -gt 0) { foreach ($p in @(@('Undock into separate window', 'undock'), @('Dock to left', 'left'), @('Dock to bottom (Ctrl + Shift + D)', 'bottom'), @('Dock to right', 'right'))) { [pscustomobject]@{ name = $p[0]; type = 'Group'; el = "grp:$($p[1])" } } } }
   [pscustomobject]@{ name = 'Dock side'; type = 'Text'; el = 'label' }
 }
 function Get-S13Pressed($el) { if ($global:NoPressed) { return $null }; if ($global:TwoPressed -and "$el" -eq 'dock:left') { return $true }; "$el" -eq "dock:$global:State" }
-function Invoke-S13Item($el) { $global:Log += "inv:$el"; if ($global:Pair) { $global:MenuOpen = ("$el" -eq 'customize' -and $global:OpenOn -eq 1) -or ("$el" -eq 'inner' -and $global:OpenOn -eq 2) }; if ($global:CustFail -and "$el" -eq 'customize') { return $false }; if ("$el" -like 'dock:*' -and $global:PressFail) { return $false }; if ("$el" -like 'dock:*') { $global:State = "$el".Substring(5) }; $true }
+function Invoke-S13Item($el) { $global:Log += "inv:$el"; if ($global:Pair) { $global:MenuOpen = ("$el" -eq 'customize' -and $global:OpenOn -eq 1) -or ("$el" -eq 'inner' -and $global:OpenOn -eq 2) }; if ($global:CustFail -and "$el" -eq 'customize') { return $false }; if ("$el" -like 'dock:*' -and $global:PressFail) { return $false }; if ("$el" -like 'dock:*') { $global:State = "$el".Substring(5) }; if ("$el" -like 'grp:*') { $global:State = "$el".Substring(4) }; $true }
+function Test-S13Invokable($el) { -not ($global:GroupNoInv -and "$el" -like 'grp:*') }
+function Invoke-S13Toggle($el) { $global:Log += "tog:$el"; if ($global:PressFail) { return $false }; $global:State = "$el".Substring(5); $true }
 function T([string]$n, [scriptblock]$b) {
   Write-Host "BEGIN $n"; $global:Log = @(); $global:State = 'bottom'; $global:S11Own = @{ '1' = $true }; $global:S9WinIds = @{ '1' = 1 }; $global:S12Dev = $null; $global:Dead = @{}; $global:Url = 'http://localhost:8081/e2e-playground.html?s12=con'
-  $global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false; $global:PressFail = $false; $global:TwoButtons = $false; $global:ThreeItems = $false; $global:TwoPressed = $false; $global:CustFail = $false; $global:Pair = $false; $global:Pair2 = $false; $global:OpenOn = 1; $global:MenuOpen = $false
+  $global:Opener = $true; $global:Pane = $null; $global:Foreign = $false; $global:ForeignOther = $false; $global:NoPressed = $false; $global:NoButton = $false; $global:PressFail = $false; $global:TwoButtons = $false; $global:ThreeItems = $false; $global:TwoPressed = $false; $global:CustFail = $false; $global:Pair = $false; $global:Pair2 = $false; $global:OpenOn = 1; $global:MenuOpen = $false; $global:Groups = 0; $global:GroupNoInv = $false; $global:LateAt = 0; $global:LateCalls = 0
   try { Write-Host "RET $(@(& $b)[-1])" } catch { Write-Host "THREW $_" }
   Write-Host "LOG $($global:Log -join ',')"
 }
@@ -138,6 +142,9 @@ T diagPopup { "$(Test-S13PopupMenu 'Menu' 'x') $(Test-S13PopupMenu 'Window' '#32
 T diagNewWin { "$(Format-S13NewWinSkip 'Window' 'Chrome_WidgetWin_1') | $(Format-S13NewWinSkip 'Pane' 'My Profile Title') | $(Format-S13NewWinSkip 'Pane' '')" }
 T pollFound { $global:PollN = 0; $r = Invoke-S13Poll { param($t, $ms) $global:PollN = $t; $t -eq 3 } 6000 300 { param($m) }; "$($r.found) $($r.tries) $global:PollN" }
 T pollNever { $r = Invoke-S13Poll { param($t, $ms) $false } 900 300 { param($m) }; "$($r.found) $($r.tries)" }
+T regLate { $global:LateAt = 3; $global:Sl = 0; $r = @(Register-S13NewDevtWindows @(1) 8081 'undock' { param($m) $global:Sl++ }); "$($r -join ',') calls=$global:LateCalls sleeps=$global:Sl own=$($global:S11Own.ContainsKey('77'))" }
+T regNever { $global:Sl = 0; $r = @(Register-S13NewDevtWindows @(1) 8081 'undock' { param($m) $global:Sl++ }); "n=$($r.Count) sleeps=$global:Sl own=$($global:S11Own.ContainsKey('77'))" }
+T regOther { $global:LateAt = 1; $global:Sl = 0; $r = @(Register-S13NewDevtWindows @(1) 8081 'right' { param($m) $global:Sl++ }); "$($r -join ',') calls=$global:LateCalls sleeps=$global:Sl" }
 T diagCounts { Format-S13DiagCounts 'at-700ms' (New-S13DockDiag 0 'yes' 1 'yes' @((Itm 'left' $true), (Itm 'right' $false), (Itm 'right' $null))) }
 function Cm($cls, $n = 'Customize and control DevTools') { [pscustomobject]@{ name = $n; type = 'Button'; el = "e-$cls"; cls = $cls } }
 function Ch($m) { (@(Get-S13CustomizeTries $m) | ForEach-Object { $_.cls.Trim() }) -join '/' }
@@ -168,6 +175,15 @@ T setPressFailX { $global:PressFail = $true; $r = Set-S13DockSide 1 8081 'left';
 T setPressFailOwn { $global:State = 'undock'; $global:S11Own['50'] = $true; $global:S9WinIds['50'] = 4242; $global:PressFail = $true; $r = Set-S13DockSide 1 8081 'bottom'; "$($r.done) $($r.changed) $($r.now)" }
 T closeHumanOther { $global:State = 'closed'; $global:ForeignOther = $true; $r = Close-S13DevTools 1 8081; "$($r.closed) $($r.windows) $($r.remaining)" }
 T setForeign { $global:Foreign = $true; $r = Set-S13DockSide 1 8081 'bottom'; "$($r.done) $($r.changed) $($r.now)" }
+function Pk($pressed, $items) { $global:Log = @(); $r = Press-S13DockKind ([pscustomobject]@{ hwnd = 1 }) 'left' ([pscustomobject]@{ kind = 'left'; pressed = $pressed; el = 'dock:left' }); "$r" }
+T pressGroup { $global:Groups = 1; "$(Pk $false) $($global:Log -join ',')" }
+T pressNoGroupOff { "$(Pk $false) $($global:Log -join ',')" }
+T pressNoGroupOn { "$(Pk $true) $($global:Log -join ',')" }
+T pressNoGroupUnread { "$(Pk $null) $($global:Log -join ',')" }
+T pressTwoGroups { $global:Groups = 2; "$(Pk $false) $($global:Log -join ',')" }
+T pressGroupNoInvoke { $global:Groups = 1; $global:GroupNoInv = $true; "$(Pk $false) $($global:Log -join ',')" }
+T setViaGroup { $global:Groups = 1; $r = Set-S13DockSide 1 8081 'left'; "$($r.done) $($r.changed) $($r.now)" }
+T setOwnNoEsc { $global:State = 'undock'; $global:S11Own['50'] = $true; $global:S9WinIds['50'] = 4242; $global:Pair = $true; $global:OpenOn = 2; $global:Groups = 1; $r = Set-S13DockSide 1 8081 'bottom'; "$($r.done) $($r.now)" }
 T setBadSide { Set-S13DockSide 1 8081 'top' }
 T openPlain { $r = Open-S13DevTools 1 8081; "$($r.opened) $($r.done) [$($r.now)]" }
 T openUndock { $r = Open-S13DevTools 1 8081 'undock'; "$($r.opened) $($r.side) $($r.done) $($r.now)" }
@@ -244,7 +260,7 @@ describe.skipIf(!hasPs)("recipes/s13-devt.ps1 (every window, UIA, console and pr
 	it("a dock change: nothing to do when already on the side or when the side is unreadable; otherwise it presses the one Dock side button and reads the side back", () => {
 		expect([ret("setSame"), ret("setUnread"), ret("setLeft")]).toEqual(["True False bottom", "False False unread", "True True left"]);
 		expect(log("setSame")).toBe("inv:customize,esc1");
-		expect(log("setLeft")).toBe("inv:customize,esc1,inv:customize,inv:dock:left,inv:customize,esc1");
+		expect(log("setLeft")).toBe("inv:customize,esc1,inv:customize,tog:dock:left,inv:customize,esc1");
 	});
 	it("undocking records the new DevTools window as the wave's own; docking back drops the dead handle; a DevTools window the wave did not open leaves the change refused", () => {
 		expect(ret("setUndock")).toBe("True True undock OWN50=True");
@@ -285,10 +301,23 @@ it("opening goes through Run 19's menu opener on a wave window showing an 8081 f
 	});
 	it("a failed press changes nothing and closes the menu it opened: an Escape into X for a menu in X, and no key at all for a menu in the wave's own DevTools window (C1 verifier2 N2)", () => {
 		expect(ret("setPressFailX")).toBe("False False bottom");
-		expect(log("setPressFailX")).toBe("inv:customize,esc1,inv:customize,inv:dock:left,esc1");
+		expect(log("setPressFailX")).toBe("inv:customize,esc1,inv:customize,tog:dock:left,esc1");
 		expect(ret("setPressFailOwn")).toBe("False False undock");
-		expect(log("setPressFailOwn")).toBe("inv:customize,inv:dock:bottom");
+		expect(log("setPressFailOwn")).toBe("inv:customize,tog:dock:bottom");
 		expect(log("setPressFailOwn")).not.toMatch(/esc/);
+	});
+	it("#418 fixer3: the side is pressed on the measured Group (Invoke), else a Toggle of an Off Button; a Button already On, two Groups or a Group without Invoke press nothing; the between-tries Escape goes into X only", () => {
+		expect(ret("pressGroup")).toBe("True inv:grp:left");
+		expect(ret("pressNoGroupOff")).toBe("True tog:dock:left");
+		expect(ret("pressNoGroupOn")).toBe("False ");
+		expect(ret("pressNoGroupUnread")).toBe("False ");
+		expect(ret("pressTwoGroups")).toBe("False ");
+		expect(ret("pressGroupNoInvoke")).toBe("False ");
+		expect(ret("setViaGroup")).toBe("True True left");
+		expect(log("setViaGroup")).toMatch(/^inv:customize,esc1,inv:customize,inv:grp:left,/);
+		expect(ret("setOwnNoEsc")).toBe("True bottom");
+		expect(log("setOwnNoEsc")).toMatch(/^inv:customize,inv:inner,inv:grp:bottom,/);
+		expect(log("setOwnNoEsc")).not.toMatch(/esc50/);
 	});
 	it("#418 F4 chooser: one match is the try; the measured nested pair gives the menu opener (main-menu) first and the Invoke element second in either order; two without it, two with it both, three or zero give none", () => {
 		expect([ret("chooseOne"), ret("choosePair"), ret("choosePairRev")]).toEqual(["x", "toolbar-button main-menu/icon only-icon", "toolbar-button main-menu/icon only-icon"]);
@@ -305,7 +334,7 @@ it("opening goes through Run 19's menu opener on a wave window showing an 8081 f
 		expect(ret("tryNoChoice")).toBe("unread try=none");
 		expect(log("tryNoChoice")).toBe("");
 		expect(ret("trySet")).toBe("True True left");
-		expect(log("trySet")).toMatch(/^inv:customize,esc1,inv:inner,esc1,inv:customize,esc1,inv:inner,inv:dock:left,/);
+		expect(log("trySet")).toMatch(/^inv:customize,esc1,inv:inner,esc1,inv:customize,esc1,inv:inner,tog:dock:left,/);
 	});
 	it("the dock read leaves a counts-only diagnostic: the failing UIA step shows in it (no pane, no button, the button twice, the invoke failing, 3 of 4 items, pressed unreadable, two pressed, one pressed), and a window leaves the rest n/a", () => {
 		expect(ret("diagOk")).toBe("0 yes 1 yes 4 u1l1b1r1 4 1");
@@ -337,6 +366,9 @@ it("opening goes through Run 19's menu opener on a wave window showing an 8081 f
 		expect(ret("diagNewWin")).toBe("NEWWIN skipped type=Window class=Chrome_WidgetWin_1 | NEWWIN skipped type=Pane class=- | NEWWIN skipped type=Pane class=-");
 		expect(ret("pollFound")).toBe("True 3 3");
 		expect(ret("pollNever")).toBe("False 4");
+		expect(ret("regLate")).toBe("77 calls=3 sleeps=2 own=True");
+		expect(ret("regNever")).toBe("n=0 sleeps=17 own=False");
+		expect(ret("regOther")).toBe("77 calls=1 sleeps=1");
 		expect(ret("diagCounts")).toBe("COUNTS at-700ms windows=0 pane=yes customize=1 invoked=yes items=3 kinds=u0l1b0r2 pressed-readable=2 pressed=1");
 	});
 	it("the file is ASCII, defines only S13-named functions, prints nothing (no Write-Host, Say9 or Show-S16) and reads no window text but through the one title wrapper", () => {
