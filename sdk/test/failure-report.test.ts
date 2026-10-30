@@ -400,6 +400,31 @@ describe("the screenshot path", () => {
     }
   });
 
+  it("report() shows a path under the injected home as ~, while err.screenshotPath stays absolute (S14)", async () => {
+    const home = mkdtempSync(path.join(dir, "home-"));
+    const { tab } = await setup({ click: { error: { code: "TIMEOUT", message: "slow" } } }, { env: {}, homedir: () => home });
+    const err = await caught(tab.click("e1"));
+    const sep = path.sep;
+    expect(path.isAbsolute(err.screenshotPath!)).toBe(true);
+    expect(err.report!().split("\n")).toContain(`Screenshot: ~${sep}.chrome-agent-bridge${sep}failures${sep}${FILE}`);
+  });
+
+  it("a throwing homedir() with BRIDGE_FAILURES_DIR set keeps the report; the line prints the absolute path (S14)", async () => {
+    const { tab } = await setup(
+      { click: { error: { code: "TIMEOUT", message: "slow" } } },
+      {
+        env: { BRIDGE_FAILURES_DIR: dir },
+        homedir: () => {
+          throw new Error("no home");
+        },
+      },
+    );
+    const err = await caught(tab.click("e1"));
+    expect(typeof err.report).toBe("function");
+    expect(err.screenshotPath).toBe(path.join(dir, FILE));
+    expect(err.report!().split("\n")).toContain(`Screenshot: ${path.join(dir, FILE)}`);
+  });
+
   it("the file name has no ':' (Windows)", async () => {
     const { tab } = await setup({ click: { error: { code: "TIMEOUT", message: "slow" } } });
     const err = await caught(tab.click("e1"));

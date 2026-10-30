@@ -50,7 +50,7 @@ export function checkStopReturn(lines: readonly string[]): string[] {
 }
 
 // ---- (29) the actors' scan: the failure report's `Screenshot:` line and the client's `[Image: source:` line are counted apart (#349) ----------------
-/** `Screenshot: <abs path>\.chrome-agent-bridge\failures\<file>.png`: sdk/src/error.ts prints `Screenshot: ${path}` (pinned in sdk/test/failure-report.test.ts), the default dir is <home>/.chrome-agent-bridge/failures. */
+/** `Screenshot: <abs path>\.chrome-agent-bridge\failures\<file>.png`: sdk/src/error.ts prints `Screenshot: <path>` with the home folder shown as `~` (pinned in sdk/test/failure-report.test.ts, sdk/test/s14-home-path.test.ts), the default dir is <home>/.chrome-agent-bridge/failures. */
 export const SHOT_LINE_RE = /^Screenshot: .*[\\/]\.chrome-agent-bridge[\\/]failures[\\/][^\\/\r\n]+\.png\s*$/;
 /** Claude Code's own line for an image item (a form from #349's prose and the Step 8 run records only: no committed test pins it, Open item 15). */
 export const IMAGE_LINE_RE = /^\[Image: source: .+\.png\]\s*$/;

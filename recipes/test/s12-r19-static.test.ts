@@ -57,8 +57,8 @@ describe("the forms by key, against section 4.27", () => {
 
 describe("shot-line and image-line (#349), pinned against the committed failure report", () => {
   const dir = "C:\\Users\\someone\\.chrome-agent-bridge\\failures";
-  it("the product prints `Screenshot: <path>` and the default failures directory is <home>/.chrome-agent-bridge/failures", () => {
-    expect(rd("sdk/src/error.ts")).toContain("tail.push(`Screenshot: ${input.screenshotPath}`)");
+  it("the product prints `Screenshot: <path>` (home shown as ~) and the default failures directory is <home>/.chrome-agent-bridge/failures", () => {
+    expect(rd("sdk/src/error.ts")).toContain("tail.push(`Screenshot: ${homeAsTilde(input.screenshotPath, input.home)}`)");
     expect(rd("sdk/src/error.ts")).toContain('path.join(homedir(), ".chrome-agent-bridge", "failures")');
     expect(rd("sdk/test/failure-report.test.ts")).toContain("expect(text).toContain(`Screenshot: ${path.join(dir, FILE)}`)");
     expect(rd("mcp/test/s5-cross.test.ts")).toContain("expect(report).toContain(`Screenshot: ${failures}`)");

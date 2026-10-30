@@ -271,12 +271,19 @@ async function enrich(error: BridgeError, handle: string, opts: AttachOptions): 
   if (screenshotPath !== undefined) error.screenshotPath = screenshotPath;
   if (network !== undefined) error.network = network;
   error.attachErrors = attachErrors;
+  let home: string | undefined;
+  try {
+    home = opts.homedir();
+  } catch {
+    // No home known: the Screenshot line then prints the absolute path.
+  }
   const input: ReportInput = {
     code: String(error.code),
     message: error.message,
     data: error.data,
     snapshot,
     screenshotPath,
+    home,
     network,
     attachErrors,
     refsWithheld: snapshot === undefined,
@@ -293,12 +300,31 @@ export interface ReportInput {
   data?: unknown;
   snapshot?: SnapshotResult;
   screenshotPath?: string;
+  /** The home folder (the injected `homedir`): a screenshot path under it prints as `~`. */
+  home?: string;
   network?: NetworkEntry[];
   attachErrors: string[];
   /** The snapshot was asked for but did not arrive: the data's refs were dropped (they may be renumbered). */
   refsWithheld?: boolean;
   /** Epoch ms the network ages are measured from. */
   now: number;
+}
+
+/**
+ * `p` with a leading `home` folder shown as `~` (display only). A Windows home (drive letter) matches
+ * case-insensitively (ASCII letters only) and either separator, and prints `~\…`; any other home matches exactly and prints `~/…`.
+ * A path not strictly inside `home` is returned unchanged.
+ */
+export function homeAsTilde(p: string, home: string | undefined): string {
+  if (home === undefined || home === "") return p;
+  const win = /^[A-Za-z]:[\\/]/.test(home);
+  // Fold ASCII A-Z only: `toLowerCase()` would turn U+0130 into two code units and shift the slice below.
+  const norm = (s: string) => (win ? s.replace(/\//g, "\\").replace(/[A-Z]/g, (c) => c.toLowerCase()) : s);
+  const h = norm(home).replace(/[\\/]+$/, "");
+  const sep = win ? "\\" : "/";
+  if (h === "" || !norm(p).startsWith(h + sep)) return p;
+  const rest = p.slice(h.length + 1);
+  return `~${sep}${win ? rest.replace(/\//g, "\\") : rest}`;
 }
 
 const MAX_MESSAGE_CHARS = 300;
@@ -420,7 +446,7 @@ export function renderReport(input: ReportInput): string {
   // call's own ref — the attached snapshot re-minted that number for whatever element it reached.
 
   const tail: string[] = [];
-  if (input.screenshotPath !== undefined) tail.push(`Screenshot: ${input.screenshotPath}`);
+  if (input.screenshotPath !== undefined) tail.push(`Screenshot: ${homeAsTilde(input.screenshotPath, input.home)}`);
   if (input.network !== undefined) {
     const failed = input.network.filter(isFailed);
     if (failed.length === 0) {
