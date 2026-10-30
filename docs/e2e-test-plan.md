@@ -3680,6 +3680,93 @@ Proposed decisions (for the session agent) are in the record's section 6: the AR
 live-log leg for CON-NOTEA; a recipes-only re-run of the ND and cause-unknown rows as new rows; the DevTools premise to the
 user; gotchas for the package `CLAUDE.md` files.
 
+### Run 20 (S5) — 2026-10-29/30 (Step 13: the popup lease from a navigation join, `evaluate`'s page key order, the console cap and texts, the second chooser call, the DevTools conditions, and Run 19's re-measured rows, §4.28)
+
+*Rows, expected text and pass rules committed before the first observation: §4.28 at `246c115` (2026-10-29 16:37 +04), with dated
+notes added before each slice (`ee2eaa0`, `76f4f5e`, `a32cb8c`, the #407 addendum `8ec2789`, the #416 notes `ae05349`); no line
+of §4.28 was removed after the sheet. Run by live runners (Sonnet, medium), the user not present (#33), in three slices:
+liveA20 attempt 3 (HEAD `10db89d`, record commit `ed66e36`; attempt 1 stopped on setup the R20 helpers had dropped, attempt 2 on the wave's options window read as off its page),
+liveB20 attempt 1 (HEAD `a5476bf`; ended in the STOP `text-leak`; its record is **held, uncommitted, pending the user's ruling
+on #417**), liveC20 attempt 2 (HEAD `e614e0c`, record commit `1a9032e`; attempt 1, `3f19f28`, could not read the DevTools dock
+side and stands as recorded, #418, #419). Judged by the sheet's own pass rules and decisions #399-#419 in
+[`S5-run-record.md`](plans/2026-10-29-step13-phase-f-followups-steps/S5-run-record.md); the per-row evidence lines stay in that
+record. Slice A has no record-level verifier; the S5-record verifier re-derives it. Runs 1-19 above are unchanged.*
+
+```
+Date: 2026-10-29 16:24Z - 2026-10-30 04:28Z  HEAD: 10db89d (A), a5476bf (B, held), e614e0c (C)
+Verdicts: 34 (slice A 15, slice B 11 including the three -3 rows, slice C 8), as verified:
+PASS 20 / FAIL 8 / NOT MEASURED 1 / NOT RUN 3 / RECORD 2 / NOT DISCRIMINATING 0. As printed: PASS 23 / FAIL 5 (the three R20-RESTORE rows).
+PASS    R20-0, R20-0B, R20-0C  R20-POP-NONE  R20-POP-BG-3 (G1.4), R20-POP-FG-3  R20-CON-DESC, -CON-NOTEA, -CON-CAP
+        R20-ARGS-3, -CON-4, -CON-FLOOR, -ARGS-OLD  R20-CHOOSE-TWICE, -CHOOSE-REFUSE-DIS  R20-VERSION
+        R20-DEVT-UNDOCK, R20-DEVT-EARLY  R20-LOGS (A, C)
+FAIL    R20-POP-BG, R20-POP-FG, R20-POP-OTHER (two clauses that cannot pass by construction, #406; the lease clause held)
+        R20-RESTORE (A, B, C: printed PASS; DIALOGS wave-windows-open=1, the wave's own options window, #417, #419)
+        R20-G2-1 (covered leg: B's screenshot timed out at 35 120 ms; uncovered leg PASS)  R20-LOGS (B: STOP text-leak, #417)
+NOT MEASURED  R20-POP-OTHER-3 (leg human: no popup opened in 3 clicks; leg unjoined: no such tab can be made)
+NOT RUN R20-UP-DEVT, R20-KEEP-4, R20-SWEEP-HELD (no DevTools condition refused)
+RECORD  R20-ARGS-ORDER (as printed: RECORD; by §4.28's pass rule and #401: PASS, open for the user; the alternative tally is
+        PASS 21 / RECORD 1), R20-CHOOSE-KEPT
+Exit checks: R5.1 met, R5.2 met, R5.3 met with notes, R5.4 met for the state (DIALOGS clause fails), R5.5 not met in slice B,
+R5.6 met. G1.4 met. The gate is stopped (phase doc STOP rule) until the user rules on #417 and the DIALOGS clause.
+```
+
+**What the new features show.** G1: a background opener's popup is leased to its holder in 3 of 3 rounds (R20-POP-BG-3,
+`granted-to=A in-ms=110 others=0`, B's call `TAB_HELD` naming A, no join or URL line in the worker console; the liveness
+control read 9 → 27 `evaluate` lines), and the foreground and other-holder cases hold (`in-ms` 54 and 57). G1.4 is met on
+R20-POP-BG-3, as the user ruled (#407). The first rows R20-POP-BG, -FG and -OTHER print FAIL on two clauses that cannot pass
+(`held-call` equal in code and message, `console-new=0`; #406) while their lease clause held; they stand. The `human` leg
+opened no popup (`popup-opened=no` ×3), so G1 for a popup with no bridge caller is unproven live; #407's Revisit-if is not met.
+`evaluate` returns the page's key order (`keys=page`; `value-equal` 5 of 5 against Run 19's 4). The console cap keeps the newest nine
+of 200 lines; a replayed object still reads `Object`, now the documented limit; the tool's two sentences are present. The second
+chooser call is refused `DEBUGGER_DEVTOOLS` with its own text, which names no DevTools.
+
+**The re-measured Run 19 rows.** R20-ARGS-3, -CON-4, -CON-FLOOR, -ARGS-OLD and -VERSION PASS with readers that match the MCP's
+own line and the amended waits (R19: FAIL or NOT DISCRIMINATING). R20-CHOOSE-KEPT is a RECORD that names Chrome's identical-selection rule: a
+different second file fires `change` (2), an identical one fires neither `input` nor `change`, and `cancel` fires.
+R20-CHOOSE-REFUSE-DIS PASS on a page that targets the disabled input. R20-G2-1 reproduces Run 19's 35 s timeout only with B's
+window fully covered (`TIMEOUT`, 35 120 ms; uncovered: `ok`, 529 ms): a product finding by the sheet's rule, its cause label not
+proven (B's own alone-control captured the covered window in 581 ms).
+
+**#369's two DevTools conditions.** With a bridge-independent control read before each call (no window and no attachment
+before the open; one DevTools window and `attached=yes` after), DevTools undocked after an earlier attach, opened before the
+first attach undocked, and opened before the first attach docked each left the bridge's call answering `ok`
+(R20-DEVT-UNDOCK, R20-DEVT-EARLY, `FLAG debugging-flag=no`). Neither condition refused; the three conditional rows are NOT RUN, and
+#374 item 3's reword of the "one debugger per tab" claim waits for the user. Attempt 1 read the dock side as `unread` (the reader
+needed one button and found two nested ones) and measured neither condition.
+
+**Judgment calls and notes.** The three R20-RESTORE rows print PASS because no judge compares the `DIALOGS` count; the record
+reads each FAIL by the sheet's "`DIALOGS` all 0" (#417, #419), the state itself equal by count and hash. liveA20's label
+`DIALOGS liveA20` reads as `DIALOGS A` (#416). liveB20's R20-LOGS found the user's name in an actors' transcript (outside the
+repo): the MCP's TIMEOUT reply to a call that times out by design ends with the failure report's `Screenshot: <path>` line, a path
+under the user's home; it is the third recording of that line (Run 18 #349 (a), Run 19 #370) and has never been ruled. liveC20's
+attempt 2 follows five fixer passes against a cap of three; #419 keeps it and the user may still rule its DEVT rows NOT MEASURED.
+R20-ARGS-ORDER's `ref` leg is RECORD (#401); the row's printed RECORD comes from the driver counting that leg, which #401 excludes.
+The record's R20-RESTORE `RESTORED: …` expected line is not printed in any slice; it changes no verdict.
+
+Found state = read-back: armed=true evaluate=true, block list and Upload folders 0 lines at the start of every slice, the file-URL
+toggle found ON and never pressed. R20-RESTORE read back equal by count and hash in A (A3:316), B (B:264) and C (C2:153; line aliases as in the record), the
+dock side back as found (`side=right`, C2:121); R20-LOGS: console, daemon and evidence 0 in every slice, `name=1` only in slice B's
+`browser_upload_file` result.
+
+STOP lines in the committed evidence: two, liveA20 attempts 1 and 2 (`throw-after-state`, each with one `RETURN`); liveB20's
+`text-leak` and its `RETURN 1` are in the held record. liveA20 attempt 3 and liveC20 attempts 1 and 2 print `stop-return=0`.
+
+| Check | Verdict | Evidence |
+|---|---|---|
+| **R5.1** §4.28 before the first observation | **met** | `246c115` 16:37 +04; first record line 20:24:15 +04; later notes added before each slice, additions only |
+| **R5.2** the LOADED20 line proves the loaded build | **met** | `LOADED20 keys=page nested=page elem=page perm=yes listener=yes enabled=yes args=answered` in A, B and C |
+| **R5.3** each row judged by its pre-written text | **met, with notes** | one verdict per id; three printed PASS read FAIL; slice A not verified at record level |
+| **R5.4** restore by hash | **met for the state** | `hash=equal` in A, B, C; `wave-windows-open=1` in all three, so R20-RESTORE is FAIL |
+| **R5.5** R20-LOGS by count per slice | **not met in B** | A and C PASS; B `name=1`, STOP `text-leak`, held under #417 |
+| **R5.6** STOP lines matched to returns | **met** | three STOPs, three RETURNs |
+
+**Gate.** Step 13's gate is stopped under the phase doc's STOP rule ("a pre-registered check fails after the allowed fix rounds";
+a safety state or text-leak item) until the user rules: R5.5 is not met in slice B (text-leak, #417) and the three R20-RESTORE rows
+FAIL on the DIALOGS clause.
+
+Open for the user (record section 7): #417 (the screenshot-path line and the held slice B), #419 (accept liveC20 attempt 2), the
+DIALOGS clause, R20-ARGS-ORDER (printed RECORD against PASS by the pass rule and #401), G1's human leg, #374 item 3.
+
 ## 6. Exit criteria
 
 - **All ★ must-pass cases pass** → the bridge is proven end-to-end; merge `feat/agent-bridge` → `main`.
