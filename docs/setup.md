@@ -101,7 +101,8 @@ machine that used the bridge before:
    reloaded since Step 11 does not stop redirect hops ([Safety](#safety)). Since Step 11b, `browser_new_tab` with a URL
    opens a blank page first (R17B-RD-2).* *Updated 2026-10-29: Step 13 S1 changed the extension (a new permission,
    `webNavigation`, granted by the user, #374; no new install warning, #393) — reload it after upgrading; an extension
-   not reloaded since Step 12 leaves a background tab's popup unowned ([Owners](#owners-leases);
+   not reloaded since Step 12 leaves a background tab's popup unowned, or leases it to whoever holds the window's active
+   tab ([Owners](#owners-leases);
    `extension/test/manifest.test.ts`, R20-0).*
 
 Every client on a machine must use the same `BRIDGE_PORT`; see [The daemon](#the-daemon).

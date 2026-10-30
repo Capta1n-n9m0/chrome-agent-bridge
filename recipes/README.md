@@ -49,6 +49,9 @@ The SDK finds, starts or hands over the daemon itself; the token comes from `BRI
 | `s12-forms.ts`, `s12-forms-b.ts`, `s12-forms-c.ts` | Run 19's line forms (§4.27) as pure formatters, each tied to the sheet's own paragraph by its test; counts and fixed codes only, never a text. |
 | `s12-r19.ts`, `s12-r19.ps1`, `s12-r19-lib.ps1`, `s12-r19-{a,b,c,de}.{ts,ps1}` | Run 19's block runner (§4.27; order in `…-steps/S7-sheet.md`): the pure part and its thin commands (`proof`, `swap`, `restore-head`), the runner and its STOP/RETURN and old-build logic, and per slice (liveA19–liveE19) the node actors and their PowerShell row drivers. |
 | `s12-win-b.ps1`, `s12-win-c.ps1`, `s12-oldbuild.ts` | Run 19's Windows helpers for liveB19 and liveC19 (dot-sourced after `s12-win.ps1`), and the old-build swap and restore of #356 (2): a scratch worktree with its own `npm ci`, never a `node_modules` junction (#220). |
+| `s13-forms.ts` | Run 20's line forms (§4.28) and judges as pure functions; they import the product's own strings and print counts and fixed words only. |
+| `s13-r20.ts`, `s13-r20.ps1`, `s13-r20-a.{ts,ps1}`, `s13-r20-a2.ts`, `s13-r20-b.{ts,ps1}`, `s13-r20-b-defs.ps1`, `s13-r20-b4.{ts,ps1}`, `s13-r20-c.{ts,ps1}`, `s13-r20-c-defs.ps1` | Run 20's block runner over Run 19's (§4.28; order in `docs/plans/2026-10-29-step13-phase-f-followups-steps/S5-sheet.md`) and per slice (liveA20–liveC20) the node actors, entry scripts and blocks; `b4` runs the R20-POP-*-3 rows (#407). |
+| `s13-win.ps1`, `s13-devt.ps1` | Run 20's Windows helpers: window placement and coverage for R20-G2-1, and liveC20's DevTools helpers (open, dock side by UI Automation, the bridge-independent control, close). |
 | `s10-ret1.ts`, `s10-ret1.ps1` | RET-1 (a killed Chrome retires N ≥ 1 held handles): the SDK holder and its driver, which **kills and relaunches the user's real Chrome** — only under the user's grant G10-2 (run in Run 15 as RET-1R under #221/#222). |
 
 *Retired 2026-10-25 (Step 10 S8): `blackboard/assemble-mcp.ts` (rebuilt SDK-7's MCP leg from an actor's transcript into
@@ -82,5 +85,6 @@ npx tsc --noEmit -p recipes/tsconfig.s9.json   # the Step 9 S4 files (and Step 1
 npx tsc --noEmit -p recipes/tsconfig.s10.json  # the Step 10 S7 files
 npx tsc --noEmit -p recipes/tsconfig.s11.json  # the Step 11 S5 files
 npx tsc --noEmit -p recipes/tsconfig.s11b.json # the Step 11b S4 files and Step 12's s12-r19-{a,b,c,de}.ts (the other s12-*.ts compile through their tests under .s6)
+npx tsc --noEmit -p recipes/tsconfig.s13.json  # the Step 13 S5 files (s13-*.ts and their tests; needs chrome types)
 npx vitest run recipes/                        # recipes/test/*.test.ts (part of `npm test`)
 ```

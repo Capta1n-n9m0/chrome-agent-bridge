@@ -25,15 +25,15 @@ extension. Mental model: "Playwright MCP, but pointed at your real logged-in Chr
   are **untracked and held** in the steps dir: never stage them before the ruling; and the `DIALOGS` clause counting
   the wave's own options window), #419 (liveC20's fix-round breach; with it #374 item 3's #369 reword: neither DevTools
   condition refuses), R20-ARGS-ORDER (RECORD vs PASS), #385, #389.
-- **Next:** the user's rulings, then Step 13's close (decisions to `docs/decisions-archive/step13.md`) and a minimal
-  Phase G for the user's own use; its kickoff waits for the ruling (`long-run` §5).
+- **Next:** the user's rulings, then Step 13's close (its decisions to a new `step13.md` in `docs/decisions-archive/`)
+  and a minimal Phase G for the user's own use; its kickoff waits for the ruling (`long-run` §5).
 - **Committed docs** carry no local path and no user name from now on (#374; `docs/docs-writing-guide.md`).
 - **How agents run (#289, #320):** Opus builds contract and safety code and runs every verifier; Sonnet does recipes,
   fixtures, docs and live runners; every agent at medium effort, passed explicitly; three fix rounds per stage (per
   slice in a live wave, #367). The first line of every step brief is the in-turn wait rule (#286, #350): a step agent
   that ends its turn on a child stalls the stage. Rules: `docs/agent-rules.md` §6–§8, §10.
 - **Reloads need no human:** `recipes/reload-extension.ps1` (#65; one re-run on exit 2, #99). The loaded extension is
-  the HEAD build, proven by liveE19's closing R19-0 re-run. Interactive sessions using the bridge need `/mcp` or a fresh
+  Step 13's build (no extension code after S4), proven by Run 20's R20-0, R20-0B and R20-0C rows. Interactive sessions using the bridge need `/mcp` or a fresh
   session.
 - Update this block with the `session-closeout` skill whenever a stage/phase completes or the
   resume point moves.
@@ -115,7 +115,7 @@ npm run build        # daemon/dist/index.js + mcp/dist/index.js + extension/dist
 npm test             # vitest — 6030 passed, 251 files (`npm test` 2026-10-30, Step 13 S6; recipes/test included)
 npm run typecheck    # tsc across shared/daemon/sdk/mcp/extension (chained with `&&`; see the cross-package gotchas below)
 npm run recipe -- recipes/<file>.ts [args]   # a script against the SDK, run with tsx (= npx tsx recipes/<file>.ts)
-npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10, .s11, .s11b cover the others; all seven exit 0, 2026-10-29 cleanup pass — run them: a code stage can break one, as S3 did)
+npx tsc --noEmit -p recipes/tsconfig.s6.json # recipes typecheck separately (tsconfig.json, .fe, .s6, .s9, .s10, .s11, .s11b, .s13 cover the others; all eight exit 0, 2026-10-30 cleanup pass — run them: a code stage can break one, as S3 did)
 ```
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → `extension/`, then set the
 token + port `9234` in its Options. The MCP config points at `<repo>/mcp/dist/index.js`; nobody starts

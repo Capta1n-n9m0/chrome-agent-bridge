@@ -31,13 +31,13 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `s12-win-{b,c}.ps1` (their Windows helpers), `s12-oldbuild.ts` (the old-build swap and restore, #356) (Step 12 S7,
   §4.27), `s13-forms.ts` (Run 20's line forms and judges, on the product's own constants), `s13-r20.ts` /
   `s13-r20.ps1` (Run 20's shared block runner over Run 19's, read-only) and `s13-r20-a.{ts,ps1}` (slice A's rows and
-  entry script), `s13-r20-b.{ts,ps1}` and `s13-r20-b-defs.ps1` (slice B's actor, entry script and blocks),
+  entry script; `s13-r20-a2.ts` the rest of liveA20's actors, CON and ARGS-OLD rows), `s13-r20-b.{ts,ps1}` and `s13-r20-b-defs.ps1` (slice B's actor, entry script and blocks),
   `s13-r20-b4.{ts,ps1}` (the R20-POP-*-3 rows, #407/#410) and `s13-win.ps1` (window placement and coverage for
   R20-G2-1), `s13-devt.ps1` (liveC20's DevTools helpers: open, dock side by UIA, the bridge-independent control, close
   and count, FLAG) and `s13-r20-c.{ts,ps1}` / `s13-r20-c-defs.ps1` (slice C's actor, entry script and blocks; the entry
   script reads `Invoke-R20Serve` and `Test-R20NodeAlive` from `s13-r20-b-defs.ps1` by the parser, never dot-sourcing
   it) (Step 13 S5, §4.28), `tsconfig{,.fe,.s6,.s9,.s10,.s11,.s11b,.s13}.json` (recipes are not in `npm run
-  typecheck`: `npx tsc --noEmit -p recipes/tsconfig.s6.json`; all eight exit 0, 2026-10-29; `.s11b` also covers
+  typecheck`: `npx tsc --noEmit -p recipes/tsconfig.s6.json`; all eight exit 0, 2026-10-30; `.s11b` also covers
   `s12-r19-{a,b,c,de}.ts`, `.s13` the `s13-*` files with `"chrome"` in `types`, and `.s6`'s `test/*.test.ts` glob
   compiles the other `s12-*.ts` through their tests; `.s6` excludes `s13-forms.test.ts`, which needs `chrome` types). Fixtures: `test-fixtures/s10-{cap,mcpf,save}.html`,
   `test-fixtures/s11-{upload,frame,patched}.*`, `test-fixtures/s13-chooser.*` (reporter `window.__s13ch`).

@@ -1,5 +1,9 @@
 # Next session — Step 13, resumed at Run 20's slice B (after a power cut)
 
+> **Status:** Closed — spent. *Superseded 2026-10-30 (cleanup pass): Run 20 is recorded and the Step 13 docs (S6) are
+> committed; the gate waits for the user (root `CLAUDE.md`, Current state). Do not resume from this prompt. The next
+> kickoff is written after the user's rulings.*
+
 **How to start:** working directory `<repo>` (the chrome-remote-extention checkout), on Windows. The driver is not a
 bridge client: `claude --strict-mcp-config --mcp-config <a file holding {"mcpServers":{}}>`. Paste everything below
 the line.

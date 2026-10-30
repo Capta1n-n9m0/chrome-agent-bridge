@@ -233,6 +233,10 @@ daemon omits `lastUrl`/`lastTitle` from `tabGone` and `TAB_GONE` while the last 
 with no URL or with `about:blank` is unchanged. No event, field, code or message is added; the reply (`{id}`) is
 unchanged. See §10's Step 11b S6 note.*
 
+*Amended 2026-10-30 (Step 13 S1, #385): `tabCreated.openerTabId` is the tab whose page opened the new tab
+(`webNavigation.onCreatedNavigationTarget`'s `sourceTabId`, joined within 250 ms), or absent; never Chrome's own
+`openerTabId`. A background opener's popup now goes to the opener's holder. See §10's Step 13 S1 note.*
+
 ### 6.3 Leases
 
 - A tab is held by the actor that opened it (`newTab`), claimed it (`tabs.claim`), or received it by

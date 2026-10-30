@@ -31,7 +31,7 @@ The root `CLAUDE.md` and `docs/agent-rules.md` also apply.
   `format/{snapshot,network}.ts` (the pure text formatters, moved from the extension in Step 7 T4,
   byte-identical to the baseline `sdk/test/fixtures/baseline-51de800.json`), exported as the
   `@bridge/sdk/format` subpath (`sdk/package.json` `exports["./format"]`) and from `index.ts`; Step 12's
-  `format/console-messages.ts` (`formatConsole`, capped at 20 000 characters, #345, #355) is on the subpath only, so the
+  `format/console-messages.ts` (`formatConsole`, capped at 20 000 characters, keeps the newest whole lines under one marker line; #345, #398) is on the subpath only, so the
   main surface keeps its eight values (`sdk/test/s12-console-format.test.ts`, last test).
 
 ## Runtime gotchas

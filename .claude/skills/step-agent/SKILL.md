@@ -40,8 +40,8 @@ EXIT CRITERIA: the phase doc's exit checks <IDs>; <any stage-specific addition>.
 LANE: <files/packages it may change>. Anything outside escalates.
 DEVIATIONS from agent-rules.md: <only the differences, or "none">.
 RUNNING NOW: <PIDs, or "nothing">.
-OUTPUT: <steps-dir>/<STAGE>.md. Commit via a committer you start after the verifier's verdict, message per
-agent-rules.md §10 (trailer per `agent-rules.md` §10).
+OUTPUT: <steps-dir>/<STAGE>.md. Commit via a committer you start after the verifier's verdict, message and
+trailer per `agent-rules.md` §10.
 ```
 
 ## LEAF BRIEF (step agent → builder / verifier / fixer / runner)

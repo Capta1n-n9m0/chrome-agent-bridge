@@ -1,6 +1,7 @@
 # Step 13 — Phase F follow-ups: a background opener's popup, evaluate's key order, the console fixes, and Run 20
 
-**Date:** 2026-10-29 · **Status:** Planned; G13-0 met by #374
+**Date:** 2026-10-29 · **Status:** Built, Run 20 recorded; not closed, the gate waits for the user (§ Gate checklist); G13-0 met by #374
+*(updated 2026-10-30, cleanup pass: was "Planned")*
 **Design of record:** this doc's "Decisions"; the design spec `docs/specs/2026-10-21-daemon-sdk-multi-actor-design.md`
 binds for everything it does not change (§10 protocol, events and codes with their dated notes) · **Carried from:**
 `docs/plans/2026-10-27-step12-phase-f.md` (closed; its § Follow-ups and the gate checklist) · **Steps dir:**

@@ -88,7 +88,9 @@ don't lose CDP power, we just source it from inside the profile instead of from 
   cannot drop the connection; relays commands to the service worker.
 - **Permissions:** `debugger`, `tabs`, `scripting`, `activeTab`, `alarms`, `storage`,
   `offscreen`, host permissions `<all_urls>`. *Superseded 2026-10-27: Step 5 added `webRequest` and Step 11b
-  `declarativeNetRequestWithHostAccess` (#290 0.3 (A)); the list of record is `extension/manifest.json`.*
+  `declarativeNetRequestWithHostAccess` (#290 0.3 (A)); the list of record is `extension/manifest.json`.* *Corrected 2026-10-30: was "Step 5 added `webRequest` and Step 11b
+  `declarativeNetRequestWithHostAccess`"; as built Step 13 S1 also added `webNavigation` (#374, #385; Step 13 phase doc §
+  As built).*
 
 ### 5.2 MCP server (Node/TypeScript)
 - **WS host** — binds `127.0.0.1`, performs the token handshake, accepts a single extension

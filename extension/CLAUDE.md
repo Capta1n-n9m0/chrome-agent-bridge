@@ -139,9 +139,9 @@ you open a file there; read the one whose topic you touch from elsewhere in `ext
   memory from the first event and `network-state.ts` keeps a `ready` promise that `merge`s the
   rehydrated `storage.session` blob *underneath* the live entries (live wins); handlers `await ready`.
 - **`chrome.webRequest` listeners must be registered at the top level of `sw.ts`**, synchronously —
-  they have to exist on every worker start or the events that woke it are lost. The same holds for the
+  they must exist on every worker start or the events that woke it are lost. So must the
   `chrome.tabs.on{Created,Updated,Removed,Replaced}` listeners that feed Step 7's tab events (column 1 in
-  `sw.ts`).
+  `sw.ts`) and the opener join's `webNavigation` listener.
 - **Cache hits skip `onHeadersReceived`** — `onCompleted` carries `statusCode`/`statusLine`/
   `responseHeaders`/`fromCache`, so the reducer fills status from `onCompleted` too. Same for an
   event whose `requestId` it has never seen (worker restarted mid-request): build the entry from the
