@@ -9,3 +9,9 @@
 # bytes) turns the NET-1 row's "12.6 KB" into "12.9 KB" (wave W1 probe,
 # 2026-10-22; decisions.md · NET-1's 12.9 KB came from a CRLF copy of the fixture).
 test-fixtures/**/*.html text eol=lf
+
+# PowerShell scripts keep LF endings too: several recipe tests read a .ps1 as text
+# and match it line by line, and a fresh Windows clone (core.autocrlf=true) turned
+# them CRLF, which failed 9 tests in recipes/test/s11-r16-runner.test.ts (Step 14
+# Stage 0). PowerShell 5.1 runs LF scripts as is.
+*.ps1 text eol=lf
